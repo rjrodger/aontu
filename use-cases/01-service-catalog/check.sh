@@ -161,12 +161,12 @@ run conflict 1 -- "$DIR/bad/tier-conflict.aon"
 has conflict err '[aontu/scalar_value]'
 ok "two views: tier 1 vs tier 2 on payments refuses to evaluate"
 
-# 10. A typed endpoint (refer($.system.Service)) refuses a database
+# 10. A typed endpoint (refer($.aontu.system.Service)) refuses a database
 # target -- in the miniature model where typed refer works (gap 8).
 run kind 1 -- "$DIR/bad/wrong-kind.aon"
 has kind err '[aontu/scalar_value]'
 has kind err '"database"'
-ok "refer($.system.Service): non-service endpoint refused"
+ok "refer($.aontu.system.Service): non-service endpoint refused"
 
 # 11. An agent-emitted candidate is vetted against the (reference-free,
 # see gap 2) CandidateShape anchor.

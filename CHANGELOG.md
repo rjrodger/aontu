@@ -7,27 +7,80 @@ which implementation each change affects.
 
 ## Unreleased
 
-> **These two entries must not ship in one release.** Between them,
-> `each` changes meaning from a meet to a replacement. Cut a release
-> after the removal, with `each` simply absent, and release the rename
-> after that. Together they are silent for a record template; apart,
-> every affected call errors. See
+> **RELEASE SEQUENCING.** The two `each` entries below (the removal and
+> the rename) must not ship in one release. Between them, `each`
+> changes meaning from a meet to a replacement. Cut a release after the
+> removal, with `each` simply absent, and release the rename after
+> that. Together they are silent for a record template; apart, every
+> affected call errors. See
 > [ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
+> No other entry in this section carries the hazard: each of the rest
+> fails loudly on an old document.
+
+### BREAKING: a bundled model lands under `$.aontu`
+
+**Including a vocabulary used to take a root key you probably wanted.**
+`aontu:system` defined `system:`, `aontu:code` defined `code:`,
+`aontu:profile` defined `profile:` — all ordinary names a document has
+its own use for, and the collision was silent, since the two would
+simply unify.
+
+Everything an `aontu:` model defines now lands under one key:
+
+```
+@"aontu:system"   ->  $.aontu.system.Port, .Component, .Service, .Semver
+@"aontu:view"     ->  $.aontu.view.Figure
+@"aontu:code"     ->  $.aontu.code.units
+@"aontu:profile"  ->  $.aontu.profile
+```
+
+One reserved key instead of seven, named for the language rather than
+for a domain, and `$.aontu` anywhere tells a reader at once that it is
+not the document's own.
+
+**To migrate:** write `aontu: code: units: [...]` where you wrote
+`code: units: [...]`, and `$.aontu.system.Service` where you wrote
+`$.system.Service`. Both fail loudly — a reference that no longer
+resolves, and a renderer that finds no units.
+
+**Coverage got a better rule with it.** The dead-path walk excluded
+exactly the `code` node, so a document including a *vocabulary* had its
+`$.system` or `$.profile` reported as dead model. The exclusion is now
+the whole `aontu` namespace: nothing under it is the user's model.
+
+Rationale in
+[ADR-029](ADR.md#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root).
 
 ### `aontu:system` gains `Semver`
 
-A version as an **ordered triple** — exactly three non-negative
-integers:
+A version (semver.org 2.0.0) as an **ordered tuple** — major, minor,
+patch, pre-release — **with the tail defaulted**:
 
 ```
-v: $.system.Semver & [1 2 3]
+v: $.aontu.system.Semver & [1]   ->  [1, 0, 0, ""]
+v: $.aontu.system.Semver & [1 2 3 "alpha.1"]
 ```
 
-A list, not a string and not a map. A version is compared rather than
-read, and comparison is elementwise from the left: `"1.10.0"` sorts
-below `"1.9.0"` as text, and a map has no order of its own to compare
-along. The arity is part of the type, so two components is not a
-version and a fourth is not part of one.
+A list, not a dotted string and not a map. A version is compared
+rather than read, and the comparison runs component by component from
+the left: `"1.10.0"` sorts below `"1.9.0"` as text, and a map has no
+order of its own to compare along.
+
+**Leading zeroes need no rule**: the numeric parts are integers, and
+`01` is not a distinct integer literal, so the spec's "MUST NOT contain
+leading zeroes" is impossible to write rather than merely forbidden.
+
+**The pre-release check is the alphabet, not the structure**, and the
+vocabulary says so. The spec's grammar is dot-separated identifiers,
+which as a regex is a quantified group containing a quantifier — a
+shape `re()` refuses outright (`constraint_pattern`) for backtracking
+exponentially. So `"beta_1"` is refused and `"alpha..1"` is not.
+Carrying the pre-release as a list of identifiers would check it in
+full, and is the change to make if that matters more than `[1]` does.
+
+**Build metadata is not carried.** The spec has it, and also says it
+MUST be ignored when determining precedence — so a type whose purpose
+is comparison is the wrong place for it.
 
 Additive: the vocabulary's canon-hash moves, as it does for any change
 to a bundled model.
@@ -48,18 +101,18 @@ package name or module path can produce, which is what makes such a
 name unshadowable. `std/system` was an ordinary relative path, and the
 engine carried a second resolution leg to match it. That leg is gone.
 
-**`std` retires as a root key too.** `aontu:system` defines `system:`,
-so `$.std.Port` is now `$.system.Port` — matching every other model,
-where the name and the root key agree. Retiring the prefix but keeping
+**`std` retires as a root key too.** Retiring the prefix but keeping
 the key would leave the word in every document that used the
-vocabulary.
+vocabulary. The key every bundled model lands under is `aontu`, per the
+entry above, so `$.std.Port` is now `$.aontu.system.Port`.
 
 The `.aon` spellings go with it: the scheme is not a directory, as was
 already true of the other five models.
 
 **To migrate:** rewrite `@"std/system"` as `@"aontu:system"`,
-`@"std/view"` as `@"aontu:view"`, and `$.std.*` as `$.system.*`. Both
-are loud — an unknown source, then an unresolvable path.
+`@"std/view"` as `@"aontu:view"`, and `$.std.*` as `$.aontu.system.*`
+(or `$.aontu.view.*`). Both are loud — an unknown source, then an
+unresolvable path.
 
 Both vocabularies are now held to the formatter, having joined the set
 that check iterates, and are reformatted; their canon-hash pins move

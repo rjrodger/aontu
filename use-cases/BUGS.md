@@ -477,10 +477,10 @@ nested in is already uniting that entity, so the same information
 arrives by the same channel one frame up; the differs-each-way and
 cycle-of-three rows in `test/spec/refer.tsv` pin that nothing is lost.
 `use-cases/01-service-catalog/spec.aon` now carries the documented
-idiom `refer($.system.Service)` on both directions of the real model, in
+idiom `refer($.aontu.system.Service)` on both directions of the real model, in
 both ports, and its gap 8 workaround is gone.
 
-The reference manual's own idiom `refer($.system.Service)` fails with
+The reference manual's own idiom `refer($.aontu.system.Service)` fails with
 `unify_cycle` on a two-view id-merged model whose shared schema carries
 a referenced ports template — the error names
 `integer&min(1)&max(65535)` failing to unify with *itself*. The same
@@ -1832,7 +1832,7 @@ The same target spelled the old way -- `feeds?: [&:
 refer($.spec.JobShape)]` -- WORKS, because the refer sits in the
 list-spread template, whose snapshot is taken lazily at each
 destination, outside the bag. And a `t` that references a DIFFERENT
-bag (`rel($.shape.JobShape)`, `rel($.system.Service)`) works from
+bag (`rel($.shape.JobShape)`, `rel($.aontu.system.Service)`) works from
 anywhere: the deadlock needs the argument to point into the func's own
 enclosing bag.
 
@@ -3554,13 +3554,13 @@ ADR-001 divergence in the CODE of a refusal both ports agree on.
 
 ```aon
 @"aontu:code"
-code: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T",
+aontu: code: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T",
   type: { k: "list", of: { k: "list", of: { k: "prim", prim: "int" } } } }] }]
 ```
 
 The vocabulary's container types take leaves only, so the inner
 `{k: "list"}` is not a `%leaf` and the declaration must be refused --
-and it is, in both ports, at `$.code.units.0.decls.0`. TypeScript
+and it is, in both ports, at `$.aontu.code.units.0.decls.0`. TypeScript
 reports it as `[aontu/|:trial-nil]: Cannot resolve value`, an internal
 trial code that names no alternative; Go reports `[aontu/empty]:
 Cannot unify values`, the empty-disjunction code. The small
@@ -3731,7 +3731,7 @@ in how the schema site's value is written.
 Found 2026-09-06 while landing the renderer's declaration lowering
 (RENDER.0.md P5). An ADR-001 divergence in the TEXT of a site both
 ports agree on. A `record` whose `check` list holds a shape no
-`%check` arm admits is refused at `$.code.units.0.decls.0` as `empty`
+`%check` arm admits is refused at `$.aontu.code.units.0.decls.0` as `empty`
 in both ports, with the same two sites -- the data at its position,
 and the schema at `aontu:code:130:9`, the `%record` arm of `%decl` --
 but the schema site's `value` differs: TypeScript writes every alias

@@ -503,7 +503,7 @@ records: [
   body: ["type " + .name + " struct {" emit(.fields, %field) "}"]
 })
 
-code: units: [
+aontu: code: units: [
   {
     path: "types.go"
     lang: "go"

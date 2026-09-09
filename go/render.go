@@ -220,8 +220,12 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 	// with no code at all is the vocabulary's own empty instance.
 	meetSrc := renderVocabulary
 	m, _ := node.(*MapVal)
-	if c, has := m.peg["code"]; has {
-		meetSrc += "\ncode: " + Hcanon(c)
+	if ns, has := m.peg["aontu"]; has {
+		if nm, ok := ns.(*MapVal); ok {
+			if c, has := nm.peg["code"]; has {
+				meetSrc += "\naontu: code: " + Hcanon(c)
+			}
+		}
 	}
 	instance, gerr := New().Generate(meetSrc)
 	if nil != gerr { //coverage:ignore vet passed, so the meet generates
@@ -329,7 +333,8 @@ func renderEmitted(node Val) []renderMark {
 // three steps need no arms of their own.
 func renderUnitList(instance any) []any {
 	m, _ := instance.(map[string]any)
-	c, _ := m["code"].(map[string]any)
+	ns, _ := m["aontu"].(map[string]any)
+	c, _ := ns["code"].(map[string]any)
 	units, _ := c["units"].([]any)
 	return units
 }
@@ -366,7 +371,7 @@ func renderTraceOf(marks []renderMark, instance any,
 		upath, _ := um["path"].(string)
 		if renderRendered(units, upath) {
 			pre = append(pre, renderPrefix{
-				at: "$.code.units." + itoa(i), path: upath})
+				at: "$.aontu.code.units." + itoa(i), path: upath})
 		}
 	}
 	out := []RenderTrace{}
@@ -424,10 +429,10 @@ func renderCovered(set map[string]bool, a string) bool {
 func renderCoverOf(root Val, node Val, reads map[string]bool,
 	opts *RenderOptions, marks []renderMark, instance any,
 	units []RenderUnit) (*RenderCoverage, bool) {
-	// THE ANCHOR IS THE ONE Render ALREADY FOUND, so `code` under it is
+	// THE ANCHOR IS THE ONE Render ALREADY FOUND, so the namespace under it is
 	// named without asking a second time: At is resolved before the
 	// vet, and an anchor that named nothing never reached here.
-	codeAddr := renderAddr(append(cp(node.vpath()), "code"))
+	codeAddr := renderAddr(append(cp(node.vpath()), "aontu"))
 
 	from := root
 	base := []string{}
@@ -487,7 +492,7 @@ func renderCoverOf(root Val, node Val, reads map[string]bool,
 		}
 		decls, _ := um["decls"].([]any)
 		for j := range decls {
-			a := "$.code.units." + itoa(i) + ".decls." + itoa(j)
+			a := "$.aontu.code.units." + itoa(i) + ".decls." + itoa(j)
 			if !renderCovered(stamped, a) && !inside[a] {
 				unruled = append(unruled, RenderHole{Unit: upath, Path: a})
 			}
@@ -526,8 +531,9 @@ func (a *Aontu) RenderProfile(src string) (map[string]any, []VetFinding) {
 	// The meet, keyed as Render's is: the vocabulary requires profile,
 	// so a value the vet admitted has one.
 	m, _ := root.(*MapVal)
+	nsv, _ := m.peg["aontu"].(*MapVal)
 	instance, gerr := New().Generate(
-		renderProfileVocabulary + "\nprofile: " + Hcanon(m.peg["profile"]))
+		renderProfileVocabulary + "\naontu: profile: " + Hcanon(nsv.peg["profile"]))
 	if nil != gerr { //coverage:ignore vet passed, so the meet generates
 		// A vetted profile document generates; this arm is the Go
 		// signature's, not a reachable outcome.
@@ -535,7 +541,8 @@ func (a *Aontu) RenderProfile(src string) (map[string]any, []VetFinding) {
 			"render_profile", "parse", "$", gerr.Error())}
 	}
 	inst, _ := instance.(map[string]any)
-	profile, _ := inst["profile"].(map[string]any)
+	ins, _ := inst["aontu"].(map[string]any)
+	profile, _ := ins["profile"].(map[string]any)
 	return profile, nil
 }
 
@@ -556,7 +563,8 @@ func bundledProfile(lang string) map[string]any {
 	if nil == renderBundled[lang] {
 		gen, _ := New().Generate(`@"aontu:lang/` + lang + `"`)
 		m, _ := gen.(map[string]any)
-		renderBundled[lang], _ = m["profile"].(map[string]any)
+		ns, _ := m["aontu"].(map[string]any)
+		renderBundled[lang], _ = ns["profile"].(map[string]any)
 	}
 	return renderBundled[lang]
 }
@@ -721,14 +729,15 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 	units := []RenderUnit{}
 
 	root, _ := instance.(map[string]any)
-	code, _ := root["code"].(map[string]any)
+	ns, _ := root["aontu"].(map[string]any)
+	code, _ := ns["code"].(map[string]any)
 	list, _ := code["units"].([]any)
 
 	seen := []string{}
 	selected := 0
 	for i, u := range list {
 		unit, _ := u.(map[string]any)
-		upath := "$.code.units." + itoa(i)
+		upath := "$.aontu.code.units." + itoa(i)
 		path, _ := unit["path"].(string)
 		lang, _ := unit["lang"].(string)
 
@@ -850,7 +859,7 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 	}
 
 	if "" != options.Unit && 0 == selected {
-		errs = append(errs, renderFinding("render_unit", "reference", "$.code.units",
+		errs = append(errs, renderFinding("render_unit", "reference", "$.aontu.code.units",
 			"no unit has the path "+options.Unit+"."))
 	}
 

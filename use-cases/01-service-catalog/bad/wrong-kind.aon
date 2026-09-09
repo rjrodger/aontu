@@ -3,9 +3,9 @@
 # Deliberately self-contained -- the same typed refer on the full
 # model fails with [aontu/unify_cycle] (README, gap 8).
 @"aontu:system"
-system: hide({})
+aontu: hide({})
 
 infra: paydb: kind: database
 
 app: ledger: kind: service
-app: ledger: dependsOn: [&: refer($.system.Service) path($.infra.paydb)]
+app: ledger: dependsOn: [&: refer($.aontu.system.Service) path($.infra.paydb)]

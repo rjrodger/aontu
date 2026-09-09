@@ -4,7 +4,7 @@
 #- # reading the same tables the API serves.
 #- @"../model.aon"
 #-
-#- code: units: emit($.entity, {
+#- aontu: code: units: emit($.entity, {
 #-   match: class: string
 #-   body: [
 #-     {

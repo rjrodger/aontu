@@ -92,7 +92,7 @@ ungenerable-document-is-not-blamed-on-relations	relation	a: {dependsOn: rel() & 
 inverse-mirror-written-by-a-second-statement	relation	spec: hide({M: {kind: m, dependsOn?: rel($.spec.S) & inverse(usedBy), usedBy?: rel($.spec.S)}, S: {kind: m}})\nr: m: {a: $.spec.M & {dependsOn: [path($.r.m.b)]}, b: $.spec.M & {usedBy: [path($.r.m.a)]}}\nr: m: {b: {dependsOn: [path($.r.m.c)]}, c: $.spec.M & {usedBy: [path($.r.m.b)]}}	{"verdict":"pass","findings":[]}
 relations-key-is-user-space	relation	relations: {dependsOn: 1}\na: {dependsOn: rel() & [path($.a)]}	{"verdict":"pass","findings":[]}
 relations-key-generates-as-data	gens	relations: {dependsOn: 1}	{"relations":{"dependsOn":1}}
-the-worked-example	relation	@"aontu:system"\n\nservices: {\n  auth: $.system.Service & {}\n  billing: $.system.Service & {dependsOn: rel($.system.Service) & inverse(dependedOnBy) & acyclic() & [path($.services.auth)]}\n}	{"verdict":"fail","findings":[{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.services.billing.dependsOn.0","detail":["$.services.billing","$.services.auth","dependedOnBy"]}]}
+the-worked-example	relation	@"aontu:system"\n\nservices: {\n  auth: $.aontu.system.Service & {}\n  billing: $.aontu.system.Service & {dependsOn: rel($.aontu.system.Service) & inverse(dependedOnBy) & acyclic() & [path($.services.auth)]}\n}	{"verdict":"fail","findings":[{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.services.billing.dependsOn.0","detail":["$.services.billing","$.services.auth","dependedOnBy"]}]}
 non-map-root	relation	[1,2]	{"verdict":"pass","findings":[]}
 
 # --- The verdict at generation ----------------------------------------

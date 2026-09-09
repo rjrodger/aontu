@@ -106,7 +106,7 @@ figures down as data, in a `views.aon` that includes the model:
 @"aontu:view"
 @"./system.aon"
 
-views: { &: $.view.Figure } & {
+views: { &: $.aontu.view.Figure } & {
   tree: { kind:tree relation:dependsOn out:"tree.txt" }
   matrix: { kind:matrix relation:dependsOn order:partition out:"matrix.txt" }
   layers: { kind:layer relation:dependsOn groupBy:tier as:svg out:"layers.svg" }

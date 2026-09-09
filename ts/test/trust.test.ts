@@ -116,8 +116,8 @@ describe('trust-include', () => {
     const a = new Aontu({
       trust: { include: { mem: { 'aontu:system': 'system: {HIJACKED: 1}' } } },
     })
-    const out: any = a.generate('@"aontu:system"\np: $.system.Port & {}')
-    Assert.deepEqual(out, { p: { direction: 'in' }, system: {} })
+    const out: any = a.generate('@"aontu:system"\np: $.aontu.system.Port & {}')
+    Assert.deepEqual(out, { p: { direction: 'in' }, aontu: { system: {} } })
   })
 
   test('root-confines-below-the-root', () => {

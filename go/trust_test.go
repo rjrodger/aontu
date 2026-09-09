@@ -143,7 +143,7 @@ func TestBundledModelIsNotShadowedByMem(t *testing.T) {
 	a.Trust = &TrustOptions{IncludeMem: map[string]string{
 		"aontu:system": "system: {HIJACKED: 1}",
 	}}
-	out, err := a.Generate("@\"aontu:system\"\np: $.system.Port & {}")
+	out, err := a.Generate("@\"aontu:system\"\np: $.aontu.system.Port & {}")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2633,7 +2633,7 @@ describe('cli-servers', () => {
 describe('cli-render', () => {
 
   const TWO_UNITS =
-    'code: units: [\n' +
+    'aontu: code: units: [\n' +
     '  { path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x", { k: "line", at: 1, of: ["y"] }] }] }\n' +
     '  { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", of: ["z"] }] }\n' +
     ']\n'
@@ -2661,8 +2661,8 @@ describe('cli-render', () => {
     const r = renderCode(0, [Path.join(dir, 'doc.aon')])
     Assert.equal(r.out, 'a.txt\ttext\t6 bytes\nsub/b.txt\ttext\t2 bytes\n')
     Assert.match(r.err,
-      /^lossy: a\.txt \$\.code\.units\.0\.decls\.0 tier 2 frag: a fragment says nothing about text syntax\n/)
-    Assert.match(r.err, /lossy: sub\/b\.txt \$\.code\.units\.1\.decls\.0 tier 2 frag: /)
+      /^lossy: a\.txt \$\.aontu\.code\.units\.0\.decls\.0 tier 2 frag: a fragment says nothing about text syntax\n/)
+    Assert.match(r.err, /lossy: sub\/b\.txt \$\.aontu\.code\.units\.1\.decls\.0 tier 2 frag: /)
 
     // The verb's own trust flags reach it, and `none` governs the
     // document alone: the renderer's own vocabulary is not an include
@@ -2727,7 +2727,7 @@ describe('cli-render', () => {
     // A symlink inside the output directory that points outside it is
     // an escape: the include resolver's own rule, applied to writes.
     const dir = renderDir({
-      'doc.aon': 'code: units: [{ path: "link/x.txt", lang: "text", decls: [] }]\n',
+      'doc.aon': 'aontu: code: units: [{ path: "link/x.txt", lang: "text", decls: [] }]\n',
     })
     const out = Path.join(dir, 'out')
     const elsewhere = Path.join(dir, 'elsewhere')
@@ -2766,10 +2766,10 @@ describe('cli-render', () => {
   test('render-exit-codes-follow-the-report', () => {
     const dir = renderDir({
       'bad.aon': 'x: 1 & "a"\n',
-      'abs.aon': 'code: units: [{ path: "/etc/x", lang: "text", decls: [] }]\n',
-      'text.aon': 'code: units: [{ path: "a.txt", lang: "text", ' +
+      'abs.aon': 'aontu: code: units: [{ path: "/etc/x", lang: "text", decls: [] }]\n',
+      'text.aon': 'aontu: code: units: [{ path: "a.txt", lang: "text", ' +
         'decls: [{ k: "text", lang: "text", text: "v\\n" }] }]\n',
-      'shape.aon': 'code: units: 1\n',
+      'shape.aon': 'aontu: code: units: 1\n',
     })
     // The document does not stand up: 4, findings on stderr.
     const bad = renderCode(4, [Path.join(dir, 'bad.aon')])
@@ -2780,20 +2780,20 @@ describe('cli-render', () => {
     // An opaque escape renders, lossy, and is listed; --strict refuses
     // it: 1.
     Assert.match(renderCode(0, [Path.join(dir, 'text.aon')]).err,
-      /^lossy: a\.txt \$\.code\.units\.0\.decls\.0 tier 3 text: /)
+      /^lossy: a\.txt \$\.aontu\.code\.units\.0\.decls\.0 tier 3 text: /)
     Assert.match(renderCode(1, ['--strict', Path.join(dir, 'text.aon')]).err,
       /render_strict/)
     // An instance the vocabulary refuses is the document's: 4.
     Assert.match(renderCode(4, [Path.join(dir, 'shape.aon')]).err,
-      /\$\.code\.units: list/)
+      /\$\.aontu\.code\.units: list/)
   })
 
   test('render-profiles-are-vetted-and-one-per-language', () => {
     const dir = renderDir({
       'doc.aon': TWO_UNITS,
-      'four.aon': 'profile: { lang: "text", indent: { unit: " ", width: 4 } }\n',
-      'two.aon': 'profile: { lang: "text", indent: { unit: " ", width: 2 } }\n',
-      'bad.aon': 'profile: { lang: 1 }\n',
+      'four.aon': 'aontu: profile: { lang: "text", indent: { unit: " ", width: 4 } }\n',
+      'two.aon': 'aontu: profile: { lang: "text", indent: { unit: " ", width: 2 } }\n',
+      'bad.aon': 'aontu: profile: { lang: 1 }\n',
       'broken.aon': 'x: 1 & "a"\n',
       'nil.aon': 'nil\n',
     })
@@ -2805,7 +2805,7 @@ describe('cli-render', () => {
     // A profile the vocabulary refuses is reported as the document it
     // is: 4, with the finding addressed by path.
     Assert.match(renderCode(4, ['--profile', Path.join(dir, 'bad.aon'), file]).err,
-      /\$\.profile\.lang/)
+      /\$\.aontu\.profile\.lang/)
     // ... and so is one that does not stand up, or is nil outright.
     Assert.match(renderCode(4, ['--profile', Path.join(dir, 'broken.aon'), file]).err,
       /scalar_kind/)
@@ -2851,7 +2851,7 @@ describe('cli-render', () => {
     const doc =
       'services: { a: { pin: "p1" } }\n' +
       'spare: { x: 1 }\n' +
-      'code: units: [\n' +
+      'aontu: code: units: [\n' +
       '  { path: "a.txt", lang: "text", decls: [{ k: "frag", of:\n' +
       '    emit($.services, { match: { pin: string }, body: [.pin] }) }] }\n' +
       '  { path: "b.txt", lang: "text", decls: [{ k: "frag", of: ["b"] }] }\n' +
@@ -2862,7 +2862,7 @@ describe('cli-render', () => {
     const cov = renderCode(0, ['--coverage', file])
     Assert.equal(cov.out,
       'dead: $.spare\n' +
-      'unruled: b.txt $.code.units.1.decls.0\n' +
+      'unruled: b.txt $.aontu.code.units.1.decls.0\n' +
       'coverage: 1 path(s) read, 1 no output consumed, ' +
       '1 declaration(s) no rule produced\n')
     // Nothing is written under this mode.
@@ -2883,7 +2883,7 @@ describe('cli-render', () => {
       renderCode(0, ['--coverage', '--format', 'json', file]).out)
     Assert.deepEqual(report.trace, [{
       node: '$.services.a',
-      piece: '$.code.units.0.decls.0.of.0',
+      piece: '$.aontu.code.units.0.decls.0.of.0',
       rule: '#0',
       unit: 'a.txt',
     }])
@@ -2990,12 +2990,12 @@ describe('cli-template', () => {
     // own syntax is an entry rather than a preprocessing step.
     const dir = templateDir({
       'gen.ts':
-        '//- code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
+        '//- aontu: code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
         '//- k: "frag", of: [\n' +
         'hello\n' +
         '//- ]}] }]\n',
       'gen.zz':
-        ';;- code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
+        ';;- aontu: code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
         ';;- k: "frag", of: [\n' +
         'hello\n' +
         ';;- ]}] }]\n',

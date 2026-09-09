@@ -36,28 +36,57 @@ const stdSystem = `# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports,
 # identity and version makes "v1 and v2 describe the same entity"
 # inexpressible.
 
-system: {
+aontu: system: {
   # One end of a connection.
   Port: type({ direction:*in | out | inout protocol?:string })
 
   # A node with ports. Where a Component sits in the tree is what it
   # is a component OF -- containment is the document's own structure
   # and needs no mark of its own.
-  Component: type({ ports?:{ &: $.system.Port } })
+  Component: type({ ports?:{ &: $.aontu.system.Port } })
 
   # A component that is a service. Written out rather than as
-  # $.system.Component & {kind: service}: a reference from one member of
+  # $.aontu.system.Component & {kind: service}: a reference from one member of
   # this file to another does not survive being INCLUDED into a
   # document (the marks the include carries make the referring member
   # unusable), so the vocabulary states each schema on its own.
-  Service: type({ kind:service ports?:{ &: $.system.Port } })
+  Service: type({ kind:service ports?:{ &: $.aontu.system.Port } })
 
-  # A semantic version, as an ORDERED TRIPLE: major, minor, patch, each
-  # a non-negative integer. A list and not a string, because "1.10.0"
-  # sorts below "1.9.0" as text and a version is compared, not read; a
-  # list and not a map, because the comparison is elementwise from the
-  # left and a map has no order of its own to compare along.
-  Semver: type([&: integer & min(0)] & length(3))
+  # A semantic version (semver.org 2.0.0) as an ORDERED TUPLE: major,
+  # minor, patch, pre-release. A list and not a dotted string, because a
+  # version is COMPARED and the comparison runs component by component
+  # from the left: "1.10.0" sorts below "1.9.0" as text. A list and not
+  # a map, because a map has no order of its own to compare along.
+  #
+  # THE TAIL DEFAULTS, so [1] is [1 0 0 ""] and [1 2] is [1 2 0 ""].
+  # A major-only version is the common case and should cost one token.
+  #
+  # LEADING ZEROES ARE IMPOSSIBLE HERE rather than merely forbidden:
+  # the numeric parts are integers, and 01 is not a distinct integer
+  # literal. The spec's "MUST NOT contain leading zeroes" needs no rule.
+  #
+  # THE PRE-RELEASE CHECK IS PARTIAL, and deliberately says so. The
+  # spec's grammar is dot-separated identifiers, each non-empty, each
+  # [0-9A-Za-z-], numeric ones without leading zeroes -- which as a
+  # regex is a quantified group containing a quantifier, and re()
+  # refuses that shape outright (constraint_pattern) because it
+  # backtracks exponentially. So the alphabet is checked and the
+  # STRUCTURE is not: "beta_1" is refused, "alpha..1" and "01" are not.
+  # Carrying the pre-release as a LIST of identifiers would check it in
+  # full, one identifier per element, and is the change to make if that
+  # matters more than [1 0 0 ""] does.
+  #
+  # BUILD METADATA IS NOT CARRIED. The spec has it, and the spec also
+  # says it MUST be ignored when determining precedence -- so a type
+  # whose purpose is comparison is the wrong place for it.
+  Semver: type(
+    [
+      integer & min(0)
+      *0 | (integer & min(0))
+      *0 | (integer & min(0))
+      *"" | (string & re("^[0-9A-Za-z.-]+$"))
+    ] & length(4)
+  )
   # (The Relation schema that used to sit here is retired with the
   # relations: magic key, RELATIONS.0.md P2: a relation is declared
   # by the graph atoms at its field -- rel(t) & acyclic() &
@@ -75,7 +104,7 @@ const stdView = `# aontu:view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The vie
 #   @"aontu:view"
 #   @"./system.aon"
 #
-#   views: {&: $.view.Figure} & {
+#   views: {&: $.aontu.view.Figure} & {
 #     arch: {kind: matrix, order: partition, out: "docs/arch.dsm.txt"}
 #   }
 #
@@ -89,7 +118,7 @@ const stdView = `# aontu:view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The vie
 # canon-hash. This file carries no backtick: it is one string literal
 # per port, and Go raw strings have no escape.
 
-view: {
+aontu: view: {
   # One declared figure. The kind says what to draw and out says where
   # it belongs; everything else narrows the drawing, and each option
   # belongs to the kinds that read it.
@@ -334,7 +363,7 @@ const stdCode = `# aontu:code --- THE OUTPUT VOCABULARY. An aontu transform eval
 
 %source = close({ path?:string hash?:string & re("^aon1-[A-Za-z0-9_-]+$") })
 
-code: close({ source?:%source units:[&: %unit] })
+aontu: code: close({ source?:%source units:[&: %unit] })
 `
 
 const stdProfile = `# aontu:profile --- THE PROFILE VOCABULARY. A profile is the data
@@ -407,7 +436,7 @@ const stdProfile = `# aontu:profile --- THE PROFILE VOCABULARY. A profile is the
   banner?: string
 })
 
-profile: %profile
+aontu: profile: %profile
 `
 
 // stdLangText is the text profile (RENDER.0.md D5): the profile of a
@@ -424,7 +453,7 @@ const stdLangText = `# aontu:lang/text --- THE TEXT PROFILE. The profile of a un
 
 @"aontu:profile"
 
-profile: { lang:"text" indent:{ unit:" " width:2 } }
+aontu: profile: { lang:"text" indent:{ unit:" " width:2 } }
 `
 
 // stdLangTypescript is the TypeScript profile (RENDER.0.md D5, P5), the
@@ -442,7 +471,7 @@ const stdLangTypescript = `# aontu:lang/typescript --- THE TYPESCRIPT PROFILE. T
 
 @"aontu:profile"
 
-profile: {
+aontu: profile: {
   lang: "typescript"
   lowering: "typescript"
   indent: { unit:" " width:2 }
@@ -553,7 +582,7 @@ const stdLangGo = `# aontu:lang/go --- THE GO PROFILE. The data a unit of Go ren
 
 @"aontu:profile"
 
-profile: {
+aontu: profile: {
   lang: "go"
   lowering: "go"
   indent: { unit:"\t" width:1 }

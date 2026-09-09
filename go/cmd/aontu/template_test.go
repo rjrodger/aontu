@@ -139,11 +139,11 @@ func TestRenderReadsATemplateEntryByItsExtension(t *testing.T) {
 	// The entry's extension decides, so a generator in the target's own
 	// syntax is an entry rather than a preprocessing step.
 	dir := templateDir(t, map[string]string{
-		"gen.ts": "//- code: units: [{ path: \"a.txt\", lang: \"text\", decls: [{\n" +
+		"gen.ts": "//- aontu: code: units: [{ path: \"a.txt\", lang: \"text\", decls: [{\n" +
 			"//- k: \"frag\", of: [\n" +
 			"hello\n" +
 			"//- ]}] }]\n",
-		"gen.zz": ";;- code: units: [{ path: \"a.txt\", lang: \"text\", decls: [{\n" +
+		"gen.zz": ";;- aontu: code: units: [{ path: \"a.txt\", lang: \"text\", decls: [{\n" +
 			";;- k: \"frag\", of: [\n" +
 			"hello\n" +
 			";;- ]}] }]\n",

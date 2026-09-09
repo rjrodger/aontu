@@ -45,6 +45,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-026](#adr-026--each-is-retired-form-carries-the-bound) | `each` is retired: `form` carries the bound | Accepted |
 | [ADR-027](#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound) | The list generator is named `each`, and `_ & t` is its bound | Accepted |
 | [ADR-028](#adr-028--every-language-supplied-schema-is-named-under-aontu) | Every language-supplied schema is named under `aontu:` | Accepted |
+| [ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root) | A bundled model lands under `$.aontu`, not at the document root | Accepted |
 
 ---
 
@@ -3059,3 +3060,67 @@ that was already true of the other five.
 - The dependency-kind label `std`, recorded for a bundled source, is
   left alone: it names a source's PROVENANCE (engine-bundled), not a
   name, and it is not user-visible.
+- **The landing key was moved again before either shipped.** This
+  decision left `aontu:system` defining `system:`, which
+  [ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root)
+  found to be a collision with a name a document wants for itself.
+  `$.std.Port` is `$.aontu.system.Port`, not `$.system.Port`. The rest
+  of this decision stands.
+
+
+## ADR-029 — A bundled model lands under `$.aontu`, not at the document root
+
+**Date:** 2026-09-09
+**Status:** Accepted
+
+### Context
+
+[ADR-028](#adr-028--every-language-supplied-schema-is-named-under-aontu)
+put every language-supplied schema under the `aontu:` scheme. What it
+did not change is where an included model's content *lands*: each took
+a root key of its own, named for itself — `aontu:system` defined
+`system:`, `aontu:code` defined `code:`, `aontu:profile` defined
+`profile:`.
+
+Those are ordinary, desirable key names. A document about services
+wants `$.system`; a document about generated output wants `$.code`; a
+document about a rendering profile wants `$.profile`. Including a
+vocabulary took the name away, and the collision was silent: the
+document's own `system:` and the vocabulary's would simply unify, and
+the failure would surface somewhere else entirely.
+
+The scheme already solved the same problem one level up. `aontu:` is a
+prefix a user's file cannot spell, which is what makes a bundled name
+safe. The landing site needed the same treatment.
+
+### Decision
+
+**Everything an `aontu:` model defines lands under the single root key
+`aontu`.**
+
+    @"aontu:system"   ->  $.aontu.system.Port, .Component, .Service, .Semver
+    @"aontu:view"     ->  $.aontu.view.Figure
+    @"aontu:code"     ->  $.aontu.code.units
+    @"aontu:profile"  ->  $.aontu.profile
+
+One key is reserved instead of seven, it is named for the language
+rather than for a domain a user might want, and a reader seeing
+`$.aontu` anywhere knows immediately that it is not the document's own.
+
+### Consequences
+
+- **This is a breaking change, and it is loud.** `$.system.Port` and
+  `$.code.units` no longer resolve; a document that wrote them fails at
+  the reference.
+- **The renderer reads `$.aontu.code`**, and `renderProfile` reads
+  `$.aontu.profile`. That is a change to the verb's input contract, and
+  every transform moves with it.
+- **Coverage got a better rule, not just a moved one.** The dead-path
+  walk excluded exactly the `code` node before, so a document that
+  included a *vocabulary* had its `$.system` or `$.profile` reported as
+  dead model. The exclusion is now the whole `aontu` namespace, which
+  is the honest rule: nothing under it is the user's model. The
+  previous behaviour was a latent wart that only this change made
+  systematic enough to see.
+- Row names, expectations and every worked example move with it. The
+  `render` reports carry `$.aontu.code.units.N` paths.

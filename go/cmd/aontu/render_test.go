@@ -17,7 +17,7 @@ import (
 	"testing"
 )
 
-const renderTwoUnits = `code: units: [
+const renderTwoUnits = `aontu: code: units: [
   { path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x", { k: "line", at: 1, of: ["y"] }] }] }
   { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", of: ["z"] }] }
 ]
@@ -66,8 +66,8 @@ func TestRenderSummary(t *testing.T) {
 	if "a.txt\ttext\t6 bytes\nsub/b.txt\ttext\t2 bytes\n" != out {
 		t.Fatalf("summary: %q", out)
 	}
-	vetMatch(t, errw, `^lossy: a\.txt \$\.code\.units\.0\.decls\.0 tier 2 frag: a fragment says nothing about text syntax\n`)
-	vetMatch(t, errw, `lossy: sub/b\.txt \$\.code\.units\.1\.decls\.0 tier 2 frag: `)
+	vetMatch(t, errw, `^lossy: a\.txt \$\.aontu\.code\.units\.0\.decls\.0 tier 2 frag: a fragment says nothing about text syntax\n`)
+	vetMatch(t, errw, `lossy: sub/b\.txt \$\.aontu\.code\.units\.1\.decls\.0 tier 2 frag: `)
 
 	// The verb's own trust flags reach it, and `none` governs the
 	// document alone: the renderer's own vocabulary is not an include
@@ -167,7 +167,7 @@ func TestRenderOutIsConfined(t *testing.T) {
 	// A symlink inside the output directory that points outside it is
 	// an escape: the include resolver's own rule, applied to writes.
 	dir := renderDir(t, map[string]string{
-		"doc.aon": `code: units: [{ path: "link/x.txt", lang: "text", decls: [] }]` + "\n",
+		"doc.aon": `aontu: code: units: [{ path: "link/x.txt", lang: "text", decls: [] }]` + "\n",
 	})
 	out := filepath.Join(dir, "out")
 	elsewhere := filepath.Join(dir, "elsewhere")
@@ -233,9 +233,9 @@ func TestRenderFormatJSON(t *testing.T) {
 func TestRenderExitCodesFollowTheReport(t *testing.T) {
 	dir := renderDir(t, map[string]string{
 		"bad.aon":   "x: 1 & \"a\"\n",
-		"abs.aon":   `code: units: [{ path: "/etc/x", lang: "text", decls: [] }]` + "\n",
-		"text.aon":  `code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "text", lang: "text", text: "v\n" }] }]` + "\n",
-		"shape.aon": "code: units: 1\n",
+		"abs.aon":   `aontu: code: units: [{ path: "/etc/x", lang: "text", decls: [] }]` + "\n",
+		"text.aon":  `aontu: code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "text", lang: "text", text: "v\n" }] }]` + "\n",
+		"shape.aon": "aontu: code: units: 1\n",
 	})
 	// The document does not stand up: 4, findings on stderr.
 	out, errw := renderCode(t, 4, filepath.Join(dir, "bad.aon"))
@@ -249,20 +249,20 @@ func TestRenderExitCodesFollowTheReport(t *testing.T) {
 	// An opaque escape renders, lossy, and is listed; --strict refuses
 	// it: 1.
 	_, errw = renderCode(t, 0, filepath.Join(dir, "text.aon"))
-	vetMatch(t, errw, `^lossy: a\.txt \$\.code\.units\.0\.decls\.0 tier 3 text: `)
+	vetMatch(t, errw, `^lossy: a\.txt \$\.aontu\.code\.units\.0\.decls\.0 tier 3 text: `)
 	_, errw = renderCode(t, 1, "--strict", filepath.Join(dir, "text.aon"))
 	vetMatch(t, errw, `render_strict`)
 	// An instance the vocabulary refuses is the document's: 4.
 	_, errw = renderCode(t, 4, filepath.Join(dir, "shape.aon"))
-	vetMatch(t, errw, `\$\.code\.units: list`)
+	vetMatch(t, errw, `\$\.aontu\.code\.units: list`)
 }
 
 func TestRenderProfiles(t *testing.T) {
 	dir := renderDir(t, map[string]string{
 		"doc.aon":    renderTwoUnits,
-		"four.aon":   `profile: { lang: "text", indent: { unit: " ", width: 4 } }` + "\n",
-		"two.aon":    `profile: { lang: "text", indent: { unit: " ", width: 2 } }` + "\n",
-		"bad.aon":    "profile: { lang: 1 }\n",
+		"four.aon":   `aontu: profile: { lang: "text", indent: { unit: " ", width: 4 } }` + "\n",
+		"two.aon":    `aontu: profile: { lang: "text", indent: { unit: " ", width: 2 } }` + "\n",
+		"bad.aon":    "aontu: profile: { lang: 1 }\n",
 		"broken.aon": "x: 1 & \"a\"\n",
 		"nil.aon":    "nil\n",
 	})
@@ -277,7 +277,7 @@ func TestRenderProfiles(t *testing.T) {
 	// A profile the vocabulary refuses is reported as the document it
 	// is: 4, with the finding addressed by path.
 	_, errw := renderCode(t, 4, "--profile", filepath.Join(dir, "bad.aon"), file)
-	vetMatch(t, errw, `\$\.profile\.lang`)
+	vetMatch(t, errw, `\$\.aontu\.profile\.lang`)
 	// ... and so is one that does not stand up, or is nil outright.
 	_, errw = renderCode(t, 4, "--profile", filepath.Join(dir, "broken.aon"), file)
 	vetMatch(t, errw, `scalar_kind`)
@@ -325,7 +325,7 @@ func TestRenderUsageErrorsExit2(t *testing.T) {
 func TestRenderCoverage(t *testing.T) {
 	const doc = `services: { a: { pin: "p1" } }
 spare: { x: 1 }
-code: units: [
+aontu: code: units: [
   { path: "a.txt", lang: "text", decls: [{ k: "frag", of:
     emit($.services, { match: { pin: string }, body: [.pin] }) }] }
   { path: "b.txt", lang: "text", decls: [{ k: "frag", of: ["b"] }] }
@@ -337,7 +337,7 @@ code: units: [
 	out, _ := renderCode(t, 0, "--coverage", file)
 	for _, want := range []string{
 		"dead: $.spare\n",
-		"unruled: b.txt $.code.units.1.decls.0\n",
+		"unruled: b.txt $.aontu.code.units.1.decls.0\n",
 		"coverage: 1 path(s) read, 1 no output consumed, " +
 			"1 declaration(s) no rule produced\n",
 	} {
@@ -347,7 +347,7 @@ code: units: [
 	}
 	// The unit the rule set wrote is not a hole, and the render's own
 	// output is not model.
-	for _, unwanted := range []string{"unruled: a.txt", "dead: $.code"} {
+	for _, unwanted := range []string{"unruled: a.txt", "dead: $.aontu"} {
 		if strings.Contains(out, unwanted) {
 			t.Fatalf("coverage report: %q holds %q", out, unwanted)
 		}

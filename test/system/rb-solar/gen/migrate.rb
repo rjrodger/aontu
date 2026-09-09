@@ -11,7 +11,7 @@
 #-
 #- ordered: each($.sequence, _ & { seq:key() })
 #-
-#- code: units: emit($.ordered, {
+#- aontu: code: units: emit($.ordered, {
 #-   match: table: string
 #-   body: [
 #-     {

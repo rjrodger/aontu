@@ -9,10 +9,10 @@
 
 # The bundled vocabulary is schema-only (every member is type-marked);
 # hide the otherwise-empty bag it leaves in the output.
-system: hide({})
+aontu: hide({})
 
 # The relation declarations live ON THE FIELDS now (spec.aon,
-# CatalogEntry.dependsOn: rel($.system.Service) & acyclic() &
+# CatalogEntry.dependsOn: rel($.aontu.system.Service) & acyclic() &
 # inverse(dependedOnBy)) -- the old root-level `relations:` block is
 # gone with the magic key (RELATIONS.0.md P2, ADR-010's grandfather
 # clause discharged), and `target` is rel(t)'s flow.

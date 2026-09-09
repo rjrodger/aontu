@@ -75,19 +75,20 @@ function ctx(family, profile) {
         // The vocabulary keeps a container to leaves, so a list of a
         // nullable reaches the fold only through renderValue -- where the
         // TypeScript forms say (string | null)[] and not string | null[].
-        const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').profile;
+        const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').aontu.profile;
         const report = (0, render_1.renderValue)({
-            code: {
-                units: [{
-                        path: 'a.ts', lang: 'typescript',
-                        decls: [{
-                                k: 'record', name: 'T', open: false, check: [], fields: [{
-                                        name: 'a', optional: false,
-                                        type: { k: 'list', of: { k: 'opt', of: { k: 'prim', prim: 'string' } } },
-                                    }],
-                            }],
-                    }],
-            },
+            aontu: { code: {
+                    units: [{
+                            path: 'a.ts', lang: 'typescript',
+                            decls: [{
+                                    k: 'record', name: 'T', open: false, check: [], fields: [{
+                                            name: 'a', optional: false,
+                                            type: { k: 'list', of: { k: 'opt', of: { k: 'prim', prim: 'string' } } },
+                                        }],
+                                }],
+                        }],
+                },
+            }
         }, { profiles: [profile] });
         node_assert_1.default.strictEqual(report.verdict, 'ok');
         node_assert_1.default.strictEqual(report.units[0].text, 'export interface T {\n  a: (string | null)[];\n}\n');
@@ -96,17 +97,17 @@ function ctx(family, profile) {
         // renderValue takes an instance the caller built, where the
         // vocabulary's `at: *0` default has not been filled: a line piece
         // with no `at` in a function body nests as a line at depth 0 does.
-        const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').profile;
+        const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').aontu.profile;
         const unit = (piece) => ({
-            code: {
-                units: [{
-                        path: 'a.ts', lang: 'typescript',
-                        decls: [{
-                                k: 'func', name: 'f', params: [],
-                                body: { k: 'frag', of: [piece, { k: 'blank' }, 'done()'] },
-                            }],
-                    }],
-            },
+            aontu: { code: {
+                    units: [{
+                            path: 'a.ts', lang: 'typescript',
+                            decls: [{
+                                    k: 'func', name: 'f', params: [],
+                                    body: { k: 'frag', of: [piece, { k: 'blank' }, 'done()'] },
+                                }],
+                        }],
+                } },
         });
         const bare = (0, render_1.renderValue)(unit({ k: 'line', of: ['go()'] }), { profiles: [profile] });
         const at0 = (0, render_1.renderValue)(unit({ k: 'line', at: 0, of: ['go()'] }), { profiles: [profile] });

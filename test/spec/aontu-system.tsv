@@ -16,13 +16,13 @@
 # canon-hash.
 #
 # Every expectation was obtained by the parity probe (AGENTS.md).
-vocabulary-is-served	gens	@"aontu:system"\np: $.system.Port & {}	{"p":{"direction":"in"},"system":{}}
+vocabulary-is-served	gens	@"aontu:system"\np: $.aontu.system.Port & {}	{"aontu":{"system":{}},"p":{"direction":"in"}}
 # THE SCHEME IS NOT A DIRECTORY (ADR-028): the `.aon` spelling the
 # bare `std/` names once accepted is not a model name, and is
 # refused like any other typo, as aontu-scheme.tsv pins for
 # `aontu:code.aon`.
 vocabulary-dot-aon-is-not-a-name	errc	a: @"aontu:system.aon"	multisource_not_found
-vocabulary-generates-nothing-of-its-own	gens	@"aontu:system"	{"system":{}}
+vocabulary-generates-nothing-of-its-own	gens	@"aontu:system"	{"aontu":{"system":{}}}
 
 # --- Port -------------------------------------------------------------
 #
@@ -33,23 +33,23 @@ vocabulary-generates-nothing-of-its-own	gens	@"aontu:system"	{"system":{}}
 # enum-with-default -- unset generates `in`, `out`/`inout` override,
 # anything else is the `empty` refusal. The old row recorded the
 # fail-open behaviour of use-cases/BUGS.md §1. Parity-probed.
-port-default-direction	gens	@"aontu:system"\np: $.system.Port & {}	{"p":{"direction":"in"},"system":{}}
-port-direction-chosen	gens	@"aontu:system"\np: $.system.Port & {direction: out}	{"p":{"direction":"out"},"system":{}}
-port-direction-refuses-nonmember	errc	@"aontu:system"\np: $.system.Port & {direction: sideways}	empty
-port-protocol-optional	gens	@"aontu:system"\np: $.system.Port & {protocol: http}	{"p":{"direction":"in","protocol":"http"},"system":{}}
+port-default-direction	gens	@"aontu:system"\np: $.aontu.system.Port & {}	{"aontu":{"system":{}},"p":{"direction":"in"}}
+port-direction-chosen	gens	@"aontu:system"\np: $.aontu.system.Port & {direction: out}	{"aontu":{"system":{}},"p":{"direction":"out"}}
+port-direction-refuses-nonmember	errc	@"aontu:system"\np: $.aontu.system.Port & {direction: sideways}	empty
+port-protocol-optional	gens	@"aontu:system"\np: $.aontu.system.Port & {protocol: http}	{"aontu":{"system":{}},"p":{"direction":"in","protocol":"http"}}
 
 # --- Component and Service -------------------------------------------
 #
-# Service is written out rather than as `$.system.Component & {kind:
+# Service is written out rather than as `$.aontu.system.Component & {kind:
 # service}`: a reference from one member of this file to another does
 # not survive being INCLUDED into a document, so the vocabulary states
 # each schema on its own and `service-is-a-component-shape` pins that
 # the two still meet.
-component-ports-are-ports	gens	@"aontu:system"\nc: $.system.Component & {ports: {http: {protocol: http}}}	{"c":{"ports":{"http":{"direction":"in","protocol":"http"}}},"system":{}}
-component-ports-take-the-port-default	gens	@"aontu:system"\nc: $.system.Component & {ports: {http: {direction: out}}}	{"c":{"ports":{"http":{"direction":"out"}}},"system":{}}
-component-without-ports	gens	@"aontu:system"\nc: $.system.Component & {}	{"c":{},"system":{}}
-service-is-a-component	gens	@"aontu:system"\ns: $.system.Service & {ports: {http: {}}}	{"s":{"kind":"service","ports":{"http":{"direction":"in"}}},"system":{}}
-service-kind-is-fixed	errc	@"aontu:system"\ns: $.system.Service & {kind: database}	scalar_value
+component-ports-are-ports	gens	@"aontu:system"\nc: $.aontu.system.Component & {ports: {http: {protocol: http}}}	{"aontu":{"system":{}},"c":{"ports":{"http":{"direction":"in","protocol":"http"}}}}
+component-ports-take-the-port-default	gens	@"aontu:system"\nc: $.aontu.system.Component & {ports: {http: {direction: out}}}	{"aontu":{"system":{}},"c":{"ports":{"http":{"direction":"out"}}}}
+component-without-ports	gens	@"aontu:system"\nc: $.aontu.system.Component & {}	{"aontu":{"system":{}},"c":{}}
+service-is-a-component	gens	@"aontu:system"\ns: $.aontu.system.Service & {ports: {http: {}}}	{"aontu":{"system":{}},"s":{"kind":"service","ports":{"http":{"direction":"in"}}}}
+service-kind-is-fixed	errc	@"aontu:system"\ns: $.aontu.system.Service & {kind: database}	scalar_value
 
 # --- Relation (retired) ----------------------------------------------
 #
@@ -58,7 +58,7 @@ service-kind-is-fixed	errc	@"aontu:system"\ns: $.system.Service & {kind: databas
 # inverse(name)` -- so `target` is rel(t)'s flow and the other two are
 # the atoms, all pinned in test/spec/relation.tsv. A document still
 # reaching for the old member gets the ordinary missing-path refusal.
-relation-schema-retired	errc	@"aontu:system"\nr: $.system.Relation & {acyclic: true}	no_path
+relation-schema-retired	errc	@"aontu:system"\nr: $.aontu.system.Relation & {acyclic: true}	no_path
 
 # --- The worked example ----------------------------------------------
 #
@@ -66,28 +66,41 @@ relation-schema-retired	errc	@"aontu:system"\nr: $.system.Relation & {acyclic: t
 # link-shaped dependency list, and the relation declared BY THE FIELD
 # (rel + the graph atoms), with the mirror the inverse asks for
 # written out. The graph row is what the verdict consumes.
-the-worked-example	gens	@"aontu:system"\n\nservices: {\n  auth: $.system.Service & {ports: {http: {protocol: http}}, dependedOnBy: rel() & [path($.services.billing)]}\n  billing: $.system.Service & {dependsOn: rel($.system.Service) & inverse(dependedOnBy) & acyclic() & [path($.services.auth)]}\n}	{"services":{"auth":{"dependedOnBy":["$.services.billing"],"kind":"service","ports":{"http":{"direction":"in","protocol":"http"}}},"billing":{"dependsOn":["$.services.auth"],"kind":"service"}},"system":{}}
-the-worked-example-graph	graph	@"aontu:system"\n\nservices: {\n  auth: $.system.Service & {ports: {http: {protocol: http}}}\n  billing: $.system.Service & {dependsOn: [&: refer(), path($.services.auth)]}\n}	{"edges":[{"from":"$.services.billing","key":"dependsOn","to":"$.services.auth","at":"$.services.billing.dependsOn.0"}]}
-vocabulary-canon	canon	@"aontu:system"	{"system":{"Component":{"ports"?:{&:$.system.Port}},"Port":{"direction":*"in"|"out"|"inout","protocol"?:string},"Semver":[&:integer&min(0)]&length(integer&min(3)&max(3)),"Service":{"kind":"service","ports"?:{&:$.system.Port}}}}
-vocabulary-hash	hash	@"aontu:system"	aon1-rgzQfxhfCw-xBhbveWGgHCVFY2_gagNk2f8qJnChQ48
-relation-atoms-replace-the-schema	gens	@"aontu:system"\na: $.system.Service & {dependsOn: rel($.system.Service) & acyclic() & []}	{"a":{"dependsOn":[],"kind":"service"},"system":{}}
-service-is-a-component-shape	gens	@"aontu:system"\ns: $.system.Component & $.system.Service & {ports: {http: {}}}	{"s":{"kind":"service","ports":{"http":{"direction":"in"}}},"system":{}}
-port-direction-refuses-a-non-string	errc	@"aontu:system"\np: $.system.Port & {direction: 1}	empty
-# SEMVER --- an ORDERED TRIPLE, not a string and not a map. A version is
-# COMPARED, and comparison is elementwise from the left, which a list
-# has and the other two do not: "1.10.0" sorts below "1.9.0" as text,
-# and a map has no order of its own to compare along. Each component is
-# a non-negative integer, and the arity is exactly three.
-semver-triple	gens	@"aontu:system"\nv: $.system.Semver & [1,2,3]	{"system":{},"v":[1,2,3]}
-semver-zero	gens	@"aontu:system"\nv: $.system.Semver & [0,0,0]	{"system":{},"v":[0,0,0]}
-# The arity is the constraint: two components is not a version, and a
-# fourth is not part of one.
-semver-too-short	errc	@"aontu:system"\nv: $.system.Semver & [1,2]	constraint
-semver-too-long	errc	@"aontu:system"\nv: $.system.Semver & [1,2,3,4]	constraint
-# A component is a non-negative integer: no negatives, and nothing that
-# is not an integer at all.
-semver-negative-refused	errc	@"aontu:system"\nv: $.system.Semver & [1,-2,3]	constraint
-semver-non-integer-refused	errc	@"aontu:system"\nv: $.system.Semver & [1,"x",3]	constraint
-# The dotted STRING is not a semver here, which is the whole point of
-# choosing a list: it never enters the model as text that sorts wrong.
-semver-string-refused	errc	@"aontu:system"\nv: $.system.Semver & "1.2.3"	list
+the-worked-example	gens	@"aontu:system"\n\nservices: {\n  auth: $.aontu.system.Service & {ports: {http: {protocol: http}}, dependedOnBy: rel() & [path($.services.billing)]}\n  billing: $.aontu.system.Service & {dependsOn: rel($.aontu.system.Service) & inverse(dependedOnBy) & acyclic() & [path($.services.auth)]}\n}	{"aontu":{"system":{}},"services":{"auth":{"dependedOnBy":["$.services.billing"],"kind":"service","ports":{"http":{"direction":"in","protocol":"http"}}},"billing":{"dependsOn":["$.services.auth"],"kind":"service"}}}
+the-worked-example-graph	graph	@"aontu:system"\n\nservices: {\n  auth: $.aontu.system.Service & {ports: {http: {protocol: http}}}\n  billing: $.aontu.system.Service & {dependsOn: [&: refer(), path($.services.auth)]}\n}	{"edges":[{"from":"$.services.billing","key":"dependsOn","to":"$.services.auth","at":"$.services.billing.dependsOn.0"}]}
+vocabulary-canon	canon	@"aontu:system"	{"aontu":{"system":{"Component":{"ports"?:{&:$.aontu.system.Port}},"Port":{"direction":*"in"|"out"|"inout","protocol"?:string},"Semver":[integer&min(0),*0|integer&min(0),*0|integer&min(0),*""|re("^[0-9A-Za-z.-]+$")]&length(integer&min(4)&max(4)),"Service":{"kind":"service","ports"?:{&:$.aontu.system.Port}}}}}
+vocabulary-hash	hash	@"aontu:system"	aon1-o70Z6bPVTJJx-9gCaAejxjv4M5K7ZNzfhWfO407LNLs
+relation-atoms-replace-the-schema	gens	@"aontu:system"\na: $.aontu.system.Service & {dependsOn: rel($.aontu.system.Service) & acyclic() & []}	{"a":{"dependsOn":[],"kind":"service"},"aontu":{"system":{}}}
+service-is-a-component-shape	gens	@"aontu:system"\ns: $.aontu.system.Component & $.aontu.system.Service & {ports: {http: {}}}	{"aontu":{"system":{}},"s":{"kind":"service","ports":{"http":{"direction":"in"}}}}
+port-direction-refuses-a-non-string	errc	@"aontu:system"\np: $.aontu.system.Port & {direction: 1}	empty
+# SEMVER (semver.org 2.0.0) --- an ORDERED TUPLE: major, minor, patch,
+# pre-release. A list and not a dotted string, because a version is
+# COMPARED and the comparison runs component by component from the
+# left: "1.10.0" sorts below "1.9.0" as text. A list and not a map,
+# because a map has no order of its own to compare along.
+#
+# THE TAIL DEFAULTS. [1] is [1 0 0 ""] and [1 2] is [1 2 0 ""]: a
+# major-only version is the common case and costs one token.
+semver-major-only	gens	@"aontu:system"\nv: $.aontu.system.Semver & [1]	{"aontu":{"system":{}},"v":[1,0,0,""]}
+semver-major-minor	gens	@"aontu:system"\nv: $.aontu.system.Semver & [1,2]	{"aontu":{"system":{}},"v":[1,2,0,""]}
+semver-triple	gens	@"aontu:system"\nv: $.aontu.system.Semver & [1,2,3]	{"aontu":{"system":{}},"v":[1,2,3,""]}
+semver-zero	gens	@"aontu:system"\nv: $.aontu.system.Semver & [0,0,0]	{"aontu":{"system":{}},"v":[0,0,0,""]}
+semver-prerelease	gens	@"aontu:system"\nv: $.aontu.system.Semver & [1,2,3,"alpha.1"]	{"aontu":{"system":{}},"v":[1,2,3,"alpha.1"]}
+# A FIFTH ELEMENT IS NOT PART OF A VERSION: the arity is bounded, and
+# the bound is checked after the defaults fill.
+semver-too-long	errc	@"aontu:system"\nv: $.aontu.system.Semver & [1,2,3,"a",9]	constraint
+# The numeric parts are non-negative integers. LEADING ZEROES need no
+# rule: 01 is not a distinct integer literal, so the spec's "MUST NOT
+# contain leading zeroes" is impossible to write here rather than
+# merely forbidden.
+semver-negative-refused	errc	@"aontu:system"\nv: $.aontu.system.Semver & [1,-2,3]	empty
+semver-non-integer-refused	errc	@"aontu:system"\nv: $.aontu.system.Semver & [1,"x",3]	empty
+# THE PRE-RELEASE CHECK IS THE ALPHABET, NOT THE STRUCTURE. The spec's
+# grammar is dot-separated identifiers, which as a regex is a
+# quantified group containing a quantifier -- a shape re() refuses
+# outright (constraint_pattern) for backtracking exponentially. So an
+# underscore is caught and "alpha..1" is not; the vocabulary says so.
+semver-prerelease-alphabet	errc	@"aontu:system"\nv: $.aontu.system.Semver & [1,0,0,"beta_1"]	empty
+# The dotted STRING is not a version here, which is the whole point of
+# the list: it never enters the model as text that sorts wrong.
+semver-string-refused	errc	@"aontu:system"\nv: $.aontu.system.Semver & "1.2.3"	list

@@ -365,7 +365,7 @@ relation checks) and exposed the ceiling: relation `target` is inert
 edge properties, inverses hand-maintained because membership queries
 are inexpressible (filter is prefix-match on lists), no transitive
 closure or instance-of query, and the practical typed-refer idiom
-(`refer($.system.Service)`) trips the fixpoint (BUGS.md §19). The honest
+(`refer($.aontu.system.Service)`) trips the fixpoint (BUGS.md §19). The honest
 current statement: aontu is a sound *entity-and-edge substrate* whose
 query and constraint layers over that substrate are one more
 capability review away. The `graph`/`relations` machinery plus `get`

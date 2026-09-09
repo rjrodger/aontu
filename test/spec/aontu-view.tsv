@@ -20,23 +20,23 @@
 #
 # EXPERIMENTAL until the distribution layer can version it by
 # canon-hash.
-vocabulary-is-served	gens	@"aontu:view"\nf: $.view.Figure & {kind: tree, out: "a.txt"}	{"f":{"kind":"tree","out":"a.txt"},"view":{}}
+vocabulary-is-served	gens	@"aontu:view"\nf: $.aontu.view.Figure & {kind: tree, out: "a.txt"}	{"aontu":{"view":{}},"f":{"kind":"tree","out":"a.txt"}}
 # THE SCHEME IS NOT A DIRECTORY (ADR-028): the `.aon` spelling the
 # bare `std/` names once accepted is not a model name, and is
 # refused like any other typo, as aontu-scheme.tsv pins for
 # `aontu:code.aon`.
 vocabulary-dot-aon-is-not-a-name	errc	a: @"aontu:view.aon"	multisource_not_found
-vocabulary-generates-nothing-of-its-own	gens	@"aontu:view"	{"view":{}}
-a-declaration-over-the-spread	gens	@"aontu:view"\nviews: {&: $.view.Figure} & {a: {kind: matrix, order: partition, closure: true, out: "a.txt"}}	{"view":{},"views":{"a":{"closure":true,"kind":"matrix","order":"partition","out":"a.txt"}}}
-every-option-of-every-kind	gens	@"aontu:view"\nviews: {&: $.view.Figure} & {\n  a: {kind: tree, relation: dependsOn, roots: ["$.x"], at: "$.y", maxRows: 9, as: svg, out: "a.svg"}\n  b: {kind: graph, relations: ["dependsOn"], groupBy: owner, label: name, as: dot, out: "b.dot"}\n  c: {kind: layer, groupBy: layer, layers: ["app"], edges: all, out: "c.txt"}\n  d: {kind: sets, sets: "$.roles", member: grants, universe: "$.perms", minDegree: 1, maxCols: 2, out: "d.txt"}\n  e: {kind: layers, minSize: 1, out: "e.txt"}\n  g: {kind: ladder, at: "$.z", out: "g.mmd"}\n}	{"view":{},"views":{"a":{"as":"svg","at":"$.y","kind":"tree","maxRows":9,"out":"a.svg","relation":"dependsOn","roots":["$.x"]},"b":{"as":"dot","groupBy":"owner","kind":"graph","label":"name","out":"b.dot","relations":["dependsOn"]},"c":{"edges":"all","groupBy":"layer","kind":"layer","layers":["app"],"out":"c.txt"},"d":{"kind":"sets","maxCols":2,"member":"grants","minDegree":1,"out":"d.txt","sets":"$.roles","universe":"$.perms"},"e":{"kind":"layers","minSize":1,"out":"e.txt"},"g":{"at":"$.z","kind":"ladder","out":"g.mmd"}}}
-a-declaration-without-out-does-not-generate	errc	@"aontu:view"\nf: $.view.Figure & {kind: tree}	mapval_no_gen
-kind-refuses-the-poset	errc	@"aontu:view"\nf: $.view.Figure & {kind: poset, out: "a.txt"}	empty
-kind-refuses-a-nonmember	errc	@"aontu:view"\nf: $.view.Figure & {kind: nope, out: "a.txt"}	empty
-profile-refuses-a-nonmember	errc	@"aontu:view"\nf: $.view.Figure & {kind: tree, as: png, out: "a.txt"}	empty
-order-refuses-a-nonmember	errc	@"aontu:view"\nf: $.view.Figure & {kind: matrix, order: random, out: "a.txt"}	empty
-edges-refuses-a-nonmember	errc	@"aontu:view"\nf: $.view.Figure & {kind: layer, edges: sideways, out: "a.txt"}	empty
-a-count-refuses-a-negative	errc	@"aontu:view"\nf: $.view.Figure & {kind: tree, maxRows: -1, out: "a.txt"}	constraint
-a-list-option-refuses-a-non-string	errc	@"aontu:view"\nf: $.view.Figure & {kind: tree, roots: [1], out: "a.txt"}	no_scalar_unify
-out-refuses-a-non-string	errc	@"aontu:view"\nf: $.view.Figure & {kind: tree, out: 1}	no_scalar_unify
-vocabulary-canon	canon	@"aontu:view"	{"view":{"Figure":{"as"?:"text"|"mermaid"|"dot"|"er"|"svg","at"?:string,"closure"?:boolean,"depth"?:integer&min(0),"edges"?:"upward"|"all"|"none","groupBy"?:string,"kind":"doc"|"lattice"|"tree"|"matrix"|"graph"|"layer"|"sets"|"layers"|"ladder","label"?:string,"layers"?:[&:string],"maxCols"?:integer&min(0),"maxRows"?:integer&min(0),"member"?:string,"minDegree"?:integer&min(0),"minSize"?:integer&min(0),"order"?:"canon"|"partition","out":string,"relation"?:string,"relations"?:[&:string],"roots"?:[&:string],"sets"?:string,"universe"?:string}}}
-vocabulary-hash	hash	@"aontu:view"	aon1-4ZAwOTGwDzUHFPFPrhjllk7t67hpQ42AnbrwBpMpD04
+vocabulary-generates-nothing-of-its-own	gens	@"aontu:view"	{"aontu":{"view":{}}}
+a-declaration-over-the-spread	gens	@"aontu:view"\nviews: {&: $.aontu.view.Figure} & {a: {kind: matrix, order: partition, closure: true, out: "a.txt"}}	{"aontu":{"view":{}},"views":{"a":{"closure":true,"kind":"matrix","order":"partition","out":"a.txt"}}}
+every-option-of-every-kind	gens	@"aontu:view"\nviews: {&: $.aontu.view.Figure} & {\n  a: {kind: tree, relation: dependsOn, roots: ["$.x"], at: "$.y", maxRows: 9, as: svg, out: "a.svg"}\n  b: {kind: graph, relations: ["dependsOn"], groupBy: owner, label: name, as: dot, out: "b.dot"}\n  c: {kind: layer, groupBy: layer, layers: ["app"], edges: all, out: "c.txt"}\n  d: {kind: sets, sets: "$.roles", member: grants, universe: "$.perms", minDegree: 1, maxCols: 2, out: "d.txt"}\n  e: {kind: layers, minSize: 1, out: "e.txt"}\n  g: {kind: ladder, at: "$.z", out: "g.mmd"}\n}	{"aontu":{"view":{}},"views":{"a":{"as":"svg","at":"$.y","kind":"tree","maxRows":9,"out":"a.svg","relation":"dependsOn","roots":["$.x"]},"b":{"as":"dot","groupBy":"owner","kind":"graph","label":"name","out":"b.dot","relations":["dependsOn"]},"c":{"edges":"all","groupBy":"layer","kind":"layer","layers":["app"],"out":"c.txt"},"d":{"kind":"sets","maxCols":2,"member":"grants","minDegree":1,"out":"d.txt","sets":"$.roles","universe":"$.perms"},"e":{"kind":"layers","minSize":1,"out":"e.txt"},"g":{"at":"$.z","kind":"ladder","out":"g.mmd"}}}
+a-declaration-without-out-does-not-generate	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: tree}	mapval_no_gen
+kind-refuses-the-poset	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: poset, out: "a.txt"}	empty
+kind-refuses-a-nonmember	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: nope, out: "a.txt"}	empty
+profile-refuses-a-nonmember	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: tree, as: png, out: "a.txt"}	empty
+order-refuses-a-nonmember	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: matrix, order: random, out: "a.txt"}	empty
+edges-refuses-a-nonmember	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: layer, edges: sideways, out: "a.txt"}	empty
+a-count-refuses-a-negative	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: tree, maxRows: -1, out: "a.txt"}	constraint
+a-list-option-refuses-a-non-string	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: tree, roots: [1], out: "a.txt"}	no_scalar_unify
+out-refuses-a-non-string	errc	@"aontu:view"\nf: $.aontu.view.Figure & {kind: tree, out: 1}	no_scalar_unify
+vocabulary-canon	canon	@"aontu:view"	{"aontu":{"view":{"Figure":{"as"?:"text"|"mermaid"|"dot"|"er"|"svg","at"?:string,"closure"?:boolean,"depth"?:integer&min(0),"edges"?:"upward"|"all"|"none","groupBy"?:string,"kind":"doc"|"lattice"|"tree"|"matrix"|"graph"|"layer"|"sets"|"layers"|"ladder","label"?:string,"layers"?:[&:string],"maxCols"?:integer&min(0),"maxRows"?:integer&min(0),"member"?:string,"minDegree"?:integer&min(0),"minSize"?:integer&min(0),"order"?:"canon"|"partition","out":string,"relation"?:string,"relations"?:[&:string],"roots"?:[&:string],"sets"?:string,"universe"?:string}}}}
+vocabulary-hash	hash	@"aontu:view"	aon1-e_5y7D88XPOHKHY4b0CQjmd9LhU2s-DMZegqOxnVHwo
