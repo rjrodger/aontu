@@ -43,6 +43,19 @@ not stand up on its own. `--format json` for the machine-readable
 report, `--closed` to refuse keys the model does not declare,
 `--max-errors <n>` to cap the list.
 
+**Make the check prove it checked something.** A check that examined
+nothing answers exactly like one that passed:
+
+```
+aontu vet --coverage model.aon data.aon         # what did it examine?
+aontu vet --strict-coverage model.aon data.aon  # exit 1 if nothing
+```
+
+`--coverage` reports how many data leaves a declaration constrained,
+the data paths none did, and the declarations no data met.
+`--strict-coverage` exits 1 when the answer is nothing. The usual
+cause is the `"*"` mistake above: reach for `&:`.
+
 ## Check the model is coherent with itself
 
 ```

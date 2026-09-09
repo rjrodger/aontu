@@ -128,6 +128,9 @@ aontu vet [options] <schema> <data> [more-data...]
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
+  --coverage        Report what the check examined
+  --strict-coverage --coverage, and exit 1 when the run was vacuous
+  --coverage-at <p> Measure coverage under this path of the data only
   --format <f>      text (default), json or sarif
   --watch           Re-run whenever a watched file changes
 ```
@@ -138,7 +141,7 @@ three ways to fail call for three different responses:
 | Exit | Verdict | Meaning |
 |------|---------|---------|
 | 0 | `valid` | the data unifies and is concrete (or `--partial`) |
-| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse |
+| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse. Also a vacuous run under `--strict-coverage`, below |
 | 2 |: | usage: a bad option, or a file that cannot be read |
 | 3 | `incomplete` | no contradiction, but the truth is not yet satisfied |
 | 4 | `error` | the run could not be set up from the schema side: an unusable schema, or an `--at` that names nothing: never the data's fault |
@@ -153,6 +156,66 @@ reported as one `parse`-class finding with a site in that file: not as
 a broken schema. The distinction matters to the loop the verb exists
 for: exit 1 says "repair what you emitted", exit 4 says "the truth you
 were given is unusable, stop".
+
+#### What the check examined
+
+A check that examined **nothing** and a check that **passed** answer
+the same. That is not a bug in the unifier, which answered correctly
+about the document it was given, but it is a hole in a gate: the
+caller reads exit 0 and reports success.
+
+The usual cause is one construct. A schema written with the wildcard
+other tools use is not a wildcard here:
+
+```
+entity: { "*": { table: string } }
+```
+
+`"*"` is a key **named** `*`. It declares an entity called `*`, meets
+no data key, and constrains nothing, so data with `table: 42` vets
+`valid`. The template is [`&:`](reference-language.md), which meets
+every key of the map it sits in.
+
+`--coverage` adds a `coverage` object to the report, and the report is
+the answer:
+
+| field | is |
+|---|---|
+| `checked` | data **leaves** a schema declaration constrained |
+| `leaves` | data leaves in all, under `--coverage-at` when given |
+| `declared` | declarations the schema makes under the anchor: a map key, a list index, or a template, at every depth |
+| `unchecked` | the shallowest data paths no declaration constrained |
+| `unused` | the shallowest declarations no data path met |
+| `vacuous` | no data leaf was constrained, over a document that has leaves |
+
+**Leaves, not paths.** A leaf is where a value lives, and matching a
+container constrains no value: a schema saying only "there is a key
+called `entity`" has checked nothing, and `checked` is the number that
+says so. A document with no leaves is not vacuous either, because
+there was nothing to examine.
+
+The lists name the **shallowest** paths, as
+[`render --coverage`](#aontu-render)'s dead report does: a subtree
+nothing constrained is named once rather than once per leaf. The text
+form prints the first ten of each and counts the rest; the JSON form
+carries every one.
+
+`--strict-coverage` makes a vacuous run **exit 1**. The verdict word
+is unchanged (the unification really did hold), so nothing that passes
+today starts failing, and the reason goes to stderr while stdout stays
+a report contract. It is the flag a CI gate and an agent
+loop both want, and it implies `--coverage`, because a gate cannot
+fire on what was never measured.
+
+Across several data files the schema side is counted once and the data
+side adds up: a declaration one file exercised is not unused, and
+`vacuous` means no file constrained anything.
+
+The accounting is **structural**: what the schema declares about the
+data, rather than a reading of the meet. A meet-based reading would
+count a value the data supplied to itself as covered, which is the
+opposite of the question. It costs one extra evaluation of the data
+document, and only when asked for.
 
 **A parse failure is located.** Its single site carries the parser's
 own row and column, 1-based: the same position the human renderer

@@ -41,7 +41,9 @@ import type {
 } from './mod-tool'
 import { modCacheDir } from './mod'
 import { VET_MAX_ERRORS } from './vet'
-import type { VetReport, VetFinding, VetVerdict } from './vet'
+import type {
+  VetReport, VetFinding, VetVerdict, VetCoverage,
+} from './vet'
 import type {
   SubsumeReport, SubsumeVerdict, SubsumeProfile,
 } from './subsume'
@@ -164,12 +166,28 @@ Vet options:
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
+  --coverage        Report what the check EXAMINED: how many data
+                    leaves a schema declaration constrained, the
+                    shallowest data paths none did, and the
+                    declarations no data met
+  --strict-coverage --coverage, and exit 1 when the run was VACUOUS --
+                    when no data leaf was constrained at all. The
+                    verdict word is unchanged, so nothing that passes
+                    today starts failing without this flag
+  --coverage-at <p> Measure coverage under this path of the data only
   --format <f>      text (default), json or sarif
   --watch           Re-run whenever a watched file changes
 
+A check that examined NOTHING and a check that passed answer the same
+without --coverage. The usual cause is a schema written with the
+wildcard other tools use: a quoted "*" is a key NAMED *, not a
+template, so it constrains nothing and the run still reports valid.
+The template is &: -- see aontu help language.
+
 Vet exit codes:
   0  valid       data unifies, and is concrete (or --partial)
-  1  invalid     at least one contradiction
+  1  invalid     at least one contradiction, or a vacuous run under
+                 --strict-coverage
   2  usage       bad option, or a file that cannot be read
   3  incomplete  no contradiction, but the truth is not yet satisfied
   4  error       the schema is unusable on its own
@@ -969,6 +987,11 @@ type VetArgs = {
   partial?: boolean
   maxErrors?: number
   watch?: boolean
+  // G11 phase 5. `strictCoverage` implies `coverage`; `coverageAt`
+  // narrows the data side and implies it too.
+  coverage?: boolean
+  strictCoverage?: boolean
+  coverageAt?: string
 }
 
 
@@ -982,6 +1005,9 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
   let partial = false
   let maxErrors: number | undefined
   let watch = false
+  let coverage = false
+  let strictCoverage = false
+  let coverageAt: string | undefined
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -1028,6 +1054,24 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
     else if ('--partial' === arg) {
       partial = true
     }
+    else if ('--coverage' === arg) {
+      coverage = true
+    }
+    else if ('--strict-coverage' === arg) {
+      // IMPLIES THE ACCOUNTING, because a gate cannot fire on what was
+      // never measured. Asking for the strict form and having to
+      // remember `--coverage` beside it is a usage trap with one
+      // correct answer, so the flag takes it.
+      coverage = true
+      strictCoverage = true
+    }
+    else if ('--coverage-at' === arg) {
+      coverageAt = argv[++i]
+      if (null == coverageAt) {
+        return { err: 'aontu: --coverage-at needs a path' }
+      }
+      coverage = true
+    }
     else if ('--watch' === arg) {
       watch = true
     }
@@ -1053,6 +1097,9 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
       partial,
       maxErrors,
       watch,
+      coverage,
+      strictCoverage,
+      coverageAt,
     },
   }
 }
@@ -1092,12 +1139,51 @@ function renderVetText(report: VetReport): string {
   const head = `verdict: ${report.verdict}` +
     (report.truncated ? ' (findings truncated)' : '')
 
-  if (0 === report.findings.length) {
-    return head
-  }
+  const body = 0 === report.findings.length ? []
+    : ['', ...report.findings.map(renderFinding)]
+  const cover = null == report.coverage ? []
+    : ['', ...renderVetCoverage(report.coverage)]
 
-  return [head, ''].concat(report.findings.map(renderFinding)).join('\n')
+  return [head, ...body, ...cover].join('\n')
 }
+
+
+// The coverage block (G11 phase 5). VACUOUS FIRST and in the
+// imperative, because it is the one line that changes what the reader
+// should do: a `valid` verdict above it means nothing.
+function renderVetCoverage(c: VetCoverage): string[] {
+  const out: string[] = []
+  if (c.vacuous) {
+    out.push('coverage: VACUOUS — no data leaf was constrained' +
+      ' by the schema; this run checked nothing')
+  }
+  out.push(`coverage: ${c.checked}/${c.leaves} data leaves checked,` +
+    ` ${c.declared} schema declarations`)
+  // The lists are the SHALLOWEST paths, so each names a subtree rather
+  // than every leaf under it, and both are capped: a report a reader
+  // scrolls past is a report nobody reads.
+  for (const [label, paths] of [
+    ['unchecked', c.unchecked], ['unused', c.unused],
+  ] as [string, string[]][]) {
+    if (0 === paths.length) {
+      continue
+    }
+    const shown = paths.slice(0, COVERAGE_LIST_MAX)
+    for (const p of shown) {
+      out.push(`  ${label}: ${p}`)
+    }
+    if (shown.length < paths.length) {
+      out.push(`  ${label}: … and ${paths.length - shown.length} more`)
+    }
+  }
+  return out
+}
+
+
+// How many coverage paths the TEXT form prints per list. The JSON form
+// carries every one: a machine reads the whole list, a person reads the
+// first few and the count.
+const COVERAGE_LIST_MAX = 10
 
 
 // The machine-readable form. `aontu` names the producer, so a report
@@ -1109,6 +1195,7 @@ function renderVetJson(report: VetReport): string {
     verdict: report.verdict,
     truncated: report.truncated,
     findings: report.findings,
+    ...(null == report.coverage ? {} : { coverage: report.coverage }),
   }, 2)
 }
 
@@ -1156,6 +1243,20 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
   let verdict: VetVerdict = 'valid'
   let truncated = false
   const findings: VetFinding[] = []
+  // COVERAGE ACROSS SEVERAL DATA FILES (G11 phase 5). Two data files
+  // are two candidates for one truth, so the schema side is the SAME
+  // for each: `declared` is taken once, and a declaration is unused
+  // only when NO file met it -- the intersection, because a
+  // declaration one file exercised is exercised. The data side adds
+  // up: leaves and checked leaves sum, and `unchecked` is the union.
+  let cov: VetCoverage | undefined
+  // Initialised rather than left undefined: it is filled in the same
+  // block that sets `cov`, so a fallback at the read below would be an
+  // arm nothing can take. The FIRST file replaces it wholesale, which
+  // is what makes the fold an intersection rather than an empty set.
+  let unusedEvery = new Set<string>()
+  let unusedSeen = false
+  const uncheckedAll = new Set<string>()
 
   for (const source of sources) {
     const report = vet(schemaSrc, source.src, {
@@ -1174,6 +1275,8 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
       // absolute one would name the same file two ways.
       schemaPath: args.schema,
       dataPath: source.file,
+      coverage: args.coverage,
+      coverageAt: args.coverageAt,
     })
 
     if (VET_RANK[verdict] < VET_RANK[report.verdict]) {
@@ -1181,6 +1284,25 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
     }
     truncated = truncated || report.truncated
     findings.push(...report.findings)
+
+    if (null != report.coverage) {
+      const c = report.coverage
+      cov = null == cov ? { ...c } : {
+        checked: cov.checked + c.checked,
+        declared: c.declared,
+        leaves: cov.leaves + c.leaves,
+        unchecked: [],
+        unused: [],
+        vacuous: false,
+      }
+      for (const p of c.unchecked) {
+        uncheckedAll.add(p)
+      }
+      const mine = new Set(c.unused)
+      unusedEvery = unusedSeen
+        ? new Set([...unusedEvery].filter((u) => mine.has(u))) : mine
+      unusedSeen = true
+    }
 
     // A SCHEMA-SIDE FAULT IS THE SAME FAULT FOR EVERY DATA FILE, so it
     // is reported ONCE. `error` means exactly that -- the run could not
@@ -1206,16 +1328,38 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
   const cap = args.maxErrors ?? VET_MAX_ERRORS
   const kept = cap < findings.length ? findings.slice(0, cap) : findings
 
+  if (null != cov) {
+    cov.unchecked = [...uncheckedAll].sort(cmpCodePoint)
+    cov.unused = [...unusedEvery].sort(cmpCodePoint)
+    cov.vacuous = 0 === cov.checked && 0 < cov.leaves
+  }
+
   const report: VetReport = {
     verdict,
     truncated: truncated || cap < findings.length,
     findings: kept,
+    ...(null == cov ? {} : { coverage: cov }),
   }
   const text = 'json' === args.format ? renderVetJson(report) :
     'sarif' === args.format ? renderVetSarif(report) :
       renderVetText(report)
 
   process.stdout.write(text + '\n')
+
+  // A VACUOUS CHECK IS A FAILED GATE UNDER `--strict-coverage`, and
+  // only under it: the verdict WORD is unchanged, so nothing that
+  // passes today starts failing, and a caller who wants the stronger
+  // gate asks for it. The reason goes to stderr, because stdout is a
+  // report contract -- a JSON consumer reads `coverage.vacuous` and a
+  // person reads this.
+  if (true === args.strictCoverage && true === report.coverage?.vacuous) {
+    process.stderr.write(
+      'aontu: no data leaf was constrained by the schema:' +
+      ' this run checked nothing\n' +
+      'aontu: `aontu help language` — a map template is `&:`,' +
+      ' and a quoted "*" is a key named *\n')
+    return 1
+  }
   return VET_EXIT[verdict]
 }
 

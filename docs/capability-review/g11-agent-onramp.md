@@ -334,24 +334,40 @@ object to the report:
 
 ```json
 "coverage": {
-  "schema_paths": 4,
-  "schema_paths_unused": ["$.entity.*"],
-  "data_paths": 6,
-  "data_paths_unconstrained": ["$.entity.moon.table", "..."],
+  "checked": 0,
+  "declared": 4,
+  "leaves": 4,
+  "unchecked": ["$.entity.moon", "$.entity.planet"],
+  "unused": ["$.entity.*"],
   "vacuous": true
 }
 ```
 
-`vacuous` is true when **no schema path constrained any data path** —
-the exact condition of the `"*"` failure. Under `--strict-coverage` a
-vacuous verdict exits 1 regardless of the verdict word, which is the
-flag a CI gate and an agent loop both want. Without the flag the
-verdict contract is unchanged, so nothing that passes today starts
-failing.
+**`vacuous` is about LEAVES, and that is a correction this phase made
+to its own design.** The sketch above said "no schema path constrained
+any data path", and measuring it that way answers `false` on the very
+failure it was written for: the `"*"` schema *does* declare `entity`,
+so the container path `$.entity` matches and the count is not zero. A
+leaf is where a value lives, and matching a container constrains no
+value — so `checked` counts data leaves, and `vacuous` is true when
+none of them was constrained over a document that has leaves. A
+document with no leaves is not vacuous either: there was nothing to
+examine.
+
+Under `--strict-coverage` a vacuous run exits 1 regardless of the
+verdict word, which is the flag a CI gate and an agent loop both want,
+and it implies `--coverage` because a gate cannot fire on what was
+never measured. Without the flag the verdict contract is unchanged, so
+nothing that passes today starts failing.
+
+The accounting is **structural** — what the schema declares about the
+data — rather than a reading of the meet. A meet-based reading would
+count a value the data supplied to itself as covered, which is the
+opposite of the question being asked.
 
 Modelled on `render --coverage`, including its refusal to write
-anything and its `--coverage-at` narrowing, so the two coverage
-reports read alike.
+anything, its `--coverage-at` narrowing, and its shallowest-path
+reporting, so the two coverage reports read alike.
 
 ### 6. `aontu init`
 

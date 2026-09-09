@@ -117,12 +117,28 @@ Vet options:
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
+  --coverage        Report what the check EXAMINED: how many data
+                    leaves a schema declaration constrained, the
+                    shallowest data paths none did, and the
+                    declarations no data met
+  --strict-coverage --coverage, and exit 1 when the run was VACUOUS --
+                    when no data leaf was constrained at all. The
+                    verdict word is unchanged, so nothing that passes
+                    today starts failing without this flag
+  --coverage-at <p> Measure coverage under this path of the data only
   --format <f>      text (default), json or sarif
   --watch           Re-run whenever a watched file changes
 
+A check that examined NOTHING and a check that passed answer the same
+without --coverage. The usual cause is a schema written with the
+wildcard other tools use: a quoted "*" is a key NAMED *, not a
+template, so it constrains nothing and the run still reports valid.
+The template is &: -- see aontu help language.
+
 Vet exit codes:
   0  valid       data unifies, and is concrete (or --partial)
-  1  invalid     at least one contradiction
+  1  invalid     at least one contradiction, or a vacuous run under
+                 --strict-coverage
   2  usage       bad option, or a file that cannot be read
   3  incomplete  no contradiction, but the truth is not yet satisfied
   4  error       the schema is unusable on its own

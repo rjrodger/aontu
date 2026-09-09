@@ -3273,4 +3273,140 @@ describe('cli-allow', () => {
     Assert.match(run(['--help']).out, /Allow exit codes/)
   })
 
+
+  // THE COVERAGE FLAGS (G11 phase 5,
+  // docs/capability-review/g11-agent-onramp.md). The accounting itself
+  // is pinned by the shared rows in test/spec/vet.tsv; what the COMMAND
+  // owns -- the flags, the text block, the exit class -- is here, and
+  // go/cmd/aontu/vet_test.go holds the twin.
+
+  // The star schema is a key NAMED `*`, so it constrains nothing.
+  const COV_STAR = 'entity: { "*": { name: string, table: string } }'
+  const COV_GOOD = 'entity: { &: { name: string, table: string } }'
+  const COV_DATA = 'entity: { planet: { name: "P", table: "planets" } }'
+
+  function covFiles(schema: string, data: string): [string, string] {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-cov-'))
+    const s = Path.join(dir, 'schema.aon')
+    const d = Path.join(dir, 'data.aon')
+    Fs.writeFileSync(s, schema)
+    Fs.writeFileSync(d, data)
+    return [s, d]
+  }
+
+  test('vet-coverage-is-absent-unless-asked', () => {
+    const [s, d] = covFiles(COV_STAR, COV_DATA)
+    const r = run(['vet', '--partial', s, d])
+    Assert.equal(r.code, 0)
+    Assert.ok(!r.out.includes('coverage'),
+      `a run that did not ask for coverage reported it: ${r.out}`)
+    const j = run(['vet', '--partial', '--format', 'json', s, d])
+    Assert.ok(!j.out.includes('"coverage"'),
+      `the JSON report carries coverage unasked: ${j.out}`)
+  })
+
+  // THE DEFECT THE PHASE EXISTS FOR, at the command line: the verdict
+  // is `valid` and the run examined nothing.
+  test('vet-coverage-reports-a-vacuous-run', () => {
+    const [s, d] = covFiles(COV_STAR, COV_DATA)
+    const r = run(['vet', '--partial', '--coverage', s, d])
+    Assert.equal(r.code, 0, 'the verdict word is unchanged')
+    Assert.ok(r.out.includes('verdict: valid'))
+    for (const want of [
+      'VACUOUS', '0/2 data leaves checked', 'unused: $.entity.*',
+      'unchecked: $.entity.planet',
+    ]) {
+      Assert.ok(r.out.includes(want),
+        `the coverage block omits ${want}:\n${r.out}`)
+    }
+  })
+
+  // AND THE GATE: only under --strict-coverage, and it is the exit code
+  // that moves, never the verdict word.
+  test('vet-strict-coverage-exits-one-on-vacuous', () => {
+    const [s, d] = covFiles(COV_STAR, COV_DATA)
+    const r = run(['vet', '--partial', '--strict-coverage', s, d])
+    Assert.equal(r.code, 1)
+    Assert.ok(r.out.includes('verdict: valid'), 'the verdict word changed')
+    Assert.ok(r.out.includes('checked nothing'), r.out)
+    // The reason names the fix, because the caller who hit this does
+    // not know the template exists.
+    Assert.ok(r.out.includes('aontu help language'), r.out)
+  })
+
+  test('vet-strict-coverage-passes-a-real-check', () => {
+    const [s, d] = covFiles(COV_GOOD, COV_DATA)
+    const r = run(['vet', '--strict-coverage', s, d])
+    Assert.equal(r.code, 0, r.out)
+    Assert.ok(!r.out.includes('VACUOUS'), r.out)
+    Assert.ok(r.out.includes('2/2 data leaves checked'), r.out)
+  })
+
+  // --strict-coverage and --coverage-at IMPLY the accounting: a gate
+  // cannot fire on what was never measured.
+  test('vet-coverage-flags-imply-the-accounting', () => {
+    const [s, d] = covFiles(COV_GOOD, COV_DATA)
+    Assert.ok(run(['vet', '--strict-coverage', s, d]).out.includes('coverage:'))
+    Assert.ok(
+      run(['vet', '--coverage-at', '$.entity', s, d]).out.includes('coverage:'))
+  })
+
+  test('vet-coverage-json', () => {
+    const [s, d] = covFiles(COV_STAR, COV_DATA)
+    const r = run(
+      ['vet', '--partial', '--coverage', '--format', 'json', s, d])
+    Assert.equal(r.code, 0)
+    const report = JSON.parse(r.out)
+    Assert.equal(report.verdict, 'valid')
+    Assert.equal(report.coverage.vacuous, true)
+    Assert.equal(report.coverage.checked, 0)
+    Assert.deepEqual(Object.keys(report.coverage).sort(),
+      ['checked', 'declared', 'leaves', 'unchecked', 'unused', 'vacuous'])
+  })
+
+  // SEVERAL DATA FILES ARE ONE ACCOUNTING: the schema side is the same
+  // for each, so a declaration one file exercised is not unused, while
+  // the data side adds up.
+  test('vet-coverage-across-several-data-files', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-cov-'))
+    const write = (name: string, src: string): string => {
+      const p = Path.join(dir, name)
+      Fs.writeFileSync(p, src)
+      return p
+    }
+    const s = write('s.aon', 'a: string\nb: integer')
+    const d1 = write('d1.aon', 'a: "x"')
+    const d2 = write('d2.aon', 'b: 1')
+    const r = run(['vet', '--partial', '--coverage', s, d1, d2])
+    Assert.equal(r.code, 0, r.out)
+    Assert.ok(r.out.includes('2/2 data leaves checked'), r.out)
+    Assert.ok(!r.out.includes('unused:'),
+      `a declaration another file met was called unused: ${r.out}`)
+  })
+
+  // THE TEXT FORM CAPS EACH LIST at ten and counts the rest: a report a
+  // reader scrolls past is a report nobody reads. The JSON form carries
+  // every path, which is what a machine wants.
+  test('vet-coverage-text-caps-the-lists', () => {
+    let data = '{'
+    for (let i = 0; i < 14; i++) {
+      data += `k${i}: ${i},\n`
+    }
+    data += '}'
+    const [s, d] = covFiles('declared: string', data)
+    const r = run(['vet', '--partial', '--coverage', s, d])
+    Assert.ok(r.out.includes('unchecked: … and 4 more'),
+      `the list was not capped and counted:\n${r.out}`)
+    const j = run(
+      ['vet', '--partial', '--coverage', '--format', 'json', s, d])
+    Assert.equal(JSON.parse(j.out).coverage.unchecked.length, 14,
+      'the JSON list was capped too')
+  })
+
+  test('vet-coverage-usage-refusals', () => {
+    const r = run(['vet', '--coverage-at'])
+    Assert.equal(r.code, 2)
+    Assert.ok(r.out.includes('--coverage-at needs a path'), r.out)
+  })
+
 })
