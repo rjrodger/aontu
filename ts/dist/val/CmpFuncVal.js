@@ -67,7 +67,7 @@ const CMP_DEF = {
     // `line: false`.
     //
     // IT IS THE ONE COMPONENT THE AONTU SIDE ALREADY SUBSUMES, and a
-    // generator should reach for `form()` first. `form($.rows, content(...))`
+    // generator should reach for `each()` first. `each($.rows, content(...))`
     // repeats in the MODEL, so the repetition is finished before the tree
     // exists and every produced node is data a document can reference,
     // vet and diff. `listitems` defers it into jostraca's define phase behind
@@ -83,7 +83,7 @@ exports.CMP_DEF = CMP_DEF;
 // The component name a value carries, when the value is a node this
 // vocabulary built. Read structurally rather than by class, because a
 // node reaches a children list as a MAP -- through a reference, a
-// `form()` instance, a spread -- long after the call that made it has
+// `each()` instance, a spread -- long after the call that made it has
 // resolved away.
 const BY_CMP = {};
 for (const fname of Object.keys(CMP_DEF)) {
@@ -122,16 +122,16 @@ class CmpFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // children list.
         // A component whose text prop is OPTIONAL may be called with
         // nothing at all: `project()` is the defaulted root, as
-        // `Project({})` is on the other side. Everything else needs its
+        // `project({})` is on the other side. Everything else needs its
         // spec.
         if (args.length < (def.req ? 1 : 0) || args.length > (leaf ? 1 : 2)) {
             return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, undefined, 'arity');
         }
         // THE SPEC IS A STRING OR A PROPS MAP. The string spelling fills
         // the one prop the component cannot work without, so the common
-        // case reads as the component does -- `File("main.ts", ...)` --
+        // case reads as the component does -- `file("main.ts", ...)` --
         // and the map spelling is there the moment a second prop is
-        // wanted: `File({name: "run.sh", mode: 0o755}, ...)`.
+        // wanted: `file({name: "run.sh", mode: 0o755}, ...)`.
         const spec = args[0];
         let props;
         if (undefined === spec) {

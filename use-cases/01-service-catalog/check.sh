@@ -38,7 +38,7 @@ has() {
 
 # 1. The whole model evaluates: two views of eight entities, joined by
 # the field-level relation declarations, against the bundled
-# std/system vocabulary.
+# aontu:system vocabulary.
 run eval 0 -- "$DIR/system.aon"
 diff -u "$DIR/expected/system.json" "$WORK/eval.out" \
   || fail "system.aon output drifted from expected/system.json"
@@ -161,12 +161,12 @@ run conflict 1 -- "$DIR/bad/tier-conflict.aon"
 has conflict err '[aontu/scalar_value]'
 ok "two views: tier 1 vs tier 2 on payments refuses to evaluate"
 
-# 10. A typed endpoint (refer($.std.Service)) refuses a database
+# 10. A typed endpoint (refer($.aontu.System.Service)) refuses a database
 # target -- in the miniature model where typed refer works (gap 8).
 run kind 1 -- "$DIR/bad/wrong-kind.aon"
 has kind err '[aontu/scalar_value]'
 has kind err '"database"'
-ok "refer($.std.Service): non-service endpoint refused"
+ok "refer($.aontu.System.Service): non-service endpoint refused"
 
 # 11. An agent-emitted candidate is vetted against the (reference-free,
 # see gap 2) CandidateShape anchor.

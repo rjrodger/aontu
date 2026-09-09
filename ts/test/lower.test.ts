@@ -91,9 +91,9 @@ describe('lower', () => {
     // The vocabulary keeps a container to leaves, so a list of a
     // nullable reaches the fold only through renderValue -- where the
     // TypeScript forms say (string | null)[] and not string | null[].
-    const profile = new Aontu().generate('@"aontu:lang/typescript"').profile
+    const profile = new Aontu().generate('@"aontu:lang/typescript"').aontu.profile
     const report = renderValue({
-      code: {
+      aontu: { Code: {
         units: [{
           path: 'a.ts', lang: 'typescript',
           decls: [{
@@ -104,7 +104,7 @@ describe('lower', () => {
           }],
         }],
       },
-    }, { profiles: [profile] })
+    } }, { profiles: [profile] })
     Assert.strictEqual(report.verdict, 'ok')
     Assert.strictEqual(report.units[0].text,
       'export interface T {\n  a: (string | null)[];\n}\n')
@@ -114,9 +114,9 @@ describe('lower', () => {
     // renderValue takes an instance the caller built, where the
     // vocabulary's `at: *0` default has not been filled: a line piece
     // with no `at` in a function body nests as a line at depth 0 does.
-    const profile = new Aontu().generate('@"aontu:lang/typescript"').profile
+    const profile = new Aontu().generate('@"aontu:lang/typescript"').aontu.profile
     const unit = (piece: any) => ({
-      code: {
+      aontu: { Code: {
         units: [{
           path: 'a.ts', lang: 'typescript',
           decls: [{
@@ -124,7 +124,7 @@ describe('lower', () => {
             body: { k: 'frag', of: [piece, { k: 'blank' }, 'done()'] },
           }],
         }],
-      },
+      } },
     })
     const bare = renderValue(unit({ k: 'line', of: ['go()'] }), { profiles: [profile] })
     const at0 = renderValue(unit({ k: 'line', at: 0, of: ['go()'] }), { profiles: [profile] })

@@ -61,7 +61,7 @@ test('the published render and field-change recipes produce the stated output', 
   // The prose explicitly calls out this redundant wrapper. Hold that claim.
   const template = join(work, 'gen/erd.mmd');
   const source = readFileSync(template, 'utf8');
-  writeFileSync(template, source.replace('form(.field, _ & { mark:"" })', '.field'));
+  writeFileSync(template, source.replace('each(.field, _ & { mark:"" })', '.field'));
   assert.equal(recipe('erd', '--stdout'), erd);
   writeFileSync(template, source);
 

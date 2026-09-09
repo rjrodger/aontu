@@ -1,19 +1,23 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE BUNDLED VOCABULARY (G4 phase 4,
-// docs/capability-review/g4-identity-relations.md): `@"std/system"` is
-// served from the engine itself — no filesystem, no package resolution
-// — so a document may use it under every include capability except
-// `none`, and the hermeticity posture is not widened by a source that
-// never leaves the process.
+// THE LANGUAGE-SUPPLIED MODELS (G4 phase 4,
+// docs/capability-review/g4-identity-relations.md): `@"aontu:system"`
+// is served from the engine itself — no filesystem, no package
+// resolution — so a document may use it under every include capability
+// except `none`, and the hermeticity posture is not widened by a source
+// that never leaves the process.
+//
+// EVERY name here carries the `aontu:` prefix (ADR-028): a
+// language-supplied schema is spelled one way, and the scheme is what
+// makes it unshadowable. There is no second, bare-name spelling.
 //
 // The TEXT is the shared artifact: go/std.go carries the same bytes,
-// and test/spec/std-system.tsv pins its canon and its canon-hash in
+// and test/spec/aontu-system.tsv pins its canon and its canon-hash in
 // both engines, so the two copies cannot drift without a red suite.
 // It carries no backtick for that reason: one string literal per port,
 // and Go's raw string has no escape.
 
-const STD_SYSTEM = `# std/system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
+const STD_SYSTEM = `# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
 # and relations need no syntax: they are schemas. Everything here is
 # ordinary unification --- conjunction, spreads, marks, defaults ---
 # so the vocabulary costs the language nothing, and an author who wants
@@ -24,31 +28,57 @@ const STD_SYSTEM = `# std/system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, 
 # identity and version makes "v1 and v2 describe the same entity"
 # inexpressible.
 
-std: {
-
+aontu: System: {
   # One end of a connection.
-  Port: type({
-    direction: *in | out | inout
-    protocol?: string
-  })
+  Port: type({ direction:*in | out | inout protocol?:string })
 
   # A node with ports. Where a Component sits in the tree is what it
   # is a component OF -- containment is the document's own structure
   # and needs no mark of its own.
-  Component: type({
-    ports?: {&: $.std.Port}
-  })
+  Component: type({ ports?:{ &: $.aontu.System.Port } })
 
   # A component that is a service. Written out rather than as
-  # $.std.Component & {kind: service}: a reference from one member of
+  # $.aontu.System.Component & {kind: service}: a reference from one member of
   # this file to another does not survive being INCLUDED into a
   # document (the marks the include carries make the referring member
   # unusable), so the vocabulary states each schema on its own.
-  Service: type({
-    kind: service
-    ports?: {&: $.std.Port}
-  })
+  Service: type({ kind:service ports?:{ &: $.aontu.System.Port } })
 
+  # A semantic version (semver.org 2.0.0) as an ORDERED TUPLE: major,
+  # minor, patch, pre-release. A list and not a dotted string, because a
+  # version is COMPARED and the comparison runs component by component
+  # from the left: "1.10.0" sorts below "1.9.0" as text. A list and not
+  # a map, because a map has no order of its own to compare along.
+  #
+  # THE TAIL DEFAULTS, so [1] is [1 0 0 ""] and [1 2] is [1 2 0 ""].
+  # A major-only version is the common case and should cost one token.
+  #
+  # LEADING ZEROES ARE IMPOSSIBLE HERE rather than merely forbidden:
+  # the numeric parts are integers, and 01 is not a distinct integer
+  # literal. The spec's "MUST NOT contain leading zeroes" needs no rule.
+  #
+  # THE PRE-RELEASE CHECK IS PARTIAL, and deliberately says so. The
+  # spec's grammar is dot-separated identifiers, each non-empty, each
+  # [0-9A-Za-z-], numeric ones without leading zeroes -- which as a
+  # regex is a quantified group containing a quantifier, and re()
+  # refuses that shape outright (constraint_pattern) because it
+  # backtracks exponentially. So the alphabet is checked and the
+  # STRUCTURE is not: "beta_1" is refused, "alpha..1" and "01" are not.
+  # Carrying the pre-release as a LIST of identifiers would check it in
+  # full, one identifier per element, and is the change to make if that
+  # matters more than [1 0 0 ""] does.
+  #
+  # BUILD METADATA IS NOT CARRIED. The spec has it, and the spec also
+  # says it MUST be ignored when determining precedence -- so a type
+  # whose purpose is comparison is the wrong place for it.
+  Semver: type(
+    [
+      integer & min(0)
+      *0 | (integer & min(0))
+      *0 | (integer & min(0))
+      *"" | (string & re("^[0-9A-Za-z.-]+$"))
+    ] & length(4)
+  )
   # (The Relation schema that used to sit here is retired with the
   # relations: magic key, RELATIONS.0.md P2: a relation is declared
   # by the graph atoms at its field -- rel(t) & acyclic() &
@@ -57,17 +87,17 @@ std: {
 `
 
 
-const STD_VIEW = `# std/view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
+const STD_VIEW = `# aontu:view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
 # document"). A view document declares its figures as data, and a
 # declaration is just a map: this is the schema for one, so a typo is
 # refused where every other mistake in an aontu document is refused --
 # at evaluation, by unification -- rather than by the verb that reads
 # it afterwards.
 #
-#   @"std/view"
+#   @"aontu:view"
 #   @"./system.aon"
 #
-#   views: {&: $.view.Figure} & {
+#   views: {&: $.aontu.View.Figure} & {
 #     arch: {kind: matrix, order: partition, out: "docs/arch.dsm.txt"}
 #   }
 #
@@ -81,8 +111,7 @@ const STD_VIEW = `# std/view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
 # canon-hash. This file carries no backtick: it is one string literal
 # per port, and Go raw strings have no escape.
 
-view: {
-
+aontu: View: {
   # One declared figure. The kind says what to draw and out says where
   # it belongs; everything else narrows the drawing, and each option
   # belongs to the kinds that read it.
@@ -298,7 +327,7 @@ const STD_CODE = String.raw`# aontu:code --- THE OUTPUT VOCABULARY. An aontu tra
 
 %source = close({ path?:string hash?:string & re("^aon1-[A-Za-z0-9_-]+$") })
 
-code: close({ source?:%source units:[&: %unit] })
+aontu: Code: close({ source?:%source units:[&: %unit] })
 `
 
 
@@ -372,7 +401,7 @@ const STD_PROFILE = String.raw`# aontu:profile --- THE PROFILE VOCABULARY. A pro
   banner?: string
 })
 
-profile: %profile
+aontu: Profile: %profile
 `
 
 
@@ -389,7 +418,7 @@ const STD_LANG_TEXT = String.raw`# aontu:lang/text --- THE TEXT PROFILE. The pro
 
 @"aontu:profile"
 
-profile: { lang:"text" indent:{ unit:" " width:2 } }
+aontu: Profile: { lang:"text" indent:{ unit:" " width:2 } }
 `
 
 // THE TYPESCRIPT PROFILE (docs/design/RENDER.0.md D5, P5): the data the
@@ -410,7 +439,7 @@ const STD_LANG_TYPESCRIPT = String.raw`# aontu:lang/typescript --- THE TYPESCRIP
 
 @"aontu:profile"
 
-profile: {
+aontu: Profile: {
   lang: "typescript"
   lowering: "typescript"
   indent: { unit:" " width:2 }
@@ -524,7 +553,7 @@ const STD_LANG_GO = String.raw`# aontu:lang/go --- THE GO PROFILE. The data a un
 
 @"aontu:profile"
 
-profile: {
+aontu: Profile: {
   lang: "go"
   lowering: "go"
   indent: { unit:"\t" width:1 }
@@ -637,10 +666,8 @@ profile: {
 `
 
 export const STD_SOURCES: Record<string, string> = {
-  'std/system': STD_SYSTEM,
-  'std/system.aon': STD_SYSTEM,
-  'std/view': STD_VIEW,
-  'std/view.aon': STD_VIEW,
+  'aontu:system': STD_SYSTEM,
+  'aontu:view': STD_VIEW,
   'aontu:code': STD_CODE,
   'aontu:lang/go': STD_LANG_GO,
   'aontu:lang/text': STD_LANG_TEXT,

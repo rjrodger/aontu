@@ -657,7 +657,7 @@ class RefVal extends FeatureVal {
           // hidden IN ITS OWN RIGHT, and the verb's enumeration
           // (ts/src/val/members.ts, BUGS.md §79) needs to see that
           // mark to leave the member out, as generation does. A marked
-          // target lifts even there, or `each($.schema.entities, _)`
+          // target lifts even there, or `form($.schema.entities, _)`
           // under `schema: hide({...})` would see every entity as
           // hidden, since hide() marks to the leaves.
           const lifted = true !== (ctx as any).argsnap

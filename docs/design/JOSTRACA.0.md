@@ -54,7 +54,7 @@ node: a forty-line Go struct is forty nodes carrying `kind`/`src`,
 which is strictly worse to write and review than the fifty-line host
 program it replaces."** This is the reason that does not survive.
 It assumes the nodes are WRITTEN. As functions they are CALLED, and
-`form()` already makes one node per model child, so the source scales
+`each()` already makes one node per model child, so the source scales
 with the MODEL, not with the output. VERIFIED — the five-line
 interface below is seven lines of aontu whatever the record's field
 count, and adding a field to the model adds a line to the output and
@@ -66,7 +66,7 @@ model: { name:planet fields:[id name mass] }
 out: folder("src", [
   file($.model.name + ".ts", [
     content("export interface Planet {\n")
-    form($.model.fields, content("  " + _ + ": string\n"))
+    each($.model.fields, content("  " + _ + ": string\n"))
     content("}\n")
   ])
 ])
@@ -79,7 +79,7 @@ is in the canonical form: `aontu fmt --check` passes on it, which is
 also the small finding that a document built from component calls needs
 nothing from the formatter.
 
-Resolution 1 was written before `form` landed and reasoned about the
+Resolution 1 was written before `each` landed and reasoned about the
 plan as data. Against generated nodes the argument has no purchase.
 
 **But it has no purchase on `aontu:code` either, and that is the part
@@ -144,13 +144,13 @@ called `Match`, `Each` or `Pick` would need the same treatment.
 
 **`listitems` is the one component the aontu side already subsumes.**
 jostraca's `List` renders its children once per element of `item`,
-binding `{item}` and `{item.path}` macros. `form($.rows, content(...))`
+binding `{item}` and `{item.path}` macros. `each($.rows, content(...))`
 does the same job in the MODEL, so the repetition is finished before
 the tree exists and every produced node is data a document can
 reference, vet and diff — where `listitems` defers it into jostraca's
 define phase behind a string macro aontu cannot see into, which is the
 layer this spike exists to remove. It is implemented so the set is
-complete; a generator should reach for `form` first.
+complete; a generator should reach for `each` first.
 
 `spec` is a string or a props map; the string spelling fills the one
 prop the component cannot work without (`name`, `name`, `src`).
@@ -171,7 +171,7 @@ $ printf 'x: file("a.ts", [content("k")])\n' | node ts/bin/aontu.js -c
 Nothing downstream needed a change. `generate()` emits the tree as
 JSON, `canon` renders it, references reach into it (`$.a.props.name`
 is `"a.ts"`, VERIFIED), and a children list is an ordinary list — so
-`form()` over model data drops straight into one. That last point is
+`each()` over model data drops straight into one. That last point is
 the whole result: **the generation combinators reach the component
 tree with no new machinery at all.**
 
@@ -191,7 +191,7 @@ lattice's own:
 - **The containment grammar.** A Folder holds folders and files, a
   File holds content, Content is a leaf. Unification cannot state this
   on its own: a node is a map, and every node map unifies with every
-  other. `folder("a", [Content("c")])` is refused.
+  other. `folder("a", [content("c")])` is refused.
 - **The spec.** A string or a props map, and the one prop the
   component cannot work without must be a non-empty string.
   `file({mode: 493})` is refused.
@@ -219,7 +219,7 @@ the MIDDLE of a written list:
 ```
 file("planet.ts", [
   content("export interface Planet {\n")
-  form($.fields, content("  " + _ + ": string\n"))
+  each($.fields, content("  " + _ + ": string\n"))
   content("}\n")
 ])
 ```
@@ -233,20 +233,20 @@ not obvious in advance, and because the first version of the spike
 refused the worked example outright.
 
 The same reasoning is why the second argument must BE a list rather
-than accepting a bare node as a convenience: `form(...)` already
+than accepting a bare node as a convenience: `each(...)` already
 returns the list, and a one-child special case would make
-`file(n, form(...))` and `file(n, [form(...)])` both legal and
+`file(n, each(...))` and `file(n, [each(...)])` both legal and
 different.
 
 ## 5. Not staged, and that was checked
 
 A component call answers from its arguments alone. It has no
 dependence on WHERE it sits — unlike `key()` — and it reads no bag a
-sibling may still merge into — unlike `pack`/`each`/`form`. So it does
+sibling may still merge into — unlike `pack`/`each`. So it does
 not set `staged`, and the ordinary args-done gate is correct: a
 children list BUILT by one of the combinators still waits, because the
 combinator residuates and the enclosing call is not `pegdone` until it
-fires. VERIFIED by the worked example, whose `form()` fires inside a
+fires. VERIFIED by the worked example, whose `each()` fires inside a
 `File` inside a `Folder` and lands in model order.
 
 ## 6. What the spike did not answer
@@ -270,16 +270,18 @@ child substitutes (`item=alpha`, `item=beta`), and the same with a
 calls `template(src, model)` and never forwards `props.replace`, while
 `Content` does — so the per-item bindings reach one and not the other.
 It reads as an oversight rather than a decision (nothing states why the
-two differ), but it is landed behaviour in the other project with a Go
-twin, so it is reported rather than changed here.
+two differ). FIXED on the jostraca side rather than worked around here:
+`Line` now merges `props.extra` into the model and forwards
+`props.replace`, as `Content` already did. The Go port needed no
+change, having delegated to `ContentP` all along — the case AGENTS.md
+names, where the port pre-empts a latent TypeScript bug.
 
 **Line termination.** jostraca's `FileOp` joins a file's content
 spans with the empty string, so `content("a")` and `content("b")`
 concatenate to `ab`. The examples above carry their own `\n`, which is
-honest but not pleasant. `Line` is jostraca's answer and is the
-obvious fourth primitive; the bridge already reaches it (VERIFIED —
-the jostraca side generates a `Line` node today, from a tree aontu
-cannot yet write).
+honest but not pleasant. `line` is jostraca's answer and landed with
+the other nine (§2); the worked example predates it and still spells
+its own newlines.
 
 **Identifier case — CLOSED, see §7.** This was the spike's first
 finding: the worked example wanted `Planet`, aontu had whole-string
@@ -531,5 +533,5 @@ aontu ts/test/cmp-spike.aon | node tools/cmptree-gen.js --at out --folder ./buil
 ```
 
 VERIFIED end to end against the fixture in §1: the command writes
-`build/src/planet.ts` holding the five expected lines, and `--dryrun`
-writes nothing.
+`build/src/planet-body.ts` holding the five expected lines, and
+`--dryrun` writes nothing.

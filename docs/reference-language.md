@@ -25,7 +25,8 @@ the [Explanation](explanation.md).
 - [Optional keys `?`](#optional-keys-)
 - [Spreads `&:`](#spreads-)
 - [Generating children: `pack` and `each`](#generating-children-pack-and-each)
-  - [Constructing elements: `form`](#form-the-order-preserving-map)
+  - [Making elements: `each`](#each-the-order-preserving-map)
+  - [The `_ & …` idiom](#the-_--idiom-construction-and-bound)
 - [Selecting: `filter` and `match`](#selecting-filter-and-match)
 - [The placeholder `_`](#the-placeholder-_)
 - [Transforming: `emit`](#transforming-emit)
@@ -891,15 +892,17 @@ child's resolution can never answer for the others. The same rule
 instantiates a `filter` condition per trial and a spread constraint
 (`&:`) per application.
 
-`each(data, tmpl?)` makes one **list element** per child of `data`,
-each of them that child met with `tmpl`. The order is fixed: source
-order for a list, sorted-key order for a map. Written with one
-argument, `each(m)` is a map's children as a list.
+`each(data, tmpl)` makes one **list element** per child of `data`. It
+is documented in full [below](#each-the-order-preserving-map); what
+matters here is that the same `_` that binds the source child also
+lets it be kept, so `each(d, _ & t)` is every member of `d` met with
+`t`, and `each(d, _)` is a map's children as a list. The order is
+fixed: source order for a list, sorted-key order for a map.
 
 ```aon
 ports: { http:80 https:443 }
-open: each($.ports, integer)
-names: each({ b:2 a:1 })
+open: each($.ports, _ & integer)
+names: each({ b:2 a:1 }, _)
 ```
 
 ```json
@@ -928,20 +931,20 @@ Neither can recurse. Both iterate a finite bag that already exists, so
 the number of children either can produce is fixed by the data:
 evaluation still terminates by construction.
 
-### `form`, the order-preserving map
+### `each`, the order-preserving map
 
-`form(data, tmpl)` makes one **list element** per child of `data`,
+`each(data, tmpl)` makes one **list element** per child of `data`,
 being `tmpl` instantiated at that position with `_` bound to the
-source child. It **replaces** where `each` meets: the element is the
-template and nothing else, which is what makes it a construction
-rather than a bound, and why it sits beside `each` rather than in
-place of it.
+source child. Written plainly it **replaces** rather than meets: the
+element is the template and nothing else, which is what makes it a
+construction. Mentioning the hole keeps the child; that is the
+[`_ & …` idiom](#the-_--idiom-construction-and-bound) below.
 
 ```aon
 names: [web auth billing]
-files: form($.names, { path:_ + ".ts" })
-consts: form($.names, upper(_))
-tag: join(form(split("index-build", "-"), upper(_)), "_")
+files: each($.names, { path:_ + ".ts" })
+consts: each($.names, upper(_))
+tag: join(each(split("index-build", "-"), upper(_)), "_")
 ```
 
 ```json
@@ -952,15 +955,86 @@ tag: join(form(split("index-build", "-"), upper(_)), "_")
 ```
 
 The order is the data's (source order for a list, sorted-key order for
-a map) through the same rule `each` reads its members by, and a hidden
+a map) through the one rule every bag reader uses, and a hidden
 child or an unfilled optional is skipped as generation would skip it.
-That order is the reason `form` exists: `pick(pack(d, {f: t}), f)`
-maps too, but through a map, so it re-sorts to code-point order, and
-the fields of a struct, the imports of a file or an index in the
-model's order would come out alphabetised. With `split` and `join` it closes the
-name-derivation chain, as `tag` shows. Like `each`, it waits for the
-model to settle and fires once; a `_` inside its template is its own
-to bind, never an enclosing generator's.
+That order is why the list generator is a built-in at all:
+`pick(pack(d, {f: t}), f)` maps too, but through a map, so it re-sorts
+to code-point order, and the fields of a struct, the imports of a file
+or an index in the model's order would come out alphabetised. With
+`split` and `join` it closes the name-derivation chain, as `tag`
+shows. Like `pack`, it waits for the model to settle and fires once; a
+`_` inside its template is its own to bind, never an enclosing
+generator's.
+
+### The `_ & …` idiom: construction and bound
+
+`_` inside a generator's template binds the **source child**. Whether
+that child survives into the element is decided by one thing: whether
+the template mentions the hole.
+
+```aon
+ports: [containerPort:80 containerPort:443]
+plain: each($.ports, { protocol:TCP })
+bound: each($.ports, _ & { protocol:TCP })
+```
+
+```json
+{"ports": [{"containerPort": 80}, {"containerPort": 443}],
+ "plain": [{"protocol": "TCP"}, {"protocol": "TCP"}],
+ "bound": [{"containerPort": 80, "protocol": "TCP"},
+           {"containerPort": 443, "protocol": "TCP"}]}
+```
+
+`plain` **replaces**: the element is the template, and the port
+numbers are gone. `bound` **meets**: `_ & {protocol:TCP}` is the child
+unified with the template, so each entry keeps its `containerPort` and
+gains a `protocol`. One generator, two jobs, and the `_` says which.
+
+Three shapes cover most uses:
+
+| written | the element is | use it for |
+|---|---|---|
+| `each(d, t)` | `t`, instantiated | building new records from data |
+| `each(d, _ & t)` | the child, met with `t` | constraining or extending members |
+| `each(d, _)` | the child itself | a map's values as a list |
+
+**`each(d, _ & t)` is a bound**, so everything a meet does applies: a
+kind checks the members, a constraint atom bounds them, and a
+preference supplies a default the member may override.
+
+```aon
+ports: [8080 443]
+checked: each($.ports, _ & integer)
+
+m: { b:2 a:1 }
+vals: each($.m, _)
+```
+
+```json
+{"ports": [8080, 443], "checked": [8080, 443],
+ "m": {"a": 1, "b": 2}, "vals": [1, 2]}
+```
+
+**`each(d, _)` is the map-to-list conversion**: the template is the
+hole and nothing else, so every member arrives unchanged, in
+sorted-key order for a map and source order for a list.
+
+The same `_` binds in a `pack` template, a `filter` condition and an
+`emit` body, and it always names the value that construct is working
+on. Two rules are worth knowing:
+
+- **The hole belongs to the nearest enclosing generator.** In
+  `pack($.m, {inner: each(_, _)})` the first `_` is the *pack's*
+  source child, because a generator's data argument is not a binding
+  position, and the second is the `each`'s own.
+- **A spread has no hole.** `&: {n: _}` leaves `_` unfilled; inside a
+  spread, name the child's fields with a relative reference (`.k`) and
+  its key with `key()`.
+
+A meet cannot select, so `_` does not reach into the child: asking for
+one of its fields with `each($.lines, _ & _.amount)` asks for
+something that is both the whole record and one of its fields. Use
+[`pick`](#projecting-fields-pick) to project a field.
 
 ## Selecting: `filter` and `match`
 
@@ -1078,7 +1152,7 @@ generator's fill pass never reaches into a nested generator's template
 (or a `filter`'s condition), so in `pack($.envs, {services:
 pack($.fleet, {v: _})})` the inner `_` is the fleet entry, not the env.
 A hole in a generator's *data* argument is not a binding position, so it
-is still the outer generator's to fill: `pack($.m, {inner: each(_)})`
+is still the outer generator's to fill: `pack($.m, {inner: each(_, _)})`
 iterates the outer source child. A generator whose data is a hole is
 filled by its **peer**, exactly as any other call is (`["a"] &
 pack(_, {x:1})` packs the list) which is what lets a rule table be named
@@ -1672,9 +1746,10 @@ is instantiated for a selected value, `trial` supplies a condition,
 and `text` supplies literal text. An unmarked argument supplies a value.
 
 For collection operations, compare [pack and each](#generating-children-pack-and-each),
-[form](#form-the-order-preserving-map), [filter and match](#selecting-filter-and-match),
-[pick](#projecting-fields-pick), and [emit](#transforming-emit).
-`pack`, `each`, and `form` construct collections; `filter` selects members;
+[the `_ & …` idiom](#the-_--idiom-construction-and-bound), [filter and
+match](#selecting-filter-and-match), [pick](#projecting-fields-pick),
+and [emit](#transforming-emit).
+`pack` and `each` construct collections; `filter` selects members;
 `pick` projects a field; `emit` applies a rule table and flattens its output.
 
 ### `above(n: number|string) : constraint`
@@ -1725,11 +1800,11 @@ Divide two numbers; integer division truncates towards zero. See [arithmetic and
 
 Example: `div(7, 2)` → `3`
 
-### `each(d: map|list, template t?: any) : list`
+### `each(d: map|list, template t: any) : list`
 
-One list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map.
+Construct one list element per source child by instantiating a template with `_` bound to that child. See [form](#each-the-order-preserving-map).
 
-Example: `open: each($.ports, integer)`
+Example: `each([a, b], upper(_))` → `["A", "B"]`
 
 ### `emit(s: map|list, template t: map|list) : list`
 
@@ -1748,12 +1823,6 @@ Example: `esc("<a>", xml)`
 The children of `d` that ALREADY satisfy `c`: the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match).
 
 Example: `debugged: filter($.services, {debug:true})`
-
-### `form(d: map|list, template t: any) : list`
-
-Construct one list element per source child by instantiating a template with `_` bound to that child. See [form](#form-the-order-preserving-map).
-
-Example: `form([a, b], upper(_))` → `["A", "B"]`
 
 ### `greatest(d: map|list) : number`
 
@@ -1903,7 +1972,7 @@ Example: `string & re("^[a-z]+$")`
 
 Constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert).
 
-Example: `dependsOn: [&: refer($.std.Service), path($.services.auth)]`
+Example: `dependsOn: [&: refer($.aontu.System.Service), path($.services.auth)]`
 
 ### `rel(template t?: any) : constraint`
 
@@ -2228,10 +2297,10 @@ cities: pick(pick($.records, address), city)
 ### Choose projection or construction
 
 Use `pick(records, name)` to extract a field. Use
-[`form`](#form-the-order-preserving-map) when each output element needs
-an expression or a new structure. [`each`](#generating-children-pack-and-each)
-unifies each source member with a template; it preserves that member's
-information rather than extracting one field from it.
+[`each`](#each-the-order-preserving-map) when each output element needs
+an expression or a new structure. The bound spelling `each(records, _ &
+t)` unifies each source member with a template; it preserves that
+member's information rather than extracting one field from it.
 
 Compose the resulting list with [sum](#aggregating-sum-least-greatest)
 for a total or [join](#folding-to-a-string-join) for a line of text.
@@ -2785,13 +2854,22 @@ same key as an ordinary string.
 
 ### The bundled vocabularies
 
-Four vocabularies ship with the engine and are served from it rather
-than from disk: `std/system` below; `std/view` (the schema for one
-declaration of a [view document](reference-api.md#aontu-view),
-`$.view.Figure`, which types every option the verb reads so a typo is
-refused at evaluation; and the `aontu:` models) the vocabularies
-`aontu:code` and `aontu:profile`, and the three profiles bundled beside
-them: described [after it](#the-aontu-models).
+**Seven vocabularies ship with the engine**, served from it rather than
+from disk, and **every one of them is named under `aontu:`**. That is
+the whole rule: a language-supplied schema has one spelling, and the
+scheme is what stops a file on disk from standing in front of it.
+
+| name | what it is |
+|---|---|
+| `aontu:system` | ports, components and services: [below](#the-aontu-system-vocabulary) |
+| `aontu:view` | the schema for one declaration of a [view document](reference-api.md#aontu-view), `$.aontu.View.Figure`, which types every option the verb reads so a typo is refused at evaluation |
+| `aontu:code` | the output vocabulary a transform evaluates to |
+| `aontu:profile` | the data `render` applies to a unit of one language |
+| `aontu:lang/text` | the text profile |
+| `aontu:lang/typescript` | the TypeScript profile |
+| `aontu:lang/go` | the Go profile |
+
+The last five are described [after the system vocabulary](#the-aontu-models).
 
 ### The `aontu:` models
 
@@ -2799,14 +2877,40 @@ A name that begins `aontu:` is a **language-supplied model**, and it
 resolves from the engine's own table and nowhere else: the memory,
 module, file and package legs are never asked, so no file can shadow
 one, and a name the engine does not serve is refused naming the set
-rather than looked for on disk. Write this as `models.aon`:
+rather than looked for on disk.
+
+**Everything an `aontu:` model defines lands under the single root key
+`aontu`**, so including one never takes a name a document wants:
+
+| include | defines |
+|---|---|
+| `@"aontu:system"` | `$.aontu.System.Port`, `.Component`, `.Service`, `.Semver` |
+| `@"aontu:view"` | `$.aontu.View.Figure` |
+| `@"aontu:code"` | `$.aontu.Code.units` |
+| `@"aontu:profile"` | `$.aontu.Profile` |
+
+One key is reserved instead of seven, it is named for the language
+rather than for a domain, and `$.aontu` anywhere tells a reader at once
+that the subtree is not the document's own.
+
+**A path part that names a type is CamelCase.** That is why every
+bundled key above is capitalised, and why the members under them
+(`Port`, `Service`, `Figure`) always were: the case of a segment says
+what kind of thing it names. It is a **convention and only a
+convention**: the engine does not check it, `aontu vet` says nothing
+about a lowercase `type()`, and a document is free to ignore it. The
+bundled models follow it so there is one worked example to copy.
+
+The SCHEME name is unaffected and stays lowercase: `@"aontu:system"`
+loads the model, `$.aontu.System` is where its content lands, and a
+source name is not a path. Write this as `models.aon`:
 
 <!-- test: scenario aontu-models -->
 <!-- test: file models.aon -->
 ```aon
 @"aontu:code"
 
-code: units: [
+aontu: Code: units: [
   { path:"hello.py" lang:"python" decls:[{ k:"frag" of:["print('hello')"] }] }
 ]
 ```
@@ -2815,21 +2919,23 @@ code: units: [
 ```sh
 $ aontu models.aon
 {
-  "code": {
-    "units": [
-      {
-        "decls": [
-          {
-            "k": "frag",
-            "of": [
-              "print('hello')"
-            ]
-          }
-        ],
-        "lang": "python",
-        "path": "hello.py"
-      }
-    ]
+  "aontu": {
+    "Code": {
+      "units": [
+        {
+          "decls": [
+            {
+              "k": "frag",
+              "of": [
+                "print('hello')"
+              ]
+            }
+          ],
+          "lang": "python",
+          "path": "hello.py"
+        }
+      ]
+    }
   }
 }
 ```
@@ -2845,14 +2951,14 @@ the set. Write this as `nope.aon`:
 <!-- test: run -->
 ```sh
 $ aontu nope.aon
-source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile)
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view)
 $ echo $?
 1
 ```
 
 **`aontu:code`** is the output vocabulary: an instance of it is what a
 transform evaluates to, and what `aontu render` turns into bytes. Its
-root is `code: { source?, units }`, each unit a `path`, a `lang` and a
+root is `aontu: Code: { source?, units }`, each unit a `path`, a `lang` and a
 list of declarations: `record`, `enum`, `alias`, `const`, `func`, a
 verbatim `text` escape, or a `frag`, a flat list of pieces each
 carrying its own depth: a `line` (or a bare string, which is a line at
@@ -2862,7 +2968,7 @@ renderer runs. Container types take only leaf types (anything deeper is
 a named `alias` plus a `ref`) which is what keeps the schema's meet
 linear. The root is not `type()`-marked, because `render` reads the
 instance through generation; a document that includes the vocabulary
-and writes no units generates `code: {units: []}`.
+and writes no units generates `aontu: {Code: {units: []}}`.
 
 **`aontu:profile`** is the schema of a render profile: the data a unit
 of one language is rendered under: its `lang`, an `indent`, and
@@ -2894,7 +3000,7 @@ lowering, and one whose language has none is refused
 All five are **experimental** until the vocabulary can be versioned by
 canon-hash.
 
-### The `std/system` vocabulary
+### The `aontu:system` vocabulary
 
 Ports, components and relations need no syntax: they are schemas, and
 one set of them ships with the engine. Write this as `system.aon`:
@@ -2902,15 +3008,15 @@ one set of them ships with the engine. Write this as `system.aon`:
 <!-- test: scenario std-system -->
 <!-- test: file system.aon -->
 ```aon
-@"std/system"
+@"aontu:system"
 
 services: {
-  auth: $.std.Service & {
+  auth: $.aontu.System.Service & {
     ports: http: protocol: http
     dependedOnBy: rel() & [path($.services.billing)]
   }
-  billing: $.std.Service & {
-    dependsOn: rel($.std.Service) & inverse(dependedOnBy) & acyclic() & [
+  billing: $.aontu.System.Service & {
+    dependsOn: rel($.aontu.System.Service) & inverse(dependedOnBy) & acyclic() & [
       path($.services.auth)
     ]
   }
@@ -2921,6 +3027,9 @@ services: {
 ```sh
 $ aontu system.aon
 {
+  "aontu": {
+    "System": {}
+  },
   "services": {
     "auth": {
       "dependedOnBy": [
@@ -2932,11 +3041,72 @@ $ aontu system.aon
 
 | Schema | Says |
 |--------|------|
-| `$.std.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
-| `$.std.Component` | a node with `ports`, each of which is a `Port` |
-| `$.std.Service` | a Component whose `kind` is `service` |
+| `$.aontu.System.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
+| `$.aontu.System.Component` | a node with `ports`, each of which is a `Port` |
+| `$.aontu.System.Service` | a Component whose `kind` is `service` |
+| `$.aontu.System.Semver` | a version as an ordered tuple, `[major minor patch pre-release]`, with the tail defaulted: `[1]` is `[1 0 0 ""]` |
 
-`@"std/system"` is **bundled with the engine** (no filesystem, no
+**`Semver` is a list, not a string and not a map.** A version is
+compared rather than read, and comparison runs component by component
+from the left, an order a list has and the other two do not: `"1.10.0"`
+sorts below `"1.9.0"` as text, and a map has no order of its own to
+compare along.
+
+**The tail is defaulted**, so a version may be written as short as it
+is meant: `[1]` is `[1 0 0 ""]`, and `[1 2]` is `[1 2 0 ""]`. The
+arity is four, so a fifth element is refused (`[aontu/constraint]`).
+Write this as `version.aon`:
+
+<!-- test: scenario aontu-system-semver -->
+<!-- test: file version.aon -->
+```aon
+@"aontu:system"
+v: $.aontu.System.Semver & [1]
+pre: $.aontu.System.Semver & [1 2 3 "alpha.1"]
+```
+
+<!-- test: run -->
+```sh
+$ aontu version.aon
+{
+  "aontu": {
+    "System": {}
+  },
+  "pre": [
+    1,
+    2,
+    3,
+    "alpha.1"
+  ],
+  "v": [
+    1,
+    0,
+    0,
+    ""
+  ]
+}
+```
+
+Two limits are worth knowing, and the vocabulary records both:
+
+- **The pre-release is checked for its alphabet, not its shape.**
+  [semver.org 2.0.0](https://semver.org) spells the pre-release as
+  dot-separated identifiers, which as a pattern is a quantified group
+  holding a quantifier, the one shape `re()` refuses outright
+  (`constraint_pattern`, for backtracking exponentially; see
+  [The constraint algebra](#the-constraint-algebra)). So `"beta_1"` is
+  refused for its underscore and `"alpha..1"` is not refused at all.
+  Carrying the pre-release as a list of identifiers instead would
+  check it in full.
+- **Build metadata is not carried.** The spec has it, and also says it
+  MUST be ignored when determining precedence; a type whose purpose is
+  comparison is the wrong place to keep it.
+
+Leading zeroes need no rule at all: the numeric parts are integers, and
+`01` is not a distinct integer literal, so the spec's "MUST NOT contain
+leading zeroes" is impossible to write rather than merely forbidden.
+
+`@"aontu:system"` is **bundled with the engine** (no filesystem, no
 package resolution) so it resolves under every include capability
 except `'none'`, which denies every include by definition. It is
 **experimental** until the vocabulary can be versioned by canon-hash.
@@ -2949,10 +3119,10 @@ Two of its behaviours are the language rather than the vocabulary:
   override, and any other value is refused (`[aontu/empty]`). A
   vocabulary that wants an open field says so with a `| top` (or
   `| string`) branch.
-- **`Service` is written out rather than as `$.std.Component & {kind:
+- **`Service` is written out rather than as `$.aontu.System.Component & {kind:
   service}`.** A reference from one member of an included file to
   another does not survive the include, so each schema states itself;
-  `$.std.Component & $.std.Service` still meets exactly as you would
+  `$.aontu.System.Component & $.aontu.System.Service` still meets exactly as you would
   expect.
 
 Everything here is ordinary unification, so an author who wants a
@@ -3609,10 +3779,10 @@ position is a braced block, `{` at the end of the line that opens it
 and `}` alone, which is the ordinary spelling of a constrained map:
 
 ```aon
-CatalogEntry: $.std.Service & {
+CatalogEntry: $.aontu.System.Service & {
   owner: %Owner
   tier: 1 | 2 | 3
-  dependsOn?: rel($.std.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
+  dependsOn?: rel($.aontu.System.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
 }
 ```
 

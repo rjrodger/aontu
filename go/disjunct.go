@@ -240,6 +240,15 @@ func (d *DisjunctVal) Unify(peer Val, ctx *Ctx) Val {
 	case 1:
 		return res[0]
 	case 0:
+		// THE EMPTY DISJUNCTION FAILED AT THE DISJUNCT'S OWN LOCATION.
+		// The slot hint is single-use per unite, so the trials above have
+		// consumed it and ctx.slot is empty by here -- which left the nil
+		// falling back to the operand path, and a schema reached through
+		// an INCLUDE carries one re-based onto the referring field
+		// (`$.p.direction.direction` for a `p: $.lib.Port`). The
+		// canonical port still holds the descended path at this point, so
+		// restoring the captured slot is what makes the two agree.
+		ctx.slot = slot
 		return makeNilErr(ctx, "empty", d, peer)
 	}
 	out := newDisjunct(res)

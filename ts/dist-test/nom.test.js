@@ -186,13 +186,13 @@ const E = (src) => {
 model: { name: user_account fields: [id, emailAddress, ledgerId] }
 ts: {
   type: "export interface " + nom($.model.name, pascal) + " {"
-  fields: form($.model.fields, "  " + nom(_, camel) + ": string")
+  fields: each($.model.fields, "  " + nom(_, camel) + ": string")
 }
 sql: {
   table: "create table " + nom($.model.name, snake) + " ("
-  cols: form($.model.fields, "  " + nom(_, snake) + " text")
+  cols: each($.model.fields, "  " + nom(_, snake) + " text")
 }
-go: form($.model.fields, nom(_, pascal, [ID]))
+go: each($.model.fields, nom(_, pascal, [ID]))
 `);
         (0, expect_1.expect)(out.ts).equal({
             type: 'export interface UserAccount {',

@@ -118,6 +118,19 @@ function firstCode(fn) {
         });
         Assert.throws(() => b.generate('a:@"/nope.aon"'), /not found/);
     });
+    // A LANGUAGE-SUPPLIED MODEL CANNOT BE SHADOWED (ADR-028). The
+    // `aontu:` leg answers before the memory resolver is built, so a host
+    // that declares its own `aontu:system` still gets the engine's. This
+    // is what the scheme buys, and it became true of the system and view
+    // vocabularies when they moved off their bare `std/` names. Twin:
+    // TestBundledModelIsNotShadowedByMem in go/trust_test.go.
+    (0, node_test_1.test)('a-bundled-model-is-not-shadowed-by-mem', () => {
+        const a = new aontu_1.Aontu({
+            trust: { include: { mem: { 'aontu:system': 'system: {HIJACKED: 1}' } } },
+        });
+        const out = a.generate('@"aontu:system"\np: $.aontu.System.Port & {}');
+        Assert.deepEqual(out, { p: { direction: 'in' }, aontu: { System: {} } });
+    });
     (0, node_test_1.test)('root-confines-below-the-root', () => {
         const w = world();
         const opts = { trust: { include: { root: w.root } } };

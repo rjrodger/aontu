@@ -123,9 +123,9 @@ describe('cmp', () => {
     Assert.equal(E('x: folder("a", [1])'), 'invalid-arg')
     Assert.equal(E('x: folder("a", [{cmp: "Nope"}])'), 'invalid-arg')
 
-    // Children must BE a list: `form()` returns one, and a bare-node
-    // convenience would make `file(n, form(...))` and
-    // `file(n, [form(...)])` both legal and different.
+    // Children must BE a list: `each()` returns one, and a bare-node
+    // convenience would make `file(n, each(...))` and
+    // `file(n, [each(...)])` both legal and different.
     Assert.equal(E('x: folder("a", file("b"))'), 'invalid-arg')
   })
 
@@ -151,7 +151,7 @@ describe('cmp', () => {
 
 
   // THE CHECK IS STRUCTURAL, not by class: a node reaches a children
-  // list as a MAP -- through a reference, a `form()` instance, a
+  // list as a MAP -- through a reference, a `each()` instance, a
   // spread -- long after the call that made it has resolved away. So a
   // hand-written node is a node, and a map that is not one is refused
   // however it is spelled.
@@ -202,12 +202,12 @@ describe('cmp', () => {
 
   // THE FINDING THIS SPIKE EXISTS FOR. A component tree is an ordinary
   // value, so the generation combinators reach it with no new
-  // machinery: `form()` over model data returns a list, and a
+  // machinery: `each()` over model data returns a list, and a
   // children list is a list.
-  test('form-generates-children', () => {
+  test('each-generates-children', () => {
     expect(G(
       'names: [alpha, beta]\n' +
-      'out: folder("src", form($.names, ' +
+      'out: folder("src", each($.names, ' +
       'file(_ + ".ts", [content("export const " + _ + " = 1")])))'
     ).out.children).equal([
       {
@@ -333,7 +333,7 @@ describe('cmp', () => {
 
   // A file whose name and body come from the model, built the way a
   // real generator builds one: nothing here is component machinery --
-  // it is `+`, a reference and `form()`.
+  // it is `+`, a reference and `each()`.
   //
   // THE SOURCE IS THE FIXTURE, not a copy of it: cmp-spike.aon is the
   // file docs/design/JOSTRACA.0.md quotes and the pipeline command
@@ -360,8 +360,9 @@ describe('cmp', () => {
     // The file's body, in the order the model gave it: the header, one
     // line per field, the close. Each span carries its own newline:
     // jostraca's FileOp joins a file's content with the empty string,
-    // and the spike has no `Line` primitive -- one of the gaps the
-    // design note records.
+    // and this fixture spells its own newlines with `content` rather
+    // than reaching for `line`, which the design note's "Line
+    // termination" explains.
     expect(file.children.map((c: any) => c.props.src)).equal([
       'export interface PlanetBody {\n',
       '  id: number\n',

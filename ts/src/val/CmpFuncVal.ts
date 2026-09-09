@@ -7,16 +7,16 @@
 // own capitalisation. They are the authoring surface an aontu
 // document uses to say what FILES it produces:
 //
-//   out: Folder("src", [
-//     File("main.ts", [
-//       Content("export const x = 1")
+//   out: folder("src", [
+//     file("main.ts", [
+//       content("export const x = 1")
 //     ])
 //   ])
 //
 // WHAT THIS REPLACES. `aontu:code` (ts/src/std.ts, test/spec/
 // aontu-code.tsv) is a hand-written vocabulary an author fills in as
-// DATA -- `code: units: [{path, lang, decls}]` -- and `aontu render`
-// folds that instance into bytes. The instance is checked by
+// DATA -- `aontu: Code: units: [{path, lang, decls}]` -- and `aontu
+// render` folds that instance into bytes. The instance is checked by
 // unification against the vocabulary, which is the good half; the bad
 // half is that an author writes a schema instance rather than a
 // generator, the vocabulary owns every construct the renderer will
@@ -33,21 +33,21 @@
 //
 // so nothing downstream needs new machinery: `generate()` emits the
 // tree as JSON, `canon` renders the calls back, references and
-// spreads reach into a tree as they reach into any map, and `form()`
+// spreads reach into a tree as they reach into any map, and `each()`
 // over model data drops straight into a `children` list -- which is
 // the point, and is why the second argument must BE a list rather
-// than accepting a bare node as a convenience. `form($.fields,
-// Content(...))` is already the list; a one-child special case would
-// make `File(n, form(...))` and `File(n, [form(...)])` both legal and
+// than accepting a bare node as a convenience. `each($.fields,
+// content(...))` is already the list; a one-child special case would
+// make `file(n, each(...))` and `file(n, [each(...)])` both legal and
 // different.
 //
 // CHILDREN FLATTEN, for the same reason. A generator's output lands
 // in the MIDDLE of a written list --
 //
-//   File("planet.ts", [
-//     Content("export interface Planet {"),
-//     form($.fields, Content("  " + _ + ": string")),
-//     Content("}")
+//   file("planet.ts", [
+//     content("export interface Planet {"),
+//     each($.fields, content("  " + _ + ": string")),
+//     content("}")
 //   ])
 //
 // -- and that list therefore holds two nodes and a LIST OF NODES. A
@@ -59,7 +59,7 @@
 //
 // THE NODE MAP IS CLOSED and its `props` map is not. The three keys
 // are the vocabulary and a fourth is a mistake, so a typo in
-// `Folder(...) & {childrn: []}` is refused where every other mistake
+// `folder(...) & {childrn: []}` is refused where every other mistake
 // in an aontu document is refused. Props are the COMPONENT's business
 // -- jostraca's File already reads `mode` and `exclude`, and a
 // component the spike does not implement will read its own -- so they
@@ -76,7 +76,7 @@
 // NOT STAGED, deliberately. A component call answers from its
 // arguments alone: it has no dependence on WHERE it sits (unlike
 // `key()`) and it reads no bag that a sibling may still merge into
-// (unlike `pack`/`each`/`form`). A children list BUILT by one of
+// (unlike `pack`/`each`). A children list BUILT by one of
 // those combinators still waits, because the combinator residuates
 // and the enclosing call is not `pegdone` until it fires -- so the
 // ordinary args-done gate is the correct one and the staging rule
@@ -196,7 +196,7 @@ const CMP_DEF: Record<string, CmpDef> = {
   // `line: false`.
   //
   // IT IS THE ONE COMPONENT THE AONTU SIDE ALREADY SUBSUMES, and a
-  // generator should reach for `form()` first. `form($.rows, content(...))`
+  // generator should reach for `each()` first. `each($.rows, content(...))`
   // repeats in the MODEL, so the repetition is finished before the tree
   // exists and every produced node is data a document can reference,
   // vet and diff. `listitems` defers it into jostraca's define phase behind
@@ -212,7 +212,7 @@ const CMP_DEF: Record<string, CmpDef> = {
 // The component name a value carries, when the value is a node this
 // vocabulary built. Read structurally rather than by class, because a
 // node reaches a children list as a MAP -- through a reference, a
-// `form()` instance, a spread -- long after the call that made it has
+// `each()` instance, a spread -- long after the call that made it has
 // resolved away.
 const BY_CMP: Record<string, string> = {}
 for (const fname of Object.keys(CMP_DEF)) {
@@ -271,7 +271,7 @@ class CmpFuncVal extends FuncBaseVal {
     // children list.
     // A component whose text prop is OPTIONAL may be called with
     // nothing at all: `project()` is the defaulted root, as
-    // `Project({})` is on the other side. Everything else needs its
+    // `project({})` is on the other side. Everything else needs its
     // spec.
     if (args.length < (def.req ? 1 : 0) || args.length > (leaf ? 1 : 2)) {
       return makeNilErr(ctx, 'invalid-arg', this, undefined, 'arity')
@@ -279,9 +279,9 @@ class CmpFuncVal extends FuncBaseVal {
 
     // THE SPEC IS A STRING OR A PROPS MAP. The string spelling fills
     // the one prop the component cannot work without, so the common
-    // case reads as the component does -- `File("main.ts", ...)` --
+    // case reads as the component does -- `file("main.ts", ...)` --
     // and the map spelling is there the moment a second prop is
-    // wanted: `File({name: "run.sh", mode: 0o755}, ...)`.
+    // wanted: `file({name: "run.sh", mode: 0o755}, ...)`.
     const spec: any = args[0]
     let props: Val
     if (undefined === spec) {

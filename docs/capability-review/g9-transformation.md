@@ -460,10 +460,10 @@ from a render report, Jostraca needs no data-driven `Tree(nodedef)`
 component. That was named as blocking; it is not.
 
 **A 2026-09-09 spike tested this resolution and one of its three
-reasons did not survive.** `Folder`, `File` and `Content` were built as
+reasons did not survive.** `folder`, `file` and `content` were built as
 aontu FUNCTIONS rather than as a written vocabulary, and reason (i) —
 the verbosity of a plan spelled node by node — has no purchase on
-nodes that `form()` generates. Reasons (ii) and (iii), the vetting
+nodes that `each()` generates. Reasons (ii) and (iii), the vetting
 claim and re-indentation, stand. The resolution is unchanged; the
 evidence is in [JOSTRACA.0.md](../design/JOSTRACA.0.md), which also
 records that (i) was never an argument FOR the component road, only

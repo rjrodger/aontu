@@ -77,11 +77,11 @@ than its value.
   `$.deploy.ghost-svc`), and a service with no version entry leaves the
   required `image: string` ungenerable (`[aontu/mapval_no_gen]` at
   `$.deploy.auth.spec.template.spec.containers.0.image`).
-- `each(_)` turns the per-service port and env maps into Kubernetes
-  lists. `each()` meets each child with its template, so port entries
-  are authored as maps, and `key()` inside an `each` template answers
-  the destination list index, so every port and env entry carries its
-  own name in its value (`http: { name: http, ... }`).
+- `each(_, _)` turns the per-service port and env maps into Kubernetes
+  lists. `each(d, _ & t)` meets each child with its template, so port
+  entries are authored as maps, and `key()` inside a `each` template
+  answers the destination list index, so every port and env entry
+  carries its own name in its value (`http: { name: http, ... }`).
 - `match(_, small, {...}, large, {...})` maps the tier column to
   resource blocks. Every quantity in a block is a ranked default
   (`*"500m" | string`), so an override replaces one field while the
@@ -135,7 +135,7 @@ than its value.
 5. `vet guardrails.aon data/manifests-tampered.json` is refused with
    three located `[aontu/constraint]` findings: replicas 50 against
    `max(20)`, the lowercase env name `log_level` against the env-name
-   pattern (at `...containers.0.env.name`), and the unit-less memory
+   pattern (at `...containers.0.env.0.name`), and the unit-less memory
    quantity `"512"` against `re("^[0-9]+(Mi|Gi)$")`. Each finding
    names the data line and the schema line.
 6. `vet --closed guardrails.aon data/manifests-unknown-key.json`
@@ -164,10 +164,10 @@ than its value.
 12. `pick([_], ports)` inside a pack template projects a field out of
     the source row: the generated child carries `"containerPort": 8080`
     (`probes/hole-member-access.aon`).
-13. `each()` meets each child with its template, so a scalar child
-    cannot become a map element: `each($.ports, { containerPort: _,
-    name: key() })` over `{ http: 8080 }` is `[aontu/scalar_kind]`
-    (`probes/each-reshape-scalar.aon`).
+13. `each(d, _ & t)` meets each child with its template, so a scalar
+    child cannot become a map element: `each($.ports, _ & {
+    containerPort: _, name: key() })` over `{ http: 8080 }` is
+    `[aontu/scalar_kind]` (`probes/each-reshape-scalar.aon`).
 14. `+` does not take a list operand: `$.names + ","` is
     `[aontu/mapval_no_gen]` (`probes/join-list.aon`).
 15. Lists unify by position: an entry written onto a generated env list

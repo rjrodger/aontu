@@ -75,7 +75,6 @@ const CmpFuncVal_1 = require("./val/CmpFuncVal");
 const NomFuncVal_1 = require("./val/NomFuncVal");
 const TranslateFuncVal_1 = require("./val/TranslateFuncVal");
 const EachFuncVal_1 = require("./val/EachFuncVal");
-const FormFuncVal_1 = require("./val/FormFuncVal");
 const FilterFuncVal_1 = require("./val/FilterFuncVal");
 const MatchFuncVal_1 = require("./val/MatchFuncVal");
 const EmitFuncVal_1 = require("./val/EmitFuncVal");
@@ -731,20 +730,23 @@ help isolate the syntax error.`,
         // govern. Lattice-inert; the verdict lands at generation.
         acyclic: GraphAtomVal_1.AcyclicFuncVal,
         inverse: GraphAtomVal_1.InverseFuncVal,
-        // G8 phase 1: the generation combinators. `pack` makes one keyed
-        // child per child of its data, `each` one list element; both clone
-        // their template per destination exactly as a spread does, and both
-        // wait for the model to settle before they fire (the staging rule,
-        // G8 phase 0).
+        // G8 phase 1: generation to KEYED CHILDREN. `pack` makes one keyed
+        // child per child of its data, cloning its template per
+        // destination exactly as a spread does, and waits for the model to
+        // settle before it fires (the staging rule, G8 phase 0).
         pack: PackFuncVal_1.PackFuncVal,
+        // RENDER P6: the order-preserving map, and generation to a LIST.
+        // `each` makes one list element per child of its data, being the
+        // template with `_` bound to the source child. It exists because
+        // `pick(pack(...))` re-sorts to code-point order, and a struct's
+        // fields or a file's imports are the model's order or they are
+        // wrong.
+        //
+        // Mentioning the hole makes it a BOUND instead: `each(d, _ & t)`
+        // meets each child with `t`, and `each(d, _)` is a bag's members
+        // as a list. That is what the retired meet-only `each` spelled
+        // (ADR-026), and why this one could take the name (ADR-027).
         each: EachFuncVal_1.EachFuncVal,
-        // RENDER P6: the order-preserving map. `form` makes one list
-        // element per child of its data, being the template with `_`
-        // bound to the source child -- a construction, where `each` is a
-        // bound (G9 §4). It exists because `pick(pack(...))` re-sorts to
-        // code-point order, and a struct's fields or a file's imports
-        // are the model's order or they are wrong.
-        form: FormFuncVal_1.FormFuncVal,
         // G8 phase 2: selection. `filter` keeps the children of a bag that
         // unify with a condition; `match` picks the first arm whose
         // pattern the scrutinee unifies with. Both select by
@@ -773,7 +775,8 @@ help isolate the syntax error.`,
         greatest: AggFuncVal_1.GreatestFuncVal,
         // Projection, which is what lets the aggregates reach a bag of
         // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `each`
-        // template -- `each` MEETS each child, and a meet cannot select.
+        // template -- `each(d, _ & t)` MEETS each child, and a meet cannot
+        // select.
         pick: AggFuncVal_1.PickFuncVal,
         // G9 phase 2: the fold to a STRING. `sum` folds with `add`; this
         // folds with `+`, so it inherits the one number-to-text rule and
@@ -1937,13 +1940,13 @@ function makeModelResolver(options) {
     // remain available under every capability but 'none' — they are
     // host-provided, not document-requested, so confining them would
     // confine the host against itself.
-    // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts) rides the
-    // memory leg: served from the engine itself, so it needs neither the
-    // filesystem nor package resolution and is available under every
-    // capability but `none` — which denies every include outright, that
-    // being what `none` means. Host entries and the capability's own set
-    // WIN over it: a caller that supplies its own `std/system` gets the
-    // one it supplied.
+    // A LANGUAGE-SUPPLIED MODEL DOES NOT RIDE THIS LEG (ADR-028). Every
+    // bundled schema is named under `aontu:` and answered by the scheme
+    // leg above, which returns before the memory resolver is built, so
+    // neither a host entry nor a capability's own file set can stand in
+    // front of one: `aontu:system` is the engine's, always. That is what
+    // the prefix buys, and it is why the bare-name leg that once let a
+    // caller shadow `std/system` is gone.
     let memResolver = (0, mem_1.makeMemResolver)(memCapability
         ? { ...capability.mem }
         : { ...(options.resolver?.mem || {}) });
@@ -2087,10 +2090,14 @@ function makeModelResolver(options) {
         // else -- the memory, module, file and package legs are never
         // asked, so nothing on disk can shadow one and a typo is refused
         // here, naming the set, rather than searched for. Available under
-        // every capability but `none`, checked just above, like the std
-        // names below. A path that is not a string (`a: @1`) is not a name
-        // at all: it falls through to the legs below and is not found there,
-        // as it always was.
+        // every capability but `none`, checked just above. A path that is
+        // not a string (`a: @1`) is not a name at all: it falls through to
+        // the legs below and is not found there, as it always was.
+        //
+        // This is the ONLY leg that serves a bundled model (ADR-028). The
+        // vocabularies once had bare names (`std/system`) and a second leg
+        // below to match them; the prefix is now the whole spelling, so one
+        // leg answers for every language-supplied schema.
         if ('string' === typeof path && path.startsWith(std_1.AONTU_SCHEME)) {
             const model = std_1.STD_SOURCES[path];
             if (null == model) {
@@ -2098,18 +2105,6 @@ function makeModelResolver(options) {
             }
             record(ctx, path, 'std');
             return { found: true, path, full: path, kind: 'aon', src: model, search: [] };
-        }
-        // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts): served from
-        // the engine itself, so it needs neither the filesystem nor package
-        // resolution and is available under every capability but `none` —
-        // checked just above, that being what `none` means. Matched against
-        // the name the author WROTE, before the memory leg, so the kind is
-        // stated rather than guessed from an extension the bare name does
-        // not have.
-        const std = std_1.STD_SOURCES[path];
-        if (null != std) {
-            record(ctx, path, 'std');
-            return { found: true, path, full: path, kind: 'aon', src: std, search: [] };
         }
         let search = [];
         let res = memResolver(path, popts, rule, ctx, jsonic);

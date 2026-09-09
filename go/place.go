@@ -59,8 +59,8 @@ func (p *PlaceVal) Unify(peer Val, ctx *Ctx) Val {
 // boundArgStart in ts/src/val/PlaceVal.ts.
 func boundArgStart(v Val) int {
 	if fv, ok := v.(*FuncVal); ok {
-		if "pack" == fv.name || "each" == fv.name || "filter" == fv.name ||
-			"emit" == fv.name || "form" == fv.name {
+		if "pack" == fv.name || "filter" == fv.name ||
+			"emit" == fv.name || "each" == fv.name {
 			return 1
 		}
 	}
