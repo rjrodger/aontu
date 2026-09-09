@@ -1,5 +1,5 @@
-# Use-case 01 gap 8 (claim C1, refer($.aontu.system.Service) half): the language
-# reference's own example for refer(t) — `[&: refer($.aontu.system.Service), ...]`
+# Use-case 01 gap 8 (claim C1, refer($.aontu.System.Service) half): the language
+# reference's own example for refer(t) — `[&: refer($.aontu.System.Service), ...]`
 # (reference-language.md, function table) — dies of unify_cycle when the
 # REFERRING entity is id-merged across two views whose shared schema
 # carries a referenced ports template.  The target (svc_ledger) carries
@@ -14,10 +14,10 @@
 #           (Cannot unify value: integer with value: integer) exit 1
 @"aontu:system"
 spec: hide({
-  PortSpec: $.aontu.system.Port & {number: integer}
-  Entry: $.aontu.system.Service & {
+  PortSpec: $.aontu.System.Port & {number: integer}
+  Entry: $.aontu.System.Service & {
     ports?: {&: $.spec.PortSpec}
-    dependsOn?: [&: refer($.aontu.system.Service)]
+    dependsOn?: [&: refer($.aontu.System.Service)]
   }
 })
 catalog: services: {

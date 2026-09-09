@@ -77,7 +77,7 @@ function ctx(family, profile) {
         // TypeScript forms say (string | null)[] and not string | null[].
         const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').aontu.profile;
         const report = (0, render_1.renderValue)({
-            aontu: { code: {
+            aontu: { Code: {
                     units: [{
                             path: 'a.ts', lang: 'typescript',
                             decls: [{
@@ -99,7 +99,7 @@ function ctx(family, profile) {
         // with no `at` in a function body nests as a line at depth 0 does.
         const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').aontu.profile;
         const unit = (piece) => ({
-            aontu: { code: {
+            aontu: { Code: {
                     units: [{
                             path: 'a.ts', lang: 'typescript',
                             decls: [{

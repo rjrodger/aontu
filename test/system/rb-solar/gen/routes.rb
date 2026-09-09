@@ -5,7 +5,7 @@
 #- # entities into fifteen of them. `ruby -c` parses it as it stands.
 #- @"../model.aon"
 #-
-#- aontu: code: units: [
+#- aontu: Code: units: [
 #-   {
 #-     path: "config/routes.rb"
 #-     lang: "ruby"

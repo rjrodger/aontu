@@ -116,7 +116,25 @@ NilVal.make = (ctx, why, av, bv, attempt, details) => {
     // unconditionally was tried and reverted -- it moved the closed-key,
     // spread-template and every `--at` finding to the driving location,
     // which is not where those belong.
-    if (null != ctx?.path && null != nil.path &&
+    // A MEET OF TWO OPERANDS HAPPENS AT THE SLOT, always. A value that
+    // arrives by REFERENCE carries a path re-based onto the referring
+    // field -- `$.p.Port.direction` for a `p: $.lib.Port` whose
+    // `direction` conflicts -- and the two ports corrupt it DIFFERENTLY
+    // (Go's fallback is the slot plus the schema's own tail), so neither
+    // operand path is trustworthy once a reference is in play. The
+    // prefix test below cannot tell the corrupt case from a legitimately
+    // deeper one, because Go's corrupt path EXTENDS the right answer.
+    // The slot is the one thing both ports know exactly, so a real meet
+    // takes it.
+    //
+    // A SINGLE-OPERAND nil is left alone: a residue, a closed key, a
+    // generation failure and an `--at` finding are not meets, they are
+    // facts about one value, and taking the driving location for those
+    // is what the unconditional version got wrong.
+    if (null != ctx?.path && 0 < ctx.path.length && null != bv) {
+        nil.path = [...ctx.path];
+    }
+    else if (null != ctx?.path && null != nil.path &&
         nil.path.length < ctx.path.length &&
         nil.path.every((p, i) => p === ctx.path[i])) {
         nil.path = [...ctx.path];

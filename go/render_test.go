@@ -22,7 +22,7 @@ func TestRenderValueNothingToRender(t *testing.T) {
 
 func TestRenderValueSparsePieces(t *testing.T) {
 	report := RenderValue(map[string]any{
-		"aontu": map[string]any{"code": map[string]any{
+		"aontu": map[string]any{"Code": map[string]any{
 			"units": []any{map[string]any{
 				"path": "a.txt", "lang": "text",
 				"decls": []any{map[string]any{
@@ -64,7 +64,7 @@ func TestRenderSourceHasNoFilesystemAccess(t *testing.T) {
 // ts/test/render.test.ts; the verb's own tests drive the same code
 // through the CLI (go/cmd/aontu/render_test.go).
 func TestRenderProfile(t *testing.T) {
-	profile, findings := New().RenderProfile(`aontu: profile: lang: "text"`)
+	profile, findings := New().RenderProfile(`aontu: Profile: lang: "text"`)
 	if nil != findings {
 		t.Fatalf("findings on a valid profile: %+v", findings)
 	}
@@ -83,8 +83,8 @@ func TestRenderProfile(t *testing.T) {
 		{"a: ]", "syntax", "$"},
 		{"x: 1 & \"a\"", "scalar_kind", "$.x"},
 		{"nil", "literal_nil", "$"},
-		{"aontu: profile: lang: 1", "constraint", "$.aontu.profile.lang"},
-		{"x: 1", "mapval_required", "$.aontu.profile.lang"},
+		{"aontu: Profile: lang: 1", "constraint", "$.aontu.Profile.lang"},
+		{"x: 1", "mapval_required", "$.aontu.Profile.lang"},
 	} {
 		profile, findings := New().RenderProfile(c.src)
 		if nil != profile || 1 > len(findings) {

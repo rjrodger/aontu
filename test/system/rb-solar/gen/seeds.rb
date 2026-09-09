@@ -9,7 +9,7 @@
 #- # because the model says they do.
 #- @"../model.aon"
 #-
-#- aontu: code: units: [
+#- aontu: Code: units: [
 #-   {
 #-     path: "db/seeds.rb"
 #-     lang: "ruby"

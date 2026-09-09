@@ -269,7 +269,7 @@ have a shape you could read. The marker now stands at the left margin
 with the aontu indented after it, so the tree is visible as a tree:
 
 ```rb
-#- aontu: code: units: [
+#- aontu: Code: units: [
 #-   {
 #-     path: "config/routes.rb"
 #-     decls: [

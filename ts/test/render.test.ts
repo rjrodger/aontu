@@ -19,7 +19,7 @@ describe('render-value', () => {
   // The options are optional: `render(src)` alone renders the root
   // under the defaults, which is how an embedder calls it.
   test('render-takes-no-options', () => {
-    const report = render('aontu: code: units: [{ path: "a.txt", lang: "text", decls: [] }]')
+    const report = render('aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [] }]')
     Assert.strictEqual(report.verdict, 'ok')
     Assert.deepStrictEqual(report.units, [{ path: 'a.txt', lang: 'text', text: '' }])
   })
@@ -27,14 +27,14 @@ describe('render-value', () => {
   // A profile document, the same way: `renderProfile(src)` alone, and
   // the answer carries the vocabulary's defaults.
   test('render-profile-takes-no-options-and-fills-the-defaults', () => {
-    const loaded = renderProfile('aontu: profile: lang: "text"')
+    const loaded = renderProfile('aontu: Profile: lang: "text"')
     Assert.strictEqual(loaded.errors, undefined)
     Assert.strictEqual(loaded.profile.lang, 'text')
     Assert.deepStrictEqual(loaded.profile.indent, { unit: ' ', width: 2 })
     Assert.strictEqual(loaded.profile.lowering, undefined)
-    const refused = renderProfile('aontu: profile: lang: 1')
+    const refused = renderProfile('aontu: Profile: lang: 1')
     Assert.strictEqual(refused.profile, undefined)
-    Assert.strictEqual(refused.errors?.[0].path, '$.aontu.profile.lang')
+    Assert.strictEqual(refused.errors?.[0].path, '$.aontu.Profile.lang')
   })
 
   test('nothing-to-render', () => {
@@ -44,7 +44,7 @@ describe('render-value', () => {
 
   test('sparse-pieces-take-the-vocabulary-defaults', () => {
     const report = renderValue({
-      aontu: { code: {
+      aontu: { Code: {
         units: [{
           path: 'a.txt', lang: 'text',
           decls: [{

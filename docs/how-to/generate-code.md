@@ -80,7 +80,7 @@ records: [
   body: [k:"blank" "type " + .name + " struct {" emit(.fields, %field) "}"]
 })
 
-aontu: code: units: [
+aontu: Code: units: [
   {
     path: "types.go"
     lang: "go"
@@ -186,7 +186,7 @@ no rule wrote. `--coverage` answers both, and writes nothing:
 <!-- test: run -->
 ```sh
 $ aontu render --coverage types.aon
-unruled: types.go $.aontu.code.units.0.decls.0
+unruled: types.go $.aontu.Code.units.0.decls.0
 coverage: 1 path(s) read, 0 no output consumed, 1 declaration(s) no rule produced
 ```
 
@@ -221,7 +221,7 @@ and the generator as `struct.go`:
 <!-- test: file struct.go -->
 ```go
 //- @"./model.aon"
-//- aontu: code: units: emit($.records, {
+//- aontu: Code: units: emit($.records, {
 //- match: { name: string }
 //- body: [{ path: .name + ".go", lang: "go", decls: [{ k: "frag", of: emit([_], {
 //- match: { name: string }
@@ -308,7 +308,7 @@ records: [
   body: [{ k:"record" name:.name fields:emit(.fields, %field) }]
 })
 
-aontu: code: units: [
+aontu: Code: units: [
   { path:"types.go" lang:"go" pkg:"acme" decls:emit($.records, %record) }
 ]
 ```

@@ -4,7 +4,7 @@
 <path d="M8 20V30H26" class="av-line"/>
 <text x="28" y="34" class="av-t">aontu</text>
 <path d="M32 40V50H50" class="av-line"/>
-<text x="52" y="54"><tspan class="av-t">system</tspan><tspan class="av-m"> (4)</tspan></text>
+<text x="52" y="54"><tspan class="av-t">System</tspan><tspan class="av-m"> (4)</tspan></text>
 <path d="M8 20V70H26" class="av-line"/>
 <text x="28" y="74" class="av-t">catalog</text>
 <path d="M32 80V90H50" class="av-line"/>

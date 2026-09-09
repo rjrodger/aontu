@@ -92,11 +92,15 @@ has vet-tampered 'max(20)' "replica cap named"
 has vet-tampered 'replicas' "replica finding located"
 has vet-tampered 'memory' "unit-less quantity flagged by re()"
 # 2026-08-26 (template-clone isolation, ADR-005): the finding path is
-# now `...containers.0.env.name` — identical in BOTH ports (the TS
-# path previously said env.0.name but dropped `web`; the ports
-# disagreed). The element index inside env is still elided — a
-# site-attribution gap, open, tracked with use-case 03's gap 8.
-has vet-tampered 'env.name' "env-name finding located at its path"
+# `...containers.0.env.name` — identical in BOTH ports (the TS path
+# previously said env.0.name but dropped `web`; the ports disagreed).
+# 2026-09-09 (ADR-030): THE ELIDED ELEMENT INDEX IS BACK, and the path
+# is now `...containers.0.env.0.name` in both ports. A meet of two
+# operands is attributed to the slot it was driven at, which for an
+# element inside a spread is that element's own position — so the
+# site-attribution gap tracked here with use-case 03's gap 8 is closed
+# rather than worked around. Re-probed in both engines.
+has vet-tampered 'env.0.name' "env-name finding located at its path"
 has vet-tampered 'log_level' "lowercase env name is the named offender"
 ok "tampered manifests: replicas 50, lowercase env, unit-less memory all caught"
 

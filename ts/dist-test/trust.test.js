@@ -128,8 +128,8 @@ function firstCode(fn) {
         const a = new aontu_1.Aontu({
             trust: { include: { mem: { 'aontu:system': 'system: {HIJACKED: 1}' } } },
         });
-        const out = a.generate('@"aontu:system"\np: $.aontu.system.Port & {}');
-        Assert.deepEqual(out, { p: { direction: 'in' }, aontu: { system: {} } });
+        const out = a.generate('@"aontu:system"\np: $.aontu.System.Port & {}');
+        Assert.deepEqual(out, { p: { direction: 'in' }, aontu: { System: {} } });
     });
     (0, node_test_1.test)('root-confines-below-the-root', () => {
         const w = world();

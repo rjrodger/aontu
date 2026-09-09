@@ -51,21 +51,21 @@ const render_1 = require("../dist/render");
     // The options are optional: `render(src)` alone renders the root
     // under the defaults, which is how an embedder calls it.
     (0, node_test_1.test)('render-takes-no-options', () => {
-        const report = (0, render_1.render)('aontu: code: units: [{ path: "a.txt", lang: "text", decls: [] }]');
+        const report = (0, render_1.render)('aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [] }]');
         node_assert_1.default.strictEqual(report.verdict, 'ok');
         node_assert_1.default.deepStrictEqual(report.units, [{ path: 'a.txt', lang: 'text', text: '' }]);
     });
     // A profile document, the same way: `renderProfile(src)` alone, and
     // the answer carries the vocabulary's defaults.
     (0, node_test_1.test)('render-profile-takes-no-options-and-fills-the-defaults', () => {
-        const loaded = (0, render_1.renderProfile)('aontu: profile: lang: "text"');
+        const loaded = (0, render_1.renderProfile)('aontu: Profile: lang: "text"');
         node_assert_1.default.strictEqual(loaded.errors, undefined);
         node_assert_1.default.strictEqual(loaded.profile.lang, 'text');
         node_assert_1.default.deepStrictEqual(loaded.profile.indent, { unit: ' ', width: 2 });
         node_assert_1.default.strictEqual(loaded.profile.lowering, undefined);
-        const refused = (0, render_1.renderProfile)('aontu: profile: lang: 1');
+        const refused = (0, render_1.renderProfile)('aontu: Profile: lang: 1');
         node_assert_1.default.strictEqual(refused.profile, undefined);
-        node_assert_1.default.strictEqual(refused.errors?.[0].path, '$.aontu.profile.lang');
+        node_assert_1.default.strictEqual(refused.errors?.[0].path, '$.aontu.Profile.lang');
     });
     (0, node_test_1.test)('nothing-to-render', () => {
         node_assert_1.default.deepStrictEqual((0, render_1.renderValue)({}), { verdict: 'ok', units: [], lossy: [] });
@@ -73,7 +73,7 @@ const render_1 = require("../dist/render");
     });
     (0, node_test_1.test)('sparse-pieces-take-the-vocabulary-defaults', () => {
         const report = (0, render_1.renderValue)({
-            aontu: { code: {
+            aontu: { Code: {
                     units: [{
                             path: 'a.txt', lang: 'text',
                             decls: [{

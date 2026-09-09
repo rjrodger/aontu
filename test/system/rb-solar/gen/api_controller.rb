@@ -5,7 +5,7 @@
 #- # entity is looked up in.
 #- @"../model.aon"
 #-
-#- aontu: code: units: emit($.entity, {
+#- aontu: Code: units: emit($.entity, {
 #-   match: class: string
 #-   body: [
 #-     {

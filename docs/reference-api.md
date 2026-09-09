@@ -1104,7 +1104,7 @@ the verb reads it. Write a `views-typed.aon`:
 @"aontu:view"
 @"./system.aon"
 
-views: { &: $.aontu.view.Figure } & {
+views: { &: $.aontu.View.Figure } & {
   arch: {
     kind: matrix
     relation: dependsOn
@@ -1122,7 +1122,7 @@ $ echo $?
 0
 ```
 
-`$.aontu.view.Figure` types every option, and a kind that is not a kind, an
+`$.aontu.View.Figure` types every option, and a kind that is not a kind, an
 order that is not an order or a count below zero is an ordinary
 unification failure naming `aontu:view` as the other operand. It is
 optional: a view document that does not include it is read exactly the
@@ -1333,7 +1333,7 @@ is refused. Write a `hello.aon`:
 greeting: "hello, world"
 notes: "a reminder the transform never reads"
 
-aontu: code: units: [
+aontu: Code: units: [
   {
     path: "hello.py"
     lang: "python"
@@ -1428,7 +1428,7 @@ never named:
 ```sh
 $ aontu render --coverage hello.aon
 dead: $.notes
-unruled: hello.py $.aontu.code.units.0.decls.0
+unruled: hello.py $.aontu.Code.units.0.decls.0
 coverage: 1 path(s) read, 1 no output consumed, 1 declaration(s) no rule produced
 ```
 
@@ -1445,7 +1445,7 @@ under one key can say so, and then only that subtree is measured:
 <!-- test: run -->
 ```sh
 $ aontu render --coverage --coverage-at $.greeting hello.aon
-unruled: hello.py $.aontu.code.units.0.decls.0
+unruled: hello.py $.aontu.Code.units.0.decls.0
 coverage: 1 path(s) read, 0 no output consumed, 1 declaration(s) no rule produced
 ```
 
@@ -1479,7 +1479,7 @@ hold the same two declarations:
 
 <!-- test: file types.aon -->
 ```aontu
-aontu: code: units: [
+aontu: Code: units: [
   {
     path: "types.ts"
     lang: "typescript"
@@ -2039,7 +2039,7 @@ Write a `greet.ts`:
 ```typescript
 //- who: { world: {}, moon: {} }
 //- svc: $.who & pack($.who, { name: key() })
-//- aontu: code: units: emit($.svc, {
+//- aontu: Code: units: emit($.svc, {
 //- match: { name: string }
 //- body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
 //- k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
@@ -2067,7 +2067,7 @@ mean once the output lines are quoted:
 $ aontu template greet.ts
 who: { world: {}, moon: {} }
 svc: $.who & pack($.who, { name: key() })
-aontu: code: units: emit($.svc, {
+aontu: Code: units: emit($.svc, {
 match: { name: string }
 body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
 k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [

@@ -1,7 +1,7 @@
 # 87: a refusal site in the aontu:code vocabulary spells its nested
 # aliases inline in TypeScript and by name in Go. The record's check
 # list holds a shape no %check arm admits; both ports refuse it at
-# $.aontu.code.units.0.decls.0 as `empty`, with the same two sites, and the
+# $.aontu.Code.units.0.decls.0 as `empty`, with the same two sites, and the
 # schema site's value differs.
 #
 # run: node ../../../ts/bin/aontu.js render --format json nested-alias-site-value.aon
@@ -10,7 +10,7 @@
 # expected: errors[0].sites[1].value identical in both ports
 # actual:   TypeScript: {"check"?:[&:{"c":"min","exclusive":*false|boolean,"n":number}|...],...}
 #           Go:         {"check"?:[&:%check],"doc"?:{...},...}
-aontu: code: units: [
+aontu: Code: units: [
   {
     path: "t.ts"
     lang: "typescript"

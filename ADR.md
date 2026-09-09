@@ -46,6 +46,8 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-027](#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound) | The list generator is named `each`, and `_ & t` is its bound | Accepted |
 | [ADR-028](#adr-028--every-language-supplied-schema-is-named-under-aontu) | Every language-supplied schema is named under `aontu:` | Accepted |
 | [ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root) | A bundled model lands under `$.aontu`, not at the document root | Accepted |
+| [ADR-030](#adr-030--the-path-of-a-meet-is-the-slot-it-was-driven-at) | The path of a meet is the slot it was driven at | Accepted |
+| [ADR-031](#adr-031--a-path-part-that-names-a-type-is-camelcase) | A path part that names a type is CamelCase | Accepted |
 
 ---
 
@@ -3064,7 +3066,7 @@ that was already true of the other five.
   decision left `aontu:system` defining `system:`, which
   [ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root)
   found to be a collision with a name a document wants for itself.
-  `$.std.Port` is `$.aontu.system.Port`, not `$.system.Port`. The rest
+  `$.std.Port` is `$.aontu.System.Port`, not `$.system.Port`. The rest
   of this decision stands.
 
 
@@ -3098,10 +3100,10 @@ safe. The landing site needed the same treatment.
 **Everything an `aontu:` model defines lands under the single root key
 `aontu`.**
 
-    @"aontu:system"   ->  $.aontu.system.Port, .Component, .Service, .Semver
-    @"aontu:view"     ->  $.aontu.view.Figure
-    @"aontu:code"     ->  $.aontu.code.units
-    @"aontu:profile"  ->  $.aontu.profile
+    @"aontu:system"   ->  $.aontu.System.Port, .Component, .Service, .Semver
+    @"aontu:view"     ->  $.aontu.View.Figure
+    @"aontu:code"     ->  $.aontu.Code.units
+    @"aontu:profile"  ->  $.aontu.Profile
 
 One key is reserved instead of seven, it is named for the language
 rather than for a domain a user might want, and a reader seeing
@@ -3112,8 +3114,8 @@ rather than for a domain a user might want, and a reader seeing
 - **This is a breaking change, and it is loud.** `$.system.Port` and
   `$.code.units` no longer resolve; a document that wrote them fails at
   the reference.
-- **The renderer reads `$.aontu.code`**, and `renderProfile` reads
-  `$.aontu.profile`. That is a change to the verb's input contract, and
+- **The renderer reads `$.aontu.Code`**, and `renderProfile` reads
+  `$.aontu.Profile`. That is a change to the verb's input contract, and
   every transform moves with it.
 - **Coverage got a better rule, not just a moved one.** The dead-path
   walk excluded exactly the `code` node before, so a document that
@@ -3123,4 +3125,129 @@ rather than for a domain a user might want, and a reader seeing
   previous behaviour was a latent wart that only this change made
   systematic enough to see.
 - Row names, expectations and every worked example move with it. The
-  `render` reports carry `$.aontu.code.units.N` paths.
+  `render` reports carry `$.aontu.Code.units.N` paths.
+
+
+## ADR-030 — The path of a meet is the slot it was driven at
+
+**Date:** 2026-09-09
+**Status:** Accepted
+
+### Context
+
+A conflict's `path` is the one line of an error both ports hold to byte
+parity, and it is what a repair loop edits. It was wrong, and wrong
+DIFFERENTLY in each port, whenever the schema arrived through an
+include:
+
+    @"aontu:system"
+    p: $.aontu.System.Port & { direction: 1 }
+
+    TypeScript:  $.p.system.Port.direction
+    Go:          $.p.direction.Port.direction
+    Correct:     $.p.direction
+
+The same meet written inline, or through a reference to a schema in the
+same document, already agreed on `$.p.direction` in both ports — so this
+was not a general path bug but one specific to a value that arrives by
+REFERENCE, whose children are re-pathed onto the referring field rather
+than rebased under it (use-cases/BUGS.md §41).
+
+Both ports already carried the same rule, and the same comment: *the
+path is where the meet is, not where the operand was written.* Both
+applied it only when the operand's path was a strict PREFIX of the
+descended path, on the reasoning that a nil minted away from the descent
+should keep its operand's path. That guard cannot see this case. The
+corrupt path is not shorter than the right answer — in Go it EXTENDS it
+— so it reads as a legitimately deeper location.
+
+No spec row caught it because `errc` rows compare the error CODE, and
+the codes always agreed. The path, the half that diverged, was pinned
+nowhere.
+
+### Decision
+
+**A meet of two operands is attributed to the slot it was driven at.**
+When a nil is minted with both a primary and a secondary operand, and
+the context knows a slot, the slot is the path.
+
+**A single-operand nil is left alone.** A residue, a closed key, a
+generation failure and an `--at` finding are not meets; they are facts
+about one value, and the operand's own path is the right answer for
+them. Taking the context path for those was tried before and reverted,
+which is what the prefix guard was protecting — it is kept, as the
+fallback for the single-operand case.
+
+In Go one further change was needed: the slot hint is single-use per
+`unite`, so the disjunct's trials had consumed it and `ctx.slot` was
+EMPTY by the time the empty-disjunction nil was minted. The captured
+slot is restored before minting it, which is the state the canonical
+port is already in at that point.
+
+### Consequences
+
+- **The two ports agree**, and `test/spec/error.tsv` now pins the path
+  in `err` mode for the include, inline, local-reference and spread
+  cases. The inline and local-reference rows were already correct and
+  are pinned so the fix cannot be undone by regressing them.
+- **A conflict inside a SPREAD template now names the instance.**
+  `services:&:{port:integer}` against `services:{auth:{port:"80"}}`
+  reported `$.services.port`, the template's position, which is not a
+  path in the document at all. It now reports `$.services.auth.port`,
+  the field to edit. Both ports were re-probed and agree. This was a
+  KNOWN limitation, recorded in the vet tests as "naming the instance
+  path is a phase-3 report concern"; it is delivered here as a
+  consequence rather than as its own phase.
+- The underlying re-pathing of a by-reference value's children
+  (BUGS.md §41) is NOT fixed. It is now invisible for a meet, which is
+  where it surfaced; a single-operand nil on such a value can still
+  carry the re-based path.
+
+
+## ADR-031 — A path part that names a type is CamelCase
+
+**Date:** 2026-09-09
+**Status:** Accepted
+
+### Context
+
+The bundled vocabularies land under `$.aontu` ([ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root)),
+and their members were already CamelCase — `Port`, `Component`,
+`Service`, `Semver`, `Figure`. The namespace segment above them was not:
+`$.aontu.system.Port`, `$.aontu.view.Figure`. Nothing said which case a
+reader should expect where, so the two conventions sat one segment apart
+in the same path.
+
+### Decision
+
+**A path part that names a type is CamelCase.** The bundled models
+follow it, so every landing key is capitalised:
+
+    @"aontu:system"   ->  $.aontu.System.Port, .Component, .Service, .Semver
+    @"aontu:view"     ->  $.aontu.View.Figure
+    @"aontu:code"     ->  $.aontu.Code.units
+    @"aontu:profile"  ->  $.aontu.Profile
+
+**The SCHEME name is unchanged and stays lowercase.** `@"aontu:system"`
+is a source name, not a path, and the two are different things: the
+scheme names a model to load, the key names where its content lands.
+
+**It binds the bundled models and nothing else.** This is a convention,
+not a rule the engine enforces: a user's own schemas are neither checked
+nor warned about, and `aontu vet` gains no finding for a lowercase
+`type()`. Making it enforceable would need an error code and spec rows
+in both ports, for a matter of taste.
+
+### Consequences
+
+- **Breaking, and loud**: `$.aontu.system.Port` no longer resolves, and
+  a renderer handed `aontu: code: units:` finds no units. Both fail at
+  the reference rather than quietly.
+- `Code` and `Profile` are capitalised for uniformity across the
+  namespace even though what lands under them is data — an instance of
+  the code vocabulary, a profile's fields — rather than a type. The
+  alternative, capitalising only `System` and `View`, would have made
+  the case of a bundled key depend on what its members happen to be,
+  which is a worse thing for a reader to have to know.
+- The renderer's input contract moves with it in both ports.
+

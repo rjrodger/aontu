@@ -8,4 +8,4 @@ aontu: hide({})
 infra: paydb: kind: database
 
 app: ledger: kind: service
-app: ledger: dependsOn: [&: refer($.aontu.system.Service) path($.infra.paydb)]
+app: ledger: dependsOn: [&: refer($.aontu.System.Service) path($.infra.paydb)]

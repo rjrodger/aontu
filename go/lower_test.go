@@ -144,7 +144,7 @@ func TestLowerParenRule(t *testing.T) {
 	// TypeScript forms say (string | null)[] and not string | null[].
 	profile := bundledProfile("typescript")
 	report := RenderValue(map[string]any{
-		"aontu": map[string]any{"code": map[string]any{
+		"aontu": map[string]any{"Code": map[string]any{
 			"units": []any{map[string]any{
 				"path": "a.ts", "lang": "typescript",
 				"decls": []any{map[string]any{
@@ -173,7 +173,7 @@ func TestLowerBodyPieceWithoutDepth(t *testing.T) {
 	// with no `at` in a function body nests as a line at depth 0 does.
 	profile := bundledProfile("typescript")
 	unit := func(piece any) map[string]any {
-		return map[string]any{"aontu": map[string]any{"code": map[string]any{"units": []any{map[string]any{
+		return map[string]any{"aontu": map[string]any{"Code": map[string]any{"units": []any{map[string]any{
 			"path": "a.ts", "lang": "typescript",
 			"decls": []any{map[string]any{
 				"k": "func", "name": "f", "params": []any{},

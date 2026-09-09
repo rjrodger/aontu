@@ -133,7 +133,7 @@ unresolved-empty-document	errc	b: refer() & path($.nope)	refer_unresolved
 # path that mentions neither the link nor the field. `type({p:
 # integer})`, `type({p: path()})` and `type({p: min(1)})` all settled;
 # only a link did not. G4 phase 4 recorded the cost against
-# `type({from: refer($.aontu.system.Port)})`, which the last three rows here are.
+# `type({from: refer($.aontu.System.Port)})`, which the last three rows here are.
 #
 # Not-done still governs the OTHER pending state -- an address whose
 # target has not appeared -- which the Existence rows above pin, and

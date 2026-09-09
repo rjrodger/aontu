@@ -29,21 +29,21 @@ const STD_SYSTEM = `# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports
 # identity and version makes "v1 and v2 describe the same entity"
 # inexpressible.
 
-aontu: system: {
+aontu: System: {
   # One end of a connection.
   Port: type({ direction:*in | out | inout protocol?:string })
 
   # A node with ports. Where a Component sits in the tree is what it
   # is a component OF -- containment is the document's own structure
   # and needs no mark of its own.
-  Component: type({ ports?:{ &: $.aontu.system.Port } })
+  Component: type({ ports?:{ &: $.aontu.System.Port } })
 
   # A component that is a service. Written out rather than as
-  # $.aontu.system.Component & {kind: service}: a reference from one member of
+  # $.aontu.System.Component & {kind: service}: a reference from one member of
   # this file to another does not survive being INCLUDED into a
   # document (the marks the include carries make the referring member
   # unusable), so the vocabulary states each schema on its own.
-  Service: type({ kind:service ports?:{ &: $.aontu.system.Port } })
+  Service: type({ kind:service ports?:{ &: $.aontu.System.Port } })
 
   # A semantic version (semver.org 2.0.0) as an ORDERED TUPLE: major,
   # minor, patch, pre-release. A list and not a dotted string, because a
@@ -96,7 +96,7 @@ const STD_VIEW = `# aontu:view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The vi
 #   @"aontu:view"
 #   @"./system.aon"
 #
-#   views: {&: $.aontu.view.Figure} & {
+#   views: {&: $.aontu.View.Figure} & {
 #     arch: {kind: matrix, order: partition, out: "docs/arch.dsm.txt"}
 #   }
 #
@@ -110,7 +110,7 @@ const STD_VIEW = `# aontu:view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The vi
 # canon-hash. This file carries no backtick: it is one string literal
 # per port, and Go raw strings have no escape.
 
-aontu: view: {
+aontu: View: {
   # One declared figure. The kind says what to draw and out says where
   # it belongs; everything else narrows the drawing, and each option
   # belongs to the kinds that read it.
@@ -324,7 +324,7 @@ const STD_CODE = String.raw `# aontu:code --- THE OUTPUT VOCABULARY. An aontu tr
 
 %source = close({ path?:string hash?:string & re("^aon1-[A-Za-z0-9_-]+$") })
 
-aontu: code: close({ source?:%source units:[&: %unit] })
+aontu: Code: close({ source?:%source units:[&: %unit] })
 `;
 const STD_PROFILE = String.raw `# aontu:profile --- THE PROFILE VOCABULARY. A profile is the data
 # 'aontu render' applies to a unit of one language, and it is DATA and
@@ -396,7 +396,7 @@ const STD_PROFILE = String.raw `# aontu:profile --- THE PROFILE VOCABULARY. A pr
   banner?: string
 })
 
-aontu: profile: %profile
+aontu: Profile: %profile
 `;
 // The text profile (RENDER.0.md D5): the profile of a fragment-only
 // unit, and the fallback of every language without a lowering.
@@ -411,7 +411,7 @@ const STD_LANG_TEXT = String.raw `# aontu:lang/text --- THE TEXT PROFILE. The pr
 
 @"aontu:profile"
 
-aontu: profile: { lang:"text" indent:{ unit:" " width:2 } }
+aontu: Profile: { lang:"text" indent:{ unit:" " width:2 } }
 `;
 // THE TYPESCRIPT PROFILE (docs/design/RENDER.0.md D5, P5): the data the
 // typescript lowering renders under -- two spaces, the JSDoc forms, the
@@ -431,7 +431,7 @@ const STD_LANG_TYPESCRIPT = String.raw `# aontu:lang/typescript --- THE TYPESCRI
 
 @"aontu:profile"
 
-aontu: profile: {
+aontu: Profile: {
   lang: "typescript"
   lowering: "typescript"
   indent: { unit:" " width:2 }
@@ -544,7 +544,7 @@ const STD_LANG_GO = String.raw `# aontu:lang/go --- THE GO PROFILE. The data a u
 
 @"aontu:profile"
 
-aontu: profile: {
+aontu: Profile: {
   lang: "go"
   lowering: "go"
   indent: { unit:"\t" width:1 }

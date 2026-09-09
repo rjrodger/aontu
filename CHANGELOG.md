@@ -17,6 +17,64 @@ which implementation each change affects.
 > No other entry in this section carries the hazard: each of the rest
 > fails loudly on an old document.
 
+### BREAKING: a bundled key that names a type is CamelCase
+
+Every bundled model's landing key is capitalised, so the case of a path
+part tells a reader what it names:
+
+```
+@"aontu:system"   ->  $.aontu.System.Port, .Component, .Service, .Semver
+@"aontu:view"     ->  $.aontu.View.Figure
+@"aontu:code"     ->  $.aontu.Code.units
+@"aontu:profile"  ->  $.aontu.Profile
+```
+
+**The scheme name is unchanged.** `@"aontu:system"` still loads the
+model; only the key its content lands under moved. A source name and a
+path are different things.
+
+**To migrate:** capitalise the landing key — `$.aontu.System.Service`
+where you wrote `$.aontu.system.Service`, and `aontu: Code: units: [...]`
+where you wrote `aontu: code: units: [...]`. Both fail loudly.
+
+It is a **convention and only a convention**: a user's own schemas are
+neither checked nor warned about, and `aontu vet` gains no finding for a
+lowercase `type()`. Rationale in
+[ADR-031](ADR.md#adr-031--a-path-part-that-names-a-type-is-camelcase).
+
+### FIX: the path of a conflict is the field to edit
+
+A conflict reported through an **included** schema named the wrong path,
+and a different wrong path in each port:
+
+```
+@"aontu:system"
+p: $.aontu.System.Port & { direction: 1 }
+
+TypeScript was:  $.p.system.Port.direction
+Go was:          $.p.direction.Port.direction
+both now:        $.p.direction
+```
+
+A value reaching the meet by reference carries a path re-based onto the
+referring field. Both ports already agreed that a meet belongs at the
+slot it was driven at, but applied that only when the operand's path was
+a strict PREFIX of it — and the corrupt path is not shorter than the
+right answer, so the guard never fired. A meet of two operands now takes
+the slot; a single-operand nil (a residue, a closed key, an `--at`
+finding) keeps its own path, as before.
+
+**A conflict inside a spread template now names the instance.**
+`services:&:{port:integer}` against `services:{auth:{port:"80"}}`
+reported `$.services.port` — the template's position, which is not a
+path in the document — and now reports `$.services.auth.port`, the field
+a repair loop edits.
+
+Five `err`-mode rows in `test/spec/error.tsv` pin the path itself, which
+no row did before: `errc` rows compare the error code, and the codes
+always agreed. Rationale in
+[ADR-030](ADR.md#adr-030--the-path-of-a-meet-is-the-slot-it-was-driven-at).
+
 ### BREAKING: a bundled model lands under `$.aontu`
 
 **Including a vocabulary used to take a root key you probably wanted.**
@@ -28,18 +86,18 @@ simply unify.
 Everything an `aontu:` model defines now lands under one key:
 
 ```
-@"aontu:system"   ->  $.aontu.system.Port, .Component, .Service, .Semver
-@"aontu:view"     ->  $.aontu.view.Figure
-@"aontu:code"     ->  $.aontu.code.units
-@"aontu:profile"  ->  $.aontu.profile
+@"aontu:system"   ->  $.aontu.System.Port, .Component, .Service, .Semver
+@"aontu:view"     ->  $.aontu.View.Figure
+@"aontu:code"     ->  $.aontu.Code.units
+@"aontu:profile"  ->  $.aontu.Profile
 ```
 
 One reserved key instead of seven, named for the language rather than
 for a domain, and `$.aontu` anywhere tells a reader at once that it is
 not the document's own.
 
-**To migrate:** write `aontu: code: units: [...]` where you wrote
-`code: units: [...]`, and `$.aontu.system.Service` where you wrote
+**To migrate:** write `aontu: Code: units: [...]` where you wrote
+`code: units: [...]`, and `$.aontu.System.Service` where you wrote
 `$.system.Service`. Both fail loudly — a reference that no longer
 resolves, and a renderer that finds no units.
 
@@ -57,8 +115,8 @@ A version (semver.org 2.0.0) as an **ordered tuple** — major, minor,
 patch, pre-release — **with the tail defaulted**:
 
 ```
-v: $.aontu.system.Semver & [1]   ->  [1, 0, 0, ""]
-v: $.aontu.system.Semver & [1 2 3 "alpha.1"]
+v: $.aontu.System.Semver & [1]   ->  [1, 0, 0, ""]
+v: $.aontu.System.Semver & [1 2 3 "alpha.1"]
 ```
 
 A list, not a dotted string and not a map. A version is compared
@@ -104,14 +162,14 @@ engine carried a second resolution leg to match it. That leg is gone.
 **`std` retires as a root key too.** Retiring the prefix but keeping
 the key would leave the word in every document that used the
 vocabulary. The key every bundled model lands under is `aontu`, per the
-entry above, so `$.std.Port` is now `$.aontu.system.Port`.
+entry above, so `$.std.Port` is now `$.aontu.System.Port`.
 
 The `.aon` spellings go with it: the scheme is not a directory, as was
 already true of the other five models.
 
 **To migrate:** rewrite `@"std/system"` as `@"aontu:system"`,
-`@"std/view"` as `@"aontu:view"`, and `$.std.*` as `$.aontu.system.*`
-(or `$.aontu.view.*`). Both are loud — an unknown source, then an
+`@"std/view"` as `@"aontu:view"`, and `$.std.*` as `$.aontu.System.*`
+(or `$.aontu.View.*`). Both are loud — an unknown source, then an
 unresolvable path.
 
 Both vocabularies are now held to the formatter, having joined the set

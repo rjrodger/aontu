@@ -93,7 +93,7 @@ describe('lower', () => {
     // TypeScript forms say (string | null)[] and not string | null[].
     const profile = new Aontu().generate('@"aontu:lang/typescript"').aontu.profile
     const report = renderValue({
-      aontu: { code: {
+      aontu: { Code: {
         units: [{
           path: 'a.ts', lang: 'typescript',
           decls: [{
@@ -116,7 +116,7 @@ describe('lower', () => {
     // with no `at` in a function body nests as a line at depth 0 does.
     const profile = new Aontu().generate('@"aontu:lang/typescript"').aontu.profile
     const unit = (piece: any) => ({
-      aontu: { code: {
+      aontu: { Code: {
         units: [{
           path: 'a.ts', lang: 'typescript',
           decls: [{

@@ -1,6 +1,6 @@
 $
 ├── aontu
-│   └── system (4)
+│   └── System (4)
 ├── catalog
 │   └── domains (3)
 ├── deploy

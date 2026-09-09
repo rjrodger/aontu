@@ -560,7 +560,7 @@ function hostileModule(dir) {
         // text, the loss report beside them, the verb's own flags -- and
         // no file anywhere, since the caller places the units itself.
         const r = payload((0, mcp_1.callTool)('render', {
-            source: 'aontu: code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", ' +
+            source: 'aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", ' +
                 'of: ["x", { k: "line", at: 1, of: ["y"] }] }] }]\n',
         }));
         Assert.equal(r.verdict, 'lossy');
@@ -570,13 +570,13 @@ function hostileModule(dir) {
         // `at` and `unit` are the verb's own flags, and `strict` refuses
         // the opaque escapes as an error report.
         const at = payload((0, mcp_1.callTool)('render', {
-            source: 'gen: { aontu: code: units: [{ path: "a.txt", lang: "text", decls: [] }, ' +
+            source: 'gen: { aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [] }, ' +
                 '{ path: "b.txt", lang: "text", decls: [] }] }\n',
             at: 'gen', unit: 'b.txt',
         }));
         Assert.deepEqual(at.units.map((u) => u.path), ['b.txt']);
         const strict = payload((0, mcp_1.callTool)('render', {
-            source: 'aontu: code: units: [{ path: "a.txt", lang: "text", ' +
+            source: 'aontu: Code: units: [{ path: "a.txt", lang: "text", ' +
                 'decls: [{ k: "text", lang: "text", text: "v" }] }]\n',
             strict: true,
         }));
@@ -592,7 +592,7 @@ function hostileModule(dir) {
         // file of that name appears -- not under a root, not in the cwd.
         const root = scratchDir('aontu-mcp-render-root-');
         const out = payload((0, mcp_1.callTool)('render', {
-            source: 'aontu: code: units: [{ path: "canary.txt", lang: "text", ' +
+            source: 'aontu: Code: units: [{ path: "canary.txt", lang: "text", ' +
                 'decls: [{ k: "frag", of: ["x"] }] }]\n',
         }, { root }));
         Assert.equal(out.units[0].path, 'canary.txt');

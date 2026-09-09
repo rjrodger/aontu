@@ -135,7 +135,7 @@ than its value.
 5. `vet guardrails.aon data/manifests-tampered.json` is refused with
    three located `[aontu/constraint]` findings: replicas 50 against
    `max(20)`, the lowercase env name `log_level` against the env-name
-   pattern (at `...containers.0.env.name`), and the unit-less memory
+   pattern (at `...containers.0.env.0.name`), and the unit-less memory
    quantity `"512"` against `re("^[0-9]+(Mi|Gi)$")`. Each finding
    names the data line and the schema line.
 6. `vet --closed guardrails.aon data/manifests-unknown-key.json`

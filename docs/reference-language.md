@@ -1972,7 +1972,7 @@ Example: `string & re("^[a-z]+$")`
 
 Constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert).
 
-Example: `dependsOn: [&: refer($.aontu.system.Service), path($.services.auth)]`
+Example: `dependsOn: [&: refer($.aontu.System.Service), path($.services.auth)]`
 
 ### `rel(template t?: any) : constraint`
 
@@ -2860,7 +2860,7 @@ scheme is what stops a file on disk from standing in front of it.
 | name | what it is |
 |---|---|
 | `aontu:system` | ports, components and services: [below](#the-aontu-system-vocabulary) |
-| `aontu:view` | the schema for one declaration of a [view document](reference-api.md#aontu-view), `$.aontu.view.Figure`, which types every option the verb reads so a typo is refused at evaluation |
+| `aontu:view` | the schema for one declaration of a [view document](reference-api.md#aontu-view), `$.aontu.View.Figure`, which types every option the verb reads so a typo is refused at evaluation |
 | `aontu:code` | the output vocabulary a transform evaluates to |
 | `aontu:profile` | the data `render` applies to a unit of one language |
 | `aontu:lang/text` | the text profile |
@@ -2882,21 +2882,33 @@ rather than looked for on disk.
 
 | include | defines |
 |---|---|
-| `@"aontu:system"` | `$.aontu.system.Port`, `.Component`, `.Service`, `.Semver` |
-| `@"aontu:view"` | `$.aontu.view.Figure` |
-| `@"aontu:code"` | `$.aontu.code.units` |
-| `@"aontu:profile"` | `$.aontu.profile` |
+| `@"aontu:system"` | `$.aontu.System.Port`, `.Component`, `.Service`, `.Semver` |
+| `@"aontu:view"` | `$.aontu.View.Figure` |
+| `@"aontu:code"` | `$.aontu.Code.units` |
+| `@"aontu:profile"` | `$.aontu.Profile` |
 
 One key is reserved instead of seven, it is named for the language
 rather than for a domain, and `$.aontu` anywhere tells a reader at once
-that the subtree is not the document's own. Write this as `models.aon`:
+that the subtree is not the document's own.
+
+**A path part that names a type is CamelCase.** That is why every
+bundled key above is capitalised, and why the members under them
+(`Port`, `Service`, `Figure`) always were: the case of a segment says
+what kind of thing it names. It is a **convention and only a
+convention**: the engine does not check it, `aontu vet` says nothing
+about a lowercase `type()`, and a document is free to ignore it. The
+bundled models follow it so there is one worked example to copy.
+
+The SCHEME name is unaffected and stays lowercase: `@"aontu:system"`
+loads the model, `$.aontu.System` is where its content lands, and a
+source name is not a path. Write this as `models.aon`:
 
 <!-- test: scenario aontu-models -->
 <!-- test: file models.aon -->
 ```aon
 @"aontu:code"
 
-aontu: code: units: [
+aontu: Code: units: [
   { path:"hello.py" lang:"python" decls:[{ k:"frag" of:["print('hello')"] }] }
 ]
 ```
@@ -2906,7 +2918,7 @@ aontu: code: units: [
 $ aontu models.aon
 {
   "aontu": {
-    "code": {
+    "Code": {
       "units": [
         {
           "decls": [
@@ -2944,7 +2956,7 @@ $ echo $?
 
 **`aontu:code`** is the output vocabulary: an instance of it is what a
 transform evaluates to, and what `aontu render` turns into bytes. Its
-root is `aontu: code: { source?, units }`, each unit a `path`, a `lang` and a
+root is `aontu: Code: { source?, units }`, each unit a `path`, a `lang` and a
 list of declarations: `record`, `enum`, `alias`, `const`, `func`, a
 verbatim `text` escape, or a `frag`, a flat list of pieces each
 carrying its own depth: a `line` (or a bare string, which is a line at
@@ -2954,7 +2966,7 @@ renderer runs. Container types take only leaf types (anything deeper is
 a named `alias` plus a `ref`) which is what keeps the schema's meet
 linear. The root is not `type()`-marked, because `render` reads the
 instance through generation; a document that includes the vocabulary
-and writes no units generates `aontu: {code: {units: []}}`.
+and writes no units generates `aontu: {Code: {units: []}}`.
 
 **`aontu:profile`** is the schema of a render profile: the data a unit
 of one language is rendered under: its `lang`, an `indent`, and
@@ -2997,12 +3009,12 @@ one set of them ships with the engine. Write this as `system.aon`:
 @"aontu:system"
 
 services: {
-  auth: $.aontu.system.Service & {
+  auth: $.aontu.System.Service & {
     ports: http: protocol: http
     dependedOnBy: rel() & [path($.services.billing)]
   }
-  billing: $.aontu.system.Service & {
-    dependsOn: rel($.aontu.system.Service) & inverse(dependedOnBy) & acyclic() & [
+  billing: $.aontu.System.Service & {
+    dependsOn: rel($.aontu.System.Service) & inverse(dependedOnBy) & acyclic() & [
       path($.services.auth)
     ]
   }
@@ -3014,7 +3026,7 @@ services: {
 $ aontu system.aon
 {
   "aontu": {
-    "system": {}
+    "System": {}
   },
   "services": {
     "auth": {
@@ -3027,10 +3039,10 @@ $ aontu system.aon
 
 | Schema | Says |
 |--------|------|
-| `$.aontu.system.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
-| `$.aontu.system.Component` | a node with `ports`, each of which is a `Port` |
-| `$.aontu.system.Service` | a Component whose `kind` is `service` |
-| `$.aontu.system.Semver` | a version as an ordered tuple, `[major minor patch pre-release]`, with the tail defaulted: `[1]` is `[1 0 0 ""]` |
+| `$.aontu.System.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
+| `$.aontu.System.Component` | a node with `ports`, each of which is a `Port` |
+| `$.aontu.System.Service` | a Component whose `kind` is `service` |
+| `$.aontu.System.Semver` | a version as an ordered tuple, `[major minor patch pre-release]`, with the tail defaulted: `[1]` is `[1 0 0 ""]` |
 
 **`Semver` is a list, not a string and not a map.** A version is
 compared rather than read, and comparison runs component by component
@@ -3047,8 +3059,8 @@ Write this as `version.aon`:
 <!-- test: file version.aon -->
 ```aon
 @"aontu:system"
-v: $.aontu.system.Semver & [1]
-pre: $.aontu.system.Semver & [1 2 3 "alpha.1"]
+v: $.aontu.System.Semver & [1]
+pre: $.aontu.System.Semver & [1 2 3 "alpha.1"]
 ```
 
 <!-- test: run -->
@@ -3056,7 +3068,7 @@ pre: $.aontu.system.Semver & [1 2 3 "alpha.1"]
 $ aontu version.aon
 {
   "aontu": {
-    "system": {}
+    "System": {}
   },
   "pre": [
     1,
@@ -3105,10 +3117,10 @@ Two of its behaviours are the language rather than the vocabulary:
   override, and any other value is refused (`[aontu/empty]`). A
   vocabulary that wants an open field says so with a `| top` (or
   `| string`) branch.
-- **`Service` is written out rather than as `$.aontu.system.Component & {kind:
+- **`Service` is written out rather than as `$.aontu.System.Component & {kind:
   service}`.** A reference from one member of an included file to
   another does not survive the include, so each schema states itself;
-  `$.aontu.system.Component & $.aontu.system.Service` still meets exactly as you would
+  `$.aontu.System.Component & $.aontu.System.Service` still meets exactly as you would
   expect.
 
 Everything here is ordinary unification, so an author who wants a
@@ -3765,10 +3777,10 @@ position is a braced block, `{` at the end of the line that opens it
 and `}` alone, which is the ordinary spelling of a constrained map:
 
 ```aon
-CatalogEntry: $.aontu.system.Service & {
+CatalogEntry: $.aontu.System.Service & {
   owner: %Owner
   tier: 1 | 2 | 3
-  dependsOn?: rel($.aontu.system.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
+  dependsOn?: rel($.aontu.System.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
 }
 ```
 
