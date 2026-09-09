@@ -28,6 +28,10 @@ import {
 const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js')
 const REPO = Path.join(__dirname, '..', '..')
 
+// Windows carries no POSIX permission bits and no POSIX shell; the
+// two assertions that need either say so where they stand.
+const WINDOWS = 'win32' === process.platform
+
 
 function run(args: string[]): { out: string; err: string; code: number } {
   const env = { ...process.env }
@@ -545,20 +549,33 @@ describe('helpdoc', () => {
     for (const f of INITDOC) {
       const at = Path.join(dir, f.name)
       Assert.equal(Fs.readFileSync(at, 'utf8'), f.text)
-      Assert.equal(Fs.statSync(at).mode & 0o777, f.mode, f.name)
+      // NOT ON WINDOWS, which carries no POSIX permission bits: every
+      // file there reads back 0666 whatever mode was asked for, so the
+      // check would be asserting the platform rather than the code.
+      // What the trio records, and that both ports stage the same
+      // modes, is asserted above on every platform.
+      if (!WINDOWS) {
+        Assert.equal(Fs.statSync(at).mode & 0o777, f.mode, f.name)
+      }
     }
     Assert.ok(r.out.includes(Path.join(dir, 'check.sh')), r.out)
     Assert.ok(r.out.includes('aontu help language'), r.out)
 
-    const env = { ...process.env }
-    delete env.NODE_V8_COVERAGE
-    env.AONTU = `node ${CLI}`
-    const out = execFileSync('sh', [Path.join(dir, 'check.sh')], {
-      encoding: 'utf8', env, stdio: ['pipe', 'pipe', 'pipe'],
-    })
-    Assert.ok(out.includes('verdict: valid'), out)
-    Assert.ok(out.includes('data leaves checked'), out)
-    Assert.ok(out.includes('ok --- model.aon and data.aon agree'), out)
+    // THE SCRIPT ITSELF, through a real shell, where there is one: its
+    // `set -eu`, its `cd`, its quoting. Windows has no POSIX shell to
+    // hold it to, and go/cmd/aontu/init_test.go runs the four commands
+    // it carries in-process on every platform.
+    if (!WINDOWS) {
+      const env = { ...process.env }
+      delete env.NODE_V8_COVERAGE
+      env.AONTU = `node ${CLI}`
+      const out = execFileSync('sh', [Path.join(dir, 'check.sh')], {
+        encoding: 'utf8', env, stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      Assert.ok(out.includes('verdict: valid'), out)
+      Assert.ok(out.includes('data leaves checked'), out)
+      Assert.ok(out.includes('ok --- model.aon and data.aon agree'), out)
+    }
 
     Fs.rmSync(dir, { recursive: true, force: true })
   })

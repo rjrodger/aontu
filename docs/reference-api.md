@@ -2820,8 +2820,8 @@ takes the binary from `$AONTU`, so a checkout with no installed `aontu`
 runs it with `AONTU=./aontu sh check.sh`.
 
 It **never overwrites**. If any member of the trio already stands in
-the directory, it refuses before writing any of them, so the directory
-is never left half scaffolded.
+the directory, it refuses before writing any of them, so a refused run
+never leaves the directory half written.
 
 The trio is **generated** into both ports from `docs/skill/init/` by
 the generator that stages the teaching pack (`make helpdoc`), on the

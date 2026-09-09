@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -103,7 +104,13 @@ func TestInitWritesATrioThatChecksItself(t *testing.T) {
 		if nil != err {
 			t.Fatalf("cannot stat %s: %v", f.name, err)
 		}
-		if f.mode != info.Mode().Perm() {
+		// NOT ON WINDOWS, which carries no POSIX permission bits: every
+		// file there reads back 0666 whatever mode was asked for, so the
+		// check would be asserting the platform rather than the code.
+		// What the trio records and what each port stages is asserted
+		// above and in TestInitTrioIsIdenticalWithItsSources, on every
+		// platform.
+		if "windows" != runtime.GOOS && f.mode != info.Mode().Perm() {
 			t.Errorf("%s written %o, want %o", f.name, info.Mode().Perm(), f.mode)
 		}
 	}
