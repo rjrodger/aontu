@@ -17,6 +17,64 @@ which implementation each change affects.
 > No other entry in this section carries the hazard: each of the rest
 > fails loudly on an old document.
 
+### `aontu allow`: the role gate
+
+**An agent that edits a model under a role had nowhere to ask whether
+it may, so the rule lived in its prompt, where nothing checks it.**
+`aontu allow --role <role> [--at <path>] <roles-file> <path>...` asks a
+role model whether the role may modify every one of the given
+subtrees, and answers before the change is made, as an exit code an
+agent branches on: 0 allowed (every path), 1 refused (at least one
+path, or a role the model does not declare), 2 usage, 4 the role model
+does not stand up on its own. The role model is an aontu document, one
+entry per role carrying `allow` and optionally `deny` as path strings,
+so spreads, references, includes and `close()` compose it the way they
+compose everything else; `--at` says where the roles map lives when it
+is not `$.roles`, and `--format json` is the same report as an object.
+
+**The rule is small, and it errs towards refusal.** A path is allowed
+when an `allow` entry is at or above it, and never by an entry below
+it, because a change at the asked node reaches every sibling of the
+entry. A path is refused when a `deny` entry is at, above or below it,
+whatever the order the entries were written in: denied
+`$.services.*.tier` refuses `$.services.auth.tier`, and refuses
+`$.services.auth` too, since a change at the service could rewrite the
+tier. `*` matches exactly one key and is the only pattern character.
+Every answer names the deciding entry as a path into the role model
+(`$.roles.dev.deny.0`), so `aontu why` locates the line that wrote it,
+and a path may arrive in `set`'s `<path>=<value>` spelling, so a skill
+hands the gate the arguments the write will get; the value must be one
+value, because `set` appends it as source and a second pair inside it
+would write a subtree the gate was not asked about. An undeclared role is a refusal with a `no_path` finding beside
+it, not an error: the question has an answer, and the answer is no.
+
+**The shape of a role is aontu as well.** The model meets it at
+evaluation, as data meets a schema under `vet`: a spread template over
+the roles map whose entries are `string & re("^[$]") & re("[^.]$")`, so
+a malformed role, or an entry that is empty or does not start at `$`,
+is refused with the engine's own code and site and the verb invents no
+finding shape of its own. The lists are read from the written tree, so
+a `hide()`d deny still denies. Two consequences: a role model that
+`close()`s its role vocabulary must declare `deny?` in it, or the
+template's optional key is `[aontu/closed]` for every role; and a key
+containing a dot is unreachable, as it is for `get`, while a role is
+one key, looked up as written. The gate answers
+about the path and says nothing about where the value is written: a
+path reached through a reference is `set`'s business, which appends
+there and refuses `--in-place`.
+
+**TypeScript only, as a spike.** `ts/src/allow.ts` and the verb in
+`ts/src/cli.ts`, held by `ts/test/allow.test.ts` and the `cli-allow`
+block of `ts/test/cli.test.ts`; `docs/reference-api.md` has the verb
+with tested transcripts, `docs/how-to/gate-changes-by-role.md` the
+recipe, the skill its verb line, and use case 18
+(`use-cases/18-role-permissions`) a closed role vocabulary over a
+service model with an agent skill that asks before it writes. The Go
+port does not have the verb and no shared spec mode pins it, so it is
+not landed under ADR-001: `go/allow.go` with its CLI verb, and a
+five-column `allow` mode in `test/spec/allow.tsv` probed in both
+ports, are what would land it. `docs/design/ALLOW.0.md` is the note.
+
 ### BREAKING: a bundled key that names a type is CamelCase
 
 Every bundled model's landing key is capitalised, so the case of a path

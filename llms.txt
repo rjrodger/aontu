@@ -52,7 +52,7 @@
 - [Shared spec suite](test/spec/): the conformance corpus — 3k+
   language-agnostic cases both implementations must satisfy; a third
   implementation claims conformance by passing it
-- [Use cases](use-cases/): sixteen enterprise-shaped systems built as
+- [Use cases](use-cases/): eighteen enterprise-shaped systems built as
   real aontu documents, each with a `check.sh` that drives the CLI and
   asserts every outcome
 

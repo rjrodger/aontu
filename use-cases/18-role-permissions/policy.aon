@@ -1,0 +1,11 @@
+# A policy document that carries more than roles. The gate reads the
+# map `--at $.policy.roles` names and nowhere else: asked without
+# `--at`, it looks at `$.roles`, finds no role there, and refuses.
+policy: owner: "platform"
+policy: review: "a tier change needs two approvals"
+policy: roles: dev: {
+  desc: "Services, never their tier"
+  allow: ["$.services"]
+  deny: ["$.services.*.tier"]
+}
+policy: roles: release: { desc:"The deployment layer" allow:["$.deploy"] }

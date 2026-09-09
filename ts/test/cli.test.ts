@@ -15,7 +15,8 @@ import {
   runReaches,
   runView,
   runHash, runGet, runWhy,
-  renderWhyText, runSet, runAgentsMd, runFmt, runTemplate, replCommand,
+  renderWhyText, runSet, runAllow, runAgentsMd, runFmt, runTemplate,
+  replCommand,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
   main as cliMainVet, runMod,
 } from '../dist/cli'
@@ -3082,4 +3083,194 @@ describe('cli-mod-layout', () => {
     Fs.writeFileSync(Path.join(dir3, 'mod.aon'), 'mod: { path: "corp.example/app" }\n')
     Assert.doesNotMatch(vetCapture(() => runMod(['verify', dir3])).err, /aontu_meta\//)
   })
+})
+
+
+// --- the allow verb (docs/design/ALLOW.0.md) --------------------------
+//
+// The gate's answers are held by allow.test.ts; these cases hold the
+// command line -- flag parsing, the exit classes, the two formats, and
+// the assignment spelling a skill hands straight through from `set`.
+
+describe('cli-allow', () => {
+
+  const ROLES = [
+    'roles: {',
+    '  admin: { allow: ["$"] }',
+    '  dev: { allow: ["$.services"] deny: ["$.services.*.tier"] }',
+    '  qa: { allow: ["$.tests"] }',
+    '}',
+    '',
+  ].join('\n')
+
+  function rolesFile(src: string = ROLES): string {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-allow-cli-'))
+    const file = Path.join(dir, 'roles.aon')
+    Fs.writeFileSync(file, src)
+    return file
+  }
+
+
+  test('allow-answers-every-path-and-names-the-rule', () => {
+    const file = rolesFile()
+
+    const yes = vetCapture(() => Assert.equal(
+      runAllow(['--role', 'dev', file, '$.services.auth.replicas']), 0))
+    Assert.equal(yes.out, [
+      'verdict: allowed',
+      'role: dev',
+      '$.services.auth.replicas: allowed by $.roles.dev.allow.0 ($.services)',
+      '',
+    ].join('\n'))
+    Assert.equal(yes.err, '')
+
+    // Every reason has its line: deny names the rule, uncovered says
+    // no rule reached, and the verdict is the exit code.
+    const no = vetCapture(() => Assert.equal(
+      runAllow(['--role', 'dev', file, '$.services.auth', '$.tests']), 1))
+    Assert.equal(no.out, [
+      'verdict: refused',
+      'role: dev',
+      '$.services.auth: refused by $.roles.dev.deny.0 ($.services.*.tier)',
+      '$.tests: refused (no allow entry of dev covers it)',
+      '',
+    ].join('\n'))
+  })
+
+
+  test('allow-takes-the-assignment-spelling', () => {
+    const file = rolesFile()
+    const r = vetCapture(() => Assert.equal(
+      runAllow(['--role', 'qa', file,
+        '$.tests.smoke="on"', '$.tests.x="a=b"', '$.tests.y={ a: 1 }']), 0))
+    Assert.match(r.out, /^\$\.tests\.smoke: allowed/m)
+    Assert.match(r.out, /^\$\.tests\.x: allowed/m)
+    Assert.match(r.out, /^\$\.tests\.y: allowed/m)
+
+    // The value must be ONE value. `set` appends it as source after
+    // the flattened path, so a second pair in it writes a sibling of
+    // the overlay root -- a subtree the gate was never asked about.
+    for (const bad of [
+      '$.tests.smoke=3 secrets: key: "x"',
+      '$.tests.smoke=3\nsecrets: 1',
+      '$.tests.smoke="unterminated',
+      '$.tests.smoke=@"other.aon"',
+    ]) {
+      const r = vetCapture(() => Assert.equal(runAllow(['--role', 'qa', file, bad]), 2))
+      Assert.match(r.err, /the value of \$\.tests\.smoke is not one value/)
+      Assert.equal(r.out, '')
+    }
+  })
+
+
+  test('allow-undeclared-role-is-refused-with-a-finding', () => {
+    const file = rolesFile()
+    const r = vetCapture(() => Assert.equal(
+      runAllow(['--role', 'ops', file, '$.a']), 1))
+    Assert.equal(r.out, [
+      'verdict: refused',
+      'role: ops',
+      '$.a: refused (role ops is not declared)',
+      '',
+      '$.roles.ops: no_path [reference]',
+      '  The role ops is not declared at $.roles in this document.',
+      '',
+    ].join('\n'))
+  })
+
+
+  test('allow-broken-model-is-exit-4-with-the-engines-finding', () => {
+    const file = rolesFile('roles: dev: { allow: "$.a" }\n')
+    const r = vetCapture(() => Assert.equal(
+      runAllow(['--role', 'dev', file, '$.a']), 4))
+    Assert.match(r.out, /^verdict: error\nrole: dev\n\n\$: scalar_kind \[reference\]/)
+
+    // The same report as an object.
+    const j = JSON.parse(vetCapture(() => Assert.equal(
+      runAllow(['--format', 'json', '--role', 'dev', file, '$.a']), 4)).out)
+    Assert.equal(j.verdict, 'error')
+    Assert.deepEqual(j.paths, [])
+    Assert.equal(j.findings[0].code, 'scalar_kind')
+  })
+
+
+  test('allow-json-names-the-producer', () => {
+    const file = rolesFile()
+    const j = JSON.parse(vetCapture(() => Assert.equal(
+      runAllow(['--format', 'json', '--role', 'dev', file, '$.services.x.replicas']), 0)).out)
+    Assert.equal(j.aontu.verb, 'allow')
+    Assert.equal(j.verdict, 'allowed')
+    Assert.equal(j.role, 'dev')
+    Assert.deepEqual(j.findings, [])
+    Assert.deepEqual(j.paths, [{
+      allowed: true, by: '$.roles.dev.allow.0', path: '$.services.x.replicas',
+      pattern: '$.services', reason: 'allow',
+    }])
+  })
+
+
+  test('allow-at-moves-the-roles-map', () => {
+    const file = rolesFile('policy: roles: dev: { allow: ["$.a"] }\n')
+    const r = vetCapture(() => Assert.equal(
+      runAllow(['--role', 'dev', '--at', '$.policy.roles', file, '$.a.b']), 0))
+    Assert.match(r.out, /allowed by \$\.policy\.roles\.dev\.allow\.0/)
+  })
+
+
+  test('allow-trust-reaches-the-engine', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-allow-trust-'))
+    Fs.writeFileSync(Path.join(dir, 'dev.aon'), 'roles: dev: { allow: ["$"] }')
+    const file = Path.join(dir, 'roles.aon')
+    Fs.writeFileSync(file, '@"dev.aon"\n')
+    vetCapture(() => Assert.equal(runAllow(['--role', 'dev', file, '$.a']), 0))
+    const denied = vetCapture(() => Assert.equal(
+      runAllow(['--trust', 'none', '--role', 'dev', file, '$.a']), 4))
+    Assert.match(denied.out, /include_denied/)
+  })
+
+
+  test('allow-usage-errors-exit-2', () => {
+    const file = rolesFile()
+    vetCapture(() => Assert.equal(runAllow([]), 2))
+    vetCapture(() => Assert.equal(runAllow([file, '$.a']), 2))
+    vetCapture(() => Assert.equal(runAllow(['--role', 'dev', file]), 2))
+    vetCapture(() => Assert.equal(runAllow(['--role']), 2))
+    vetCapture(() => Assert.equal(runAllow(['--role', 'dev', '--at']), 2))
+
+    // A role is one key.
+    for (const role of ['', '.', 'dev.allow', 'a.b']) {
+      const r = vetCapture(() => Assert.equal(runAllow(['--role', role, file, '$.a']), 2))
+      Assert.match(r.err, /--role needs one key, without dots/)
+    }
+    // A path starts with $: an empty argument, an assignment that
+    // lost its path, and a second file name are all refused rather
+    // than read as paths and answered.
+    for (const arg of ['', '=', '=1', 'services.auth', file]) {
+      const r = vetCapture(() => Assert.equal(runAllow(['--role', 'admin', file, arg]), 2))
+      Assert.match(r.err, /a path starts with \$/)
+    }
+    vetCapture(() => Assert.equal(
+      runAllow(['--role', 'dev', '--format', 'yaml', file, '$.a']), 2))
+    vetCapture(() => Assert.equal(
+      runAllow(['--role', 'dev', '--bogus', file, '$.a']), 2))
+    vetCapture(() => Assert.equal(
+      runAllow(['--trust', 'bogus', '--role', 'dev', file, '$.a']), 2))
+    const missing = vetCapture(() => Assert.equal(
+      runAllow(['--role', 'dev', Path.join(Path.dirname(file), 'no.aon'), '$.a']), 2))
+    Assert.match(missing.err, /cannot read/)
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runAllow(['--help']), 0)
+    ).out.includes('aontu allow --role'), true)
+  })
+
+
+  test('allow-dispatches-through-main', () => {
+    const file = rolesFile()
+    const r = vetCapture(() =>
+      cliMainVet(['node', 'cli', 'allow', '--role', 'admin', file, '$']))
+    Assert.match(r.out, /verdict: allowed/)
+    Assert.match(run(['--help']).out, /aontu allow --role <role>/)
+    Assert.match(run(['--help']).out, /Allow exit codes/)
+  })
+
 })

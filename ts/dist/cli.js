@@ -25,6 +25,7 @@ exports.looksLikeVerb = looksLikeVerb;
 exports.runWhy = runWhy;
 exports.renderWhyText = renderWhyText;
 exports.runSet = runSet;
+exports.runAllow = runAllow;
 exports.runAgentsMd = runAgentsMd;
 exports.runFmt = runFmt;
 exports.watchChange = watchChange;
@@ -81,6 +82,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu allow --role <role> [--at <path>] <roles-file> <path>...
        aontu agentsmd [--write <AGENTS.md>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu help [topic] [--format text|json]
@@ -358,6 +360,28 @@ Set exit codes are vet's verdict classes: 0 valid, 1 invalid (the
 change contradicts a pinned value -- aontu why locates it, and
 --in-place rewrites it), 2 usage, 3 incomplete, 4 the entry does not
 stand up on its own.
+
+Allow options:
+  --role <role>     The role the caller is operating under (required)
+  --at <path>       Where the roles map lives in the role model
+                    (default $.roles)
+  --format <f>      text (default) or json
+
+The allow verb asks a role model whether a role may modify every one
+of the given subtrees, and answers before the change is made. The
+role model is an aontu document: one entry per role, each carrying
+allow (the subtrees it may modify) and optionally deny (the ones it
+may not), as path strings starting at $; * in a path matches any one
+key. A path is allowed when an allow entry is at or above it, and
+refused when a deny entry is at, above or below it, whatever the
+order. Every path starts with $, and may be spelled as set's
+assignment, <path>=<value>, whose value must be one value: a value
+carrying a second pair would write a subtree the gate was not asked
+about.
+
+Allow exit codes: 0 allowed (every path), 1 refused (at least one
+path, or a role the model does not declare), 2 usage, 4 the role
+model does not stand up on its own.
 
 Agentsmd options:
   --write <file>  Splice the stanza into this file between the
@@ -3403,6 +3427,164 @@ function runSet(argv) {
     return VET_EXIT[report.verdict];
 }
 // ---------------------------------------------------------------------
+// The role gate (docs/design/ALLOW.0.md): may the role the caller is
+// operating under modify these subtrees? Asked before `set`, by an
+// agent whose skill names its role, and answered from a role model
+// that is itself an aontu document. The verdict is the exit code, as
+// it is for every gate here: 0 is yes, 1 is no, 4 is "the model that
+// was to decide does not stand up", and an agent branches on nothing
+// else.
+const ALLOW_HELP = 'aontu allow --role <role> <roles-file> <path> [more-paths...] (try --help)';
+const ALLOW_EXIT = {
+    allowed: 0,
+    refused: 1,
+    error: 4,
+};
+// One line per asked path: the answer, and the entry that gave it, as
+// a path into the role model so `aontu why` can locate the rule.
+function renderAllowDecision(d, role) {
+    const head = `${d.path}: ${d.allowed ? 'allowed' : 'refused'}`;
+    switch (d.reason) {
+        case 'allow':
+        case 'deny':
+            return `${head} by ${d.by} (${d.pattern})`;
+        case 'uncovered':
+            return `${head} (no allow entry of ${role} covers it)`;
+        default:
+            return `${head} (role ${role} is not declared)`;
+    }
+}
+function renderAllowText(report) {
+    const lines = [`verdict: ${report.verdict}`, `role: ${report.role}`]
+        .concat(report.paths.map((d) => renderAllowDecision(d, report.role)));
+    if (0 === report.findings.length) {
+        return lines.join('\n');
+    }
+    return lines.concat('', report.findings.map(renderFinding)).join('\n');
+}
+// Does the text after `=` parse as exactly one value? Parsed, never
+// evaluated, with loads denied: the question is the shape of the
+// argument, and reading a file to answer it would be the write the
+// gate exists to precede.
+function oneValue(value) {
+    try {
+        const probe = new aontu_1.Aontu({ trust: { include: 'none' } })
+            .parse('v: ' + value);
+        return 1 === Object.keys(probe.peg).length;
+    }
+    catch {
+        return false;
+    }
+}
+function runAllow(argv) {
+    const trusted = takeTrust(argv);
+    if (null == trusted) {
+        return 2;
+    }
+    argv = trusted.argv;
+    const trust = trusted.trust;
+    const rest = [];
+    let role;
+    let at;
+    let format = 'text';
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        if ('--role' === arg) {
+            role = argv[++i];
+            if (null == role) {
+                process.stderr.write('aontu: --role needs a role name\n');
+                return 2;
+            }
+        }
+        else if ('--at' === arg) {
+            at = argv[++i];
+            if (null == at) {
+                process.stderr.write('aontu: --at needs a path\n');
+                return 2;
+            }
+        }
+        else if ('--format' === arg) {
+            const f = argv[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return 2;
+            }
+            format = f;
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown allow option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            rest.push(arg);
+        }
+    }
+    if (null == role || rest.length < 2) {
+        process.stderr.write(`aontu: allow needs --role, a role model and at least one path\n` +
+            `${ALLOW_HELP}\n`);
+        return 2;
+    }
+    const [file, ...asked] = rest;
+    // A role is ONE KEY of the roles map. A dotted name would be read as
+    // a path by `why` when it follows the entry the report names, and an
+    // empty one names the map itself.
+    if ('' === role || role.includes('.')) {
+        process.stderr.write('aontu: --role needs one key, without dots\n');
+        return 2;
+    }
+    // A path may arrive in `set`'s spelling, `$.a.b=1`, so a skill can
+    // hand the gate the very arguments the write will get. The text up
+    // to the first `=` is the path, and it starts with `$`: an empty
+    // argument, or a second file name, would otherwise read as a path
+    // and be answered. The VALUE is checked to be one value. `set`
+    // appends it as source after the flattened path, so a value carrying
+    // a second pair -- `3 secrets: key: "x"` -- writes a sibling of the
+    // overlay root, a subtree the gate was never asked about.
+    const paths = [];
+    for (const arg of asked) {
+        const eq = arg.indexOf('=');
+        const path = eq < 0 ? arg : arg.slice(0, eq);
+        if (!path.startsWith('$')) {
+            process.stderr.write(`aontu: a path starts with $ (got ${JSON.stringify(arg)})\n`);
+            return 2;
+        }
+        if (0 <= eq && !oneValue(arg.slice(eq + 1))) {
+            process.stderr.write(`aontu: the value of ${path} is not one value\n`);
+            return 2;
+        }
+        paths.push(path);
+    }
+    let src;
+    try {
+        src = (0, node_fs_1.readFileSync)(file, 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+        return 2;
+    }
+    const report = (0, aontu_1.allow)(src, role, paths, {
+        at, path: file, ...verbOpts(trust, entryRootOf(file)),
+    });
+    const text = 'json' === format ?
+        (0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'allow' },
+            findings: report.findings,
+            paths: report.paths,
+            role: report.role,
+            verdict: report.verdict,
+        }, 2) :
+        renderAllowText(report);
+    // The report IS the answer, refused or not, so it goes to stdout as
+    // vet's does; the exit code carries the verdict for a caller that
+    // reads nothing else.
+    process.stdout.write(text + '\n');
+    return ALLOW_EXIT[report.verdict];
+}
+// ---------------------------------------------------------------------
 // The generated AGENTS.md stanza (G7 phase 6): the prose entrypoint,
 // derived from the definition, so it cannot drift from the formal
 // source it points at.
@@ -3940,9 +4122,9 @@ function runExplain(argv) {
 // running each name and requiring it not to fall through to the bare
 // command.
 const KNOWN_VERBS = [
-    'agentsmd', 'breaking', 'explain', 'fmt', 'get', 'hash', 'help',
-    'jsonschema', 'lsp', 'mcp', 'mod', 'reaches', 'relations', 'render',
-    'set', 'subsume', 'template', 'trim', 'vet', 'view', 'why',
+    'agentsmd', 'allow', 'breaking', 'explain', 'fmt', 'get', 'hash',
+    'help', 'jsonschema', 'lsp', 'mcp', 'mod', 'reaches', 'relations',
+    'render', 'set', 'subsume', 'template', 'trim', 'vet', 'view', 'why',
 ];
 exports.KNOWN_VERBS = KNOWN_VERBS;
 // looksLikeVerb reports whether an unreadable argument was meant as a
@@ -4056,6 +4238,9 @@ function main(argv, servers = SERVERS) {
     }
     if ('set' === argv[2]) {
         return finish(runSet(argv.slice(3)));
+    }
+    if ('allow' === argv[2]) {
+        return finish(runAllow(argv.slice(3)));
     }
     if ('why' === argv[2]) {
         return finish(runWhy(argv.slice(3)));

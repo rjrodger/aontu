@@ -51,6 +51,7 @@ declare function runGet(argv: string[]): number;
 declare function runWhy(argv: string[]): number;
 declare function renderWhyText(record: WhyRecord): string;
 declare function runSet(argv: string[]): number;
+declare function runAllow(argv: string[]): number;
 declare function runAgentsMd(argv: string[]): number;
 declare function runFmt(argv: string[]): number | Promise<number>;
 type Servers = {
@@ -63,4 +64,4 @@ declare const KNOWN_VERBS: string[];
 declare function looksLikeVerb(arg: string): boolean;
 declare function nearestVerb(word: string, verbs: string[]): string;
 declare function main(argv: string[], servers?: Servers): void;
-export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations, runReaches, runView, runJsonSchema, runRender, runTemplate, runMod, runHash, runGet, runHelp, runExplain, nearestVerb, looksLikeVerb, KNOWN_VERBS, runWhy, renderWhyText, runSet, runAgentsMd, runFmt, watchChange, watchSignature, vetWaiter, deprecatedAt, };
+export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations, runReaches, runView, runJsonSchema, runRender, runTemplate, runMod, runHash, runGet, runHelp, runExplain, nearestVerb, looksLikeVerb, KNOWN_VERBS, runWhy, renderWhyText, runSet, runAllow, runAgentsMd, runFmt, watchChange, watchSignature, vetWaiter, deprecatedAt, };

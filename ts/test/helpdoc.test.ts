@@ -369,20 +369,98 @@ describe('helpdoc', () => {
     }
   })
 
-  // THE TWO PORTS' TOOL HELP IS ONE TEXT. It was already byte-identical
-  // before G11 and nothing asserted it, so a verb documented in one
-  // port and not the other would have shipped silently. Extracted from
-  // the sources rather than run, because the Go binary is not built by
-  // this suite.
-  test('the-tool-help-is-identical-in-both-ports', () => {
-    const go = readRepo('go/cmd/aontu/main.go')
-    const ts = readRepo('ts/src/cli.ts')
-    const goText = go.slice(go.indexOf('const helpText = `') + 18)
-    const tsText = ts.slice(ts.indexOf('const HELP = `') + 14)
-    Assert.equal(
-      goText.slice(0, goText.indexOf('`')),
-      tsText.slice(0, tsText.indexOf('`')),
-      'go/cmd/aontu/main.go helpText and ts/src/cli.ts HELP have drifted')
+  // AND THE OTHER DIRECTION, which is the one that actually drifts: a
+  // verb added to the dispatch and not to the list is invisible until
+  // somebody mistypes it and gets no suggestion. #187 added `allow`
+  // while this branch was open and that is exactly what would have
+  // happened. Read from the source, because a dispatch arm is not
+  // enumerable at run time.
+  test('every-dispatched-verb-is-in-known-verbs', () => {
+    const src = readRepo('ts/src/cli.ts')
+    const dispatched = new Set<string>()
+    for (const m of src.matchAll(/if \('([a-z]+)' === argv\[2\]\)/g)) {
+      dispatched.add(m[1])
+    }
+    Assert.ok(15 < dispatched.size,
+      `only ${dispatched.size} dispatch arms found; has main() changed shape?`)
+    for (const verb of dispatched) {
+      Assert.ok(KNOWN_VERBS.includes(verb),
+        `main() dispatches \`${verb}\` and KNOWN_VERBS omits it, so a ` +
+        'caller who mistypes it gets no suggestion')
+    }
+  })
+
+  // THE TWO PORTS' TOOL HELP IS ONE TEXT, EXCEPT WHERE A VERB EXISTS IN
+  // ONLY ONE OF THEM. It was byte-identical before G11 and nothing
+  // asserted it, so a verb documented in one port and not the other
+  // shipped silently -- which is exactly what happened while this
+  // branch was open: #187 added `allow` to the TypeScript CLI and
+  // touched no Go file, and the first version of this case (byte
+  // identity) caught it on the first merge.
+  //
+  // Byte identity is the WRONG invariant, though, because that
+  // divergence is real: `allow` is not in the Go port yet, and Go's
+  // help should not document a verb that port does not have. (`mcp`
+  // differs: Go carries a stub verb for it, so Go's help documents it
+  // and says it is part of the npm build.)
+  //
+  // So the invariant is two-sided. Go's help must be a SUBSEQUENCE of
+  // TypeScript's -- Go may never carry a line TypeScript lacks -- and
+  // every run of TypeScript-only lines must sit in a block that names
+  // a DECLARED port-only verb. An undeclared drift in the shared text
+  // still fails, which is the whole point of the gate; a tracked
+  // divergence does not.
+  const TS_ONLY_VERBS = [
+    // ADR-001 keeps the ports at parity; until `allow` is ported, the
+    // Go help documents no verb the Go binary refuses. Remove this
+    // entry in the commit that lands `allow` in Go.
+    'allow',
+  ]
+
+  function helpTextOf(file: string, decl: string): string[] {
+    const src = readRepo(file)
+    const at = src.indexOf(decl)
+    Assert.ok(-1 !== at, `${file} no longer declares ${decl}`)
+    const body = src.slice(at + decl.length)
+    return body.slice(0, body.indexOf('`')).split('\n')
+  }
+
+  test('the-tool-help-agrees-except-for-declared-port-only-verbs', () => {
+    const goLines = helpTextOf('go/cmd/aontu/main.go', 'const helpText = `')
+    const tsLines = helpTextOf('ts/src/cli.ts', 'const HELP = `')
+
+    // Walk Go's lines through TypeScript's in order. Every unmatched
+    // TypeScript line joins the current extra-run; a Go line that
+    // never matches is a drift TypeScript does not carry.
+    let ti = 0
+    let run: string[] = []
+    const extras: string[][] = []
+    for (const goLine of goLines) {
+      const from = ti
+      while (ti < tsLines.length && tsLines[ti] !== goLine) {
+        run.push(tsLines[ti])
+        ti++
+      }
+      Assert.ok(ti < tsLines.length,
+        'go/cmd/aontu/main.go helpText carries a line ts/src/cli.ts HELP ' +
+        `does not, at or after Go line ${from}: ${JSON.stringify(goLine)}`)
+      if (0 < run.length) {
+        extras.push(run)
+        run = []
+      }
+      ti++
+    }
+    if (ti < tsLines.length) {
+      extras.push(tsLines.slice(ti))
+    }
+
+    for (const block of extras) {
+      const text = block.join('\n')
+      Assert.ok(TS_ONLY_VERBS.some((v) => text.includes(v)),
+        'ts/src/cli.ts HELP carries a block go/cmd/aontu/main.go helpText ' +
+        'does not, naming no declared port-only verb -- the two texts ' +
+        `have drifted:\n${text}`)
+    }
   })
 
   test('the-tool-help-advertises-the-language-door', () => {

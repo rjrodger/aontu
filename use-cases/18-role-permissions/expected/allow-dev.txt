@@ -1,0 +1,7 @@
+verdict: refused
+role: dev
+$.services.auth.replicas: allowed by $.roles.dev.allow.0 ($.services)
+$.deploy.eu1.replicas.search: allowed by $.roles.dev.allow.1 ($.deploy.*.replicas)
+$.services.auth.tier: refused by $.roles.dev.deny.0 ($.services.*.tier)
+$.services.billing: refused by $.roles.dev.deny.0 ($.services.*.tier)
+$.features.dark_mode: refused (no allow entry of dev covers it)

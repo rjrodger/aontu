@@ -1,0 +1,20 @@
+$
+├── Service
+│   ├── description string
+│   ├── owner string
+│   ├── replicas integer&min(1)
+│   └── tier "critical"|"standard"
+├── deploy
+│   ├── eu1 (3)
+│   └── us1 (3)
+├── features
+│   ├── checkout_v2 false
+│   ├── dark_mode true
+│   └── new_search false
+├── services
+│   ├── auth (4)
+│   ├── billing (4)
+│   └── search (4)
+└── tests
+    ├── regression (2)
+    └── smoke (2)

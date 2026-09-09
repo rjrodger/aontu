@@ -35,6 +35,7 @@ aontu vet schema.aon data.aon   # does this data satisfy that truth?
 aontu get $.a.b file.aon        # what does it say at a path?
 aontu why $.a.b file.aon        # why does that value hold?
 aontu set $.a.b=1 --entry file.aon --overlay over.aon
+aontu allow --role dev roles.aon $.a.b   # may this role change that subtree?
 aontu hash file.aon             # a pin that survives reformatting
 ```
 

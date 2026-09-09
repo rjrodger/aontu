@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -300,6 +301,35 @@ func TestKnownVerbsAllDispatch(t *testing.T) {
 		if 0 != code {
 			t.Errorf("%s --help: want 0, got %d: %s", verb, code, errw)
 		}
+	}
+}
+
+// AND THE OTHER DIRECTION, which is the one that actually drifts: a
+// verb added to the dispatch and not to the list is invisible until
+// somebody mistypes it and gets no suggestion. main gained a
+// TypeScript-only `allow` verb while this branch was open, and this is
+// the case that would have caught it had it been a Go verb. Read from
+// the source, because a dispatch arm is not enumerable at run time.
+func TestEveryDispatchedVerbIsInKnownVerbs(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if nil != err {
+		t.Fatalf("cannot read main.go: %v", err)
+	}
+	re := regexp.MustCompile(`"([a-z]+)" == args\[0\]`)
+	known := map[string]bool{}
+	for _, verb := range knownVerbs {
+		known[verb] = true
+	}
+	found := 0
+	for _, m := range re.FindAllStringSubmatch(string(src), -1) {
+		found++
+		if !known[m[1]] {
+			t.Errorf("run() dispatches %q and knownVerbs omits it, so a"+
+				" caller who mistypes it gets no suggestion", m[1])
+		}
+	}
+	if 15 > found {
+		t.Fatalf("only %d dispatch arms found; has run() changed shape?", found)
 	}
 }
 
