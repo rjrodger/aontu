@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// `namer` -- NAME TRANSFORMATION, THE GENERAL CASE (SPIKE,
+// `nom` -- NAME TRANSFORMATION, THE GENERAL CASE (SPIKE,
 // docs/design/JOSTRACA.0.md).
 //
 // Generated code is mostly names, and no two targets spell them the
@@ -11,10 +11,10 @@
 // `Planet` out by hand rather than deriving it -- `upper("planet")` is
 // `PLANET`.
 //
-//   namer(s)                  every spelling, as a map
-//   namer(s, style)           one spelling
-//   namer(s, acronyms)        every spelling, with an acronym set
-//   namer(s, style, acronyms) one spelling, with an acronym set
+//   nom(s)                  every spelling, as a map
+//   nom(s, style)           one spelling
+//   nom(s, acronyms)        every spelling, with an acronym set
+//   nom(s, style, acronyms) one spelling, with an acronym set
 //
 // THE SOURCE FORMAT IS NOT DECLARED, and that is what makes this the
 // general case rather than a family of pairwise converters. A name is
@@ -37,7 +37,7 @@
 // renderer's rows, so the extra separators are this function's
 // vocabulary and are folded to `_` before it is asked. The same
 // boundary applies to the four styles below that `caseName` does not
-// serve: `title`, `human`, `dot` and `path` are namer's, and
+// serve: `title`, `text`, `dot` and `path` are nom's, and
 // `aontu:profile`'s `%case` set is unchanged.
 //
 // THE ACRONYM SET is the reason a style alone is not enough. `ledgerId`
@@ -78,39 +78,49 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 // The styles, and the map's keys. The first five are `caseName`'s --
 // `aontu:profile`'s `%case` vocabulary, shared with the renderer --
-// and the last four are namer's own (see the note above). `as-is` is
+// and the last four are nom's own (see the note above). `as-is` is
 // not among them: it is the profile's way of saying "do nothing",
 // which is not a spelling anyone asks a namer for.
-const NAMER_STYLES = [
-  'camel',      // userId
-  'dot',        // user.id
-  'human',      // User id
-  'kebab',      // user-id
-  'pascal',     // UserId
-  'path',       // user/id
-  'screaming',  // USER_ID
-  'snake',      // user_id
-  'title',      // User Id
+const NOM_STYLES = [
+  'camel',   // userId
+  'dot',     // user.id
+  'kebab',   // user-id
+  'pascal',  // UserId
+  'path',    // user/id
+  'snake',   // user_id
+  'text',    // User id
+  'title',   // User Id
+  'upper',   // USER_ID
 ]
 
-const CASENAME_STYLES = ['camel', 'kebab', 'pascal', 'screaming', 'snake']
+// nom's style name -> the `%case` style `caseName` serves. `upper` and
+// `text` are nom's spellings: `screaming` is what `aontu:profile` calls
+// SCREAMING_SNAKE and that name is pinned cross-port, so the mapping
+// lives here rather than in the shared vocabulary.
+const CASENAME_STYLES: Record<string, string> = {
+  camel: 'camel',
+  kebab: 'kebab',
+  pascal: 'pascal',
+  snake: 'snake',
+  upper: 'screaming',
+}
 
 
 // One name in one style, or undefined when the style is not one, or
 // when the name holds no words at all.
 function styleName(name: string, style: string, acronyms: string[]):
   string | undefined {
-  // `.` and `/` are namer's separators, folded before the shared
+  // `.` and `/` are nom's separators, folded before the shared
   // splitter is asked (see the note above). Everything else that is
   // not a separator is word content: a `$` or a `@` rides into the
-  // word it sits in, which is why `namer` renames a spelled path's
+  // word it sits in, which is why `nom` renames a spelled path's
   // text and does not tidy it.
   const src = name.replace(/[./]/g, '_')
 
   // A NAME WITH NO WORDS IS NOT A NAME, and it is refused in every
   // style. `caseName` answers its INPUT for one (it is lowering a
   // declaration, where the name has already been vetted), so
-  // `namer("_", pascal)` came back as `"_"` while `namer("_")`
+  // `nom("_", pascal)` came back as `"_"` while `nom("_")`
   // refused -- the same argument, accepted by one spelling of the
   // call and refused by the other.
   const words = splitWords(src)
@@ -118,8 +128,9 @@ function styleName(name: string, style: string, acronyms: string[]):
     return undefined
   }
 
-  if (CASENAME_STYLES.includes(style)) {
-    return caseName(src, style, acronyms)
+  const cased = CASENAME_STYLES[style]
+  if (undefined !== cased) {
+    return caseName(src, cased, acronyms)
   }
 
   if ('dot' === style) {
@@ -131,13 +142,13 @@ function styleName(name: string, style: string, acronyms: string[]):
   if ('title' === style) {
     return words.map((w) => capitalise(w, acronyms)).join(' ')
   }
-  if ('human' === style) {
+  if ('text' === style) {
     // Sentence case: the first word capitalised, the rest lower --
     // EXCEPT an acronym, which stays one, because `ledger id` loses
     // what `ID` was. Membership in the set decides that, not how the
     // input happened to spell the word: asking whether `capitalise`
-    // changed it made `namer("ledgerId", human, [ID])` answer
-    // `Ledger id` while `namer("ledgerID", human, [ID])` answered
+    // changed it made `nom("ledgerId", text, [ID])` answer
+    // `Ledger id` while `nom("ledgerID", text, [ID])` answered
     // `Ledger ID` -- the same name, two answers, decided by its
     // source spelling, which is the one thing a namer must not do.
     const isAcronym = (w: string) =>
@@ -180,7 +191,7 @@ function acronymsOf(v: Val | undefined): string[] | undefined {
 }
 
 
-class NamerFuncVal extends FuncBaseVal {
+class NomFuncVal extends FuncBaseVal {
   isNamerFunc = true
 
   constructor(spec: ValSpec, ctx?: AontuContext) {
@@ -188,11 +199,11 @@ class NamerFuncVal extends FuncBaseVal {
   }
 
   make(_ctx: AontuContext, spec: ValSpec): Val {
-    return new NamerFuncVal(spec)
+    return new NomFuncVal(spec)
   }
 
   funcname() {
-    return 'namer'
+    return 'nom'
   }
 
 
@@ -251,10 +262,10 @@ class NamerFuncVal extends FuncBaseVal {
     }
 
     // Every style: the map. Closed, because the nine keys ARE the
-    // vocabulary and a tenth is a typo -- `namer($.n).pascel` is
+    // vocabulary and a tenth is a typo -- `nom($.n).pascel` is
     // refused where every other mistake in an aontu document is.
     const peg: Record<string, Val> = {}
-    for (const s of NAMER_STYLES) {
+    for (const s of NOM_STYLES) {
       const out = styleName(name, s, acronyms)
       if (undefined === out) {
         return makeNilErr(ctx, 'invalid-arg', this, args[0], 'name')
@@ -271,6 +282,6 @@ class NamerFuncVal extends FuncBaseVal {
 
 
 export {
-  NAMER_STYLES,
-  NamerFuncVal,
+  NOM_STYLES,
+  NomFuncVal,
 }

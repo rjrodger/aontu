@@ -68,18 +68,18 @@ const E = (src) => {
     // argument, `children` is its second. A leaf carries an empty
     // children list rather than none, so the bridge has one rule.
     (0, node_test_1.test)('node-shape', () => {
-        (0, expect_1.expect)(G('x: Content("hello")')).equal({
+        (0, expect_1.expect)(G('x: content("hello")')).equal({
             x: { cmp: 'Content', props: { src: 'hello' }, children: [] }
         });
-        (0, expect_1.expect)(G('x: File("a.ts")')).equal({
+        (0, expect_1.expect)(G('x: file("a.ts")')).equal({
             x: { cmp: 'File', props: { name: 'a.ts' }, children: [] }
         });
-        (0, expect_1.expect)(G('x: Folder("src")')).equal({
+        (0, expect_1.expect)(G('x: folder("src")')).equal({
             x: { cmp: 'Folder', props: { name: 'src' }, children: [] }
         });
     });
     (0, node_test_1.test)('nested-tree', () => {
-        (0, expect_1.expect)(G('x: Folder("src", [File("a.ts", [Content("let a = 1")])])'))
+        (0, expect_1.expect)(G('x: folder("src", [file("a.ts", [content("let a = 1")])])'))
             .equal({
             x: {
                 cmp: 'Folder',
@@ -101,7 +101,7 @@ const E = (src) => {
     // gate the set (see CmpFuncVal.ts, "the node map is closed and its
     // props map is not").
     (0, node_test_1.test)('props-map-spec', () => {
-        (0, expect_1.expect)(G('x: File({name: "run.sh", mode: 493}, [Content("#!/bin/sh")])'))
+        (0, expect_1.expect)(G('x: file({name: "run.sh", mode: 493}, [content("#!/bin/sh")])'))
             .equal({
             x: {
                 cmp: 'File',
@@ -114,7 +114,7 @@ const E = (src) => {
     // so a node is always {children, cmp, props} on the wire whatever
     // order the call was written in.
     (0, node_test_1.test)('generated-json-is-key-ordered', () => {
-        Assert.equal(J('x: File("a.ts", [Content("k")])'), '{"x":{"children":[{"children":[],"cmp":"Content","props":{"src":"k"}}],' +
+        Assert.equal(J('x: file("a.ts", [content("k")])'), '{"x":{"children":[{"children":[],"cmp":"Content","props":{"src":"k"}}],' +
             '"cmp":"File","props":{"name":"a.ts"}}}');
     });
     // THE CONTAINMENT GRAMMAR, checked at the call. Unification cannot
@@ -122,37 +122,37 @@ const E = (src) => {
     // other -- so the constructor does, at the site the author wrote.
     (0, node_test_1.test)('containment-grammar', () => {
         // A Folder holds folders and files.
-        (0, expect_1.expect)(G('x: Folder("a", [Folder("b"), File("c")])').x.children.length)
+        (0, expect_1.expect)(G('x: folder("a", [folder("b"), file("c")])').x.children.length)
             .equal(2);
-        Assert.equal(E('x: Folder("a", [Content("c")])'), 'invalid-arg');
+        Assert.equal(E('x: folder("a", [content("c")])'), 'invalid-arg');
         // A File holds content.
-        (0, expect_1.expect)(G('x: File("a", [Content("c")])').x.children.length).equal(1);
-        Assert.equal(E('x: File("a", [File("b")])'), 'invalid-arg');
+        (0, expect_1.expect)(G('x: file("a", [content("c")])').x.children.length).equal(1);
+        Assert.equal(E('x: file("a", [file("b")])'), 'invalid-arg');
         // Content is a leaf.
-        Assert.equal(E('x: Content("a", [Content("b")])'), 'invalid-arg');
+        Assert.equal(E('x: content("a", [content("b")])'), 'invalid-arg');
         // A child that is not a node at all.
-        Assert.equal(E('x: Folder("a", [1])'), 'invalid-arg');
-        Assert.equal(E('x: Folder("a", [{cmp: "Nope"}])'), 'invalid-arg');
+        Assert.equal(E('x: folder("a", [1])'), 'invalid-arg');
+        Assert.equal(E('x: folder("a", [{cmp: "Nope"}])'), 'invalid-arg');
         // Children must BE a list: `form()` returns one, and a bare-node
-        // convenience would make `File(n, form(...))` and
-        // `File(n, [form(...)])` both legal and different.
-        Assert.equal(E('x: Folder("a", File("b"))'), 'invalid-arg');
+        // convenience would make `file(n, form(...))` and
+        // `file(n, [form(...)])` both legal and different.
+        Assert.equal(E('x: folder("a", file("b"))'), 'invalid-arg');
     });
     (0, node_test_1.test)('spec-and-arity-refusals', () => {
         // The spec is a string or a props map, and nothing else.
-        Assert.equal(E('x: File(1)'), 'invalid-arg');
-        Assert.equal(E('x: File([1])'), 'invalid-arg');
+        Assert.equal(E('x: file(1)'), 'invalid-arg');
+        Assert.equal(E('x: file([1])'), 'invalid-arg');
         // The one prop the component cannot work without.
-        Assert.equal(E('x: File({mode: 493})'), 'invalid-arg');
-        Assert.equal(E('x: File({name: ""})'), 'invalid-arg');
-        Assert.equal(E('x: File({name: 1})'), 'invalid-arg');
-        Assert.equal(E('x: Content({name: "a"})'), 'invalid-arg');
+        Assert.equal(E('x: file({mode: 493})'), 'invalid-arg');
+        Assert.equal(E('x: file({name: ""})'), 'invalid-arg');
+        Assert.equal(E('x: file({name: 1})'), 'invalid-arg');
+        Assert.equal(E('x: content({name: "a"})'), 'invalid-arg');
         // Arity. No signature declaration exists for the spike, so the
         // parse-time table cannot refuse these and the call does.
-        Assert.equal(E('x: Content()'), 'invalid-arg');
-        Assert.equal(E('x: Folder()'), 'invalid-arg');
-        Assert.equal(E('x: Content("a", "b")'), 'invalid-arg');
-        Assert.equal(E('x: File("a", [], 1)'), 'invalid-arg');
+        Assert.equal(E('x: content()'), 'invalid-arg');
+        Assert.equal(E('x: folder()'), 'invalid-arg');
+        Assert.equal(E('x: content("a", "b")'), 'invalid-arg');
+        Assert.equal(E('x: file("a", [], 1)'), 'invalid-arg');
     });
     // THE CHECK IS STRUCTURAL, not by class: a node reaches a children
     // list as a MAP -- through a reference, a `form()` instance, a
@@ -160,38 +160,38 @@ const E = (src) => {
     // hand-written node is a node, and a map that is not one is refused
     // however it is spelled.
     (0, node_test_1.test)('nodes-are-recognised-structurally', () => {
-        (0, expect_1.expect)(G('x: Folder("a", [{cmp: "File", props: {name: "b"}, children: []}])')
+        (0, expect_1.expect)(G('x: folder("a", [{cmp: "File", props: {name: "b"}, children: []}])')
             .x.children[0]).equal({ cmp: 'File', props: { name: 'b' }, children: [] });
         // Every way a map can fail to be a node: no `cmp` at all, a `cmp`
         // that is not a scalar, one that is not a string, and one that
         // names nothing.
-        Assert.equal(E('x: Folder("a", [{props: {}, children: []}])'), 'invalid-arg');
-        Assert.equal(E('x: Folder("a", [{cmp: {a: 1}}])'), 'invalid-arg');
-        Assert.equal(E('x: Folder("a", [{cmp: 1, props: {}, children: []}])'), 'invalid-arg');
-        Assert.equal(E('x: Folder("a", [{cmp: "Nope", props: {}, children: []}])'), 'invalid-arg');
+        Assert.equal(E('x: folder("a", [{props: {}, children: []}])'), 'invalid-arg');
+        Assert.equal(E('x: folder("a", [{cmp: {a: 1}}])'), 'invalid-arg');
+        Assert.equal(E('x: folder("a", [{cmp: 1, props: {}, children: []}])'), 'invalid-arg');
+        Assert.equal(E('x: folder("a", [{cmp: "Nope", props: {}, children: []}])'), 'invalid-arg');
     });
     // A call whose argument is not resolved yet residuates like any
     // other, and answers once the model settles -- there is no staging
     // rule here (CmpFuncVal.ts, "not staged, deliberately").
     (0, node_test_1.test)('forward-reference', () => {
-        (0, expect_1.expect)(G('x: Folder($.n, [File("a")])\nn: "src"').x.props)
+        (0, expect_1.expect)(G('x: folder($.n, [file("a")])\nn: "src"').x.props)
             .equal({ name: 'src' });
-        (0, expect_1.expect)(G('x: File($.n, [Content("k")])\nn: "a.ts"').x.props)
+        (0, expect_1.expect)(G('x: file($.n, [content("k")])\nn: "a.ts"').x.props)
             .equal({ name: 'a.ts' });
         // A CHAINED reference, which is what takes the extra pass: the
         // call is met against TOP with its argument still unresolved, so
         // it rebuilds itself and waits, which a one-hop reference to a
         // literal resolves too quickly to show.
-        (0, expect_1.expect)(G('x: Content($.n)\nn: $.m\nm: "k"').x.props).equal({ src: 'k' });
+        (0, expect_1.expect)(G('x: content($.n)\nn: $.m\nm: "k"').x.props).equal({ src: 'k' });
     });
     // THE NODE MAP IS CLOSED: the three keys are the vocabulary, so a
     // fourth is refused where every other mistake in an aontu document
     // is -- at evaluation, by unification.
     (0, node_test_1.test)('node-is-closed', () => {
-        Assert.equal(E('x: Folder("s") & {childrn: []}'), 'closed');
+        Assert.equal(E('x: folder("s") & {childrn: []}'), 'closed');
         // ... and the props map is not, because props are the component's
         // own business.
-        (0, expect_1.expect)(G('x: File("a") & {props: {mode: 493}}').x.props)
+        (0, expect_1.expect)(G('x: file("a") & {props: {mode: 493}}').x.props)
             .equal({ name: 'a', mode: 493 });
     });
     // THE FINDING THIS SPIKE EXISTS FOR. A component tree is an ordinary
@@ -200,8 +200,8 @@ const E = (src) => {
     // children list is a list.
     (0, node_test_1.test)('form-generates-children', () => {
         (0, expect_1.expect)(G('names: [alpha, beta]\n' +
-            'out: Folder("src", form($.names, ' +
-            'File(_ + ".ts", [Content("export const " + _ + " = 1")])))').out.children).equal([
+            'out: folder("src", form($.names, ' +
+            'file(_ + ".ts", [content("export const " + _ + " = 1")])))').out.children).equal([
             {
                 cmp: 'File',
                 props: { name: 'alpha.ts' },
@@ -221,7 +221,7 @@ const E = (src) => {
     // A tree is addressable like any other value, which is what makes a
     // generated tree reviewable in the same document that builds it.
     (0, node_test_1.test)('tree-is-referenceable', () => {
-        (0, expect_1.expect)(G('a: File("x.ts", [Content("k")])\nb: $.a.props.name'))
+        (0, expect_1.expect)(G('a: file("x.ts", [content("k")])\nb: $.a.props.name'))
             .equal({
             a: {
                 cmp: 'File',
@@ -234,7 +234,55 @@ const E = (src) => {
     // Canon is the resolved node, as it is for every function that
     // answers from its arguments alone (`upper("a")` canons as `"A"`).
     (0, node_test_1.test)('canon-is-the-resolved-node', () => {
-        Assert.equal(A.unify('x: Content("k")').canon, '{"x":{"children":[],"cmp":"Content","props":{"src":"k"}}}');
+        Assert.equal(A.unify('x: content("k")').canon, '{"x":{"children":[],"cmp":"Content","props":{"src":"k"}}}');
+    });
+    // EIGHT MORE COMPONENTS, and the two names that were not free.
+    // jostraca has ten; `copy` and `list` are aontu builtins already, so
+    // those two are spelled `copyfile` and `repeat` here.
+    (0, node_test_1.test)('the-whole-component-set', () => {
+        const nodes = G('x: [project({}), folder("a"), file("b"), content("c"), ' +
+            'line("d"), fragment("e"), slot("f"), inject("g"), copyfile("h"), ' +
+            'repeat({item:[]})]').x;
+        Assert.deepEqual(nodes.map((n) => n.cmp), [
+            'Project', 'Folder', 'File', 'Content', 'Line',
+            'Fragment', 'Slot', 'Inject', 'Copy', 'List',
+        ]);
+        // The FUNCTION is lower case, like every other builtin here; the
+        // NODE names the jostraca component the bridge looks up. The two
+        // spellings say which side of the seam they are on.
+        (0, expect_1.expect)(G('x: file("a.ts")').x).equal({ cmp: 'File', props: { name: 'a.ts' }, children: [] });
+    });
+    // `project`'s folder is the one optional text prop, because jostraca
+    // defaults it: the data path must not be stricter than the component
+    // it drives.
+    (0, node_test_1.test)('project-folder-is-optional', () => {
+        (0, expect_1.expect)(G('x: project()').x).equal({ cmp: 'Project', props: {}, children: [] });
+        (0, expect_1.expect)(G('x: project("out")').x.props).equal({ folder: 'out' });
+        Assert.equal(E('x: project({folder: 1})'), 'invalid-arg');
+        // Every other text prop is required.
+        Assert.equal(E('x: folder()'), 'invalid-arg');
+        Assert.equal(E('x: copyfile()'), 'invalid-arg');
+    });
+    // `repeat` is driven by a LIST, so it has no one-string spelling and
+    // its `item` is checked: a repeat with no item renders nothing,
+    // silently, which is the failure a data path must not have.
+    (0, node_test_1.test)('repeat-is-driven-by-a-list', () => {
+        (0, expect_1.expect)(G('x: repeat({item: [1,2]}, [line("a")])').x.props.item).equal([1, 2]);
+        Assert.equal(E('x: repeat("nope")'), 'invalid-arg');
+        Assert.equal(E('x: repeat({})'), 'invalid-arg');
+        Assert.equal(E('x: repeat({item: "no"})'), 'invalid-arg');
+    });
+    // The containment grammar covers the new components too.
+    (0, node_test_1.test)('containment-covers-the-whole-set', () => {
+        (0, expect_1.expect)(G('x: file("a", [fragment("t", [slot("s", [line("x")])])])')
+            .x.children[0].cmp).equal('Fragment');
+        (0, expect_1.expect)(G('x: folder("a", [copyfile("L")])').x.children[0].cmp).equal('Copy');
+        // A slot belongs to a fragment, not to a file.
+        Assert.equal(E('x: file("a", [slot("s")])'), 'invalid-arg');
+        // A folder does not hold content.
+        Assert.equal(E('x: folder("a", [line("x")])'), 'invalid-arg');
+        // copyfile is a leaf.
+        Assert.equal(E('x: copyfile("a", [line("x")])'), 'invalid-arg');
     });
     // CHILDREN FLATTEN. A generator's output lands in the MIDDLE of a
     // written list, so that list holds nodes and LISTS of nodes; a list
@@ -242,13 +290,13 @@ const E = (src) => {
     // makes splicing the total rule (CmpFuncVal.ts, "children
     // flatten").
     (0, node_test_1.test)('children-flatten', () => {
-        (0, expect_1.expect)(G('x: File("a", [Content("1"), [Content("2"), Content("3")]])')
+        (0, expect_1.expect)(G('x: file("a", [content("1"), [content("2"), content("3")]])')
             .x.children.map((c) => c.props.src)).equal(['1', '2', '3']);
         // To any depth: a generator over a generator nests twice.
-        (0, expect_1.expect)(G('x: File("a", [[[Content("deep")]]])')
+        (0, expect_1.expect)(G('x: file("a", [[[content("deep")]]])')
             .x.children.map((c) => c.props.src)).equal(['deep']);
         // The grammar still applies to what the flattening produces.
-        Assert.equal(E('x: File("a", [[Folder("b")]])'), 'invalid-arg');
+        Assert.equal(E('x: file("a", [[folder("b")]])'), 'invalid-arg');
     });
     // A file whose name and body come from the model, built the way a
     // real generator builds one: nothing here is component machinery --
@@ -267,7 +315,7 @@ const E = (src) => {
         (0, expect_1.expect)(file.cmp).equal('File');
         // EVERY NAME IS DERIVED from the one model name, `planet_body`:
         // the file in kebab, the interface in pascal, the fields in camel.
-        // That is what `namer` is for -- `upper("planet_body")` is
+        // That is what `nom` is for -- `upper("planet_body")` is
         // `PLANET_BODY`, which is the gap this fixture used to paper over
         // by writing `Planet` out by hand.
         (0, expect_1.expect)(file.props).equal({ name: 'planet-body.ts' });

@@ -159,7 +159,7 @@ const lsp_server_1 = require("../dist/lsp-server");
         // (docs/design/SIGNATURES.0.md): the declaration, not a label.
         const c = (0, lsp_1.computeCompletions)();
         const byLabel = new Map(c.map(i => [i.label, i]));
-        Assert.equal(byLabel.get('upper')?.detail, 'upper(s: string|number) : string');
+        Assert.equal(byLabel.get('upper')?.detail, 'upper(s: string|number, start?: integer|biginteger, len?: integer|biginteger) : string');
         Assert.equal(byLabel.get('pack')?.detail, 'pack(d: map|list, template t: any) : map');
         Assert.equal(byLabel.get('path')?.detail, 'path(capture p?: path) : path');
     });

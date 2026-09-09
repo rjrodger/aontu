@@ -18,7 +18,7 @@ func TestCompletionDetailIsTheSignature(t *testing.T) {
 	for _, c := range Completions() {
 		byLabel[c.Label] = c
 	}
-	if got := byLabel["upper"].Detail; "upper(s: string|number) : string" != got {
+	if got := byLabel["upper"].Detail; "upper(s: string|number, start?: integer|biginteger, len?: integer|biginteger) : string" != got {
 		t.Fatalf("upper detail: %q", got)
 	}
 	if got := byLabel["pack"].Detail; "pack(d: map|list, template t: any) : map" != got {

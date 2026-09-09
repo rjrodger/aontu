@@ -72,7 +72,8 @@ const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
 const PackFuncVal_1 = require("./val/PackFuncVal");
 const CmpFuncVal_1 = require("./val/CmpFuncVal");
-const NamerFuncVal_1 = require("./val/NamerFuncVal");
+const NomFuncVal_1 = require("./val/NomFuncVal");
+const TranslateFuncVal_1 = require("./val/TranslateFuncVal");
 const EachFuncVal_1 = require("./val/EachFuncVal");
 const FormFuncVal_1 = require("./val/FormFuncVal");
 const FilterFuncVal_1 = require("./val/FilterFuncVal");
@@ -798,27 +799,34 @@ help isolate the syntax error.`,
         split: StrFuncVal_1.SplitFuncVal,
         // THE COMPONENT PRIMITIVES -- SPIKE (ts/src/val/CmpFuncVal.ts,
         // docs/design/JOSTRACA.0.md). jostraca's component set, spelled
-        // as functions and keeping jostraca's capitalisation, so a
-        // document says what FILES it produces instead of filling in the
-        // `aontu:code` vocabulary as data. Upper case costs the grammar
-        // nothing: a call is a name and a paren, and the name rule never
-        // cared about case.
+        // as functions -- LOWER CASE, like every other builtin in this
+        // language, while the node each one builds names the jostraca
+        // component it drives (`file(...)` is aontu, `"File"` is
+        // jostraca's). A document then says what FILES it produces
+        // instead of filling in the `aontu:code` vocabulary as data.
+        // Eight of jostraca's ten: `copy` and `list` are already builtins
+        // here with unrelated meanings, so those two have no lower-case
+        // spelling to take (see ts/src/val/CmpFuncVal.ts).
         //
         // TypeScript only, and so deliberately NOT in
         // test/spec/signature.tsv, BUILTIN_FUNCS (ts/src/lsp.ts) or the
         // grammar/ files -- each is asserted in cross-port parity and a
         // TS-only entry turns the Go suite red. Arity and argument shape
         // are refused in CmpFuncVal.resolve for the same reason.
-        Folder: CmpFuncVal_1.FolderFuncVal,
-        File: CmpFuncVal_1.FileFuncVal,
-        Content: CmpFuncVal_1.ContentFuncVal,
+        ...CmpFuncVal_1.CMP_FUNCS,
         // NAME TRANSFORMATION -- SPIKE (ts/src/val/NamerFuncVal.ts).
         // Generated code is mostly names, and no two targets spell them
         // the same way. Splits a name into words whatever format it is
         // written in, then renders it in the target's. TypeScript only,
         // and out of the parity-pinned registries for the reason the
         // component primitives are.
-        namer: NamerFuncVal_1.NamerFuncVal,
+        nom: NomFuncVal_1.NomFuncVal,
+        // PER-CHARACTER SUBSTITUTION AND DELETION -- SPIKE
+        // (ts/src/val/TranslateFuncVal.ts), after `tr`. Reads the source
+        // once and consults a table, which is what `rep` cannot do: a
+        // per-character map spelled as N `rep` calls composes wrongly,
+        // since each pass sees the previous one's output.
+        translate: TranslateFuncVal_1.TranslateFuncVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -2224,15 +2232,16 @@ for (const name in sig_1.funcSig) {
 // THE COMPONENT PRIMITIVES, listed by hand (the spike, see funcMap
 // above and ts/src/val/CmpFuncVal.ts). They carry no signature
 // declaration, so the derivation above cannot see them -- and
-// `File("main.ts", [...])` without this entry arrives as ONE raw
-// array term, which the call then reads as its spec. `Content` takes
-// one argument and is here anyway, so that a written second argument
-// is COUNTED and refused as the arity mistake it is rather than
-// arriving as a one-element list that is merely the wrong shape.
-POSITIONAL_ARG_FUNCS['Folder'] = true;
-POSITIONAL_ARG_FUNCS['File'] = true;
-POSITIONAL_ARG_FUNCS['Content'] = true;
-POSITIONAL_ARG_FUNCS['namer'] = true;
+// `file("main.ts", [...])` without an entry arrives as ONE raw array
+// term, which the call then reads as its spec. The leaves are here
+// too, so that a written second argument is COUNTED and refused as
+// the arity mistake it is rather than arriving as a one-element list
+// that is merely the wrong shape.
+for (const name of Object.keys(CmpFuncVal_1.CMP_FUNCS)) {
+    POSITIONAL_ARG_FUNCS[name] = true;
+}
+POSITIONAL_ARG_FUNCS['nom'] = true;
+POSITIONAL_ARG_FUNCS['translate'] = true;
 // [min, max]; a max of -1 is unbounded. Every DECLARED name has an
 // entry, and the arity is a property of the language rather than of
 // either port -- go/func.go derives the same table. The spike's
@@ -2295,7 +2304,16 @@ function arityText(lo, hi) {
         return 'one or more arguments';
     }
     if (lo !== hi) {
-        return 0 === lo ? 'no arguments or one' : 'one argument or two';
+        if (0 === lo) {
+            return 'no arguments or one';
+        }
+        // The case range gave `upper` and `lower` a span rather than a
+        // pair, and a two-arm phrasing cannot say it: [1,3] read as "one
+        // argument or two", which is a wrong count rather than an
+        // imprecise one. Each arm here is a shape the table actually
+        // carries, and each is pinned by a row -- a phrasing for a count no
+        // entry has would be untested prose pretending to be tested.
+        return 3 === hi ? 'one to three arguments' : 'one argument or two';
     }
     // The {0,0} arm returned with the container kinds and acyclic()
     // (ADR-015): `map(1)` must not claim map takes exactly one.

@@ -10,7 +10,7 @@ it did not.
 aontu for code generation. The Jostraca component primitives like
 Folder, File etc should be available as aontu functions (keep upper
 case). This replaces the use of a conventional schema (code.units
-etc). Implement a spike with only Folder, File, Content to investigate
+etc). Implement a spike with only folder, file, content to investigate
 the implementation. Just work in ts at first."*
 
 **Method:** every claim marked VERIFIED was run against this tree —
@@ -63,11 +63,11 @@ nothing to the transform:
 ```
 model: { name:planet fields:[id name mass] }
 
-out: Folder("src", [
-  File($.model.name + ".ts", [
-    Content("export interface Planet {\n")
-    form($.model.fields, Content("  " + _ + ": string\n"))
-    Content("}\n")
+out: folder("src", [
+  file($.model.name + ".ts", [
+    content("export interface Planet {\n")
+    form($.model.fields, content("  " + _ + ": string\n"))
+    content("}\n")
   ])
 ])
 ```
@@ -114,15 +114,43 @@ not make it.
 
 ## 2. What was built
 
-Three functions, keeping jostraca's capitalisation, in
+All ten of jostraca's components, in
 [`ts/src/val/CmpFuncVal.ts`](../../ts/src/val/CmpFuncVal.ts) and
 registered in `funcMap` (`ts/src/lang.ts`):
 
 ```
-Folder(spec, children?)
-File(spec, children?)
-Content(spec)
+project(spec?, children?)   folder(spec, children?)   file(spec, children?)
+fragment(spec, children?)   slot(spec, children?)     inject(spec, children?)
+repeat(spec, children?)     copyfile(spec)
+content(spec)               line(spec)
 ```
+
+**The functions are LOWER CASE, like every other builtin in this
+language; the node each one builds names the JOSTRACA component it
+drives.** `file(...)` is aontu and `"File"` is jostraca's, and the two
+spellings say which side of the seam they are on. The bridge looks a
+node up by the capitalised name, so it is unchanged by this.
+
+**TWO NAMES WERE NOT FREE, which is the first thing lower case costs.**
+`copy` and `list` are already aontu builtins with settled, unrelated
+meanings: `copy(v)` copies a VALUE and `list()` is the list container
+kind, both declared in `test/spec/signature.tsv` and implemented in
+both ports. Taking those names would either shadow landed language
+surface or make one name mean two things by arity. So jostraca's `Copy`
+is `copyfile` here and its `List` is `repeat`. Capitalisation was what
+had kept the two vocabularies from colliding; dropping it means the
+overlap has to be settled name by name, and a future jostraca component
+called `Match`, `Each` or `Pick` would need the same treatment.
+
+**`repeat` is the one component the aontu side already subsumes.**
+jostraca's `List` renders its children once per element of `item`,
+binding `{item}` and `{item.path}` macros. `form($.rows, content(...))`
+does the same job in the MODEL, so the repetition is finished before
+the tree exists and every produced node is data a document can
+reference, vet and diff — where `repeat` defers it into jostraca's
+define phase behind a string macro aontu cannot see into, which is the
+layer this spike exists to remove. It is implemented so the set is
+complete; a generator should reach for `form` first.
 
 `spec` is a string or a props map; the string spelling fills the one
 prop the component cannot work without (`name`, `name`, `src`).
@@ -136,7 +164,7 @@ written: `x: Folder(a)` already parsed as a call and failed with
 spike rather than a project:
 
 ```
-$ printf 'x: File("a.ts", [Content("k")])\n' | node ts/bin/aontu.js -c
+$ printf 'x: file("a.ts", [content("k")])\n' | node ts/bin/aontu.js -c
 {"x":{"children":[{"children":[],"cmp":"Content","props":{"src":"k"}}],"cmp":"File","props":{"name":"a.ts"}}}
 ```
 
@@ -163,13 +191,13 @@ lattice's own:
 - **The containment grammar.** A Folder holds folders and files, a
   File holds content, Content is a leaf. Unification cannot state this
   on its own: a node is a map, and every node map unifies with every
-  other. `Folder("a", [Content("c")])` is refused.
+  other. `folder("a", [Content("c")])` is refused.
 - **The spec.** A string or a props map, and the one prop the
   component cannot work without must be a non-empty string.
-  `File({mode: 493})` is refused.
-- **Arity.** `Content("a", "b")` is refused.
+  `file({mode: 493})` is refused.
+- **Arity.** `content("a", "b")` is refused.
 - **Closedness.** The node map is `close()`d — three keys are the
-  vocabulary — so `Folder("s") & {childrn: []}` is `closed`. The
+  vocabulary — so `folder("s") & {childrn: []}` is `closed`. The
   `props` map is left OPEN, because props are the component's
   business: jostraca's `File` already reads `mode` and `exclude`, and
   a component the spike does not implement reads its own.
@@ -189,10 +217,10 @@ The finding the worked example produced. A generator's output lands in
 the MIDDLE of a written list:
 
 ```
-File("planet.ts", [
-  Content("export interface Planet {\n")
-  form($.fields, Content("  " + _ + ": string\n"))
-  Content("}\n")
+file("planet.ts", [
+  content("export interface Planet {\n")
+  form($.fields, content("  " + _ + ": string\n"))
+  content("}\n")
 ])
 ```
 
@@ -207,7 +235,7 @@ refused the worked example outright.
 The same reasoning is why the second argument must BE a list rather
 than accepting a bare node as a convenience: `form(...)` already
 returns the list, and a one-child special case would make
-`File(n, form(...))` and `File(n, [form(...)])` both legal and
+`file(n, form(...))` and `file(n, [form(...)])` both legal and
 different.
 
 ## 5. Not staged, and that was checked
@@ -226,7 +254,7 @@ fires. VERIFIED by the worked example, whose `form()` fires inside a
 **Indentation, which is Resolution 1 (iii).** Half answered, and the
 half that is missing is the half the objection was about. jostraca
 carries an `indent` prop on `Content`, and the props map reaches it —
-VERIFIED end to end, `Content({src: "y = 1\n", indent: 2})` inside a
+VERIFIED end to end, `content({src: "y = 1\n", indent: 2})` inside a
 `File` writes `  y = 1`. So a span's own indent is expressible today
 with no new primitive. What is not is RE-indentation: the author picks
 each span's depth at construction, and nothing can take a finished
@@ -235,8 +263,18 @@ algebra exists for (every piece carries its `at` and the renderer owns
 every prefix). A `Fragment` primitive would raise the unit from a span
 to a block; it would not make the depth someone else's to change.
 
+**`repeat` and `line` do not compose, and the cause is on the other
+side.** VERIFIED end to end: `repeat` over two rows with a `content`
+child substitutes (`item=alpha`, `item=beta`), and the same with a
+`line` child emits `item={item.n}` twice, literally. jostraca's `Line`
+calls `template(src, model)` and never forwards `props.replace`, while
+`Content` does — so the per-item bindings reach one and not the other.
+It reads as an oversight rather than a decision (nothing states why the
+two differ), but it is landed behaviour in the other project with a Go
+twin, so it is reported rather than changed here.
+
 **Line termination.** jostraca's `FileOp` joins a file's content
-spans with the empty string, so `Content("a")` and `Content("b")`
+spans with the empty string, so `content("a")` and `content("b")`
 concatenate to `ab`. The examples above carry their own `\n`, which is
 honest but not pleasant. `Line` is jostraca's answer and is the
 obvious fourth primitive; the bridge already reaches it (VERIFIED —
@@ -246,7 +284,7 @@ cannot yet write).
 **Identifier case — CLOSED, see §7.** This was the spike's first
 finding: the worked example wanted `Planet`, aontu had whole-string
 `upper`/`lower` and no title case, and the header line was written out
-rather than derived. `namer` closes it.
+rather than derived. `nom` closes it.
 
 **`$$...$$`.** jostraca's `Content` templates unconditionally, so a
 `$$path$$` in aontu-generated bytes is silently substituted from the
@@ -279,7 +317,7 @@ algebra) that a `Content` string cannot express and that the renderer's
 language profiles exist to lower, and it is landed capability in both
 ports rather than a proposal. §8 has the argument.
 
-## 7. `namer` — name transformation, the general case
+## 7. `nom` — name transformation, the general case
 
 Generated code is mostly names, and no two targets spell them the same
 way: one model field is `user_id` in SQL, `userId` in TypeScript,
@@ -289,10 +327,10 @@ URL. The gap above was the whole of aontu's answer — `upper` and
 hand.
 
 ```
-namer(s)                  every spelling, as a map
-namer(s, style)           one spelling
-namer(s, acronyms)        every spelling, with an acronym set
-namer(s, style, acronyms) one spelling, with an acronym set
+nom(s)                  every spelling, as a map
+nom(s, style)           one spelling
+nom(s, acronyms)        every spelling, with an acronym set
+nom(s, style, acronyms) one spelling, with an acronym set
 ```
 
 **The source format is not declared**, and that is what makes it the
@@ -313,19 +351,21 @@ second: `HTTPServer` is `http_server`, `XMLHttpRequest` is
 the reason they are there.
 
 The nine styles are `caseName`'s five — `camel`, `pascal`, `snake`,
-`kebab`, `screaming` — and four of namer's own: `title`, `human`,
-`dot`, `path`. The split matters. `%case` is a cross-port vocabulary
+`kebab`, `upper` — and four of nom's own: `title`, `text`,
+`dot`, `path`. `nom` spells them `upper` and `text` where the
+profile says `screaming` and nothing; the mapping lives on nom's side,
+since `%case`'s names are pinned cross-port. The split matters. `%case` is a cross-port vocabulary
 pinned by the renderer's rows, so the extra styles, and the extra
-separators `.` and `/`, are namer's and are folded to `_` before the
+separators `.` and `/`, are nom's and are folded to `_` before the
 shared splitter is asked. `aontu:profile` is unchanged.
 
 **The acronym set is an argument, and that is the design decision.**
 `ledgerId` is `LedgerID` in Go and `ledgerId` in TypeScript, which is
 a fact about the TARGET and not about the name — so a document
 generating for two targets passes a different set to each, and the
-model says nothing about either. VERIFIED: `namer("ledgerId", pascal)`
-is `LedgerId`, `namer("ledgerId", pascal, [ID])` is `LedgerID`, and
-Go's unexported spelling `namer("ledgerId", camel, [ID])` is
+model says nothing about either. VERIFIED: `nom("ledgerId", pascal)`
+is `LedgerId`, `nom("ledgerId", pascal, [ID])` is `LedgerID`, and
+Go's unexported spelling `nom("ledgerId", camel, [ID])` is
 `ledgerID` — camel never treats the first word as an acronym, which is
 `caseName`'s rule and therefore the renderer's.
 
@@ -333,32 +373,96 @@ Go's unexported spelling `namer("ledgerId", camel, [ID])` is
 the same mistake in different clothes — an answer that depended on
 something other than the name and the style:
 
-- **`human` read the input's spelling.** Deciding an acronym by asking
+- **`text` read the input's spelling.** Deciding an acronym by asking
   whether `capitalise` had changed the word made
-  `namer("ledgerId", human, [ID])` answer `Ledger ID` while
-  `namer("ledgerID", human, [ID])` answered `Ledger id`. Membership in
+  `nom("ledgerId", human, [ID])` answer `Ledger ID` while
+  `nom("ledgerID", human, [ID])` answered `Ledger id`. Membership in
   the set decides it now.
 - **A name with no words was accepted by one spelling of the call and
   refused by the other.** `caseName` answers its INPUT when the split
   is empty — right for the renderer, whose names are vetted before
-  they reach it — so `namer("_", pascal)` was `"_"` while `namer("_")`
+  they reach it — so `nom("_", pascal)` was `"_"` while `nom("_")`
   refused. It is refused in every style now.
 
-`namer` is not staged, for the reason the component primitives are not:
+`nom` is not staged, for the reason the component primitives are not:
 it answers from its arguments alone. The map form is `close()`d — the
-nine keys are the vocabulary, so `namer($.n) & {pascel: ...}` is
+nine keys are the vocabulary, so `nom($.n) & {pascel: ...}` is
 `closed`.
 
 Spike scope is the same as the primitives': TypeScript only, so out of
 `signature.tsv`, `BUILTIN_FUNCS` and `grammar/`, with arity and
 argument shape refused in the call and every refusal `invalid-arg`.
-Cases in [`ts/test/namer.test.ts`](../../ts/test/namer.test.ts).
+Cases in [`ts/test/nom.test.ts`](../../ts/test/nom.test.ts).
 
 **What it does not answer.** Nothing here knows a target's reserved
-words — `namer("type", camel)` is `type`, and Go's renamer lives in
-`ident()` behind a profile. A generator using `namer` rather than the
+words — `nom("type", camel)` is `type`, and Go's renamer lives in
+`ident()` behind a profile. A generator using `nom` rather than the
 renderer gets the casing and not the reserved-word rule, which is the
 narrower half of the same job.
+
+## 7a. `translate`, and the case range on `upper`/`lower`
+
+Two more string primitives the generation work asked for. One is a
+spike function like the rest; the other is not, and the difference is
+the point.
+
+**`translate(s, from, to?)`** is `tr`: each character of `from` becomes
+the one at the same position in `to`, a short `to` pads with its last
+character, and an absent one deletes. Ranges (`a-z`) expand in both
+sets. It exists because `rep` cannot do it: `rep` matches a REGION, so
+a per-character map spelled as N calls composes wrongly — each pass
+sees the previous one's output, and VERIFIED,
+`rep(rep("abab","a","b"),"b","a")` is `"aaaa"` where
+`translate("abab","ab","ba")` is `"baba"`. TypeScript only, like `nom`.
+
+**The case range is different: it landed in BOTH ports**, because
+`upper` and `lower` are not new. They are declared in
+`test/spec/signature.tsv`, implemented in Go, and used across twenty
+spec files, so extending them in TypeScript alone would have been a
+silent divergence in landed behaviour — `upper("foo",0,1)` answering
+`"Foo"` here and `"FOO"` there, with no gate to notice. That is the
+one thing the spike's TypeScript-only posture cannot cover, so this
+part was done properly: `ts/src/val/caserange.ts` and
+`caseSpan`/`caseRange` in `go/func.go`, the declaration widened, both
+inlined copies regenerated by `make sig`, and eighteen shared rows in
+`test/spec/func.tsv` whose every expectation was obtained by running
+both engines.
+
+```
+upper(s, start?, len?)
+```
+
+**`start` is a boundary, not a character.** Zero or positive it is
+where the run BEGINS and the run reaches forward; negative it counts
+from the end and is where the run STOPS, the character it lands on
+being the first one NOT modified. One index, two directions, no second
+argument to say which. `len` of -1, and the absent argument, are the
+source's length; both ends clamp.
+
+That rule was chosen by the owner over two alternatives after the
+examples that specified it turned out to be mutually inconsistent —
+`upper("foo",-1,2)` wanting `fOO` needs an inclusive end, and
+`lower("FOOBAR",-3,-1)` wanting `fooBAR` needs an exclusive one. The
+exclusive reading won, so the first is `FOo` and the last two
+characters of `"foo"` are `upper("foo",1)`. Recorded because the
+inclusive reading is the one a reader is likely to assume.
+
+Two properties fall out of full Unicode case mapping rather than out
+of the range, and both are pinned:
+
+- **The result may be longer than the source.** `upper("straße",3,3)`
+  is `"strASSE"`, six code points in and seven out.
+- **Final sigma is decided within the run**, since a slice taken out
+  of its word has no following letter to see: `lower("ΟΣ")` is `ος`
+  and `lower("ΟΣ",1,1)` is `Οσ`.
+
+Indices are CODE POINTS, so one index is one Go rune and
+`upper("a😀b",2,1)` reaches the `b` in both ports.
+
+Extending a landed function also moved something no design named: the
+arity table had no phrasing for a span, so `[1,3]` rendered as "one
+argument or two", a wrong count rather than an imprecise one. Both
+ports gained the arm, and a row pins the message.
 
 ## 8. Where this sits against the decisions already taken
 

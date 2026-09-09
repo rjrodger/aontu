@@ -114,26 +114,111 @@ import { FuncBaseVal } from './FuncBaseVal'
 // admits and the one prop it cannot work without. Adding a fourth
 // primitive is an entry here plus the two-line subclass below.
 type CmpDef = {
-  // The children this component admits, by component name. Empty
+  // The jostraca component this call builds. CAPITALISED, because it
+  // names a component in the other project's exported set and the
+  // bridge looks it up by that name -- while the aontu FUNCTION is
+  // lower case, like every other builtin in this language. The two
+  // spellings say what they are: `file(...)` is aontu, `"File"` is
+  // jostraca's.
+  cmp: string
+  // The children this component admits, by aontu function name. Empty
   // means a leaf: any child at all is a mistake.
   children: string[]
-  // The prop a bare string argument fills, and the prop that must be
-  // a non-empty string once the props map is built.
-  text: string
+  // The prop a bare string argument fills. ABSENT means the component
+  // has no one-string spelling and its spec must be a map: `repeat`
+  // is driven by a LIST, and there is no sensible string to promote.
+  text?: string
+  // Whether that prop is required. `project`'s folder is the one that
+  // is not: jostraca defaults it to `.`, and the data path must not be
+  // stricter than the component it drives.
+  req: boolean
+  // A prop that must be present and must be a list.
+  bag?: string
 }
 
+// EIGHT OF JOSTRACA'S TEN COMPONENTS. `Copy` and `List` are missing and
+// cannot be added under these rules: `copy` and `list` are already
+// aontu builtins with settled, unrelated meanings -- `copy(v)` copies a
+// VALUE and `list()` is the list container kind, both declared in
+// test/spec/signature.tsv and implemented in both ports. Lower-casing
+// jostraca's names onto them would either shadow landed language
+// surface or make one name mean two things by arity, and neither is a
+// trade a spike gets to make. See docs/design/JOSTRACA.0.md.
 const CMP_DEF: Record<string, CmpDef> = {
-  Folder: { children: ['Folder', 'File'], text: 'name' },
-  File: { children: ['Content'], text: 'name' },
-  Content: { children: [], text: 'src' },
+  // The output root. Its `folder` is refused an absolute path or a
+  // `..` segment on the jostraca side, where the tree is data.
+  project: {
+    cmp: 'Project', text: 'folder', req: false,
+    children: ['project', 'folder', 'file', 'copyfile'],
+  },
+  folder: {
+    cmp: 'Folder', text: 'name', req: true,
+    children: ['folder', 'file', 'copyfile'],
+  },
+  file: {
+    cmp: 'File', text: 'name', req: true,
+    children: ['content', 'line', 'fragment', 'inject', 'repeat', 'copyfile'],
+  },
+  // A span of text, exactly as written. `FileOp` joins a file's spans
+  // with the empty string, so a `content` carries its own terminator.
+  content: {
+    cmp: 'Content', text: 'src', req: true,
+    children: [],
+  },
+  // A span with a newline added, which is the whole difference.
+  line: {
+    cmp: 'Line', text: 'src', req: true,
+    children: [],
+  },
+  // A file read from disk with its `<[SLOT]>` markers filled.
+  fragment: {
+    cmp: 'Fragment', text: 'from', req: true,
+    children: ['slot', 'content', 'line', 'repeat'],
+  },
+  slot: {
+    cmp: 'Slot', text: 'name', req: true,
+    children: ['content', 'line', 'fragment', 'repeat'],
+  },
+  // A body written between markers in a file that already exists.
+  inject: {
+    cmp: 'Inject', text: 'name', req: true,
+    children: ['content', 'line', 'repeat'],
+  },
+  // `Copy` under a name aontu has free: `copy` is taken by the builtin
+  // that copies a VALUE, and a file copy is a different verb.
+  copyfile: {
+    cmp: 'Copy', text: 'from', req: true,
+    children: [],
+  },
+  // `List` under a name that says what it does: it renders its children
+  // ONCE PER ELEMENT of `item`, binding jostraca's `{item}` and
+  // `{item.path}` macros, and adds a trailing blank line unless
+  // `line: false`.
+  //
+  // IT IS THE ONE COMPONENT THE AONTU SIDE ALREADY SUBSUMES, and a
+  // generator should reach for `form()` first. `form($.rows, content(...))`
+  // repeats in the MODEL, so the repetition is finished before the tree
+  // exists and every produced node is data a document can reference,
+  // vet and diff. `repeat` defers it into jostraca's define phase behind
+  // a string macro aontu cannot see into -- which is the layer this
+  // spike exists to remove. It is here so the component set is
+  // complete, not because it is the better spelling.
+  repeat: {
+    cmp: 'List', req: true, bag: 'item',
+    children: ['content', 'line', 'fragment'],
+  },
 }
-
 
 // The component name a value carries, when the value is a node this
 // vocabulary built. Read structurally rather than by class, because a
 // node reaches a children list as a MAP -- through a reference, a
 // `form()` instance, a spread -- long after the call that made it has
 // resolved away.
+const BY_CMP: Record<string, string> = {}
+for (const fname of Object.keys(CMP_DEF)) {
+  BY_CMP[CMP_DEF[fname].cmp] = fname
+}
+
 function nodeCmp(v: any): string | undefined {
   if (true !== v?.isMap) {
     return undefined
@@ -141,7 +226,9 @@ function nodeCmp(v: any): string | undefined {
   const cmp: any = v.peg?.cmp
   const name = (true === cmp?.isScalar && 'string' === typeof cmp.peg) ?
     cmp.peg : undefined
-  return (undefined !== name && undefined !== CMP_DEF[name]) ? name : undefined
+  // The node carries the JOSTRACA name; the grammar is written in aontu
+  // names, so read it back through the one table.
+  return (undefined === name) ? undefined : BY_CMP[name]
 }
 
 
@@ -182,7 +269,11 @@ class CmpFuncVal extends FuncBaseVal {
     // ARITY, refused here (see the spike-scope note above): a leaf
     // takes its spec alone, a container takes a spec and an optional
     // children list.
-    if (args.length < 1 || args.length > (leaf ? 1 : 2)) {
+    // A component whose text prop is OPTIONAL may be called with
+    // nothing at all: `project()` is the defaulted root, as
+    // `Project({})` is on the other side. Everything else needs its
+    // spec.
+    if (args.length < (def.req ? 1 : 0) || args.length > (leaf ? 1 : 2)) {
       return makeNilErr(ctx, 'invalid-arg', this, undefined, 'arity')
     }
 
@@ -193,7 +284,13 @@ class CmpFuncVal extends FuncBaseVal {
     // wanted: `File({name: "run.sh", mode: 0o755}, ...)`.
     const spec: any = args[0]
     let props: Val
-    if (true === spec?.isScalar && 'string' === typeof spec.peg) {
+    if (undefined === spec) {
+      props = new MapVal({ peg: {} }, ctx)
+    }
+    else if (true === spec?.isScalar && 'string' === typeof spec.peg) {
+      if (undefined === def.text) {
+        return makeNilErr(ctx, 'invalid-arg', this, spec, 'spec')
+      }
       props = new MapVal({ peg: { [def.text]: spec } }, ctx)
     }
     else if (true === spec?.isMap) {
@@ -205,9 +302,25 @@ class CmpFuncVal extends FuncBaseVal {
 
     // The one prop that is not the component's own business: without
     // it there is no file to write and no content to write into one.
-    const text = propText(props, def.text)
-    if (undefined === text || '' === text) {
-      return makeNilErr(ctx, 'invalid-arg', this, props, def.text)
+    if (undefined !== def.text) {
+      const text = propText(props, def.text)
+      if (def.req && (undefined === text || '' === text)) {
+        return makeNilErr(ctx, 'invalid-arg', this, props, def.text)
+      }
+      if (!def.req && undefined !== (props as any).peg?.[def.text] &&
+        undefined === text) {
+        return makeNilErr(ctx, 'invalid-arg', this, props, def.text)
+      }
+    }
+
+    // A bag prop is required and must be a list: `repeat` with no
+    // `item` renders nothing, silently, which is the failure a data
+    // path must not have.
+    if (undefined !== def.bag) {
+      const bag: any = (props as any).peg?.[def.bag]
+      if (true !== bag?.isList) {
+        return makeNilErr(ctx, 'invalid-arg', this, props, def.bag)
+      }
     }
 
     // THE CHILDREN, flattened, then the containment grammar. Absent
@@ -250,7 +363,7 @@ class CmpFuncVal extends FuncBaseVal {
 
     const node = new MapVal({
       peg: {
-        cmp: new StringVal({ peg: this.cmp }, ctx),
+        cmp: new StringVal({ peg: def.cmp }, ctx),
         props,
         children,
       }
@@ -266,49 +379,33 @@ class CmpFuncVal extends FuncBaseVal {
 } /* node:coverage ignore next 3 */
 
 
-class FolderFuncVal extends CmpFuncVal {
-  isFolderFunc = true
+// ONE CLASS PER COMPONENT, generated from the table, because the
+// registry constructs by `new funcval({peg: args})` and so needs a
+// constructor per name. Written as a factory rather than eight
+// near-identical subclasses: the table is the single statement of what
+// exists, and a ninth component is a row in it and nothing else.
+function cmpFuncClass(fname: string): any {
+  class Cmp extends CmpFuncVal {
+    constructor(spec: ValSpec, ctx?: AontuContext) {
+      super(fname, spec, ctx)
+    }
 
-  constructor(spec: ValSpec, ctx?: AontuContext) {
-    super('Folder', spec, ctx)
+    make(_ctx: AontuContext, spec: ValSpec): Val {
+      return new Cmp(spec)
+    }
   }
-
-  make(_ctx: AontuContext, spec: ValSpec): Val {
-    return new FolderFuncVal(spec)
-  }
-} /* node:coverage ignore next 3 */
+  return Cmp
+}
 
 
-class FileFuncVal extends CmpFuncVal {
-  isFileFunc = true
-
-  constructor(spec: ValSpec, ctx?: AontuContext) {
-    super('File', spec, ctx)
-  }
-
-  make(_ctx: AontuContext, spec: ValSpec): Val {
-    return new FileFuncVal(spec)
-  }
-} /* node:coverage ignore next 3 */
-
-
-class ContentFuncVal extends CmpFuncVal {
-  isContentFunc = true
-
-  constructor(spec: ValSpec, ctx?: AontuContext) {
-    super('Content', spec, ctx)
-  }
-
-  make(_ctx: AontuContext, spec: ValSpec): Val {
-    return new ContentFuncVal(spec)
-  }
-} /* node:coverage ignore next 9 */
+const CMP_FUNCS: Record<string, any> = {}
+for (const fname of Object.keys(CMP_DEF)) {
+  CMP_FUNCS[fname] = cmpFuncClass(fname)
+} /* node:coverage ignore next 7 */
 
 
 export {
   CMP_DEF,
+  CMP_FUNCS,
   CmpFuncVal,
-  FolderFuncVal,
-  FileFuncVal,
-  ContentFuncVal,
 }

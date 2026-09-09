@@ -205,6 +205,12 @@ func arityText(lo, hi int) string {
 		if 0 == lo {
 			return "no arguments or one"
 		}
+		// The case range gave upper and lower a span rather than a pair,
+		// and a two-arm phrasing cannot say it: [1,3] read as "one
+		// argument or two", a wrong count rather than an imprecise one.
+		if 3 == hi {
+			return "one to three arguments"
+		}
 		return "one argument or two"
 	// The {0,0} arm returned with the container kinds and acyclic()
 	// (ADR-015): map(1) must not claim map takes exactly one.
@@ -1161,6 +1167,84 @@ func caseLower(s string) string {
 	return cases.Lower(language.Und).String(s)
 }
 
+// caseSpan / caseRange -- THE RANGE `upper` AND `lower` TAKE. Twin:
+// caseSpan/caseRange in ts/src/val/caserange.ts, where the rule and its
+// two Unicode consequences are stated at length.
+//
+// `start` is a BOUNDARY: zero or positive it is where the run begins
+// and the run reaches forward; negative it counts from the end and is
+// where the run STOPS, the character it lands on being the first one
+// NOT modified. `len` of -1, and the absent argument, are the source's
+// length. Both ends clamp. Indices are RUNES, so one index is one code
+// point in either port.
+func caseSpan(n, start, length int) (int, int) {
+	span := length
+	if span < 0 {
+		span = n
+	}
+	if 0 <= start {
+		lo := start
+		if lo > n {
+			lo = n
+		}
+		hi := lo + span
+		if hi > n {
+			hi = n
+		}
+		return lo, hi
+	}
+	// No `hi > n` clamp: start is negative here, so n+start is below n
+	// by construction and the clamp could never fire.
+	hi := n + start
+	if hi < 0 {
+		hi = 0
+	}
+	lo := hi - span
+	if lo < 0 {
+		lo = 0
+	}
+	return lo, hi
+}
+
+func caseRange(text string, start, length int, up bool) string {
+	rs := []rune(text)
+	lo, hi := caseSpan(len(rs), start, length)
+	if hi <= lo {
+		return text
+	}
+	mid := string(rs[lo:hi])
+	if up {
+		mid = caseUpper(mid)
+	} else {
+		mid = caseLower(mid)
+	}
+	return string(rs[:lo]) + mid + string(rs[hi:])
+}
+
+// The integer a range argument carries. present is false for an absent
+// argument (they are optional); ok is false when the value is there but
+// is not an integer index.
+func rangeArg(args []Val, i int) (n int, present bool, ok bool) {
+	if i >= len(args) || args[i] == nil {
+		return 0, false, true
+	}
+	// ONE REFUSAL for every way an argument can fail to be an index: not
+	// a scalar at all (a preference reaches here, the signature gate
+	// having nothing to check), a scalar of another kind, or a
+	// biginteger too large to be a position in a string.
+	if sv, isScalar := args[i].(*ScalarVal); isScalar {
+		switch sv.kind {
+		case KindInteger:
+			return int(sv.peg.(int64)), true, true
+		case KindBigInteger:
+			if bi := sv.peg.(*big.Int); bi.IsInt64() {
+				return int(bi.Int64()), true, true
+			}
+		}
+	}
+	return 0, true, false
+}
+
 func upperLower(ctx *Ctx, args []Val, up bool) Val {
 	if len(args) == 0 {
 		return makeNilErr(ctx, "arg", nil, nil)
@@ -1169,13 +1253,23 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 	if !ok {
 		return makeNilErr(ctx, "invalid-arg", args[0], nil)
 	}
+	// THE RANGE (caseSpan/caseRange above). Refused on a NUMBER, where a
+	// run of characters means nothing -- the numeric arm below is a
+	// ceiling or a floor, not a case mapping.
+	start, hasStart, startOK := rangeArg(args, 1)
+	length, hasLen, lenOK := rangeArg(args, 2)
+	ranged := hasStart || hasLen
+	if ranged && (!startOK || !lenOK || sv.kind != KindString) {
+		return makeNilErr(ctx, "invalid-arg", args[0], nil)
+	}
+	if !hasLen {
+		length = -1
+	}
+
 	switch sv.kind {
 	case KindString:
 		s := sv.peg.(string)
-		if up {
-			return newString(caseUpper(s))
-		}
-		return newString(caseLower(s))
+		return newString(caseRange(s, start, length, up))
 	case KindInteger, KindFloat:
 		var fv float64
 		if sv.kind == KindInteger {
