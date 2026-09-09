@@ -1972,7 +1972,7 @@ Example: `string & re("^[a-z]+$")`
 
 Constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert).
 
-Example: `dependsOn: [&: refer($.std.Service), path($.services.auth)]`
+Example: `dependsOn: [&: refer($.system.Service), path($.services.auth)]`
 
 ### `rel(template t?: any) : constraint`
 
@@ -2852,13 +2852,22 @@ same key as an ordinary string.
 
 ### The bundled vocabularies
 
-Four vocabularies ship with the engine and are served from it rather
-than from disk: `std/system` below; `std/view` (the schema for one
-declaration of a [view document](reference-api.md#aontu-view),
-`$.view.Figure`, which types every option the verb reads so a typo is
-refused at evaluation; and the `aontu:` models) the vocabularies
-`aontu:code` and `aontu:profile`, and the three profiles bundled beside
-them: described [after it](#the-aontu-models).
+**Seven vocabularies ship with the engine**, served from it rather than
+from disk, and **every one of them is named under `aontu:`**. That is
+the whole rule: a language-supplied schema has one spelling, and the
+scheme is what stops a file on disk from standing in front of it.
+
+| name | what it is |
+|---|---|
+| `aontu:system` | ports, components and services: [below](#the-aontu-system-vocabulary) |
+| `aontu:view` | the schema for one declaration of a [view document](reference-api.md#aontu-view), `$.view.Figure`, which types every option the verb reads so a typo is refused at evaluation |
+| `aontu:code` | the output vocabulary a transform evaluates to |
+| `aontu:profile` | the data `render` applies to a unit of one language |
+| `aontu:lang/text` | the text profile |
+| `aontu:lang/typescript` | the TypeScript profile |
+| `aontu:lang/go` | the Go profile |
+
+The last five are described [after the system vocabulary](#the-aontu-models).
 
 ### The `aontu:` models
 
@@ -2912,7 +2921,7 @@ the set. Write this as `nope.aon`:
 <!-- test: run -->
 ```sh
 $ aontu nope.aon
-source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile)
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view)
 $ echo $?
 1
 ```
@@ -2961,7 +2970,7 @@ lowering, and one whose language has none is refused
 All five are **experimental** until the vocabulary can be versioned by
 canon-hash.
 
-### The `std/system` vocabulary
+### The `aontu:system` vocabulary
 
 Ports, components and relations need no syntax: they are schemas, and
 one set of them ships with the engine. Write this as `system.aon`:
@@ -2969,15 +2978,15 @@ one set of them ships with the engine. Write this as `system.aon`:
 <!-- test: scenario std-system -->
 <!-- test: file system.aon -->
 ```aon
-@"std/system"
+@"aontu:system"
 
 services: {
-  auth: $.std.Service & {
+  auth: $.system.Service & {
     ports: http: protocol: http
     dependedOnBy: rel() & [path($.services.billing)]
   }
-  billing: $.std.Service & {
-    dependsOn: rel($.std.Service) & inverse(dependedOnBy) & acyclic() & [
+  billing: $.system.Service & {
+    dependsOn: rel($.system.Service) & inverse(dependedOnBy) & acyclic() & [
       path($.services.auth)
     ]
   }
@@ -2999,11 +3008,11 @@ $ aontu system.aon
 
 | Schema | Says |
 |--------|------|
-| `$.std.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
-| `$.std.Component` | a node with `ports`, each of which is a `Port` |
-| `$.std.Service` | a Component whose `kind` is `service` |
+| `$.system.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
+| `$.system.Component` | a node with `ports`, each of which is a `Port` |
+| `$.system.Service` | a Component whose `kind` is `service` |
 
-`@"std/system"` is **bundled with the engine** (no filesystem, no
+`@"aontu:system"` is **bundled with the engine** (no filesystem, no
 package resolution) so it resolves under every include capability
 except `'none'`, which denies every include by definition. It is
 **experimental** until the vocabulary can be versioned by canon-hash.
@@ -3016,10 +3025,10 @@ Two of its behaviours are the language rather than the vocabulary:
   override, and any other value is refused (`[aontu/empty]`). A
   vocabulary that wants an open field says so with a `| top` (or
   `| string`) branch.
-- **`Service` is written out rather than as `$.std.Component & {kind:
+- **`Service` is written out rather than as `$.system.Component & {kind:
   service}`.** A reference from one member of an included file to
   another does not survive the include, so each schema states itself;
-  `$.std.Component & $.std.Service` still meets exactly as you would
+  `$.system.Component & $.system.Service` still meets exactly as you would
   expect.
 
 Everything here is ordinary unification, so an author who wants a
@@ -3676,10 +3685,10 @@ position is a braced block, `{` at the end of the line that opens it
 and `}` alone, which is the ordinary spelling of a constrained map:
 
 ```aon
-CatalogEntry: $.std.Service & {
+CatalogEntry: $.system.Service & {
   owner: %Owner
   tier: 1 | 2 | 3
-  dependsOn?: rel($.std.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
+  dependsOn?: rel($.system.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
 }
 ```
 

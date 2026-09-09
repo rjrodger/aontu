@@ -96,7 +96,7 @@ prefs, `close()` around the disjunction, and an `re()` alternative all
 still admit the typo. The layered spelling (`k: 'auto'|'literal'|'data'`
 plus `k: *'auto'`) enforces overrides but errors with `scalar_value`
 when *not* overridden. The override-ignores-alternatives mechanism is
-documented (std/system note: "a preferred member does not close a
+documented (aontu:system note: "a preferred member does not close a
 disjunction") and spec-pinned — but the consequence is that **no
 on-field spelling gives both a default and enum enforcement**, the most
 common schema pattern in existence. A hidden helper key does work:
@@ -141,7 +141,7 @@ default 2 (the preference stands as itself, rank intact).
 
 ### 4. `pref_not_instance` fires on the idiom, with a false message and a real false positive [major]
 The lint fires on `role: *member | admin | owner` — and on the bundled
-`@"std/system"`'s own `direction: *in | out | inout`, with the site
+`@"aontu:system"`'s own `direction: *in | out | inout`, with the site
 misattributed into the user's file at the bundled source's row/col.
 The message ("the default is not an instance of any alternative of
 `*"member"|"admin"|"owner"`") prints the full disjunction including the
@@ -159,7 +159,7 @@ admission gate the lint is an advisory (a typo-shaped default), not a
 soundness warning: the repeated-branch spelling now both silences it
 and enforces the same admitted set. It still fires, deliberately, on
 `*A|B|C` schemas whose default is not drawn from the remaining
-alternatives — including the bundled `std/system` `direction:` field —
+alternatives — including the bundled `aontu:system` `direction:` field —
 and the site misattribution for bundled sources remains open (the
 site-attribution family).
 
@@ -477,10 +477,10 @@ nested in is already uniting that entity, so the same information
 arrives by the same channel one frame up; the differs-each-way and
 cycle-of-three rows in `test/spec/refer.tsv` pin that nothing is lost.
 `use-cases/01-service-catalog/spec.aon` now carries the documented
-idiom `refer($.std.Service)` on both directions of the real model, in
+idiom `refer($.system.Service)` on both directions of the real model, in
 both ports, and its gap 8 workaround is gone.
 
-The reference manual's own idiom `refer($.std.Service)` fails with
+The reference manual's own idiom `refer($.system.Service)` fails with
 `unify_cycle` on a two-view id-merged model whose shared schema carries
 a referenced ports template — the error names
 `integer&min(1)&max(65535)` failing to unify with *itself*. The same
@@ -1832,7 +1832,7 @@ The same target spelled the old way -- `feeds?: [&:
 refer($.spec.JobShape)]` -- WORKS, because the refer sits in the
 list-spread template, whose snapshot is taken lazily at each
 destination, outside the bag. And a `t` that references a DIFFERENT
-bag (`rel($.shape.JobShape)`, `rel($.std.Service)`) works from
+bag (`rel($.shape.JobShape)`, `rel($.system.Service)`) works from
 anywhere: the deadlock needs the argument to point into the func's own
 enclosing bag.
 

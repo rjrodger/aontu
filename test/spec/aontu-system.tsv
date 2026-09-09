@@ -1,0 +1,75 @@
+# G4 phase 4: the aontu:system VOCABULARY
+# (docs/capability-review/g4-identity-relations.md). Ports, components
+# and relations need no syntax: they are schemas. Everything in
+# `@"aontu:system"` is ordinary unification -- conjunction, spreads,
+# marks, defaults -- so the vocabulary costs the language nothing, and
+# an author who wants a different one writes it the same way.
+#
+# The source is BUNDLED with the engine (ts/src/std.ts, go/std.go): no
+# filesystem, no package resolution, so it is available under every
+# include capability except `none`, and the hermeticity posture is not
+# widened by a source that never leaves the process. The two copies are
+# the same bytes, and `vocabulary-canon` and `vocabulary-hash` below pin
+# that in both engines -- they cannot drift without a red suite.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+#
+# Every expectation was obtained by the parity probe (AGENTS.md).
+vocabulary-is-served	gens	@"aontu:system"\np: $.system.Port & {}	{"p":{"direction":"in"},"system":{}}
+# THE SCHEME IS NOT A DIRECTORY (ADR-028): the `.aon` spelling the
+# bare `std/` names once accepted is not a model name, and is
+# refused like any other typo, as aontu-scheme.tsv pins for
+# `aontu:code.aon`.
+vocabulary-dot-aon-is-not-a-name	errc	a: @"aontu:system.aon"	multisource_not_found
+vocabulary-generates-nothing-of-its-own	gens	@"aontu:system"	{"system":{}}
+
+# --- Port -------------------------------------------------------------
+#
+# `port-direction-refuses-nonmember` (FLIPPED 2026-08-26 by the
+# admission gate, ADR-004; was `port-direction-is-not-closed`,
+# expecting `"sideways"` to pass): a preferred member no longer holds
+# the disjunction open, so `*in | out | inout` is a true
+# enum-with-default -- unset generates `in`, `out`/`inout` override,
+# anything else is the `empty` refusal. The old row recorded the
+# fail-open behaviour of use-cases/BUGS.md §1. Parity-probed.
+port-default-direction	gens	@"aontu:system"\np: $.system.Port & {}	{"p":{"direction":"in"},"system":{}}
+port-direction-chosen	gens	@"aontu:system"\np: $.system.Port & {direction: out}	{"p":{"direction":"out"},"system":{}}
+port-direction-refuses-nonmember	errc	@"aontu:system"\np: $.system.Port & {direction: sideways}	empty
+port-protocol-optional	gens	@"aontu:system"\np: $.system.Port & {protocol: http}	{"p":{"direction":"in","protocol":"http"},"system":{}}
+
+# --- Component and Service -------------------------------------------
+#
+# Service is written out rather than as `$.system.Component & {kind:
+# service}`: a reference from one member of this file to another does
+# not survive being INCLUDED into a document, so the vocabulary states
+# each schema on its own and `service-is-a-component-shape` pins that
+# the two still meet.
+component-ports-are-ports	gens	@"aontu:system"\nc: $.system.Component & {ports: {http: {protocol: http}}}	{"c":{"ports":{"http":{"direction":"in","protocol":"http"}}},"system":{}}
+component-ports-take-the-port-default	gens	@"aontu:system"\nc: $.system.Component & {ports: {http: {direction: out}}}	{"c":{"ports":{"http":{"direction":"out"}}},"system":{}}
+component-without-ports	gens	@"aontu:system"\nc: $.system.Component & {}	{"c":{},"system":{}}
+service-is-a-component	gens	@"aontu:system"\ns: $.system.Service & {ports: {http: {}}}	{"s":{"kind":"service","ports":{"http":{"direction":"in"}}},"system":{}}
+service-kind-is-fixed	errc	@"aontu:system"\ns: $.system.Service & {kind: database}	scalar_value
+
+# --- Relation (retired) ----------------------------------------------
+#
+# The Relation schema is GONE (RELATIONS.0.md P2): a relation is
+# declared by the graph atoms at its field -- `rel(t) & acyclic() &
+# inverse(name)` -- so `target` is rel(t)'s flow and the other two are
+# the atoms, all pinned in test/spec/relation.tsv. A document still
+# reaching for the old member gets the ordinary missing-path refusal.
+relation-schema-retired	errc	@"aontu:system"\nr: $.system.Relation & {acyclic: true}	no_path
+
+# --- The worked example ----------------------------------------------
+#
+# The design's own figure, evaluated: identified services, a typed
+# link-shaped dependency list, and the relation declared BY THE FIELD
+# (rel + the graph atoms), with the mirror the inverse asks for
+# written out. The graph row is what the verdict consumes.
+the-worked-example	gens	@"aontu:system"\n\nservices: {\n  auth: $.system.Service & {ports: {http: {protocol: http}}, dependedOnBy: rel() & [path($.services.billing)]}\n  billing: $.system.Service & {dependsOn: rel($.system.Service) & inverse(dependedOnBy) & acyclic() & [path($.services.auth)]}\n}	{"services":{"auth":{"dependedOnBy":["$.services.billing"],"kind":"service","ports":{"http":{"direction":"in","protocol":"http"}}},"billing":{"dependsOn":["$.services.auth"],"kind":"service"}},"system":{}}
+the-worked-example-graph	graph	@"aontu:system"\n\nservices: {\n  auth: $.system.Service & {ports: {http: {protocol: http}}}\n  billing: $.system.Service & {dependsOn: [&: refer(), path($.services.auth)]}\n}	{"edges":[{"from":"$.services.billing","key":"dependsOn","to":"$.services.auth","at":"$.services.billing.dependsOn.0"}]}
+vocabulary-canon	canon	@"aontu:system"	{"system":{"Component":{"ports"?:{&:$.system.Port}},"Port":{"direction":*"in"|"out"|"inout","protocol"?:string},"Service":{"kind":"service","ports"?:{&:$.system.Port}}}}
+vocabulary-hash	hash	@"aontu:system"	aon1-zc1d547oK3R_XRcSSjdnP8uTdSe21_eiM7PIv553ids
+relation-atoms-replace-the-schema	gens	@"aontu:system"\na: $.system.Service & {dependsOn: rel($.system.Service) & acyclic() & []}	{"a":{"dependsOn":[],"kind":"service"},"system":{}}
+service-is-a-component-shape	gens	@"aontu:system"\ns: $.system.Component & $.system.Service & {ports: {http: {}}}	{"s":{"kind":"service","ports":{"http":{"direction":"in"}}},"system":{}}
+port-direction-refuses-a-non-string	errc	@"aontu:system"\np: $.system.Port & {direction: 1}	empty

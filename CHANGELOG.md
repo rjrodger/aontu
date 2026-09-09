@@ -14,6 +14,40 @@ which implementation each change affects.
 > every affected call errors. See
 > [ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
 
+### BREAKING: `std/system` and `std/view` are `aontu:system` and `aontu:view`
+
+**The engine bundled seven schemas under two naming schemes; now there
+is one.** Every language-supplied schema is named under `aontu:`, and
+`std` is retired:
+
+```
+std/system, std/system.aon  ->  aontu:system
+std/view,   std/view.aon    ->  aontu:view
+```
+
+The prefix is not decoration: it is a spelling no relative path,
+package name or module path can produce, which is what makes such a
+name unshadowable. `std/system` was an ordinary relative path, and the
+engine carried a second resolution leg to match it. That leg is gone.
+
+**`std` retires as a root key too.** `aontu:system` defines `system:`,
+so `$.std.Port` is now `$.system.Port` — matching every other model,
+where the name and the root key agree. Retiring the prefix but keeping
+the key would leave the word in every document that used the
+vocabulary.
+
+The `.aon` spellings go with it: the scheme is not a directory, as was
+already true of the other five models.
+
+**To migrate:** rewrite `@"std/system"` as `@"aontu:system"`,
+`@"std/view"` as `@"aontu:view"`, and `$.std.*` as `$.system.*`. Both
+are loud — an unknown source, then an unresolvable path.
+
+Both vocabularies are now held to the formatter, having joined the set
+that check iterates, and are reformatted; their canon-hash pins move
+with the root key. Rationale in
+[ADR-028](ADR.md#adr-028--every-language-supplied-schema-is-named-under-aontu).
+
 ### BREAKING: the list generator is named `each` again, and `_ & t` is its bound
 
 **`form` was a coinage for a function whose natural name had just been

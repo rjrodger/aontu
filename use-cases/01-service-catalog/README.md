@@ -64,8 +64,8 @@ than its value.
 
 | File | Role | Features exercised |
 |---|---|---|
-| `system.aon` | root: one evaluation joining the vocabulary and both views | `@"std/system"`, `@"./..."` includes, `hide()` |
-| `spec.aon` | Acme vocabulary over the bundled one | `$.std.Service`, `$.std.Port`, conjunction-as-subclassing, `re`/`min`/`max`/`length` atoms, `*` defaults, optional `?` keys, `rel(t)` with `re()` address constraints, `acyclic()`, `inverse()` |
+| `system.aon` | root: one evaluation joining the vocabulary and both views | `@"aontu:system"`, `@"./..."` includes, `hide()` |
+| `spec.aon` | Acme vocabulary over the bundled one | `$.system.Service`, `$.system.Port`, conjunction-as-subclassing, `re`/`min`/`max`/`length` atoms, `*` defaults, optional `?` keys, `rel(t)` with `re()` address constraints, `acyclic()`, `inverse()` |
 | `catalog.aon` | catalog view | per-domain `&:` spreads stamping owner + schema, `path()` address lists |
 | `deploy.aon` | deployment view | references into the catalog view, defaults (`replicas: *2`) |
 | `queries/queries.aon` | instance-of queries | `filter`, map union as index |
@@ -77,8 +77,8 @@ Relations are declared on the field that holds them. In `spec.aon`:
 ```aon
 %CatalogAddr = re("^\\$[.]catalog[.]")
 
-dependsOn?: rel($.std.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
-dependedOnBy?: rel($.std.Service) & %CatalogAddr
+dependsOn?: rel($.system.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
+dependedOnBy?: rel($.system.Service) & %CatalogAddr
 ```
 
 `%CatalogAddr` is an **alias**: `%name = value` at the top level of the
@@ -95,7 +95,7 @@ deliberately written out self-contained (gap 2), and an alias is *not* a
 path (`$.%Owner` is refused at any depth), so naming them does not
 reintroduce the reference that gap is about.
 
-The key is the predicate. `rel($.std.Service)` types every far end,
+The key is the predicate. `rel($.system.Service)` types every far end,
 and the type flows into each target instead of being repeated at every
 link site; the held `re()` constrains every address, so a service may
 depend on a catalog entry and never on a workload; `acyclic()` and
@@ -109,7 +109,7 @@ The two views meet at the deploy positions. Each workload in
 so a contradiction between the views is a located error. The reference
 is directional (the catalog is not changed by what a cluster runs),
 which is what lets this file be one of several deployment views over
-one catalog. Both views name the same `$.std.Service` and
+one catalog. Both views name the same `$.system.Service` and
 `$.spec.PortSpec` templates, so a port has one shape wherever it
 appears.
 
@@ -221,7 +221,7 @@ merged model, `get` slices and query results; grep-by-error-code
 
 1. `system.aon` evaluates to `expected/system.json`: two views of
    eight entities, joined through the deployment view's references,
-   against the bundled `std/system` vocabulary.
+   against the bundled `aontu:system` vocabulary.
 2. `--canon` renders `acyclic()` and `inverse("dependedOnBy")` back at
    their fields, so the canonical form distinguishes documents that
    disagree about their relations.
@@ -262,7 +262,7 @@ merged model, `get` slices and query results; grep-by-error-code
    answers `verdict: fail` naming the loop:
    `cycle $.catalog.domains.payments.services.ledger -> $.catalog.domains.payments.services.payments -> $.catalog.domains.payments.services.ledger`.
 10. `bad/wrong-target.aon` writes a `hostedOn` edge typed
-    `rel($.std.Service)` that lands on a `kind: host` entity. The type
+    `rel($.system.Service)` that lands on a `kind: host` entity. The type
     flows into the target, so evaluation refuses with
     `[aontu/scalar_value]` and `aontu relations` answers
     `verdict: error` (exit 4) for a document that does not stand.
@@ -290,7 +290,7 @@ merged model, `get` slices and query results; grep-by-error-code
     `[aontu/scalar_value]` at the deploy position, which is what the
     deployment view's reference is for.
 16. `bad/wrong-kind.aon`, a self-contained model with a
-    `refer($.std.Service)` endpoint, refuses a `kind: database` target
+    `refer($.system.Service)` endpoint, refuses a `kind: database` target
     with `[aontu/scalar_value]` naming `"database"`.
 17. `vet --at '$.spec.CandidateShape'` accepts the well-formed
     candidate: `verdict: valid`, exit 0.

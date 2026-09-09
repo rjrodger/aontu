@@ -20,7 +20,7 @@
 <path d="M32 120V190H50" class="av-line"/>
 <text x="52" y="194"><tspan class="av-t">Workload</tspan><tspan class="av-m"> (4)</tspan></text>
 <path d="M8 20V210H26" class="av-line"/>
-<text x="28" y="214" class="av-t">std</text>
+<text x="28" y="214" class="av-t">system</text>
 <path d="M32 220V230H50" class="av-line"/>
 <text x="52" y="234"><tspan class="av-t">Component</tspan><tspan class="av-m"> (1)</tspan></text>
 <path d="M32 220V250H50" class="av-line"/>

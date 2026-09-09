@@ -2,10 +2,10 @@
 # unifies t INTO the target, so a database endpoint collides.
 # Deliberately self-contained -- the same typed refer on the full
 # model fails with [aontu/unify_cycle] (README, gap 8).
-@"std/system"
-std: hide({})
+@"aontu:system"
+system: hide({})
 
 infra: paydb: kind: database
 
 app: ledger: kind: service
-app: ledger: dependsOn: [&: refer($.std.Service) path($.infra.paydb)]
+app: ledger: dependsOn: [&: refer($.system.Service) path($.infra.paydb)]

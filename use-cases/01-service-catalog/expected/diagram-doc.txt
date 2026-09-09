@@ -8,7 +8,7 @@ $
 │   ├── CatalogEntry (8)
 │   ├── PortSpec (3)
 │   └── Workload (4)
-└── std
+└── system
     ├── Component (1)
     ├── Port (2)
     └── Service (2)

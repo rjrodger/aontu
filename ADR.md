@@ -44,6 +44,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-025](#adr-025--a-references-copy-is-an-instance-and-a-match-does-not-fire-on-an-unfilled-hole) | A reference's copy is an instance, and a match does not fire on an unfilled hole | Accepted |
 | [ADR-026](#adr-026--each-is-retired-form-carries-the-bound) | `each` is retired: `form` carries the bound | Accepted |
 | [ADR-027](#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound) | The list generator is named `each`, and `_ & t` is its bound | Accepted |
+| [ADR-028](#adr-028--every-language-supplied-schema-is-named-under-aontu) | Every language-supplied schema is named under `aontu:` | Accepted |
 
 ---
 
@@ -2980,3 +2981,81 @@ meaning never changed: "the first argument to `each` has no children".
   design records of what was decided then, and the progress register
   carries the rename, per the AGENTS.md rule that the register is
   status and the design documents are not.
+
+
+## ADR-028 — Every language-supplied schema is named under `aontu:`
+
+**Date:** 2026-09-09
+**Status:** Accepted
+
+### Context
+
+The engine bundled seven schemas and served them under **two** naming
+schemes. Five carried the `aontu:` prefix
+([MODELS.0.md](design/MODELS.0.md) D1, RENDER.0.md P0) — `aontu:code`,
+`aontu:profile` and the three language profiles. Two did not:
+`std/system` (G4 phase 4) and `std/view`, spelled as bare paths, each
+also answering to a `.aon` suffix.
+
+The prefix is not decoration. It is Node's `node:fs` device: a spelling
+no relative path, package name or module path can produce. That is what
+makes an `aontu:` name **unshadowable** — the memory, module, file and
+package legs are never asked, so no file on disk can stand in front of
+one, and an unknown name is refused naming the set rather than searched
+for.
+
+The `std/` names had none of that. `std/system` is a perfectly ordinary
+relative path, and the engine needed a **second resolution leg**, below
+the scheme leg, that matched bare names against the same table before
+the memory leg was asked. Two spellings for one idea, and a
+shadowing-avoidance argument that had to be made twice, differently.
+
+Three further asymmetries came with it:
+
+- `std/system.aon` resolved, while `aontu:code.aon` is refused — the
+  scheme is not a directory, but the bare names behaved like one.
+- The `aontu:` models are held to the formatter (MODELS.0.md D4) and
+  the `std/` vocabularies were not, because that test iterates the
+  models by prefix. Neither was fmt-clean.
+- Every other model's name matches the root key it defines —
+  `aontu:code` gives `code:`, `aontu:profile` gives `profile:`,
+  `std/view` gives `view:`. `std/system` gave `std:`.
+
+### Decision
+
+**Every language-supplied schema is named under `aontu:`, and `std` is
+retired.**
+
+    std/system, std/system.aon  ->  aontu:system
+    std/view,   std/view.aon    ->  aontu:view
+
+`std` goes as a *name* and as a *root key*: `aontu:system` defines
+`system:`, so `$.std.Port` is now `$.system.Port`. Retiring the prefix
+while leaving the key would keep the word in every document that used
+the vocabulary, which is not retiring it.
+
+The `.aon` spellings go with it. The scheme is not a directory, and
+that was already true of the other five.
+
+### Consequences
+
+- **This is a breaking change, and it is loud.** `@"std/system"` is
+  refused with `multisource_not_found`, and `$.std.Port` no longer
+  resolves. There is no spelling under which an old document quietly
+  keeps working.
+- **The engine loses a resolution leg.** With every bundled name
+  carrying the prefix, the bare-name leg in `ts/src/lang.ts` and
+  `go/source.go` is unreachable and is deleted. One leg now answers for
+  every language-supplied schema, and ADR-002 would have caught the dead
+  code if it had been left.
+- **Both vocabularies are now held to the formatter**, having joined
+  the set that test iterates, and are reformatted to the agreed form.
+  Their canon and canon-hash pins move with the root key; both were
+  re-probed against both engines.
+- `test/spec/std-system.tsv` and `std-view.tsv` become
+  `aontu-system.tsv` and `aontu-view.tsv`. The `.aon` rows become
+  refusal rows, which is what `aontu-scheme.tsv` already pins for
+  `aontu:code.aon`.
+- The dependency-kind label `std`, recorded for a bundled source, is
+  left alone: it names a source's PROVENANCE (engine-bundled), not a
+  name, and it is not user-visible.

@@ -103,7 +103,7 @@ figures down as data, in a `views.aon` that includes the model:
 
 <!-- test: file views.aon -->
 ```aontu
-@"std/view"
+@"aontu:view"
 @"./system.aon"
 
 views: { &: $.view.Figure } & {
@@ -115,7 +115,7 @@ views: { &: $.view.Figure } & {
 
 `views` is your key, not one the engine knows, so `--views` says where
 to look. Each declaration's keys are the view options (the flags
-without the dashes) and `@"std/view"` is the schema for one, so a
+without the dashes) and `@"aontu:view"` is the schema for one, so a
 misspelled option or a kind that is not a kind is refused when the
 document is evaluated.
 

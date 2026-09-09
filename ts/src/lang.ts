@@ -2253,13 +2253,13 @@ function makeModelResolver(options: any) {
   // remain available under every capability but 'none' — they are
   // host-provided, not document-requested, so confining them would
   // confine the host against itself.
-  // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts) rides the
-  // memory leg: served from the engine itself, so it needs neither the
-  // filesystem nor package resolution and is available under every
-  // capability but `none` — which denies every include outright, that
-  // being what `none` means. Host entries and the capability's own set
-  // WIN over it: a caller that supplies its own `std/system` gets the
-  // one it supplied.
+  // A LANGUAGE-SUPPLIED MODEL DOES NOT RIDE THIS LEG (ADR-028). Every
+  // bundled schema is named under `aontu:` and answered by the scheme
+  // leg above, which returns before the memory resolver is built, so
+  // neither a host entry nor a capability's own file set can stand in
+  // front of one: `aontu:system` is the engine's, always. That is what
+  // the prefix buys, and it is why the bare-name leg that once let a
+  // caller shadow `std/system` is gone.
   let memResolver = makeMemResolver(memCapability
     ? { ...(capability as any).mem }
     : { ...(options.resolver?.mem || {}) })
@@ -2429,10 +2429,14 @@ function makeModelResolver(options: any) {
     // else -- the memory, module, file and package legs are never
     // asked, so nothing on disk can shadow one and a typo is refused
     // here, naming the set, rather than searched for. Available under
-    // every capability but `none`, checked just above, like the std
-    // names below. A path that is not a string (`a: @1`) is not a name
-    // at all: it falls through to the legs below and is not found there,
-    // as it always was.
+    // every capability but `none`, checked just above. A path that is
+    // not a string (`a: @1`) is not a name at all: it falls through to
+    // the legs below and is not found there, as it always was.
+    //
+    // This is the ONLY leg that serves a bundled model (ADR-028). The
+    // vocabularies once had bare names (`std/system`) and a second leg
+    // below to match them; the prefix is now the whole spelling, so one
+    // leg answers for every language-supplied schema.
     if ('string' === typeof path && path.startsWith(AONTU_SCHEME)) {
       const model = STD_SOURCES[path]
       if (null == model) {
@@ -2440,19 +2444,6 @@ function makeModelResolver(options: any) {
       }
       record(ctx, path, 'std')
       return { found: true, path, full: path, kind: 'aon', src: model, search: [] }
-    }
-
-    // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts): served from
-    // the engine itself, so it needs neither the filesystem nor package
-    // resolution and is available under every capability but `none` —
-    // checked just above, that being what `none` means. Matched against
-    // the name the author WROTE, before the memory leg, so the kind is
-    // stated rather than guessed from an extension the bare name does
-    // not have.
-    const std = STD_SOURCES[path]
-    if (null != std) {
-      record(ctx, path, 'std')
-      return { found: true, path, full: path, kind: 'aon', src: std, search: [] }
     }
 
     let search: any = []

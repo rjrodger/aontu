@@ -2,19 +2,23 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AONTU_MODELS = exports.AONTU_SCHEME = exports.STD_SOURCES = void 0;
-// THE BUNDLED VOCABULARY (G4 phase 4,
-// docs/capability-review/g4-identity-relations.md): `@"std/system"` is
-// served from the engine itself — no filesystem, no package resolution
-// — so a document may use it under every include capability except
-// `none`, and the hermeticity posture is not widened by a source that
-// never leaves the process.
+// THE LANGUAGE-SUPPLIED MODELS (G4 phase 4,
+// docs/capability-review/g4-identity-relations.md): `@"aontu:system"`
+// is served from the engine itself — no filesystem, no package
+// resolution — so a document may use it under every include capability
+// except `none`, and the hermeticity posture is not widened by a source
+// that never leaves the process.
+//
+// EVERY name here carries the `aontu:` prefix (ADR-028): a
+// language-supplied schema is spelled one way, and the scheme is what
+// makes it unshadowable. There is no second, bare-name spelling.
 //
 // The TEXT is the shared artifact: go/std.go carries the same bytes,
-// and test/spec/std-system.tsv pins its canon and its canon-hash in
+// and test/spec/aontu-system.tsv pins its canon and its canon-hash in
 // both engines, so the two copies cannot drift without a red suite.
 // It carries no backtick for that reason: one string literal per port,
 // and Go's raw string has no escape.
-const STD_SYSTEM = `# std/system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
+const STD_SYSTEM = `# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
 # and relations need no syntax: they are schemas. Everything here is
 # ordinary unification --- conjunction, spreads, marks, defaults ---
 # so the vocabulary costs the language nothing, and an author who wants
@@ -25,30 +29,21 @@ const STD_SYSTEM = `# std/system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, 
 # identity and version makes "v1 and v2 describe the same entity"
 # inexpressible.
 
-std: {
-
+system: {
   # One end of a connection.
-  Port: type({
-    direction: *in | out | inout
-    protocol?: string
-  })
+  Port: type({ direction:*in | out | inout protocol?:string })
 
   # A node with ports. Where a Component sits in the tree is what it
   # is a component OF -- containment is the document's own structure
   # and needs no mark of its own.
-  Component: type({
-    ports?: {&: $.std.Port}
-  })
+  Component: type({ ports?:{ &: $.system.Port } })
 
   # A component that is a service. Written out rather than as
-  # $.std.Component & {kind: service}: a reference from one member of
+  # $.system.Component & {kind: service}: a reference from one member of
   # this file to another does not survive being INCLUDED into a
   # document (the marks the include carries make the referring member
   # unusable), so the vocabulary states each schema on its own.
-  Service: type({
-    kind: service
-    ports?: {&: $.std.Port}
-  })
+  Service: type({ kind:service ports?:{ &: $.system.Port } })
 
   # (The Relation schema that used to sit here is retired with the
   # relations: magic key, RELATIONS.0.md P2: a relation is declared
@@ -56,14 +51,14 @@ std: {
   # inverse(name) -- and the target half is rel(t)'s flow.)
 }
 `;
-const STD_VIEW = `# std/view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
+const STD_VIEW = `# aontu:view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
 # document"). A view document declares its figures as data, and a
 # declaration is just a map: this is the schema for one, so a typo is
 # refused where every other mistake in an aontu document is refused --
 # at evaluation, by unification -- rather than by the verb that reads
 # it afterwards.
 #
-#   @"std/view"
+#   @"aontu:view"
 #   @"./system.aon"
 #
 #   views: {&: $.view.Figure} & {
@@ -81,7 +76,6 @@ const STD_VIEW = `# std/view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
 # per port, and Go raw strings have no escape.
 
 view: {
-
   # One declared figure. The kind says what to draw and out says where
   # it belongs; everything else narrows the drawing, and each option
   # belongs to the kinds that read it.
@@ -627,10 +621,8 @@ profile: {
 }
 `;
 exports.STD_SOURCES = {
-    'std/system': STD_SYSTEM,
-    'std/system.aon': STD_SYSTEM,
-    'std/view': STD_VIEW,
-    'std/view.aon': STD_VIEW,
+    'aontu:system': STD_SYSTEM,
+    'aontu:view': STD_VIEW,
     'aontu:code': STD_CODE,
     'aontu:lang/go': STD_LANG_GO,
     'aontu:lang/text': STD_LANG_TEXT,

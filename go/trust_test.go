@@ -132,6 +132,31 @@ func TestTrustMemIsTheWholeWorld(t *testing.T) {
 	}
 }
 
+// A LANGUAGE-SUPPLIED MODEL CANNOT BE SHADOWED (ADR-028). The aontu:
+// leg answers before the memory resolver is consulted, so a host that
+// declares its own aontu:system still gets the engine's. This is what
+// the scheme buys, and it became true of the system and view
+// vocabularies when they moved off their bare std/ names. Twin:
+// a-bundled-model-is-not-shadowed-by-mem in ts/test/trust.test.ts.
+func TestBundledModelIsNotShadowedByMem(t *testing.T) {
+	a := New()
+	a.Trust = &TrustOptions{IncludeMem: map[string]string{
+		"aontu:system": "system: {HIJACKED: 1}",
+	}}
+	out, err := a.Generate("@\"aontu:system\"\np: $.system.Port & {}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if _, hijacked := m["HIJACKED"]; hijacked {
+		t.Fatalf("bundled model was shadowed: %v", out)
+	}
+	p, ok := m["p"].(map[string]any)
+	if !ok || "in" != p["direction"] {
+		t.Fatalf("engine copy not served: %v", out)
+	}
+}
+
 func TestTrustRootConfinesBelowTheRoot(t *testing.T) {
 	_, root := trustWorld(t)
 

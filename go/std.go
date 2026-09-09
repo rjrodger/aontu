@@ -7,20 +7,25 @@ import (
 	"strings"
 )
 
-// THE BUNDLED VOCABULARY (G4 phase 4,
+// THE LANGUAGE-SUPPLIED MODELS (G4 phase 4,
 // docs/capability-review/g4-identity-relations.md, and the Go side of
-// ts/src/std.ts): `@"std/system"` is served from the engine itself — no
-// filesystem, no package resolution — so a document may use it under
+// ts/src/std.ts): `@"aontu:system"` is served from the engine itself —
+// no filesystem, no package resolution — so a document may use it under
 // every include capability except `none`, and the hermeticity posture
 // is not widened by a source that never leaves the process.
 //
+// EVERY name here carries the `aontu:` prefix (ADR-028): a
+// language-supplied schema is spelled one way, and the scheme is what
+// makes it unshadowable. There is no second, bare-name spelling.
+//
 // The TEXT is the shared artifact: ts/src/std.ts carries the same
-// bytes, and test/spec/std-system.tsv pins its canon and its canon-hash
-// in both engines, so the two copies cannot drift without a red suite.
+// bytes, and test/spec/aontu-system.tsv pins its canon and its
+// canon-hash in both engines, so the two copies cannot drift without a
+// red suite.
 // It carries no backtick for that reason: one string literal per port,
 // and Go's raw string has no escape.
 
-const stdSystem = `# std/system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
+const stdSystem = `# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
 # and relations need no syntax: they are schemas. Everything here is
 # ordinary unification --- conjunction, spreads, marks, defaults ---
 # so the vocabulary costs the language nothing, and an author who wants
@@ -31,30 +36,21 @@ const stdSystem = `# std/system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, c
 # identity and version makes "v1 and v2 describe the same entity"
 # inexpressible.
 
-std: {
-
+system: {
   # One end of a connection.
-  Port: type({
-    direction: *in | out | inout
-    protocol?: string
-  })
+  Port: type({ direction:*in | out | inout protocol?:string })
 
-  # A node with ports. A Component that is not itself an entity is a
-  # component OF its nearest identified ancestor, which is the
-  # entity/component distinction and needs no mark of its own.
-  Component: type({
-    ports?: {&: $.std.Port}
-  })
+  # A node with ports. Where a Component sits in the tree is what it
+  # is a component OF -- containment is the document's own structure
+  # and needs no mark of its own.
+  Component: type({ ports?:{ &: $.system.Port } })
 
   # A component that is a service. Written out rather than as
-  # $.std.Component & {kind: service}: a reference from one member of
+  # $.system.Component & {kind: service}: a reference from one member of
   # this file to another does not survive being INCLUDED into a
   # document (the marks the include carries make the referring member
   # unusable), so the vocabulary states each schema on its own.
-  Service: type({
-    kind: service
-    ports?: {&: $.std.Port}
-  })
+  Service: type({ kind:service ports?:{ &: $.system.Port } })
 
   # (The Relation schema that used to sit here is retired with the
   # relations: magic key, RELATIONS.0.md P2: a relation is declared
@@ -63,14 +59,14 @@ std: {
 }
 `
 
-const stdView = `# std/view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
+const stdView = `# aontu:view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
 # document"). A view document declares its figures as data, and a
 # declaration is just a map: this is the schema for one, so a typo is
 # refused where every other mistake in an aontu document is refused --
 # at evaluation, by unification -- rather than by the verb that reads
 # it afterwards.
 #
-#   @"std/view"
+#   @"aontu:view"
 #   @"./system.aon"
 #
 #   views: {&: $.view.Figure} & {
@@ -88,7 +84,6 @@ const stdView = `# std/view --- the FIGURE VOCABULARY (VIEWS.0.md, "6. The view
 # per port, and Go raw strings have no escape.
 
 view: {
-
   # One declared figure. The kind says what to draw and out says where
   # it belongs; everything else narrows the drawing, and each option
   # belongs to the kinds that read it.
@@ -132,14 +127,12 @@ view: {
 }
 `
 
-// stdSources are the bundled sources, by the name a document writes.
-// Both the bare name and the `.aon` spelling resolve, because both are
-// what an author reaches for.
+// stdSources are the language-supplied models, by the name a document
+// writes. Every key carries the `aontu:` prefix and the scheme is not a
+// directory, so there is no `.aon` spelling (ADR-028).
 var stdSources = map[string]string{
-	"std/system":            stdSystem,
-	"std/system.aon":        stdSystem,
-	"std/view":              stdView,
-	"std/view.aon":          stdView,
+	"aontu:system":          stdSystem,
+	"aontu:view":            stdView,
 	"aontu:code":            stdCode,
 	"aontu:lang/go":         stdLangGo,
 	"aontu:lang/text":       stdLangText,
