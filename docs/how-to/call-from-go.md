@@ -1,5 +1,5 @@
 ---
-description: Embed the engine with the Go port: the same three calls, with errors returned instead of thrown.
+description: "Embed the engine with the Go port: the same three calls, with errors returned instead of thrown."
 group: run-embed
 order: 30
 ---

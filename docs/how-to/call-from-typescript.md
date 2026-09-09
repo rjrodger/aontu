@@ -1,5 +1,5 @@
 ---
-description: Embed the engine in Node with the `Aontu` class: parse, unify and generate from your own code.
+description: "Embed the engine in Node with the `Aontu` class: parse, unify and generate from your own code."
 group: run-embed
 order: 20
 ---
