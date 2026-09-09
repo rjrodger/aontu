@@ -57,5 +57,10 @@ type Servers = {
     lsp: () => void;
     mcp: (argv: string[]) => void;
 };
+declare function runHelp(argv: string[]): number;
+declare function runExplain(argv: string[]): number;
+declare const KNOWN_VERBS: string[];
+declare function looksLikeVerb(arg: string): boolean;
+declare function nearestVerb(word: string, verbs: string[]): string;
 declare function main(argv: string[], servers?: Servers): void;
-export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations, runReaches, runView, runJsonSchema, runRender, runTemplate, runMod, runHash, runGet, runWhy, renderWhyText, runSet, runAgentsMd, runFmt, watchChange, watchSignature, vetWaiter, deprecatedAt, };
+export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations, runReaches, runView, runJsonSchema, runRender, runTemplate, runMod, runHash, runGet, runHelp, runExplain, nearestVerb, looksLikeVerb, KNOWN_VERBS, runWhy, renderWhyText, runSet, runAgentsMd, runFmt, watchChange, watchSignature, vetWaiter, deprecatedAt, };

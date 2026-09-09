@@ -1,0 +1,123 @@
+# What do you want to do?
+
+The verb for a job, found by the word you arrived with. aontu's own
+vocabulary is on the right; yours is probably on the left.
+
+## Describe a domain
+
+An **ontology**, a **schema**, a **data model**, a **contract** — in
+aontu these are all one thing: a document. Write the entities as a
+**map keyed by name**, and say what every entry must satisfy with the
+`&:` template:
+
+```
+entity: {
+  &: {
+    table:  string
+    fields: { &: { type: string, required: *false | boolean } }
+  }
+  planet: { table: "planets", fields: { name: { type: "string" } } }
+  moon:   { table: "moons",   fields: { name: { type: "string" } } }
+}
+```
+
+`&:` is the construct to reach for first, and the one most easily
+missed. It meets **every** key of the map it sits in. A quoted `"*"`
+is not a wildcard — it is a key named `*`, and a schema written that
+way constrains nothing while still reporting `valid`.
+
+Prefer a named map to a list unless the order is a fact (a migration
+sequence, a rule table tried in order). A key is an address, a name
+other parts can refer to, and a diff that shows one insertion instead
+of every following element renumbered.
+
+## Check data against a model
+
+```
+aontu vet model.aon data.aon
+```
+
+Exit `0` valid, `1` a contradiction, `3` incomplete (nothing
+contradicts, but the model is not yet satisfied), `4` the model does
+not stand up on its own. `--format json` for the machine-readable
+report, `--closed` to refuse keys the model does not declare,
+`--max-errors <n>` to cap the list.
+
+## Check the model is coherent with itself
+
+```
+aontu relations model.aon        # declared entity edges: targets resolve, no cycles
+aontu reaches planet moon model.aon   # does one entity reach another, at any remove?
+aontu trim --check model.aon     # entries whose removal changes nothing
+```
+
+## Check code against a model
+
+```
+aontu render --check src/ --profile go.aon model.aon
+```
+
+`render` writes code from the model; `--check` writes nothing and
+lists what on disk differs from what the model implies. That is the
+gate: the model is the truth, the code is the claim, and drift is a
+finding. `--coverage` reports the other direction — model paths no
+output consumed, and rendered declarations no rule produced.
+
+## Ask what a model says, and why
+
+```
+aontu get  $.entity.planet.table model.aon
+aontu why  $.entity.planet.table model.aon
+aontu get  $.entity --keys       model.aon
+aontu get  $.entity --types      model.aon
+```
+
+`why` names **every** contribution to a value, with the file and line
+each was written on. It is the first thing to run when a value is not
+what you expected, and the second thing to run when `vet` refuses.
+
+## Change a value without editing the file
+
+```
+aontu set '$.entity.planet.table=planet_v2' --entry model.aon --overlay local.aon
+```
+
+The change is checked before it is written; a change that contradicts
+a pinned value is refused, and the file is left alone.
+
+## Gate a change to the model itself
+
+```
+aontu subsume old.aon new.aon              # does the general admit every specific?
+aontu breaking --against git#HEAD~1 model.aon
+aontu hash model.aon                       # a pin that survives reformatting
+```
+
+## Hand a model to another agent
+
+```
+aontu agentsmd --write AGENTS.md model.aon
+```
+
+Splices a derived stanza — the pin, the root keys, the shape, and the
+commands spelled with paths that exist — between two markers, and
+leaves the rest of the file alone. Re-run it in the commit that
+changes the model.
+
+## When something refuses
+
+Read the code in the brackets, then look it up:
+
+```
+aontu explain no_scalar_unify
+```
+
+Every finding carries a `code`, a `class`, a `path` and the **two
+sites** that disagree — the value and the constraint it failed, each
+with its file and line. The class says what kind of answer it is:
+`conflict` (two things cannot both hold), `incomplete` (nothing is
+wrong yet, something is missing), `parse`, `reference`, `budget`.
+
+Full index: [`error-codes.md`](error-codes.md). The language on one
+page: [`grammar-card.md`](grammar-card.md). The worked ladder from
+plain JSON upward: [`examples.md`](examples.md).

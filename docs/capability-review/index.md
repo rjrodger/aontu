@@ -68,7 +68,7 @@ infrastructure around the lattice, not syntax on top of it.
 
 ## The eight fundamental gaps
 
-> **Two more were opened later.** G1–G8 are the August 2026 survey.
+> **Three more were opened later.** G1–G8 are the August 2026 survey.
 > [G9](g9-transformation.md) was opened on 2026-08-30, after all eight
 > had landed, and asks a question the survey did not: once a model is
 > trustworthy, how does the CODE come from it? Its companion for the
@@ -81,6 +81,11 @@ infrastructure around the lattice, not syntax on top of it.
 > project must operate, which
 > [ADR-013](../../ADR.md#adr-013--the-project-operates-one-transparency-log-and-nothing-else)
 > permits once and bounds.
+> [G11](g11-agent-onramp.md) was opened on 2026-09-09 and asks the
+> question [G7](g7-machine-access.md) did not: G7 settled whether an
+> agent can CONSUME a definition, and this one asks whether it can
+> arrive at one — what it can learn about aontu from aontu alone,
+> offline, holding the binary and nothing else.
 
 | # | Gap | Why it changes what the language is | Design doc |
 |---|-----|-------------------------------------|------------|

@@ -1,7 +1,7 @@
 .PHONY: all build test clean build-ts build-go test-ts test-go clean-ts clean-go \
         install install-ts install-go \
         publish publish-go check-go-major tags-go reset cov cov-ts cov-go sig \
-        prose
+        helpdoc prose
 
 all: build test
 
@@ -92,7 +92,7 @@ cov-go:
 	cd go && rm -rf covdata bin coverage-unit.out coverage-main.out
 
 # TypeScript (canonical implementation, package lives in ts/)
-build-ts: sig
+build-ts: sig helpdoc
 	cd ts && npm run build
 	node ts/scripts/figures.cjs
 
@@ -101,6 +101,15 @@ build-ts: sig
 # source test/spec/signature.tsv (docs/design/SIGNATURES.0.md).
 sig:
 	node ts/scripts/sigdecl.cjs
+
+# Regenerate the build-time-inlined TEACHING PACK -- the corpus
+# `aontu help <topic>` serves (G11 phase 1) -- from docs/skill/*.md and
+# grammar/aontu.abnf into ts/src/helpdoc.ts and go/cmd/aontu/helpdoc/.
+# The Go half must be a committed copy: //go:embed cannot read above
+# its own package directory. Both suites assert byte identity with the
+# sources, so a stale copy fails rather than ships.
+helpdoc:
+	node ts/scripts/helpdoc.cjs
 
 test-ts:
 	cd ts && npm test

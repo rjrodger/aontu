@@ -56,6 +56,8 @@ Usage: aontu [options] [file]
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu agentsmd [--write <AGENTS.md>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu help [topic] [--format text|json]
+       aontu explain <code> | --list [--format text|json]
        aontu lsp
        aontu mcp [--root <dir>]
 
@@ -87,6 +89,14 @@ than beside it: both answer what an include may read.
   than a plausible pass: in the one place a tool loop reads the exit
   code to decide whether the data is good. A file genuinely named like
   a verb is still reachable as `./vet`.
+- **One mistyped verb is diagnosed too.** A single argument that cannot
+  be read and is shaped like a bare word (no separator, no extension)
+  is reported as a verb rather than as a missing file, with the nearest
+  verb named: `aontu vett` answers ``aontu: `vett` is not a file, and
+  not a verb this port knows`` and suggests `aontu vet`, at exit 2. A
+  path-shaped argument (`./help`, `help.aon`, `/tmp/help`) keeps the
+  file diagnosis and its exit 1, which is the same escape hatch the
+  subcommand dispatch uses.
 - **Stdin:** `echo 'a:1 b:$.a' | aontu` reads source from the pipe.
 - **REPL:** `aontu` with no file on a terminal starts an interactive
   loop; each line is evaluated and printed.
@@ -2467,6 +2477,82 @@ aontu> a:1|2|3
 aontu> :quit
 ```
 
+### `aontu help`
+
+Print the embedded teaching pack: the **language**, where `--help`
+documents the **tool**.
+
+```
+aontu help [topic] [--format text|json]
+```
+
+With no topic it lists them. The corpus travels inside the binary, so
+it answers with no network, no checkout and no documentation site,
+which is the condition it exists for.
+
+| topic | is |
+|---|---|
+| `tasks` | which verb does the job you have, indexed by the word you arrived with |
+| `language` | the grammar card: everything the language spells, on one page |
+| `examples` | the ladder, from plain JSON upward |
+| `codes` | what a refusal means, and what to do about it |
+| `grammar` | the published [ABNF](#the-published-grammar) |
+
+The corpus is **generated** from [`docs/skill/`](skill/) and
+`grammar/aontu.abnf` by `ts/scripts/helpdoc.cjs` (`make helpdoc`, which
+`make build-ts` runs), into `ts/src/helpdoc.ts` and
+`go/cmd/aontu/helpdoc/`. Both suites assert the embedded copy is
+byte-identical with its source, so the pack cannot drift from the
+published files: a Go binary needs a copy inside its own package
+directory, because `//go:embed` cannot read above one, and a generated
+copy that nothing compares is a second source of truth.
+
+`--format json` answers `{aontu, topics}` for the index and
+`{aontu, source, summary, text, topic}` for a topic.
+
+Exit codes: `0` printed, `2` an unknown topic (the topics are listed)
+or a bad option.
+
+### `aontu explain`
+
+Explain one error code, from the same table the engine attaches to a
+finding.
+
+```
+aontu explain <code> [--format text|json]
+aontu explain --list [--format text|json]
+```
+
+Every code in [the registry](#behavioural-parity) resolves, so a code
+read out of a report always answers:
+
+```
+$ aontu explain mapval_no_gen
+code:  mapval_no_gen
+class: incomplete
+
+This value was present after unification, and cannot be generated
+because it is not a literal value.
+```
+
+The list is the **registry**, not the hint table. The registry is in
+cross-port parity (`test/spec/errcodes.tsv`, asserted set-equal with
+the engine's class map in both ports), while the hint tables are
+smaller and are not themselves in parity, so listing from them would
+make the two ports differ over something that is not about what either
+can report. A registered code carrying no explanation text is marked
+`(no text)` in the listing and says so when asked, rather than printing
+an empty block.
+
+A dynamic code is registered through the prefix it extends, and carries
+that prefix's text: `func:upper` answers with the `func:` explanation,
+because the suffix names the operator and the explanation is the
+prefix's.
+
+An unknown code exits 2 and names the nearest registered match.
+
+Exit codes: `0` explained, `2` an unknown code or a bad option.
+
 ### `aontu lsp`
 
 ```
@@ -2566,10 +2652,19 @@ directions.
 ### The skill
 
 [`docs/skill/`](skill/) holds the agent-facing sources: a trigger
-stub, a one-page grammar card, a JSON-first example ladder, and the
-error-code index for repair loops. Every example document in the
-ladder is evaluated by `ts/test/skill.test.ts`, so a skill that
-teaches something the engine no longer does fails the build.
+stub, a task-to-verb index, a one-page grammar card, a JSON-first
+example ladder, and the error-code index for repair loops. Every
+example document in the ladder is evaluated by
+`ts/test/skill.test.ts`, so a skill that teaches something the engine
+no longer does fails the build.
+
+They reach a caller by three routes, and the third is the one that
+works when nothing was configured. The npm tarball stages them as
+`skill/` (`ts/scripts/prepack.js`, which rewrites the links that
+would otherwise escape the package). A harness can mount the directory
+as a skill. And [`aontu help`](#aontu-help) serves them **from inside
+the binary**, which is what an agent holding the command and no
+network has.
 
 ### LSP hover provenance
 

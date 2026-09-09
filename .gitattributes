@@ -6,6 +6,14 @@ test/spec/files/** text eol=lf
 # SIGNATURES.0.md): byte-compared with it by go/sig_test.go, so it
 # keeps the same line endings on every platform.
 go/sigdecl.txt text eol=lf
+# The embedded teaching pack (G11 phase 1): copies of docs/skill/*.md
+# and grammar/aontu.abnf staged into the Go command's own package,
+# because //go:embed cannot read above its own directory. Both suites
+# byte-compare them with their sources, so they keep the same line
+# endings on every platform. The globs above already cover .md, .tsv
+# and .abnf; this is here so the directory is not mistaken for
+# hand-written content. Regenerate with `make helpdoc`, never by hand.
+go/cmd/aontu/helpdoc/** text eol=lf
 
 # The same rule, for the same reason, over every other file the suite
 # READS AS DATA rather than compiles: the documentation is executed

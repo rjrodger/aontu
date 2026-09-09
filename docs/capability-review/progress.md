@@ -70,8 +70,13 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    [`test/spec/errcodes.tsv`](../../test/spec/errcodes.tsv) accurate —
    "new engine codes must land with a registry row in the same change"
    — and errcodes.tsv is the one landing record in this repository that
-   has never gone stale. Nothing else here is machine-checked, so the
-   discipline is the whole mechanism.
+   has never gone stale. **The STRUCTURE of this file is machine-checked
+   since 2026-09-09** — `ts/test/capability-review.test.ts` derives the
+   summary table from the rows below it, requires every gap document to
+   have a section here and a row in the index, requires every LANDED row
+   to cite a path, a symbol or a link, and resolves every link. What it
+   cannot check is whether a pin is TRUE, so for that the discipline is
+   still the whole mechanism, and this rule is still the rule.
 2. **An entry cites artifacts, never intentions.** A pin is a path, a
    spec file, a symbol, or a commit hash that a reviewer can re-check
    in under a minute. "Designed", "planned" and "in progress" are not
@@ -153,8 +158,8 @@ the fix was and why the earlier tests could not see the defect.
 | [G8](g8-generation.md) | Generation | C | 6 | 0 | 0 | 1 |
 | [G9](g9-transformation.md) | Declarative transformation | D | 6 | 1 | 0 | 3 |
 | [G10](g10-transparency.md) | Transparency log | D | 2 | 0 | 3 | 1 |
-| [G11](g11-agent-onramp.md) | Offline agent on-ramp | A | 0 | 0 | 7 | 0 |
-| | | **total** | **56** | **2** | **10** | **7** |
+| [G11](g11-agent-onramp.md) | Offline agent on-ramp | A | 3 | 0 | 4 | 0 |
+| | | **total** | **59** | **2** | **7** | **7** |
 
 *Retired* counts the rows whose status is SUPERSEDED, RETIRED or
 REMOVED — G4.0 and G4.1 (ADR-014), G8.4 (ADR-018), G10.5 (ADR-019),
@@ -1734,14 +1739,35 @@ has.
 
 ## Where this is pinned
 
-Nothing in this file is machine-checked; it is prose, held accurate by
-protocol rule 1 alone. The suite counts in rule 5 are the exception —
-they carry their reproduction commands, so a reader can falsify them in
-two shell lines. If this register and a gap document disagree, **this
-file is wrong until re-verified against the tree**: the gap documents
-are older and were written before any of it landed, so they cannot be
-evidence of status, but neither can a register nobody re-checked.
-Re-derive from `test/spec/`, `ts/src/`, `go/` and `git log`.
+**The shape of this file is machine-checked; its claims are not.**
+`ts/test/capability-review.test.ts` (added with G11 phase 1) holds the
+half that can be mechanised:
+
+- the summary table's four counts per gap are DERIVED from the phase
+  rows beneath it, and the **total** row from the columns — the
+  arithmetic that had already gone wrong once, when the table kept its
+  total at sixty-five while the sections below held sixty-seven rows;
+- every `g<n>-*.md` on disk has a section here and a row in
+  [`index.md`](index.md), and every summary row has a document;
+- every phase row carries a status word from the register's own
+  vocabulary, so a typo cannot fall out of the counts;
+- every LANDED row's pin cites a path, a symbol or a link, which is
+  protocol rule 2's checkable half;
+- the `G1–Gn` range is current wherever it is quoted in
+  [`AGENTS.md`](../../AGENTS.md), [`CLAUDE.md`](../../CLAUDE.md),
+  `index.md` and this file, and no range names a gap that does not
+  exist;
+- every relative link in this directory resolves.
+
+What no test can check is whether a pin is TRUE — whether the symbol it
+names does what the row says. That half is protocol rule 1 alone, and
+the suite counts in rule 5 carry their reproduction commands so a reader
+can falsify them in two shell lines. If this register and a gap document
+disagree, **this file is wrong until re-verified against the tree**: the
+gap documents are older and were written before any of it landed, so
+they cannot be evidence of status, but neither can a register nobody
+re-checked. Re-derive from `test/spec/`, `ts/src/`, `go/` and
+`git log`.
 
 ## G10 — a transparency log
 
@@ -1922,11 +1948,19 @@ ruled it for one verb: "`--check` is REQUIRED — `aontu trim f.aon`
 reads as 'trim this file', and doing something else silently is worse
 than refusing."
 
+**Phases 1, 2 and 3 landed 2026-09-09**, in both ports, in the commit
+that changed these rows. An offline agent can now learn the language
+from the binary (`aontu help language` carries `&:`), is told when it
+has mistyped a verb instead of being told a file is missing, and can
+look up any code a report hands it. Phases 4 to 7 are NOT STARTED, and
+**phase 5 is the one that closes the defect the gap was opened for**:
+until it lands, a vacuous check still answers like a passing one.
+
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
-| **1** — `aontu help [topic]`, the teaching pack embedded | M | NOT STARTED | The generator, the committed corpora in both ports, the verb, the byte-identity assertions, and `docs/skill/tasks.md` as new content. On the `sigdecl` precedent (`make sig` → `go/sigdecl.txt` + `ts/src/sigdecl.ts`, byte identity asserted by both suites), which is not a preference for Go: `//go:embed` cannot read above its own package directory, so a committed generated copy is the only mechanism. Topics `language`, `examples`, `codes`, `tasks`, `grammar` from `docs/skill/*.md` and `grammar/aontu.abnf` — roughly 15 KB against a 9.4 MB binary. |
-| **2** — the one-argument mistyped-verb hint | S | NOT STARTED | The existing refusal is correct and mis-scoped: it is gated behind `1 < len(files)`, so it fires for two arguments and never for the one-word guesses (`help`, `init`, `ontology`, `docs`) an agent makes first. Extend it to one unreadable argument that is shaped like a bare word rather than a path, and name the nearest verb. `aontu ./help` must keep meaning "read the file named help", which is the escape hatch the subcommand dispatch already documents. |
-| **3** — `aontu explain <code>` | S | NOT STARTED | `rustc --explain`, over a table this repository already maintains complete: `test/spec/errcodes.tsv` has 157 rows, `ts/src/hints.ts` and `go/hints.go` carry a hint for every one, and the spec suite already asserts set equality between registry and table. A pure projection of an existing contract — no text has to be written, and the verb cannot ship a code that answers nothing. `--format json` returns `{code, class, hint, since}`; an unknown code exits 2 with near matches. |
+| **1** — `aontu help [topic]`, the teaching pack embedded | M | **LANDED 2026-09-09** | `aontu help [topic] [--format text\|json]` in both ports (`ts/src/cli.ts` `runHelp`, `go/cmd/aontu/help.go`), serving five topics from an EMBEDDED corpus: `tasks`, `language`, `examples`, `codes`, `grammar`. The corpus is generated by `ts/scripts/helpdoc.cjs` (`make helpdoc`, which `make build-ts` runs) from `docs/skill/*.md` and `grammar/aontu.abnf` into `ts/src/helpdoc.ts` and `go/cmd/aontu/helpdoc/`, and BOTH suites assert the embedded copy is byte-identical with its source (`ts/test/helpdoc.test.ts` corpus-is-identical-with-its-sources, `go/cmd/aontu/help_test.go` TestHelpdocCorpusIsIdenticalWithItsSources); a third case asserts the two ports stage the same topics in the same order. **`docs/skill/tasks.md` is new content**, the vocabulary bridge: the caller's words (ontology, schema, validate, model) on the left, the verb on the right. **Departures, three.** (1) The Go copy is COMMITTED under the package rather than read from `docs/skill/`: `//go:embed` cannot read above its own package directory, so this is the only mechanism, and given one copy is forced the choice was one generated copy asserted byte-identical over two hand-maintained ones — the `sigdecl` precedent (`test/spec/signature.tsv` → `go/sigdecl.txt` + `ts/src/sigdecl.ts`) applied to prose. (2) Each staged file KEEPS ITS SOURCE BASENAME, with the topic→file mapping in a generated `helpdoc/index.tsv`, so a reader can see which repository file each came from and `aontu.abnf` does not arrive wearing a `.md` extension. (3) The tool help gained a NEW TO THE LANGUAGE? block naming `&:` directly, because the topic list only helps a caller who already ran `aontu help` — and the whole finding is that they run `--help`. 17,840 bytes of corpus against a 9.4 MB binary. **A parity gate that did not exist before**: `helpText` and `HELP` were already byte-identical and nothing asserted it, so a verb documented in one port and not the other would have shipped silently; `ts/test/helpdoc.test.ts` the-tool-help-is-identical-in-both-ports now pins it. **And the internal documentation gained a gate**, because serving the skill sources from the binary makes them shipped artifacts: `ts/test/capability-review.test.ts` machine-checks the STRUCTURE of this register — the summary table derived from the rows it summarises, every gap document required to have a section here and a row in index.md, every LANDED row required to cite a path or a symbol, the `G1–Gn` range current in the four files that quote it, and every link resolved. It found a stale range on its first run. Whether a pin is TRUE stays protocol rule 1. |
+| **2** — the one-argument mistyped-verb hint | S | **LANDED 2026-09-09** | `looksLikeVerb` + `nearestVerb` in both ports (`ts/src/cli.ts`, `go/cmd/aontu/help.go`), reached from the bare command's file-read failure (`runFile`, `run`). A single unreadable argument shaped like a bare word (no separator, no extension, no leading dash) is reported as a verb at exit 2 with the nearest verb named, where it previously answered `cannot read help: open help: no such file or directory` at exit 1. The nearest-verb metric is restricted Damerau-Levenshtein, mirrored function for function between the ports, over a sorted verb list so a TIE resolves identically in both. **Departures, three.** (1) The cap grows with the word and stops at three (`1 + len/4`, capped): open question 4 asked for the metric and this is the answer — an uncapped nearest match on a three-letter typo names something unrelated with confidence, and `aontu ontology` correctly suggests NOTHING. (2) The test is SHAPE, not existence, so `./help`, `help.aon`, `/tmp/help` and `sub/help` keep the file diagnosis and its exit 1 — the escape hatch the subcommand dispatch already documents. (3) `knownVerbs`/`KNOWN_VERBS` is a SEPARATE list from the dispatch, because the dispatch arms have three different signatures and cannot be a table; `TestKnownVerbsAllDispatch` and `known-verbs-all-dispatch` run every listed name and require it not to fall through, which is what stops the two drifting. |
+| **3** — `aontu explain <code>` | S | **LANDED 2026-09-09** | `aontu explain <code>` and `aontu explain --list [--format text\|json]` in both ports (`ts/src/cli.ts` `runExplain`, `go/cmd/aontu/explain.go`) over new engine exports `ExplainCode`/`Codes` (`go/hints.go`) and the already-exported `hints`/`codeClasses` (`ts/src/hints.ts`). Both suites assert EVERY code in `test/spec/errcodes.tsv` resolves, reading the registry from the shared TSV rather than the engine table so the test can fail when the two disagree instead of agreeing with itself. **The design said the hint table was complete and it is not**, which the phase found by running the code rather than reading it: the registry has 157 rows, `ts/src/hints.ts` has 130 texts and `go/hints.go` 131. So **the REGISTRY is the list, not the hint table** — `codeClasses` is set-equal with the TSV in both ports, the hint tables are not in parity with each other, and listing from them would make the verb differ between ports over something that is not about what either can report. The 27 registered codes with no text are now VISIBLE, marked `(no text)` in the listing, flagged `explained: false` in the JSON, and answering `(no explanation text is registered for this code)` rather than an empty block; writing those 27 texts is a work item this phase created rather than discharged. **Departures, two.** (1) A dynamic code (`func:upper`, `op[+]`) is registered THROUGH the prefix it extends and carries that prefix's text: the suffix names the operator, the explanation is the prefix's. (2) `decimal_syntax`'s hint was added to `ts/src/hints.ts` — a code this port never raises — because since this phase the table is a LOOKUP surface as well as a message source, and a code in the shared registry must answer the same in both ports or an agent that met it under one binary learns nothing from the other. The entry is never read on an error path. Recording it in `test/spec/divergent.tsv` was rejected: the ledger's own rule is that a divergence is a bug and the default response is to fix the engine. |
 | **4** — vacuity signals on `view`, `render`, `relations` | M | NOT STARTED | Each verb that can do nothing says so on **stderr**, so no `--format json` stdout contract changes: `view` with an empty figure (1 byte, exit 0 today), `render` with no profile (0 bytes, exit 0), `relations` over a document declaring none (`verdict: pass`, exit 0). No exit code and no verdict word changes in this phase. CLI-level messages belong in the port-native command suites, as the mistyped-verb refusal already does, not in a shared spec mode. |
 | **5** — `vet --coverage` and `--strict-coverage` | L | NOT STARTED | The phase that closes the defect. A `coverage` object on the report — schema paths that constrained no data, data paths no clause touched, and `vacuous` when NO schema path constrained ANY data path, which is the exact condition of the `"*"` failure. `--strict-coverage` makes a vacuous verdict exit 1; without it the verdict contract is unchanged, so nothing that passes today starts failing. Modelled on `render --coverage`, which already ships and already refuses to write. Sequenced after 1–4 because those are what stop an agent reaching this state. |
 | **6** — `aontu init` | S/M | NOT STARTED | A minimal correct trio — `model.aon` using `&:`, a `data.aon` that satisfies it, a `check.sh` that checks it — refusing to overwrite. Not scaffolding convenience: the agent's most expensive failure is writing a first document at all, and a known-good starting document turns generation into editing. Minimised from the seventeen `use-cases/` directories. |

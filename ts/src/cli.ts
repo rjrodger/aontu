@@ -57,6 +57,10 @@ import type { WhyRecord } from './provenance'
 import { agentsMdSplice } from './agentsmd'
 import { format, unifiedDiff } from './format'
 import { includeOpts } from './utility'
+import { HELPDOC } from './helpdoc'
+import type { HelpTopic } from './helpdoc'
+import { hints, codeClasses, codeClass } from './hints'
+import { cmpCodePoint } from './keyorder'
 import type { IncludeOptions } from './utility'
 
 
@@ -84,12 +88,37 @@ const HELP = `Usage: aontu [options] [file]
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu agentsmd [--write <AGENTS.md>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu help [topic] [--format text|json]
+       aontu explain <code> | --list [--format text|json]
        aontu lsp
        aontu mcp [--root <dir>]
 
 Evaluate an aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
 With no file and piped input, read the source from stdin.
+
+NEW TO THE LANGUAGE? This page documents the TOOL. The documentation
+of the LANGUAGE travels inside this binary, and this is how to reach it:
+
+  aontu help              List the topics this binary carries
+  aontu help tasks        Which verb does the job you have
+  aontu help language     The whole grammar, on one page
+  aontu help examples     The ladder, from plain JSON upward
+  aontu help codes        What a refusal means
+  aontu help grammar      The published ABNF
+  aontu explain <code>    What one error code a report carries means
+  aontu explain --list    Every registered code with its class
+
+Every one of those answers with no network and no checkout. The
+long-form documentation -- the tutorial, the language and API
+references, the how-to guides -- is in docs/ of the repository, which
+is where to go when the topics above are not enough; the contributor
+and agent guide is AGENTS.md beside it.
+
+The one construct to know before writing anything: &: inside a map is
+a TEMPLATE that every key of that map must satisfy. A quoted "*" is a
+key named *, not a wildcard, and a schema written that way constrains
+nothing while still reporting valid.
 
 The vet verb validates data documents against a schema document and
 reports what does not hold, as text or as a machine-readable object.
@@ -100,7 +129,8 @@ query between a document and its own earlier versions.
 
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
-  -h, --help      Show this help and exit
+  -h, --help      Show this help and exit (the verbs and their flags);
+                  aontu help is the LANGUAGE, and lists its own topics
   --jsonl         REPL: answer every command as one JSON line
   -v, --version   Print the version and exit
   --trust <t>     Include capability: system (default), none, or
@@ -341,6 +371,28 @@ Agentsmd options:
 
 Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
 stand up on its own.
+
+Help options:
+  --format <f>    text (default) or json, the topic and its text
+
+The help verb prints the embedded teaching pack: the language, not the
+tool. With no topic it lists them. Topics are tasks, language,
+examples, codes and grammar; the corpus is generated from docs/skill/
+and grammar/aontu.abnf, so it cannot drift from those sources.
+
+Help exit codes: 0 printed, 2 an unknown topic (the topics are listed)
+or a bad option.
+
+Explain options:
+  --list          Every registered error code with its class
+  --format <f>    text (default) or json
+
+The explain verb answers what one error code means, from the same
+table the engine attaches to a finding. Every registered code has an
+entry, so a code read out of a report always resolves.
+
+Explain exit codes: 0 explained, 2 an unknown code (near matches are
+named) or a bad option.
 
 Fmt options:
   -w, --write     Rewrite each file in place, when its form would change
@@ -606,6 +658,28 @@ function runFile(file: string, mode: Mode, trust: TrustArg): number {
     src = readFileSync(file, 'utf8')
   }
   catch (err: any) {
+    // A MISTYPED VERB READS AS A FILE NAME, and until G11 phase 2 that
+    // was only said when there were TWO of them. The one-argument case
+    // is the one an agent actually produces -- `aontu help`, `aontu
+    // init`, `aontu ontology` -- and it answered `cannot read help:
+    // ...`, which describes the symptom and hides the cause.
+    //
+    // The test is SHAPE, not existence: a bare word (no separator, no
+    // extension) that cannot be read was meant as a verb, while
+    // `./help`, `help.aon` and `/tmp/help` were meant as paths and keep
+    // the file diagnosis and its exit 1. That is the same escape hatch
+    // the subcommand dispatch documents. Mirrors go/cmd/aontu/main.go.
+    if (looksLikeVerb(file)) {
+      process.stderr.write(
+        `aontu: \`${file}\` is not a file, and not a verb this port knows\n`)
+      const near = nearestVerb(file, KNOWN_VERBS)
+      if ('' !== near) {
+        process.stderr.write(`aontu: did you mean \`aontu ${near}\`?\n`)
+      }
+      process.stderr.write(
+        'aontu: `aontu --help` lists the verbs, `aontu help` the topics\n')
+      return 2
+    }
     process.stderr.write(`aontu: cannot read ${file}: ${err.message}\n`)
     return 1
   }
@@ -4202,6 +4276,337 @@ function parseTrustArg(value: string): TrustArg | undefined {
 }
 
 
+// THE TEACHING PACK, SERVED FROM THE COMMAND (G11 phase 1,
+// docs/capability-review/g11-agent-onramp.md; mirrors
+// go/cmd/aontu/help.go).
+//
+// HELP documents the TOOLCHAIN and says nothing about the LANGUAGE:
+// `&`, the map template and the one construct an ontology cannot be
+// written without, occurs zero times in it, while `template` occurs
+// fourteen times and names an unrelated verb every time. docs/skill/
+// was already the right content and already gated; the gap was
+// DELIVERY, since it reached an installation as
+// node_modules/aontu/skill/ where nothing looks. ts/src/helpdoc.ts is
+// generated from those sources by ts/scripts/helpdoc.cjs and asserted
+// byte-identical with them by ts/test/helpdoc.test.ts.
+
+const HELP_VERB_HELP = 'aontu help [topic] (try `aontu help` for the topics)'
+const EXPLAIN_HELP = 'aontu explain <code> (try `aontu explain --list`)'
+
+
+function helpIndexText(index: HelpTopic[]): string {
+  const width = index.reduce((w, t) => Math.max(w, t.topic.length), 0)
+  return 'aontu help <topic> — the language, offline.\n\n' +
+    index.map((t) =>
+      '  ' + t.topic.padEnd(width) + '  ' + t.summary).join('\n') +
+    '\n\n' +
+    '`aontu --help` documents the verbs, their flags and their exit\n' +
+    'codes. `aontu explain <code>` explains one error code.\n' +
+    'Start at `aontu help tasks` if you know the job but not the verb.'
+}
+
+
+function runHelp(argv: string[]): number {
+  let format: SubsumeFormat = 'text'
+  const topics: string[] = []
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown help option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      topics.push(arg)
+    }
+  }
+
+  if (1 < topics.length) {
+    process.stderr.write(`aontu: help takes one topic\n${HELP_VERB_HELP}\n`)
+    return 2
+  }
+
+  if (0 === topics.length) {
+    process.stdout.write(('json' === format
+      ? exactJSON({
+        aontu: { version: version(), verb: 'help' },
+        topics: HELPDOC.map(
+          (t) => ({ topic: t.topic, summary: t.summary, source: t.source })),
+      }, 2)
+      : helpIndexText(HELPDOC)) + '\n')
+    return 0
+  }
+
+  const found = HELPDOC.find((t) => topics[0] === t.topic)
+  if (null != found) {
+    if ('json' === format) {
+      process.stdout.write(exactJSON({
+        aontu: { version: version(), verb: 'help' },
+        topic: found.topic,
+        summary: found.summary,
+        source: found.source,
+        text: found.text,
+      }, 2) + '\n')
+      return 0
+    }
+    process.stdout.write(found.text)
+    return 0
+  }
+
+  // AN UNKNOWN TOPIC IS A USAGE ERROR AND NAMES THE ALTERNATIVES,
+  // because the caller who typed it has no other way to find out what
+  // exists -- that is the whole condition this verb was added for.
+  process.stderr.write(
+    `aontu: no help topic \`${topics[0]}\`\n` +
+    `aontu: topics are ${HELPDOC.map((t) => t.topic).join(', ')}\n`)
+  return 2
+}
+
+
+// `aontu explain <code>` (G11 phase 3; mirrors
+// go/cmd/aontu/explain.go).
+//
+// THE REGISTRY IS THE LIST, NOT THE HINT TABLE. test/spec/errcodes.tsv
+// registers 157 codes and the spec suite asserts set equality between
+// the file and codeClasses IN BOTH PORTS, so listing from codeClasses
+// is listing the shared contract. The hint tables are smaller and are
+// NOT in parity -- 130 entries here against 131 in Go, the extra being
+// decimal_syntax, which this port never raises -- so listing from them
+// would make `aontu explain --list` differ between ports over a
+// difference that is not about what either port can report.
+//
+// A REGISTERED CODE WITH NO HINT ANSWERS WITH ITS CLASS AND SAYS SO.
+// Twenty-seven registered codes carry no explanation text here; before
+// this verb their absence was invisible, because a hint is only ever
+// seen beside the error that raises it.
+
+// The dynamic prefixes a generated code extends (`func:upper`,
+// `op[+]`). Mirrors CODE_PREFIXES in ts/src/hints.ts, which is not
+// exported; a code that extends one is registered through its prefix
+// and carries that prefix's hint.
+const EXPLAIN_PREFIXES = ['func:', 'op:', 'op[', 'var[', 'ref[']
+
+
+function explainCode(
+  code: string): { cls: string, hint: string, registered: boolean } {
+  const cls = codeClass(code)
+  let hint = hints[code] ?? ''
+  let registered = null != codeClasses[code]
+  if (!registered) {
+    for (const prefix of EXPLAIN_PREFIXES) {
+      if (code.startsWith(prefix)) {
+        // No guard on `hint` here: every hint key is also a registry
+        // key (the spec suite asserts codeClasses set-equal with
+        // test/spec/errcodes.tsv, and hints is a subset of it), so a
+        // code that reaches this loop is unregistered and therefore
+        // has no hint of its own.
+        registered = true
+        hint = hints[prefix] ?? ''
+        break
+      }
+    }
+  }
+  return { cls, hint, registered }
+}
+
+
+// Every code in the shared registry, sorted by code point so both
+// ports list them in the same order.
+function explainCodes(): string[] {
+  return Object.keys(codeClasses).sort(cmpCodePoint)
+}
+
+
+function explainListText(format: SubsumeFormat): string {
+  const codes = explainCodes()
+  if ('json' === format) {
+    return exactJSON({
+      aontu: { version: version(), verb: 'explain' },
+      codes: codes.map((code) => ({
+        code,
+        class: codeClass(code),
+        // Whether this port carries explanation text for the code. The
+        // registry is in parity; the hint tables are not, so a consumer
+        // that wants only explained codes can filter rather than guess.
+        explained: '' !== explainCode(code).hint,
+      })),
+    }, 2)
+  }
+  const width = codes.reduce((w, c) => Math.max(w, c.length), 0)
+  return codes.map((c) =>
+    c.padEnd(width) + '  ' + codeClass(c) +
+    ('' === explainCode(c).hint ? '  (no text)' : '')).join('\n')
+}
+
+
+function runExplain(argv: string[]): number {
+  let format: SubsumeFormat = 'text'
+  let list = false
+  const codes: string[] = []
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    else if ('--list' === arg) {
+      list = true
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(
+        `aontu: unknown explain option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      codes.push(arg)
+    }
+  }
+
+  if (list) {
+    if (0 < codes.length) {
+      process.stderr.write(`aontu: --list takes no code\n${EXPLAIN_HELP}\n`)
+      return 2
+    }
+    process.stdout.write(explainListText(format) + '\n')
+    return 0
+  }
+
+  if (1 !== codes.length) {
+    process.stderr.write(`aontu: explain needs one code\n${EXPLAIN_HELP}\n`)
+    return 2
+  }
+
+  const code = codes[0]
+  const { cls, hint, registered } = explainCode(code)
+  if (!registered) {
+    // AN UNKNOWN CODE IS A USAGE ERROR AND NAMES NEAR MATCHES. A
+    // caller reading a code out of a report has almost certainly typed
+    // it correctly, so the likely cause is a code from another tool or
+    // a truncated one, and the near matches say which.
+    process.stderr.write(`aontu: no such error code \`${code}\`\n`)
+    const near = nearestVerb(code, explainCodes())
+    if ('' !== near) {
+      process.stderr.write(`aontu: did you mean \`${near}\`?\n`)
+    }
+    process.stderr.write(
+      'aontu: `aontu explain --list` lists every registered code\n')
+    return 2
+  }
+
+  if ('json' === format) {
+    process.stdout.write(exactJSON({
+      aontu: { version: version(), verb: 'explain' },
+      code,
+      class: cls,
+      hint,
+    }, 2) + '\n')
+    return 0
+  }
+  // A REGISTERED CODE WITH NO HINT SAYS SO rather than printing an
+  // empty block, which would read as an explanation that happened to
+  // be blank.
+  const body = '' === hint
+    ? '(no explanation text is registered for this code)'
+    : hint
+  process.stdout.write(`code:  ${code}\nclass: ${cls}\n\n${body}\n`)
+  return 0
+}
+
+
+// EVERY VERB THIS PORT DISPATCHES, for the nearest-verb suggestion
+// G11 phase 2 prints. A separate list from the if-chain in main()
+// because the chain's arms have three different shapes and cannot be
+// a table; ts/test/cli-help.test.ts keeps the two from drifting by
+// running each name and requiring it not to fall through to the bare
+// command.
+const KNOWN_VERBS = [
+  'agentsmd', 'breaking', 'explain', 'fmt', 'get', 'hash', 'help',
+  'jsonschema', 'lsp', 'mcp', 'mod', 'reaches', 'relations', 'render',
+  'set', 'subsume', 'template', 'trim', 'vet', 'view', 'why',
+]
+
+
+// looksLikeVerb reports whether an unreadable argument was meant as a
+// verb rather than as a path. A bare word has no separator and no
+// extension; `./help`, `help.aon`, `/tmp/help` and `sub/dir` are paths
+// and keep the file diagnosis. Mirrors go/cmd/aontu/main.go.
+function looksLikeVerb(arg: string): boolean {
+  return '' !== arg &&
+    !/[/\\.]/.test(arg) &&
+    !arg.startsWith('-')
+}
+
+
+// NEAREST-VERB SUGGESTION (G11 phase 2). Restricted
+// Damerau-Levenshtein with a cap that grows with the word and stops at
+// three: one edit is a convincing suggestion on any length, three is
+// the most that can be believed on a long one, and an UNCAPPED
+// nearest match on a three-letter typo names something unrelated with
+// confidence. Mirrors go/cmd/aontu/help.go, including the sort, so
+// the two ports suggest the same verb on a tie.
+function nearestVerb(word: string, verbs: string[]): string {
+  let best = ''
+  let bestDist = Infinity
+  const limit = Math.min(3, 1 + Math.floor(word.length / 4))
+  for (const v of [...verbs].sort(cmpCodePoint)) {
+    const d = editDistance(word.toLowerCase(), v)
+    if (d < bestDist) {
+      best = v
+      bestDist = d
+    }
+  }
+  return bestDist > limit ? '' : best
+}
+
+
+// Levenshtein with a transposition, iterative over two rows. Mirrors
+// editDistance in go/cmd/aontu/help.go exactly.
+function editDistance(a: string, b: string): number {
+  const ar = [...a]
+  const br = [...b]
+  let prev2 = new Array(br.length + 1).fill(0)
+  let prev = new Array(br.length + 1).fill(0).map((_, j) => j)
+  let cur = new Array(br.length + 1).fill(0)
+  for (let i = 1; i <= ar.length; i++) {
+    cur[0] = i
+    for (let j = 1; j <= br.length; j++) {
+      const cost = ar[i - 1] === br[j - 1] ? 0 : 1
+      let m = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+      if (1 < i && 1 < j &&
+        ar[i - 1] === br[j - 2] && ar[i - 2] === br[j - 1] &&
+        prev2[j - 2] + 1 < m) {
+        m = prev2[j - 2] + 1
+      }
+      cur[j] = m
+    }
+    prev2 = [...prev]
+    prev = [...cur]
+  }
+  return prev[br.length]
+}
+
+
 function main(argv: string[], servers: Servers = SERVERS): void {
   // COLOUR OFF WHEN THE DESTINATION IS NOT A TERMINAL. Error frames
   // hardcoded their ANSI escapes, so a piped report and a `--jsonl`
@@ -4274,6 +4679,16 @@ function main(argv: string[], servers: Servers = SERVERS): void {
 
   if ('hash' === argv[2]) {
     return finish(runHash(argv.slice(3)))
+  }
+
+  // G11 phases 1 and 3. Dispatched with the rest, so `aontu ./help`
+  // still reads a file named help exactly as `aontu ./vet` does.
+  if ('help' === argv[2]) {
+    return finish(runHelp(argv.slice(3)))
+  }
+
+  if ('explain' === argv[2]) {
+    return finish(runExplain(argv.slice(3)))
   }
 
   if ('mod' === argv[2]) {
@@ -4402,7 +4817,7 @@ function main(argv: string[], servers: Servers = SERVERS): void {
   else {
     runStdin(mode, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 18 */
+} /* node:coverage ignore next 19 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
@@ -4417,7 +4832,8 @@ export {
   runRender,
   runTemplate,
   runMod,
-  runHash, runGet,
+  runHash, runGet, runHelp, runExplain, nearestVerb, looksLikeVerb,
+  KNOWN_VERBS,
   runWhy, renderWhyText, runSet, runAgentsMd, runFmt,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
 }

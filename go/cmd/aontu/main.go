@@ -44,12 +44,37 @@ const helpText = `Usage: aontu [options] [file]
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu agentsmd [--write <AGENTS.md>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu help [topic] [--format text|json]
+       aontu explain <code> | --list [--format text|json]
        aontu lsp
        aontu mcp [--root <dir>]
 
 Evaluate an aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
 With no file and piped input, read the source from stdin.
+
+NEW TO THE LANGUAGE? This page documents the TOOL. The documentation
+of the LANGUAGE travels inside this binary, and this is how to reach it:
+
+  aontu help              List the topics this binary carries
+  aontu help tasks        Which verb does the job you have
+  aontu help language     The whole grammar, on one page
+  aontu help examples     The ladder, from plain JSON upward
+  aontu help codes        What a refusal means
+  aontu help grammar      The published ABNF
+  aontu explain <code>    What one error code a report carries means
+  aontu explain --list    Every registered code with its class
+
+Every one of those answers with no network and no checkout. The
+long-form documentation -- the tutorial, the language and API
+references, the how-to guides -- is in docs/ of the repository, which
+is where to go when the topics above are not enough; the contributor
+and agent guide is AGENTS.md beside it.
+
+The one construct to know before writing anything: &: inside a map is
+a TEMPLATE that every key of that map must satisfy. A quoted "*" is a
+key named *, not a wildcard, and a schema written that way constrains
+nothing while still reporting valid.
 
 The vet verb validates data documents against a schema document and
 reports what does not hold, as text or as a machine-readable object.
@@ -60,7 +85,8 @@ query between a document and its own earlier versions.
 
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
-  -h, --help      Show this help and exit
+  -h, --help      Show this help and exit (the verbs and their flags);
+                  aontu help is the LANGUAGE, and lists its own topics
   --jsonl         REPL: answer every command as one JSON line
   -v, --version   Print the version and exit
   --trust <t>     Include capability: system (default), none, or
@@ -302,6 +328,28 @@ Agentsmd options:
 Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
 stand up on its own.
 
+Help options:
+  --format <f>    text (default) or json, the topic and its text
+
+The help verb prints the embedded teaching pack: the language, not the
+tool. With no topic it lists them. Topics are tasks, language,
+examples, codes and grammar; the corpus is generated from docs/skill/
+and grammar/aontu.abnf, so it cannot drift from those sources.
+
+Help exit codes: 0 printed, 2 an unknown topic (the topics are listed)
+or a bad option.
+
+Explain options:
+  --list          Every registered error code with its class
+  --format <f>    text (default) or json
+
+The explain verb answers what one error code means, from the same
+table the engine attaches to a finding. Every registered code has an
+entry, so a code read out of a report always resolves.
+
+Explain exit codes: 0 explained, 2 an unknown code (near matches are
+named) or a bad option.
+
 Fmt options:
   -w, --write     Rewrite each file in place, when its form would change
   -l, --list      Print the name of each file whose form would change
@@ -399,6 +447,28 @@ func emit(a *aontu.Aontu, src, mode string, out, errw io.Writer) int {
 	}
 	fmt.Fprintln(out, text)
 	return 0
+}
+
+// EVERY VERB THIS PORT DISPATCHES, for the nearest-verb suggestion
+// G11 phase 2 prints. It is a separate list from the if-chain below
+// because the chain's arms have three different signatures and cannot
+// be a table; main_test.go's TestKnownVerbsAllDispatch keeps the two
+// from drifting by running each name and requiring it not to fall
+// through to the bare command.
+var knownVerbs = []string{
+	"agentsmd", "breaking", "explain", "fmt", "get", "hash", "help",
+	"jsonschema", "lsp", "mcp", "mod", "reaches", "relations", "render",
+	"set", "subsume", "template", "trim", "vet", "view", "why",
+}
+
+// looksLikeVerb reports whether an unreadable argument was meant as a
+// verb rather than as a path. A bare word has no separator and no
+// extension; `./help`, `help.aon`, `/tmp/help` and `sub/dir` are paths
+// and keep the file diagnosis.
+func looksLikeVerb(arg string) bool {
+	return "" != arg &&
+		!strings.ContainsAny(arg, "/\\.") &&
+		!strings.HasPrefix(arg, "-")
 }
 
 // trustArg is the include capability the main verb runs with (G5,
@@ -766,6 +836,15 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	if 0 < len(args) && "hash" == args[0] {
 		return runHash(args[1:], stdout, stderr)
 	}
+	// G11 phases 1 and 3. `help` and `explain` are dispatched with the
+	// rest, so `aontu ./help` still reads a file named help exactly as
+	// `aontu ./vet` does.
+	if 0 < len(args) && "help" == args[0] {
+		return runHelp(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "explain" == args[0] {
+		return runExplain(args[1:], stdout, stderr)
+	}
 
 	mode := "json"
 	jsonl := false
@@ -877,6 +956,29 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	if file != "" {
 		src, err := os.ReadFile(file)
 		if err != nil {
+			// A MISTYPED VERB READS AS A FILE NAME, and until G11 phase 2
+			// that was only said when there were TWO of them. The
+			// one-argument case is the one an agent actually produces --
+			// `aontu help`, `aontu init`, `aontu ontology` -- and it
+			// answered `cannot read help: open help: no such file or
+			// directory`, which describes the symptom and hides the cause.
+			//
+			// The test is SHAPE, not existence: a bare word (no separator,
+			// no extension) that cannot be read was meant as a verb, while
+			// `./help`, `help.aon` and `/tmp/help` were meant as paths and
+			// keep the file diagnosis and its exit 1. That is the same
+			// escape hatch the subcommand dispatch documents.
+			if looksLikeVerb(file) {
+				fmt.Fprintf(stderr,
+					"aontu: `%s` is not a file, and not a verb this port knows\n",
+					file)
+				if near := nearestVerb(file, knownVerbs); "" != near {
+					fmt.Fprintf(stderr, "aontu: did you mean `aontu %s`?\n", near)
+				}
+				fmt.Fprintln(stderr,
+					"aontu: `aontu --help` lists the verbs, `aontu help` the topics")
+				return 2
+			}
 			fmt.Fprintf(stderr, "aontu: cannot read %s: %v\n", file, err)
 			return 1
 		}

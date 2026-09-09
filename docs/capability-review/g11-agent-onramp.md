@@ -75,10 +75,13 @@ documentation whatsoever — the only `//go:embed` in the Go tree is
 
 **157 error codes are registered and none can be looked up.**
 `test/spec/errcodes.tsv` registers 157 codes across seven classes, and
-`ts/src/hints.ts` and `go/hints.go` carry a hint text for **every one of
-them** — the registry and the hint table are in exact set equality,
-which the spec suite already asserts. Each of those 157 explanations is
-reachable only by triggering the error that carries it. There is no
+the spec suite asserts set equality between that file and the engine's
+class map in both ports. The hint tables are smaller and are not
+themselves in parity: 130 texts in `ts/src/hints.ts`, 131 in
+`go/hints.go` (the extra is `decimal_syntax`, which TypeScript never
+raises). Every one of those explanations is reachable only by
+triggering the error that carries it, and the 27 registered codes with
+no text are invisible for the same reason. There is no
 `aontu explain <code>`.
 
 ### The failure this produces
@@ -191,8 +194,9 @@ enumerable. `git` also does the thing this gap asks for on typos:
 
 **`rustc --explain E0308`.** The closest prior art for phase 3.
 Rust registers every diagnostic code, and `--explain` prints the long
-form with a worked example. aontu is already all the way there — a 157-row registry and a hint
-text for every row — and lacks only the lookup.
+form with a worked example. aontu has the registry and most of the
+texts already; it lacks the lookup, and lacks any way to see which
+codes have no text.
 
 **`kubectl explain`** and **`aws ... help`** show the failure mode to
 avoid: documentation so voluminous that retrieving it costs more
@@ -298,12 +302,14 @@ dispatch already documents.
 `rustc --explain`, over a table this repository already maintains.
 Prints the class, the hint text, and where the code sits in the
 registry; `--format json` returns `{code, class, hint, since}`. An
-unknown code exits 2 and lists near matches. Because `hints` and
-`codeClasses` are already mirrored between `ts/src/hints.ts` and
-`go/hints.go` with set equality asserted by the spec suite, and because
-the hint table already covers all 157 codes, the verb is a **pure
-projection of an existing, complete contract**: no text has to be
-written for it, and the phase cannot ship a code that answers nothing.
+unknown code exits 2 and lists near matches. **The registry is the list, not the hint table.** `codeClasses` is set-equal
+with `test/spec/errcodes.tsv` in both ports; the hint tables are not in
+parity with each other, so listing from them would make the verb differ
+between ports over something that is not about what either can report.
+Listing from the registry also makes the 27 codes with no text
+**visible**, marked in the listing and saying so when asked — before
+this verb, a missing hint could only be met beside the error that
+raises it.
 
 ### 4. Vacuity signals
 
@@ -416,17 +422,31 @@ runs before any row is written.
 
 **Phase 1 — `aontu help [topic]`, both ports (M).** The generator
 (`ts/scripts/helpdoc.cjs`, a `make helpdoc` target wired into
-`make build-ts`), the committed corpora (`go/cmd/aontu/helpdoc/*.md`,
+`make build-ts`), the committed corpora (`go/cmd/aontu/helpdoc/`,
 `ts/src/helpdoc.ts`), the verb in both CLIs, the byte-identity
 assertions, and `docs/skill/tasks.md` as new content.
+
+**And the internal documentation gets a gate of its own.** Serving the
+skill sources from the binary makes them shipped artifacts, so the
+question of what keeps documentation current stops being a matter of
+habit — which is the same question this review's own register answers
+with "the discipline is the whole mechanism". Two checks close it. The
+teaching pack is byte-compared with `docs/skill/` in both suites, so a
+stale copy fails rather than ships. And the register itself becomes
+machine-checked for structure (`ts/test/capability-review.test.ts`):
+the summary table derived from the rows it summarises, every gap
+document required to have a register section and an index row, every
+LANDED row required to cite a path or a symbol, the `G1–Gn` range kept
+current in the four files that quote it, and every link resolved. What
+no test can check is whether a pin is TRUE; that half stays the
+same-commit rule.
 
 **Phase 2 — the one-argument hint, both ports (S).** The refusal, the
 path-shaped test, and the nearest-verb suggestion.
 
-**Phase 3 — `aontu explain <code>`, both ports (S).** The lookup, the
-JSON envelope and near-match suggestions. Small because the corpus is
-already complete and already parity-asserted; the phase adds a door to
-a room that is furnished.
+**Phase 3 — `aontu explain <code>`, both ports (S).** The lookup over
+the registry, the JSON envelope, near-match suggestions, and the
+`(no text)` marking that makes the unexplained codes countable.
 
 **Phase 4 — vacuity signals, both ports (M).** `view`, `render` and
 `relations` report when they did nothing. One shared spec mode is not
