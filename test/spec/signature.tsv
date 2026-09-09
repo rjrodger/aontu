@@ -16,8 +16,8 @@
 # `value` mode is unmarked. `constraint` is the result word for
 # residuals whose meet depends on the peer; `any` is the honest type
 # where a function is a wrapper.
-upper(s: string|number) : string
-lower(s: string|number) : string
+upper(s: string|number, start?: integer|biginteger, len?: integer|biginteger) : string
+lower(s: string|number, start?: integer|biginteger, len?: integer|biginteger) : string
 copy(v: any) : any
 pref(v: any) : any
 super(t: any) : any

@@ -161,10 +161,10 @@ path-empty-cycle	errc	a:path("")	path_address
 # and `min(1,2)` noticed nothing at all, building a constraint that
 # merely refused to generate later with a message about the map.
 func-arity-none-given	errc	a:upper()	func_arity
-func-arity-two-given	errc	a:upper("x","y")	func_arity
+func-arity-over-max	errc	a:upper("x",0,1,2)	func_arity
 func-arity-constraint-two	errc	a:min(1,2)	func_arity
 func-arity-key-two	errc	a:key(1,2)	func_arity
-func-arity-msg	err	a:upper("x","y")	upper takes exactly one argument, but was given 2
+func-arity-msg	err	a:upper("x",0,1,2)	upper takes one to three arguments, but was given 4
 # A zero-arity builtin renders its own phrasing: before the {0,0} arm
 # (ADR-015's kinds returned it), map(1) claimed map takes exactly one.
 func-arity-none-msg	err	a:map(1)	map takes no arguments, but was given 1
@@ -226,3 +226,51 @@ call-root-residue	errc	upper($.zz)	no_gen
 call-root-residue-msg	err	upper($.zz)	Cannot resolve value
 call-root-residue-lower	errc	lower($.zz)	no_gen
 call-root-residue-bag	errc	a:upper($.zz)	no_path
+#
+# THE CASE RANGE. `upper` and `lower` take an optional (start, len):
+# `start` names the FIRST character of the run when it is zero or
+# positive and the LAST when it is negative, and `len` of -1 -- which is
+# also the default -- is the source's length. Both ends CLAMP. Indices
+# are CODE POINTS, so one index is one rune in either port. See
+# ts/src/val/caserange.ts and caseSpan/caseRange in go/func.go.
+# Every expectation below was obtained by running BOTH engines.
+case-range-head	gen	a:upper("foo",0,1)	{"a":"Foo"}
+case-range-to-end	gen	a:lower("FOO",1,-1)	{"a":"Foo"}
+case-range-start-only	gen	a:upper("foo",1)	{"a":"fOO"}
+case-range-len	gen	a:lower("FOOBAR",0,3)	{"a":"fooBAR"}
+# A NEGATIVE START IS WHERE THE RUN STOPS -- the character it lands on
+# is the first one NOT modified -- which is what makes one index serve
+# both directions with no argument to say which.
+case-range-neg-stop	gen	a:lower("FOOBAR",-3,-1)	{"a":"fooBAR"}
+case-range-neg-rest	gen	a:lower("FOOBAR",-1)	{"a":"foobaR"}
+case-range-neg-counted	gen	a:upper("foo",-1,2)	{"a":"FOo"}
+# Both ends clamp: a run past either end does as much as exists, and one
+# wholly outside does nothing.
+case-range-past-end	gen	a:upper("foo",10)	{"a":"foo"}
+case-range-past-start	gen	a:upper("foo",-10,2)	{"a":"foo"}
+case-range-empty-run	gen	a:upper("foo",0,0)	{"a":"foo"}
+case-range-empty-src	gen	a:upper("",0,1)	{"a":""}
+# FULL CASE MAPPING IS NOT ONE-IN-ONE-OUT, so a run may come back
+# longer than it went in. Six code points in, seven out.
+case-range-lengthens	gen	a:upper("straße",3,3)	{"a":"strASSE"}
+# FINAL SIGMA IS DECIDED WITHIN THE RUN, since a slice out of its word
+# has no following letter to see: the same sigma is medial when the
+# whole string is cased and final when it is not.
+case-range-sigma-sliced	gen	a:lower("ΟΣ",1,1)	{"a":"Οσ"}
+case-range-sigma-whole	gen	a:lower("ΟΣ")	{"a":"ος"}
+# CODE POINTS, NOT UTF-16 UNITS: index 2 is the `b`, not a surrogate.
+case-range-astral	gen	a:upper("a😀b",2,1)	{"a":"a😀B"}
+# A RANGE ON A NUMBER IS REFUSED -- the numeric arm is a ceiling or a
+# floor, not a case mapping, and a run of characters means nothing over
+# one.
+case-range-on-number	errc	a:upper(1.1,0,1)	invalid-arg
+case-range-on-number-lower	errc	a:lower(1.1,0,1)	invalid-arg
+case-range-bad-index	errc	a:upper("foo",true)	func_arg
+# A BIGINTEGER INDEX IS AN INDEX, declared as `key`'s level already is:
+# a position in a string is small by construction, or it clamps.
+case-range-bigint-index	gen	a:upper("foo",0d1,0d1)	{"a":"fOo"}
+# EVERY WAY AN ARGUMENT CAN FAIL TO BE AN INDEX. A preference reaches
+# the call with nothing for the signature gate to check, and a
+# biginteger past int64 is not a position in any string.
+case-range-pref-index	errc	a:upper("foo",*1)	invalid-arg
+case-range-huge-index	errc	a:upper("foo",0d99999999999999999999,1)	invalid-arg
