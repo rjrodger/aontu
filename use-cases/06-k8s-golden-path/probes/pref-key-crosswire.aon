@@ -9,4 +9,4 @@
 # pack-rankpref-key-per-child.
 col: { web:{} auth:{} }
 shared: X: name: X
-out: pack($.col, { env:each($.shared, { value:**key(3) | string }) })
+out: pack($.col, { env:each($.shared, _ & { value:**key(3) | string }) })

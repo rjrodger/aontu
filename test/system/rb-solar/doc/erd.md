@@ -88,11 +88,11 @@ Within each entity, this expression prepares the fields for the rules:
 
 <!-- test: skip opening expression; the complete generator is exercised by guides.test.mjs -->
 ```aontu
-emit(form(.field, _ & { mark:"" }), [
+emit(each(.field, _ & { mark:"" }), [
 ```
 
 This is the opening expression from the template; the rule list follows
-it. `.field` is the current entity's field map. [`form`](../../../../docs/reference-language.md#form-the-order-preserving-map)
+it. `.field` is the current entity's field map. [`each`](../../../../docs/reference-language.md#form-the-order-preserving-map)
 creates a list with one item per field. Inside its template, `_` is the current field,
 and `& { mark:"" }` combines that field with an empty `mark` property
 through [unification](../../../../docs/unification.md).
@@ -112,7 +112,7 @@ The `mark` property is unused by these rules. It does not supply `PK`
 or `FK`; those labels are literal text in the selected rule bodies.
 For the current model and rules, `emit(.field, [...])` produces the same
 bytes. The wrapper is unnecessary here. Both forms visit this field map
-in sorted-key order; `form` does not recover the order of written keys.
+in sorted-key order; `each` does not recover the order of written keys.
 
 Each field explicitly declares both key
 flags, including `false`, so ordinary fields reach the final rule.

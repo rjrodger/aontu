@@ -380,16 +380,16 @@ describe('vet-findings', () => {
 
 
   // The spread constraint lives off-peg, so this is only reachable by
-  // following it — but note WHERE the finding lands: the path is the
-  // TEMPLATE's, not the instance's, because the conflict nil is created
-  // against the template node. The data site still points at the
-  // offending value, which is what a repair loop needs; naming the
-  // instance path is a phase-3 report concern, recorded in the register.
+  // following it. The finding lands on the INSTANCE -- `$.services.auth.port`,
+  // the field a repair loop has to edit -- and not on the template the
+  // conflict nil was created against. It named the template until the
+  // meet-path fix (ADR-030): a meet of two operands is attributed to the
+  // slot it was driven at, which for a spread is the instance position.
   test('conflict-inside-a-spread-template-is-found', () => {
     const r = vet('services: &: { port: integer }',
       'services: { auth: { port: "80" } }')
     Assert.equal(r.verdict, 'invalid')
-    Assert.equal(r.findings[0].path, '$.services.port')
+    Assert.equal(r.findings[0].path, '$.services.auth.port')
     Assert.equal(r.findings[0].sites[0].role, 'data')
     Assert.equal(r.findings[0].sites[0].value, '"80"')
   })

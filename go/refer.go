@@ -463,7 +463,7 @@ func (r *ReferVal) settle(ctx *Ctx, site Val) Val {
 	if nil != r.tval && !isTop(r.tval) {
 		// The flowed type is CONCRETE at the target: a schema flowing
 		// into a value must not make the value a schema. Same reasoning
-		// as a reference's clone clearing marks — `refer($.std.Service)`
+		// as a reference's clone clearing marks — `refer($.system.Service)`
 		// says the target IS a Service, not that it is the definition
 		// of one — and without it the target silently stopped
 		// generating. Cloned as well as cleared: `t` is shared by every

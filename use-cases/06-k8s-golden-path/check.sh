@@ -92,11 +92,15 @@ has vet-tampered 'max(20)' "replica cap named"
 has vet-tampered 'replicas' "replica finding located"
 has vet-tampered 'memory' "unit-less quantity flagged by re()"
 # 2026-08-26 (template-clone isolation, ADR-005): the finding path is
-# now `...containers.0.env.name` — identical in BOTH ports (the TS
-# path previously said env.0.name but dropped `web`; the ports
-# disagreed). The element index inside env is still elided — a
-# site-attribution gap, open, tracked with use-case 03's gap 8.
-has vet-tampered 'env.name' "env-name finding located at its path"
+# `...containers.0.env.name` — identical in BOTH ports (the TS path
+# previously said env.0.name but dropped `web`; the ports disagreed).
+# 2026-09-09 (ADR-030): THE ELIDED ELEMENT INDEX IS BACK, and the path
+# is now `...containers.0.env.0.name` in both ports. A meet of two
+# operands is attributed to the slot it was driven at, which for an
+# element inside a spread is that element's own position — so the
+# site-attribution gap tracked here with use-case 03's gap 8 is closed
+# rather than worked around. Re-probed in both engines.
+has vet-tampered 'env.0.name' "env-name finding located at its path"
 has vet-tampered 'log_level' "lowercase env name is the named offender"
 ok "tampered manifests: replicas 50, lowercase env, unit-less memory all caught"
 
@@ -161,7 +165,7 @@ run p-hole-member-access 0 "$DIR/probes/hole-member-access.aon"
 has p-hole-member-access '"containerPort": 8080' "the projected field"
 ok "probe hole-member-access: pick([_], k) projects out of the pack row"
 probe_fails each-reshape-scalar '[aontu/scalar_kind]' \
-  "each cannot reshape scalar children into maps"
+  "a bound form cannot reshape scalar children into maps"
 probe_fails join-list '[aontu/mapval_no_gen]' \
   "no join(): list + string does not evaluate"
 # 2026-08-26: fixed by the spread application rework — a generator's
@@ -170,7 +174,7 @@ probe_fails join-list '[aontu/mapval_no_gen]' \
 # resolved and the pack fires (was [aontu/mapval_no_gen], the whole
 # model dead). Moved from the expected-failure probes to the goldens
 # below. Shared-spec pins: gen-pack.tsv pack-over-spread-augmented,
-# gen-each.tsv each-over-spread-augmented.
+# gen-form.tsv form-bound-over-spread-augmented.
 probe_fails env-append '[aontu/scalar_value]' \
   "appending to a generated list collides positionally"
 probe_fails kebab-bare '[aontu/negative]' \
@@ -217,7 +221,7 @@ probe_golden inner-close-crosswire \
 grep -q '"name": "auth"' "$DIR/expected/inner-close-crosswire.json" \
   || die "inner-close-crosswire golden lost its point"
 probe_golden pref-key-crosswire \
-  "fixed: **key(n) default in an each-under-pack answers per child"
+  "fixed: **key(n) default in a form-under-pack answers per child"
 grep -q '"value": "auth"' "$DIR/expected/pref-key-crosswire.json" \
   || die "pref-key-crosswire golden lost its point"
 probe_golden hide-pack-loss \

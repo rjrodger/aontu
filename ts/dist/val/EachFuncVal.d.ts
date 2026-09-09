@@ -2,7 +2,6 @@ import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
 import { ListVal } from './ListVal';
 import { FuncBaseVal } from './FuncBaseVal';
-declare function dataValues(data: Val | undefined, ctx: AontuContext): Val[] | string;
 declare class EachFuncVal extends FuncBaseVal {
     isEachFunc: boolean;
     staged: boolean;
@@ -12,4 +11,4 @@ declare class EachFuncVal extends FuncBaseVal {
     unify(peer: Val, ctx: AontuContext): Val;
     resolve(ctx: AontuContext, args: Val[]): ListVal | import("./NilVal").NilVal;
 }
-export { dataValues, EachFuncVal, };
+export { EachFuncVal, };

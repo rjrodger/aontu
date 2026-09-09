@@ -20,7 +20,7 @@ contain aontu instructions. Other lines provide Ruby output:
 ```ruby
 #- @"../model.aon"
 #-
-#- code: units: [
+#- aontu: Code: units: [
 #-   {
 #-     path: "config/routes.rb"
 #-     lang: "ruby"

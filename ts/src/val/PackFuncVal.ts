@@ -48,9 +48,9 @@ import { bagMembers } from './members'
 
 
 // The keys a data bag names, in the order the result must carry them,
-// or a code naming what is wrong with it. Shared with `each`, which
-// asks the same question of the same argument and answers it with the
-// values rather than the keys.
+// or a code naming what is wrong with it. `each` asks the same
+// question of the same argument and answers it with the values rather
+// than the keys (members.ts).
 function dataKeys(data: Val | undefined, ctx: AontuContext): string[] | string {
   // The candidates are the bag's MEMBERS -- what generation would
   // emit (./members.ts, BUGS.md §79) -- so a hidden key, or a hidden

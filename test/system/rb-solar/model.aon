@@ -75,7 +75,7 @@ seed: @"./ref/solar.data.json"
 #
 # `id` REPEATS THE KEY INSIDE THE NODE, because a child cannot read its
 # own key: `emit` and `filter` dispatch on what the node holds, and
-# `form` over a map hands its template the POSITION rather than the
+# `each` over a map hands its template the POSITION rather than the
 # name. `model.rb` needs it for a filename and `seeds.rb` for a class,
 # so it is written down, which is what this file does with every other
 # fact a generator reads.
@@ -170,7 +170,7 @@ entity: {
     # happens here, where `$.seed.planet` is an absolute path and the
     # class is a literal: a generator could not do it, because a nested
     # dispatch cannot see the entity the outer one matched.
-    rows: form($.seed.planet, _ & { class:"Planet" })
+    rows: each($.seed.planet, _ & { class:"Planet" })
 
     # WHAT HANGS OFF THIS ENTITY. Each row carries the association's
     # name, the class on the other end and the key it joins on, because
@@ -274,7 +274,7 @@ entity: {
   # ([BUGS.md §89](../../use-cases/BUGS.md)).
   moon: index: [{ table:"moons" column:"planet_id" }]
 
-  moon: rows: form($.seed.moon, _ & { class:"Moon" })
+  moon: rows: each($.seed.moon, _ & { class:"Moon" })
 
   moon: children: []
 

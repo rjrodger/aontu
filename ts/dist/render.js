@@ -93,11 +93,12 @@ function render(src, options) {
     if ('valid' !== report.verdict) {
         return errorReport(report.findings);
     }
-    // The meet, keyed: the vocabulary's root holds `code`, and so does
-    // the instance's (a value the vet admitted is a map), and a document
-    // with no `code` at all is the vocabulary's own empty instance.
-    const codeVal = node.peg.code;
-    const instance = new aontu_1.Aontu().generate(VOCABULARY + (undefined === codeVal ? '' : '\ncode: ' + (0, hcanon_1.hcanon)(codeVal)));
+    // The meet, keyed: the vocabulary's root holds `aontu.Code`, and so
+    // does the instance's (a value the vet admitted is a map), and a
+    // document with no `code` at all is the vocabulary's own empty
+    // instance. The key is namespaced (ADR-029), so the reach is two deep.
+    const codeVal = node.peg.aontu?.peg?.Code;
+    const instance = new aontu_1.Aontu().generate(VOCABULARY + (undefined === codeVal ? '' : '\naontu: Code: ' + (0, hcanon_1.hcanon)(codeVal)));
     const folded = renderValue(instance, opts);
     // THE TWO REPORTS ARE JOINED TO THE FOLD BY PATH (P7), which is what
     // lets the fold stay the pure total function D6 asks for: the
@@ -184,7 +185,7 @@ function traceOf(marks, instance, units) {
     const pre = [];
     unitList(instance).forEach((u, i) => {
         if (units.some((r) => r.path === u.path)) {
-            pre.push({ at: '$.code.units.' + i, path: u.path });
+            pre.push({ at: '$.aontu.Code.units.' + i, path: u.path });
         }
     });
     const out = [];
@@ -225,14 +226,16 @@ function covered(set, a) {
 // ROOT, or under `coverageAt` when a document keeps its model under one
 // key (X-3, decided here): the read set is absolute, so a narrower
 // measure is a narrower walk, not a different origin. The render's own
-// output -- `code` under the anchor -- is not model and is never
-// walked into: nothing reads it, so every document would otherwise
-// report it dead.
+// output -- the `aontu` namespace under the anchor -- is not model and
+// is never walked into: nothing reads it, so every document would
+// otherwise report it dead. The whole NAMESPACE is excluded, not just
+// `aontu.Code` (ADR-029): everything under it is language-supplied, so
+// an included vocabulary is not dead model either.
 function coverOf(root, node, reads, opts, marks, instance, units) {
-    // THE ANCHOR IS THE ONE render() ALREADY FOUND, so `code` under it is
-    // named without asking a second time: `--at` is resolved before the
-    // vet, and an anchor that named nothing never reached here.
-    const codeAddr = addr(node.path.concat('code'));
+    // THE ANCHOR IS THE ONE render() ALREADY FOUND, so the namespace
+    // under it is named without asking a second time: `--at` is resolved
+    // before the vet, and an anchor that named nothing never reached here.
+    const codeAddr = addr(node.path.concat('aontu'));
     let from = root;
     let base = [];
     if (null != opts.coverageAt && '' !== opts.coverageAt) {
@@ -286,7 +289,7 @@ function coverOf(root, node, reads, opts, marks, instance, units) {
         }
         const decls = unit.decls;
         decls.forEach((_d, j) => {
-            const a = '$.code.units.' + i + '.decls.' + j;
+            const a = '$.aontu.Code.units.' + i + '.decls.' + j;
             if (!covered(stamped, a) && !inside.has(a)) {
                 unruled.push({ unit: unit.path, path: a });
             }
@@ -304,7 +307,7 @@ function bundledProfile(lang) {
         return undefined;
     }
     if (undefined === bundled[lang]) {
-        bundled[lang] = new aontu_1.Aontu().generate('@"aontu:lang/' + lang + '"').profile;
+        bundled[lang] = new aontu_1.Aontu().generate('@"aontu:lang/' + lang + '"').aontu.Profile;
     }
     return bundled[lang];
 }
@@ -407,14 +410,16 @@ function renderProfile(src, options) {
     }
     // The meet, keyed as render's is: the vocabulary requires `profile`,
     // so a value the vet admitted has one.
-    const instance = new aontu_1.Aontu().generate(PROFILE_VOCABULARY + '\nprofile: ' + (0, hcanon_1.hcanon)(root.peg.profile));
-    return { profile: instance.profile };
+    const instance = new aontu_1.Aontu().generate(PROFILE_VOCABULARY + '\naontu: Profile: ' +
+        (0, hcanon_1.hcanon)(root.peg.aontu.peg.Profile));
+    return { profile: instance.aontu.Profile };
 }
 // The instance's unit list, or none: `code` is the vocabulary's own
 // key and is always there, `units` is not. One reader, so the fold,
 // the trace and the coverage report all see the same list.
 function unitList(instance) {
-    return Array.isArray(instance?.code?.units) ? instance.code.units : [];
+    return Array.isArray(instance?.aontu?.Code?.units) ?
+        instance.aontu.Code.units : [];
 }
 // The fold alone, over `generate()` output: the instance is
 // `{code: {units: [...]}}` as the vocabulary shapes it, with its
@@ -429,7 +434,7 @@ function renderValue(instance, options) {
     const seen = [];
     let selected = 0;
     list.forEach((unit, i) => {
-        const upath = '$.code.units.' + i;
+        const upath = '$.aontu.Code.units.' + i;
         const path = unit.path;
         const lang = unit.lang;
         // A UNIT PATH IS RELATIVE, DESCENDS, AND IS ITS OWN (RENDER.0.md
@@ -470,7 +475,7 @@ function renderValue(instance, options) {
             : { profile, family, unit: path, lossy };
         let text = '';
         if (undefined !== ctx) {
-            const header = (0, lower_1.lowerHeader)(unit, instance?.code?.source, ctx);
+            const header = (0, lower_1.lowerHeader)(unit, instance?.aontu?.Code?.source, ctx);
             for (const piece of header) {
                 text += foldPiece(piece, profile, path, upath, lossy, ctx);
             }
@@ -520,7 +525,7 @@ function renderValue(instance, options) {
         units.push({ path, lang, text });
     });
     if (undefined !== opts.unit && 0 === selected) {
-        errors.push(finding('render_unit', 'reference', '$.code.units', 'no unit has the path ' + opts.unit + '.'));
+        errors.push(finding('render_unit', 'reference', '$.aontu.Code.units', 'no unit has the path ' + opts.unit + '.'));
     }
     if (true === opts.strict) {
         for (const loss of lossy) {

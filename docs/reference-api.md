@@ -494,7 +494,7 @@ aontu breaking --against <file|git#rev> [--at <path>]
   is evaluated from there, so a change inside an `@"…"`-included file is
   part of the comparison. The temporary tree is removed when the run
   ends. Sources outside the revision (package includes under
-  `node_modules`, the bundled `std/system`) resolve as they always do;
+  `node_modules`, the bundled `aontu:system`) resolve as they always do;
   their versions travel with the lockfile rather than with this
   comparison. A file the revision does not carry is a usage failure
   naming it, not a comparison against nothing.
@@ -1095,16 +1095,16 @@ in Go, returning `{verdict, views, errors?}` where each view is
 `{name, kind, out, verdict, text?, loss, errors?}`: the caller writes
 the files.
 
-`@"std/view"` is the bundled schema for a declaration, so the same
+`@"aontu:view"` is the bundled schema for a declaration, so the same
 mistakes are refused when the document is EVALUATED rather than when
 the verb reads it. Write a `views-typed.aon`:
 
 <!-- test: file views-typed.aon -->
 ```aon
-@"std/view"
+@"aontu:view"
 @"./system.aon"
 
-views: { &: $.view.Figure } & {
+views: { &: $.aontu.View.Figure } & {
   arch: {
     kind: matrix
     relation: dependsOn
@@ -1122,12 +1122,12 @@ $ echo $?
 0
 ```
 
-`$.view.Figure` types every option, and a kind that is not a kind, an
+`$.aontu.View.Figure` types every option, and a kind that is not a kind, an
 order that is not an order or a count below zero is an ordinary
-unification failure naming `std/view` as the other operand. It is
+unification failure naming `aontu:view` as the other operand. It is
 optional: a view document that does not include it is read exactly the
 same way, and refused by `view_document_shape` instead.
-The source is served from the engine, as `std/system` is, so it needs
+The source is served from the engine, as `aontu:system` is, so it needs
 no filesystem and resolves under every include capability but
 `'none'`.
 
@@ -1333,7 +1333,7 @@ is refused. Write a `hello.aon`:
 greeting: "hello, world"
 notes: "a reminder the transform never reads"
 
-code: units: [
+aontu: Code: units: [
   {
     path: "hello.py"
     lang: "python"
@@ -1428,7 +1428,7 @@ never named:
 ```sh
 $ aontu render --coverage hello.aon
 dead: $.notes
-unruled: hello.py $.code.units.0.decls.0
+unruled: hello.py $.aontu.Code.units.0.decls.0
 coverage: 1 path(s) read, 1 no output consumed, 1 declaration(s) no rule produced
 ```
 
@@ -1445,7 +1445,7 @@ under one key can say so, and then only that subtree is measured:
 <!-- test: run -->
 ```sh
 $ aontu render --coverage --coverage-at $.greeting hello.aon
-unruled: hello.py $.code.units.0.decls.0
+unruled: hello.py $.aontu.Code.units.0.decls.0
 coverage: 1 path(s) read, 0 no output consumed, 1 declaration(s) no rule produced
 ```
 
@@ -1479,7 +1479,7 @@ hold the same two declarations:
 
 <!-- test: file types.aon -->
 ```aontu
-code: units: [
+aontu: Code: units: [
   {
     path: "types.ts"
     lang: "typescript"
@@ -2039,7 +2039,7 @@ Write a `greet.ts`:
 ```typescript
 //- who: { world: {}, moon: {} }
 //- svc: $.who & pack($.who, { name: key() })
-//- code: units: emit($.svc, {
+//- aontu: Code: units: emit($.svc, {
 //- match: { name: string }
 //- body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
 //- k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
@@ -2067,7 +2067,7 @@ mean once the output lines are quoted:
 $ aontu template greet.ts
 who: { world: {}, moon: {} }
 svc: $.who & pack($.who, { name: key() })
-code: units: emit($.svc, {
+aontu: Code: units: emit($.svc, {
 match: { name: string }
 body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
 k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
@@ -2720,9 +2720,9 @@ Go) hermeticity's "file set" as data (capability is `mem`, `file` or
 `pkg`). Content hashing and pinning belong to [`aontu
 hash`](#aontu-hash) and the module tooling, [`aontu mod`](#aontu-mod).
 
-**The bundled vocabularies.** `@"std/system"` ([the system
+**The bundled vocabularies.** `@"aontu:system"` ([the system
 vocabulary](reference-language.md#the-stdsystem-vocabulary)) and
-`@"std/view"` (the schema for a [view document's](#aontu-view)
+`@"aontu:view"` (the schema for a [view document's](#aontu-view)
 declarations) are served from the engine rather than from disk, so they
 need neither the filesystem nor package resolution and resolve under
 every include capability except `'none'`. They appear in the manifest

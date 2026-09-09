@@ -4,7 +4,7 @@
 #- # error the model declares.
 #- @"../model.aon"
 #-
-#- code: units: [
+#- aontu: Code: units: [
 #-   {
 #-     path: "app/controllers/api/base_controller.rb"
 #-     lang: "ruby"

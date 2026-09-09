@@ -5,7 +5,7 @@
 # a value reaches a handler through `replace`, with no hole syntax;
 # `esc: sq` makes it safe in the single-quoted literal it lands in; a
 # line is verbatim, so two lines of two spaces survive; a dispatch over
-# an empty selection is the whole conditional; `form` keeps the model's
+# an empty selection is the whole conditional; `each` keeps the model's
 # order and closes the name-derivation chain; and both ports render the
 # same bytes.
 #
@@ -99,7 +99,7 @@ grep -qF "export const INDEX_BUILD = 'index-build'" "$DIR/expected/index.ts" \
 [ "$(head -1 "$DIR/expected/index.ts")" = "export const ADMIN = 'admin'" ] \
   || fail "the index does not start with admin"
 [ "$(wc -l < "$DIR/expected/index.ts")" -eq 12 ] || fail "the index is not twelve lines"
-ok "form keeps the order and join(form(split(...))) spells the constants"
+ok "form keeps the order and join(each(split(...))) spells the constants"
 
 # 7. THE TWO STATIC CHECKS refuse a drifted template before any node is
 # visited: a key inside another, and a key the body does not hold.

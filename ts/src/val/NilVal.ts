@@ -98,9 +98,35 @@ class NilVal extends Val {
     // unconditionally was tried and reverted -- it moved the closed-key,
     // spread-template and every `--at` finding to the driving location,
     // which is not where those belong.
-    if (null != ctx?.path && null != nil.path &&
-      nil.path.length < ctx.path.length &&
-      nil.path.every((p, i) => p === ctx.path[i])) {
+    // A MEET OF TWO OPERANDS HAPPENS AT THE SLOT, always. A value that
+    // arrives by REFERENCE carries a path re-based onto the referring
+    // field -- `$.p.Port.direction` for a `p: $.lib.Port` whose
+    // `direction` conflicts -- and the two ports corrupt it DIFFERENTLY
+    // (Go's fallback is the slot plus the schema's own tail), so neither
+    // operand path is trustworthy once a reference is in play. The
+    // prefix test below cannot tell the corrupt case from a legitimately
+    // deeper one, because Go's corrupt path EXTENDS the right answer.
+    // The slot is the one thing both ports know exactly, so a real meet
+    // takes it.
+    //
+    // A SINGLE-OPERAND nil is left alone: a residue, a closed key, a
+    // generation failure and an `--at` finding are not meets, they are
+    // facts about one value, and taking the driving location for those
+    // is what the unconditional version got wrong. The ONE exception is
+    // an operand that was MINTED -- a preference's yardstick, an
+    // arithmetic or concat result -- which carries no path at all, so a
+    // conflict at `$.a` reported `$`, the whole document rather than the
+    // key to edit.
+    //
+    // This used to ask whether the operand's path was a PREFIX of the
+    // slot, and extend it when so. Once a meet takes the slot outright
+    // the question is vacuous: every nil still reaching here carries
+    // either no path or one at least as long as the slot, so the prefix
+    // walk never ran a single comparison across the whole suite. ADR-002
+    // closes unreachable code by deleting it rather than by covering it,
+    // and the emptiness test below is what the walk actually decided.
+    if (null != ctx?.path && 0 < ctx.path.length &&
+      (null != bv || null == nil.path || 0 === nil.path.length)) {
       nil.path = [...ctx.path]
     }
 

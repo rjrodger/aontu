@@ -4,7 +4,7 @@
 #- # the model's: `parent`, `children` and each field's `required`.
 #- @"../model.aon"
 #-
-#- code: units: emit($.entity, {
+#- aontu: Code: units: emit($.entity, {
 #-   match: class: string
 #-   body: [
 #-     {
