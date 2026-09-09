@@ -3011,6 +3011,34 @@ $ aontu system.aon
 | `$.system.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
 | `$.system.Component` | a node with `ports`, each of which is a `Port` |
 | `$.system.Service` | a Component whose `kind` is `service` |
+| `$.system.Semver` | a version as an ordered triple: exactly three non-negative integers, `[major minor patch]` |
+
+**`Semver` is a list, not a string and not a map.** A version is
+compared rather than read, and comparison runs component by component
+from the left, an order a list has and the other two do not: `"1.10.0"` sorts below
+`"1.9.0"` as text, and a map has no order of its own to compare along.
+The arity is part of the type, so two components is not a version and a
+fourth is not part of one. Write this as `version.aon`:
+
+<!-- test: scenario aontu-system-semver -->
+<!-- test: file version.aon -->
+```aon
+@"aontu:system"
+v: $.system.Semver & [1 2 3]
+```
+
+<!-- test: run -->
+```sh
+$ aontu version.aon
+{
+  "system": {},
+  "v": [
+    1,
+    2,
+    3
+  ]
+}
+```
 
 `@"aontu:system"` is **bundled with the engine** (no filesystem, no
 package resolution) so it resolves under every include capability

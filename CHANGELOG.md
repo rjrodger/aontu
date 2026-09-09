@@ -14,6 +14,24 @@ which implementation each change affects.
 > every affected call errors. See
 > [ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
 
+### `aontu:system` gains `Semver`
+
+A version as an **ordered triple** — exactly three non-negative
+integers:
+
+```
+v: $.system.Semver & [1 2 3]
+```
+
+A list, not a string and not a map. A version is compared rather than
+read, and comparison is elementwise from the left: `"1.10.0"` sorts
+below `"1.9.0"` as text, and a map has no order of its own to compare
+along. The arity is part of the type, so two components is not a
+version and a fourth is not part of one.
+
+Additive: the vocabulary's canon-hash moves, as it does for any change
+to a bundled model.
+
 ### BREAKING: `std/system` and `std/view` are `aontu:system` and `aontu:view`
 
 **The engine bundled seven schemas under two naming schemes; now there

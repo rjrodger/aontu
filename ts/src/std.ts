@@ -44,6 +44,12 @@ system: {
   # unusable), so the vocabulary states each schema on its own.
   Service: type({ kind:service ports?:{ &: $.system.Port } })
 
+  # A semantic version, as an ORDERED TRIPLE: major, minor, patch, each
+  # a non-negative integer. A list and not a string, because "1.10.0"
+  # sorts below "1.9.0" as text and a version is compared, not read; a
+  # list and not a map, because the comparison is elementwise from the
+  # left and a map has no order of its own to compare along.
+  Semver: type([&: integer & min(0)] & length(3))
   # (The Relation schema that used to sit here is retired with the
   # relations: magic key, RELATIONS.0.md P2: a relation is declared
   # by the graph atoms at its field -- rel(t) & acyclic() &

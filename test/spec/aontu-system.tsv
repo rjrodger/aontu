@@ -68,8 +68,26 @@ relation-schema-retired	errc	@"aontu:system"\nr: $.system.Relation & {acyclic: t
 # written out. The graph row is what the verdict consumes.
 the-worked-example	gens	@"aontu:system"\n\nservices: {\n  auth: $.system.Service & {ports: {http: {protocol: http}}, dependedOnBy: rel() & [path($.services.billing)]}\n  billing: $.system.Service & {dependsOn: rel($.system.Service) & inverse(dependedOnBy) & acyclic() & [path($.services.auth)]}\n}	{"services":{"auth":{"dependedOnBy":["$.services.billing"],"kind":"service","ports":{"http":{"direction":"in","protocol":"http"}}},"billing":{"dependsOn":["$.services.auth"],"kind":"service"}},"system":{}}
 the-worked-example-graph	graph	@"aontu:system"\n\nservices: {\n  auth: $.system.Service & {ports: {http: {protocol: http}}}\n  billing: $.system.Service & {dependsOn: [&: refer(), path($.services.auth)]}\n}	{"edges":[{"from":"$.services.billing","key":"dependsOn","to":"$.services.auth","at":"$.services.billing.dependsOn.0"}]}
-vocabulary-canon	canon	@"aontu:system"	{"system":{"Component":{"ports"?:{&:$.system.Port}},"Port":{"direction":*"in"|"out"|"inout","protocol"?:string},"Service":{"kind":"service","ports"?:{&:$.system.Port}}}}
-vocabulary-hash	hash	@"aontu:system"	aon1-zc1d547oK3R_XRcSSjdnP8uTdSe21_eiM7PIv553ids
+vocabulary-canon	canon	@"aontu:system"	{"system":{"Component":{"ports"?:{&:$.system.Port}},"Port":{"direction":*"in"|"out"|"inout","protocol"?:string},"Semver":[&:integer&min(0)]&length(integer&min(3)&max(3)),"Service":{"kind":"service","ports"?:{&:$.system.Port}}}}
+vocabulary-hash	hash	@"aontu:system"	aon1-rgzQfxhfCw-xBhbveWGgHCVFY2_gagNk2f8qJnChQ48
 relation-atoms-replace-the-schema	gens	@"aontu:system"\na: $.system.Service & {dependsOn: rel($.system.Service) & acyclic() & []}	{"a":{"dependsOn":[],"kind":"service"},"system":{}}
 service-is-a-component-shape	gens	@"aontu:system"\ns: $.system.Component & $.system.Service & {ports: {http: {}}}	{"s":{"kind":"service","ports":{"http":{"direction":"in"}}},"system":{}}
 port-direction-refuses-a-non-string	errc	@"aontu:system"\np: $.system.Port & {direction: 1}	empty
+# SEMVER --- an ORDERED TRIPLE, not a string and not a map. A version is
+# COMPARED, and comparison is elementwise from the left, which a list
+# has and the other two do not: "1.10.0" sorts below "1.9.0" as text,
+# and a map has no order of its own to compare along. Each component is
+# a non-negative integer, and the arity is exactly three.
+semver-triple	gens	@"aontu:system"\nv: $.system.Semver & [1,2,3]	{"system":{},"v":[1,2,3]}
+semver-zero	gens	@"aontu:system"\nv: $.system.Semver & [0,0,0]	{"system":{},"v":[0,0,0]}
+# The arity is the constraint: two components is not a version, and a
+# fourth is not part of one.
+semver-too-short	errc	@"aontu:system"\nv: $.system.Semver & [1,2]	constraint
+semver-too-long	errc	@"aontu:system"\nv: $.system.Semver & [1,2,3,4]	constraint
+# A component is a non-negative integer: no negatives, and nothing that
+# is not an integer at all.
+semver-negative-refused	errc	@"aontu:system"\nv: $.system.Semver & [1,-2,3]	constraint
+semver-non-integer-refused	errc	@"aontu:system"\nv: $.system.Semver & [1,"x",3]	constraint
+# The dotted STRING is not a semver here, which is the whole point of
+# choosing a list: it never enters the model as text that sorts wrong.
+semver-string-refused	errc	@"aontu:system"\nv: $.system.Semver & "1.2.3"	list
