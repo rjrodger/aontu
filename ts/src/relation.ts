@@ -61,6 +61,12 @@ export type RelationReport = {
   // arrive with an empty list -- something is wrong, and nothing about
   // what. Present ONLY on an `error` verdict.
   errors?: VetFinding[]
+
+  // How many relation declarations the document makes (G11 phase 4).
+  // ZERO is the answer that matters: `pass` over no declarations means
+  // nothing was checked, and without this the two are one word.
+  // Absent unless the run asked for it (`RelationOptions.count`).
+  declared?: number
 }
 
 export type RelationOptions = {
@@ -76,6 +82,14 @@ export type RelationOptions = {
   // Rides beside `trust` because it is the other half of what an
   // include may read.
   textExt?: string[]
+
+  // Count the relation declarations the document makes (G11 phase 4),
+  // so a caller can tell a graph that CHECKED CLEAN from one there was
+  // nothing to check. `pass` is the same word for both, which is the
+  // whole reason this exists. Absent from the report unless asked for,
+  // so no existing caller's report changes shape -- `vet --coverage`
+  // sets the precedent.
+  count?: boolean
 }
 
 
@@ -271,8 +285,13 @@ export function relationCheck(
   }
 
   const decls: Map<string, RelDecl> = (ctx as any)._reldecls
+  // The count rides every report from here down: the engine knows it
+  // at exactly this point, and a caller asking "was there anything to
+  // check?" should not have to evaluate the document a second time to
+  // find out.
+  const counted = true === options.count ? { declared: decls.size } : {}
   if (0 === decls.size) {
-    return { verdict: 'pass', findings: [] }
+    return { verdict: 'pass', findings: [], ...counted }
   }
 
   // NOR IS A DOCUMENT THAT CANNOT BE GENERATED. Unification can
@@ -299,5 +318,6 @@ export function relationCheck(
   return {
     verdict: 0 === findings.length ? 'pass' : 'fail',
     findings,
+    ...counted,
   }
 }

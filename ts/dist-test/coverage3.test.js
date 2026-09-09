@@ -869,12 +869,22 @@ function capture(fn) {
             unify() { throw err; },
             generate() { throw err; },
         });
+        // AN AontuError WITH NO COLLECTED NILS carries no finding rather
+        // than an invented code (G11 phase 7): the engine collects them
+        // before it throws, and a refusal raised outside that collection
+        // (exactJSON's circular structure) has none to report.
         const aerr = (0, cli_1.evalSource)(thrower(new err_1.AontuError('real-aontu')), 'a:1', 'json');
-        Assert.deepEqual(aerr, { ok: false, text: 'real-aontu' });
+        Assert.deepEqual(aerr, { findings: [], ok: false, text: 'real-aontu' });
         const foreign = (0, cli_1.evalSource)(thrower({ aontu: true, message: 'foreign-aontu' }), 'a:1', 'json');
-        Assert.deepEqual(foreign, { ok: false, text: 'foreign-aontu' });
+        Assert.deepEqual(foreign, { findings: [], ok: false, text: 'foreign-aontu' });
         const bare = (0, cli_1.evalSource)(thrower('just-a-string'), 'a:1', 'canon');
-        Assert.deepEqual(bare, { ok: false, text: 'just-a-string' });
+        Assert.deepEqual(bare, { findings: [], ok: false, text: 'just-a-string' });
+        // AND THE COLLECTING SHAPE: the nils an engine failure carries are
+        // what the finding is built from, which is what `--format json`
+        // reports.
+        const real = (0, cli_1.evalSource)(new aontu_1.Aontu(), 'a: 1 & 2', 'json');
+        Assert.equal(real.ok, false);
+        Assert.deepEqual(real.findings.map((f) => [f.code, f.class, f.path]), [['scalar_value', 'conflict', '$']]);
     });
     (0, node_test_1.test)('cli-version-without-a-version-field', () => {
         // A package.json with no version field falls back rather than
@@ -936,6 +946,28 @@ function capture(fn) {
         const r = capture(() => (0, cli_1.main)(['node', 'cli', file]));
         Assert.equal(r.out, '');
         Assert.match(r.err, /Cannot unify value/);
+    });
+    // THE BARE COMMAND'S MACHINE-READABLE REPORT (G11 phase 7),
+    // IN-PROCESS. `ts/test/cli.test.ts` asserts it through the packaged
+    // binary, which is a child whose coverage is deliberately not
+    // counted; this drives the same three arms here so the emitter is
+    // measured where the gate can see it.
+    (0, node_test_1.test)('cli-bare-format-json', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-cov3-json-'));
+        const good = Path.join(dir, 'good.aontu');
+        Fs.writeFileSync(good, 'a:1 b:$.a');
+        const ok = capture(() => (0, cli_1.main)(['node', 'cli', '--format', 'json', good]));
+        Assert.equal(JSON.parse(ok.out).ok, true);
+        Assert.equal(ok.err, '');
+        const bad = Path.join(dir, 'bad.aontu');
+        Fs.writeFileSync(bad, 'a:1 a:2');
+        const failed = capture(() => (0, cli_1.main)(['node', 'cli', '--format', 'json', bad]));
+        const report = JSON.parse(failed.out);
+        Assert.equal(report.ok, false);
+        Assert.equal(report.findings[0].code, 'scalar_value');
+        Assert.equal(report.findings[0].class, 'conflict');
+        Assert.match(capture(() => (0, cli_1.main)(['node', 'cli', '--format', 'yaml', good])).err, /--format needs text or json/);
+        Fs.rmSync(dir, { recursive: true, force: true });
     });
     (0, node_test_1.test)('lsp-server-default-streams', () => {
         // main() with no arguments uses the real stdout/exit defaults.

@@ -8,6 +8,7 @@ export type AgentsMdReport = {
     stanza: string;
 };
 export type AgentsMdOptions = {
+    depth?: number;
     name?: string;
     path?: string;
     trust?: TrustOptions;

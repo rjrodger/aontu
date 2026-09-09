@@ -34,8 +34,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// THE TEACHING PACK AND THE CODE LOOKUP (G11 phases 1-3), and the
-// TypeScript twin of go/cmd/aontu/help_test.go and explain_test.go.
+// THE TEACHING PACK, THE CODE LOOKUP AND THE STARTING DOCUMENT (G11
+// phases 1-3 and 6), and the TypeScript twin of
+// go/cmd/aontu/help_test.go, explain_test.go and init_test.go.
 //
 // What the two ports must AGREE on -- the corpus bytes, the topic list
 // and its order, every exit class, and the tool help itself -- is
@@ -47,6 +48,7 @@ const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const node_child_process_1 = require("node:child_process");
 const Fs = __importStar(require("node:fs"));
+const Os = __importStar(require("node:os"));
 const Path = __importStar(require("node:path"));
 const helpdoc_1 = require("../dist/helpdoc");
 const hints_1 = require("../dist/hints");
@@ -442,6 +444,171 @@ function readRepo(rel) {
             'NEW TO THE LANGUAGE?', '&: inside a map is',
         ]) {
             Assert.ok(text.includes(want), `the tool help omits ${want}`);
+        }
+    });
+    // --- G11 phase 6: the starting document ---
+    // THE SAME ASSERTION THE TEACHING PACK RESTS ON, for the trio. The
+    // bodies are generated into ts/src/helpdoc.ts from docs/skill/init/,
+    // where they are ordinary files a contributor can run.
+    (0, node_test_1.test)('init-trio-is-identical-with-its-sources', () => {
+        Assert.deepEqual(helpdoc_1.INITDOC.map((f) => f.name), ['model.aon', 'data.aon', 'check.sh']);
+        for (const f of helpdoc_1.INITDOC) {
+            Assert.equal(f.text, readRepo('docs/skill/init/' + f.name), `${f.name} is stale against docs/skill/init/ — run \`make helpdoc\``);
+        }
+        // A SCAFFOLD WHOSE SCRIPT NEEDS A CHMOD has a step missing.
+        const script = helpdoc_1.INITDOC.find((f) => 'check.sh' === f.name);
+        Assert.ok(null != script, 'the trio no longer carries check.sh');
+        Assert.equal(script.mode, 0o755);
+    });
+    (0, node_test_1.test)('both-ports-stage-the-same-init-files', () => {
+        const goDir = Path.join(REPO, 'go', 'cmd', 'aontu', 'helpdoc', 'init');
+        const index = readRepo('go/cmd/aontu/helpdoc/init/index.tsv')
+            .split('\n')
+            .filter((line) => '' !== line && !line.startsWith('#'))
+            .map((line) => line.split('\t'));
+        Assert.deepEqual(index.map((col) => col[0]), helpdoc_1.INITDOC.map((f) => f.name), 'the two ports write different files, or in a different order');
+        for (const [name, mode, file] of index) {
+            const mine = helpdoc_1.INITDOC.find((f) => name === f.name);
+            Assert.ok(null != mine, `${name} is staged for Go and not here`);
+            Assert.equal(parseInt(mode ?? '', 8), mine.mode, `${name}: modes differ`);
+            Assert.equal(file, mine.file, `${name}: sources differ`);
+            Assert.equal(Fs.readFileSync(Path.join(goDir, name ?? ''), 'utf8')
+                .replaceAll('\r\n', '\n').replaceAll('\r', '\n'), mine.text, `${name} differs between the ports`);
+        }
+    });
+    // THE MISTAKE THE WHOLE GAP EXISTS FOR. A starting document that
+    // reached for the quoted wildcard would teach the failure it is
+    // there to prevent, so the model must use `&:` and must not carry a
+    // key named `*`.
+    (0, node_test_1.test)('the-starting-model-uses-the-template-and-not-the-star', () => {
+        const first = helpdoc_1.INITDOC.find((f) => 'model.aon' === f.name);
+        Assert.ok(null != first, 'the trio no longer carries model.aon');
+        const model = first.text;
+        Assert.ok(model.includes('&:'), 'model.aon does not use the template');
+        // The comment NAMES the mistake, so the document itself is what is
+        // asserted on: the lines that are not comments.
+        const code = model.split('\n')
+            .filter((line) => !line.trimStart().startsWith('#')).join('\n');
+        Assert.ok(!code.includes('"*"'), 'model.aon reaches for the quoted star');
+    });
+    // The trio is only worth writing if it holds up: the emitted
+    // documents run their own check.sh, and the coverage accounting
+    // phase 5 added answers that something was actually examined.
+    (0, node_test_1.test)('init-writes-a-trio-that-checks-itself', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-init-'));
+        const r = run(['init', dir]);
+        Assert.equal(r.code, 0, r.err);
+        for (const f of helpdoc_1.INITDOC) {
+            const at = Path.join(dir, f.name);
+            Assert.equal(Fs.readFileSync(at, 'utf8'), f.text);
+            Assert.equal(Fs.statSync(at).mode & 0o777, f.mode, f.name);
+        }
+        Assert.ok(r.out.includes(Path.join(dir, 'check.sh')), r.out);
+        Assert.ok(r.out.includes('aontu help language'), r.out);
+        const env = { ...process.env };
+        delete env.NODE_V8_COVERAGE;
+        env.AONTU = `node ${CLI}`;
+        const out = (0, node_child_process_1.execFileSync)('sh', [Path.join(dir, 'check.sh')], {
+            encoding: 'utf8', env, stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        Assert.ok(out.includes('verdict: valid'), out);
+        Assert.ok(out.includes('data leaves checked'), out);
+        Assert.ok(out.includes('ok --- model.aon and data.aon agree'), out);
+        Fs.rmSync(dir, { recursive: true, force: true });
+    });
+    // NEVER OVERWRITES, and never half-writes: the standing file is
+    // untouched and the two that were not there are still not there.
+    (0, node_test_1.test)('init-refuses-to-overwrite', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-init-over-'));
+        Fs.writeFileSync(Path.join(dir, 'model.aon'), 'mine: true\n');
+        const r = run(['init', dir]);
+        Assert.equal(r.code, 2);
+        Assert.ok(r.err.includes('already holds model.aon'), r.err);
+        Assert.ok(r.err.includes('never overwrites'), r.err);
+        Assert.equal(Fs.readFileSync(Path.join(dir, 'model.aon'), 'utf8'), 'mine: true\n');
+        Assert.deepEqual(Fs.readdirSync(dir), ['model.aon']);
+        Fs.rmSync(dir, { recursive: true, force: true });
+    });
+    // BOTH WRITE FAILURES, and neither depends on the caller's uid, which
+    // a mode-based test would (root writes an unwritable directory
+    // happily). A path standing as a FILE refuses the directory; a member
+    // of the trio standing as a symlink to itself refuses the write.
+    (0, node_test_1.test)('init-refuses-a-place-it-cannot-write', () => {
+        const base = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-init-ro-'));
+        const notADir = Path.join(base, 'afile');
+        Fs.writeFileSync(notADir, 'x');
+        const one = run(['init', notADir]);
+        Assert.equal(one.code, 2);
+        Assert.ok(one.err.includes(`cannot write in ${notADir}`), one.err);
+        // A SELF-REFERENTIAL SYMLINK is not a standing file (the existence
+        // check follows it and gets nowhere), and is not writable either.
+        const loop = Path.join(base, 'loop');
+        Fs.mkdirSync(loop);
+        Fs.symlinkSync('model.aon', Path.join(loop, 'model.aon'));
+        const two = run(['init', loop]);
+        Assert.equal(two.code, 2);
+        Assert.ok(two.err.includes(`cannot write in ${loop}`), two.err);
+        Fs.rmSync(base, { recursive: true, force: true });
+    });
+    (0, node_test_1.test)('init-usage-refusals', () => {
+        const two = run(['init', 'one', 'two']);
+        Assert.equal(two.code, 2);
+        Assert.ok(two.err.includes('init takes one directory'), two.err);
+        const flag = run(['init', '--nope']);
+        Assert.equal(flag.code, 2);
+        Assert.ok(flag.err.includes('unknown init option --nope'), flag.err);
+        const help = run(['init', '--help']);
+        Assert.equal(help.code, 0);
+        Assert.ok(help.out.includes('Usage: aontu'), help.out);
+    });
+    // THE IN-PROCESS ENTRY, and every arm of it: the cases above drive
+    // the PACKAGED BINARY, which is a child whose coverage is
+    // deliberately not counted, so the verb is exercised here as a
+    // library call as well. The default directory is `.`, so the call is
+    // made from inside a temporary one.
+    (0, node_test_1.test)('init-is-callable-in-process-and-defaults-to-the-cwd', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-init-cwd-'));
+        const was = process.cwd();
+        const so = process.stdout.write;
+        const se = process.stderr.write;
+        let err = '';
+        try {
+            ;
+            process.stdout.write = () => true;
+            process.stderr.write = (s) => ((err += s), true);
+            process.chdir(dir);
+            Assert.equal((0, cli_1.runInit)([]), 0);
+            Assert.equal((0, cli_1.runInit)([]), 2);
+            Assert.equal((0, cli_1.runInit)(['-h']), 0);
+            Assert.equal((0, cli_1.runInit)(['--nope']), 2);
+            Assert.equal((0, cli_1.runInit)(['one', 'two']), 2);
+            // The write that cannot happen: a member of the trio standing as
+            // a symlink to itself is not a standing file (the existence
+            // check follows it and gets nowhere) and is not writable either.
+            const loop = Path.join(dir, 'loop');
+            Fs.mkdirSync(loop);
+            Fs.symlinkSync('model.aon', Path.join(loop, 'model.aon'));
+            Assert.equal((0, cli_1.runInit)([loop]), 2);
+        }
+        finally {
+            process.chdir(was);
+            process.stdout.write = so;
+            process.stderr.write = se;
+        }
+        Assert.match(err, /unknown init option --nope/);
+        Assert.match(err, /init takes one directory/);
+        Assert.match(err, /cannot write in/);
+        Assert.deepEqual(Fs.readdirSync(dir).sort(), [...helpdoc_1.INITDOC.map((f) => f.name), 'loop'].sort());
+        Fs.rmSync(dir, { recursive: true, force: true });
+    });
+    (0, node_test_1.test)('the-tool-help-advertises-the-starting-document', () => {
+        for (const [file, decl] of [
+            ['ts/src/cli.ts', 'const HELP = `'],
+            ['go/cmd/aontu/main.go', 'const helpText = `'],
+        ]) {
+            const text = helpTextOf(file, decl).join('\n');
+            Assert.ok(text.includes('aontu init [dir]'), `${file} omits init`);
+            Assert.ok(text.includes('NOTHING TO EDIT YET?'), file);
         }
     });
 });

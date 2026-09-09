@@ -1,12 +1,15 @@
 # G11: The offline agent on-ramp
 
-*Status: design proposal. Part of the [capability
-review](index.md), opened 2026-09-09. Per-phase status is in the
-[progress register](progress.md), which is authoritative for status;
-this document is authoritative for design. This document expands gap
-G11 — what an agent can learn about aontu from aontu alone, with no
-network, no documentation site and no model prior — with alternatives,
-an explicit boundary, risks, and an implementation plan.*
+*Status: implemented — all seven phases landed in both ports on
+2026-09-09 (the teaching pack, the mistyped-verb hint, `explain`, the
+vacuity signals, `vet --coverage`, `init`, and the bare command's JSON
+report). Part of the [capability review](index.md), opened 2026-09-09.
+Per-phase status is in the [progress register](progress.md), which is
+authoritative for status; this document is authoritative for design.
+This document expands gap G11 — what an agent can learn about aontu
+from aontu alone, with no network, no documentation site and no model
+prior — with alternatives, an explicit boundary, risks, and an
+implementation plan.*
 
 ## Problem
 

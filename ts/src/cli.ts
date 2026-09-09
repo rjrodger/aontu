@@ -61,7 +61,7 @@ import type { WhyRecord } from './provenance'
 import { agentsMdSplice } from './agentsmd'
 import { format, unifiedDiff } from './format'
 import { includeOpts } from './utility'
-import { HELPDOC } from './helpdoc'
+import { HELPDOC, INITDOC } from './helpdoc'
 import type { HelpTopic } from './helpdoc'
 import { hints, codeClasses, codeClass } from './hints'
 import { cmpCodePoint } from './keyorder'
@@ -69,6 +69,12 @@ import type { IncludeOptions } from './utility'
 
 
 type Mode = 'json' | 'canon'
+
+// The REPORT form of the bare command (G11 phase 7), which is a
+// separate axis from Mode: `--canon` chooses what the answer IS,
+// `--format` chooses how the answer is WRAPPED. Every other verb
+// spells the second one this way.
+type EvalFormat = 'text' | 'json'
 
 
 const HELP = `Usage: aontu [options] [file]
@@ -91,10 +97,11 @@ const HELP = `Usage: aontu [options] [file]
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu allow --role <role> [--at <path>] <roles-file> <path>...
-       aontu agentsmd [--write <AGENTS.md>] <file>
+       aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu help [topic] [--format text|json]
        aontu explain <code> | --list [--format text|json]
+       aontu init [dir]
        aontu lsp
        aontu mcp [--root <dir>]
 
@@ -120,6 +127,11 @@ references, the how-to guides -- is in docs/ of the repository, which
 is where to go when the topics above are not enough; the contributor
 and agent guide is AGENTS.md beside it.
 
+NOTHING TO EDIT YET? aontu init [dir] writes a working model, an
+instance of it, and the four checks to run -- so the first
+document is an edit of something that already holds, rather than an
+invention. It refuses to overwrite.
+
 The one construct to know before writing anything: &: inside a map is
 a TEMPLATE that every key of that map must satisfy. A quoted "*" is a
 key named *, not a wildcard, and a schema written that way constrains
@@ -134,6 +146,9 @@ query between a document and its own earlier versions.
 
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
+  --format <f>    text (default) or json. The json form wraps the
+                  answer as {aontu, findings, ok, out}, so a failure
+                  here reads like every other verb's
   -h, --help      Show this help and exit (the verbs and their flags);
                   aontu help is the LANGUAGE, and lists its own topics
   --jsonl         REPL: answer every command as one JSON line
@@ -411,6 +426,9 @@ Agentsmd options:
   --write <file>  Splice the stanza into this file between the
                   aontu:begin and aontu:end markers, appending them
                   when they are absent; the rest is left alone
+  --depth <n>     How deep the shape line projects (default 2). Two
+                  levels name the root keys and say top under them; a
+                  caller that wants the fields asks for them
 
 Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
 stand up on its own.
@@ -494,13 +512,55 @@ function version(): string {
 }
 
 
+// The terminal colour escapes the parser puts in its message text. A
+// machine-readable report is no place for them, which is the rule
+// findingOf states in ts/src/vet.ts; the twin here rather than an
+// import because go/cmd/aontu carries its own for the same reason (the
+// engine's is not exported to its command).
+const EVAL_ANSI = new RegExp('\u001b\\[[0-9;]*m', 'g')
+
+
+// THE ENGINE'S DIAGNOSIS AS A FINDING (G11 phase 7). The bare command
+// was the one verb whose failure had no machine-readable form, so the
+// default entry point was the one an agent had to parse with a regular
+// expression.
+//
+// THE HEADLINE ONLY, and no `hint`. Both are parity decisions rather
+// than economies: the frames under the headline are drawn for a person
+// reading a terminal and only the first line is held to byte parity
+// between the ports (the rule findingOf states), and the hint TABLES
+// are deliberately not in parity while the code registry is -- so a
+// hint here would make the two ports answer differently for a code
+// only one of them explains. `aontu explain <code>` is where the hint
+// lives, which is what phase 3 built it for.
+//
+// The CLASS comes from the registry rather than from the nil, because
+// the registry is what both ports hold set-equal
+// (test/spec/errcodes.tsv). Mirrors evalFinding in
+// go/cmd/aontu/main.go.
+function evalFinding(code: string, text: string): VetFinding {
+  return {
+    class: codeClass(code),
+    code,
+    message: text.split('\n')[0].replace(EVAL_ANSI, ''),
+    path: '$',
+    severity: 'error',
+    // NO SITE. The bare command's failure is the whole document not
+    // standing up, and the two sites a conflict names are in the
+    // frames the text form prints; naming one of them here would be a
+    // choice the engine has not made.
+    sites: [],
+  }
+}
+
+
 // Evaluate source, returning either the rendered output or the error
-// message. Never throws.
+// message, and the failure in the finding shape. Never throws.
 function evalSource(
   aontu: Aontu,
   src: string,
   mode: Mode,
-): { ok: boolean; text: string } {
+): { ok: boolean; text: string; findings: VetFinding[] } {
   try {
     // exactJSON, not JSON.stringify: a document using the `0d` exact
     // leaves generates bigints and Decimals, which JSON.stringify cannot
@@ -511,14 +571,51 @@ function evalSource(
     const text = 'canon' === mode
       ? aontu.unify(src).canon
       : exactJSON(aontu.generate(src), 2)
-    return { ok: true, text }
+    return { ok: true, text, findings: [] }
   }
   catch (err: any) {
     const msg = (err instanceof AontuError || true === err?.aontu)
       ? err.message
       : String(err?.message ?? err)
-    return { ok: false, text: msg }
+    // WHAT THE ENGINE COLLECTED, when it collected anything: an
+    // AontuError carries the NilVals the run failed on, already
+    // materialised (handleErrors in ts/src/aontu.ts), and their first
+    // is the diagnosis every other verb reports. An error raised
+    // outside the engine's own collection -- exactJSON's circular
+    // refusal, a foreign object claiming to be one -- carries none,
+    // and answers with the text alone rather than an invented code.
+    const errs: any[] = 'function' === typeof err?.errs ? err.errs() : []
+    const first: any = errs[0]
+    return {
+      ok: false,
+      text: msg,
+      findings: null == first ? [] : [evalFinding(first.why, msg)],
+    }
   }
+}
+
+
+// The bare command's answer, in the form the caller asked for. The
+// text form is what it has always printed, on the stream the verdict
+// chooses; `--format json` is the same answer as one object, on
+// stdout, so a harness reads one stream and one shape either way.
+// Mirrors emit in go/cmd/aontu/main.go.
+function emitEval(
+  res: { ok: boolean; text: string; findings: VetFinding[] },
+  format: EvalFormat,
+): number {
+  if ('json' === format) {
+    process.stdout.write(exactJSON({
+      aontu: { version: version(), verb: 'eval' },
+      findings: res.findings,
+      ok: res.ok,
+      out: res.ok ? res.text : '',
+    }, 2) + '\n')
+  }
+  else {
+    ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
+  }
+  return res.ok ? 0 : 1
 }
 
 
@@ -695,7 +792,8 @@ function entryRootOf(file: string | undefined): string {
 }
 
 
-function runFile(file: string, mode: Mode, trust: TrustArg): number {
+function runFile(
+  file: string, mode: Mode, format: EvalFormat, trust: TrustArg): number {
   let src: string
   try {
     src = readFileSync(file, 'utf8')
@@ -739,13 +837,12 @@ function runFile(file: string, mode: Mode, trust: TrustArg): number {
     errfs: { existsSync, readFileSync },
     ...trustOpts(trust, dirname(path)),
   })
-  const res = evalSource(aontu, src, mode)
-  ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
-  return res.ok ? 0 : 1
+  return emitEval(evalSource(aontu, src, mode), format)
 }
 
 
-function runStdin(mode: Mode, trust: TrustArg): Promise<number> {
+function runStdin(
+  mode: Mode, format: EvalFormat, trust: TrustArg): Promise<number> {
   return new Promise((resolve) => {
     let src = ''
     process.stdin.setEncoding('utf8')
@@ -753,8 +850,7 @@ function runStdin(mode: Mode, trust: TrustArg): Promise<number> {
     process.stdin.on('end', () => {
       const res = evalSource(
         new Aontu(trustOpts(trust, process.cwd())), src, mode)
-      ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
-      resolve(res.ok ? 0 : 1)
+      resolve(emitEval(res, format))
     })
   })
 }
@@ -2478,6 +2574,31 @@ function modText(sub: string, report: any): string {
 }
 
 
+// VACUITY SIGNALS (G11 phase 4,
+// docs/capability-review/g11-agent-onramp.md).
+//
+// The same principle phase 5 applied to `vet`: a verb that did NOTHING
+// and a verb that did its job answer the same. `aontu view tree` over a
+// document declaring no relations printed one newline and exited 0;
+// `aontu render` with no profile printed nothing and exited 0; `aontu
+// relations` over a document declaring none answered `verdict: pass`.
+// For a person at a terminal that is a shrug. For an unattended agent
+// it is a green check mark on an empty box.
+//
+// ON STDERR, ALWAYS. stdout is a report contract -- a `--format json`
+// consumer parses it -- and the exit code is a verdict class that
+// callers already branch on. Neither changes here: what changes is
+// that the caller is TOLD. A caller who wants it to be fatal has
+// `vet --strict-coverage`, and the same argument would give the other
+// verbs a flag of their own if one is ever asked for.
+//
+// The repository already ruled this for one verb, in G8 phase 6 on
+// `trim`: "doing something else silently is worse than refusing".
+function vacuous(what: string, why: string): void {
+  process.stderr.write(`aontu: ${what}: ${why}\n`)
+}
+
+
 function runRelations(argv: string[]): number {
   const trusted = takeTrust(argv)
   if (null == trusted) {
@@ -2526,12 +2647,21 @@ function runRelations(argv: string[]): number {
   }
 
   const report = relationCheck(src, {
-    path: files[0], ...verbOpts(trust, entryRootOf(files[0])),
+    path: files[0], count: true,
+    ...verbOpts(trust, entryRootOf(files[0])),
   })
   const text = 'json' === format
     ? renderRelationsJson(report)
     : renderRelationsText(report)
   process.stdout.write(text + '\n')
+  // `pass` over NO declarations is the vacuous case, and the engine
+  // knows it exactly: `_reldecls` is empty. The count is asked for
+  // here rather than derived, so the answer costs no second
+  // evaluation.
+  if (0 === report.declared) {
+    vacuous('this document declares no relations',
+      '`pass` means nothing was checked, not that the graph is sound')
+  }
   return RELATIONS_EXIT[report.verdict]
 }
 
@@ -2834,7 +2964,7 @@ function runView(argv: string[]): number {
     }
   }
 
-  const report = view(srcs[0], {
+  const viewOpts = {
     ...opts,
     style: viewStyleOf(style, opts.as ?? viewDefaultProfile(kind)),
     kind,
@@ -2842,7 +2972,28 @@ function runView(argv: string[]): number {
     roots,
     ...verbOpts(trust, entryRootOf(files[0])),
     docs: files.slice(1).map((path, i) => ({ src: srcs[i + 1], path })),
-  })
+  }
+  const report = view(srcs[0], viewOpts)
+
+  // AN EMPTY FIGURE IS THE SAME BYTES AS A DRAWN ONE MINUS ITS
+  // CONTENT, and every profile spells "empty" differently: text draws
+  // nothing at all, mermaid still draws its `flowchart LR` header, the
+  // matrix still prints its count line. Rather than teach this one
+  // place each of those spellings -- a list that goes stale the first
+  // time a profile gains a header -- ASK THE SAME KIND TO DRAW AN
+  // EMPTY DOCUMENT and compare. Equal texts mean this document
+  // contributed nothing to the figure, whatever the profile.
+  //
+  // It costs one drawing of `{}`, which is the cheapest document
+  // there is, and only on a run that produced a figure at all.
+  if ('error' !== report.verdict && null != report.text) {
+    const bare = view('{}', viewOpts)
+    if ('error' !== bare.verdict && bare.text === report.text) {
+      vacuous('nothing to draw',
+        'this figure is what the same view draws for an empty document' +
+        ' — the model declares nothing this kind can show')
+    }
+  }
 
   if ('json' === format) {
     process.stdout.write(renderViewJson(report) + '\n')
@@ -3360,6 +3511,11 @@ function runRender(argv: string[]): number {
     profiles.push(profile)
   }
 
+  // A RENDER WITH NO PROFILE PRODUCES NO UNITS, and said so with zero
+  // bytes and exit 0. The profile is what maps a model onto a
+  // language, so without one there is nothing for the renderer to
+  // write -- which is a usable answer only if the caller is told.
+  const noProfiles = 0 === profiles.length
   const report = render(src, {
     at, unit, strict, profiles, path: files[0],
     coverage, coverageAt,
@@ -3369,6 +3525,15 @@ function runRender(argv: string[]): number {
     trace: 'json' === format,
     ...verbOpts(trust, entryRootOf(files[0])),
   })
+
+  // Said once, whatever the format: stdout stays the report.
+  if ('error' !== report.verdict && 0 === report.units.length) {
+    vacuous('nothing was rendered',
+      noProfiles
+        ? 'no profile was given, and the document declares none' +
+        ' (see aontu help tasks)'
+        : 'the document produced no units under this profile')
+  }
 
   if ('json' === format) {
     process.stdout.write(exactJSON({
@@ -4279,6 +4444,10 @@ function runAgentsMd(argv: string[]): number {
   const trust = trusted.trust
   const files: string[] = []
   let write: string | undefined
+  // The SHAPE's depth (G11 phase 7). Default 2, unchanged: the stanza
+  // is spliced into a file people read, and a deeper shape is a
+  // question the caller asks rather than one it is handed.
+  let depth = 2
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -4292,6 +4461,14 @@ function runAgentsMd(argv: string[]): number {
         process.stderr.write('aontu: --write needs a file\n')
         return 2
       }
+    }
+    else if ('--depth' === arg) {
+      const n = Number(argv[++i])
+      if (!Number.isInteger(n) || n < 1) {
+        process.stderr.write('aontu: --depth needs a positive integer\n')
+        return 2
+      }
+      depth = n
     }
     else if (arg.startsWith('-')) {
       process.stderr.write(
@@ -4319,7 +4496,7 @@ function runAgentsMd(argv: string[]): number {
   }
 
   const report = agentsMd(src, {
-    name: files[0], path: files[0],
+    depth, name: files[0], path: files[0],
     ...verbOpts(trust, entryRootOf(files[0])),
   })
   if (!report.ok) {
@@ -4885,6 +5062,78 @@ function runExplain(argv: string[]): number {
 }
 
 
+// `aontu init` (G11 phase 6,
+// docs/capability-review/g11-agent-onramp.md).
+//
+// NOT SCAFFOLDING CONVENIENCE. The agent's most expensive failure is
+// writing a FIRST document at all: the measurement that opened G11
+// found one reaching for the wildcard its neighbours use and getting
+// `verdict: valid` over data that violates it. A known-good starting
+// document turns generation into editing, which is the operation a
+// model is reliably good at.
+//
+// The trio is real, runnable and tested where it lives
+// (docs/skill/init/, run by ts/test/helpdoc.test.ts), and staged into
+// both ports by the same generator that stages the teaching pack, so
+// the two write the same bytes.
+
+const INIT_HELP = 'aontu init [dir] (try --help)'
+
+
+function runInit(argv: string[]): number {
+  const dirs: string[] = []
+
+  for (const arg of argv) {
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown init option ${arg} (try --help)\n`)
+      return 2
+    }
+    dirs.push(arg)
+  }
+
+  if (1 < dirs.length) {
+    process.stderr.write(`aontu: init takes one directory\n${INIT_HELP}\n`)
+    return 2
+  }
+  const dir = dirs[0] ?? '.'
+
+  // REFUSES TO OVERWRITE, and checks every member BEFORE writing any of
+  // them: a scaffold that wrote two files and then refused the third
+  // would leave a directory in a state neither the caller nor a re-run
+  // can reason about.
+  const standing = INITDOC.filter((f) => existsSync(join(dir, f.name)))
+  if (0 < standing.length) {
+    process.stderr.write(
+      `aontu: ${dir} already holds ${standing.map((f) => f.name).join(', ')}\n` +
+      'aontu: init never overwrites; move them aside or name an' +
+      ' empty directory\n')
+    return 2
+  }
+
+  try {
+    mkdirSync(dir, { recursive: true })
+    for (const f of INITDOC) {
+      writeFileSync(join(dir, f.name), f.text, { mode: f.mode })
+    }
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot write in ${dir}: ${err.message}\n`)
+    return 2
+  }
+
+  process.stdout.write(
+    INITDOC.map((f) => join(dir, f.name)).join('\n') + '\n' +
+    '\nA model, an instance of it, and the four questions to ask.\n' +
+    'Run the checks:  sh ' + join(dir, 'check.sh') + '\n' +
+    'Learn the language:  aontu help language\n')
+  return 0
+}
+
+
 // EVERY VERB THIS PORT DISPATCHES, for the nearest-verb suggestion
 // G11 phase 2 prints. A separate list from the if-chain in main()
 // because the chain's arms have three different shapes and cannot be
@@ -4893,8 +5142,9 @@ function runExplain(argv: string[]): number {
 // command.
 const KNOWN_VERBS = [
   'agentsmd', 'allow', 'breaking', 'explain', 'fmt', 'get', 'hash',
-  'help', 'jsonschema', 'lsp', 'mcp', 'mod', 'reaches', 'relations',
-  'render', 'set', 'subsume', 'template', 'trim', 'vet', 'view', 'why',
+  'help', 'init', 'jsonschema', 'lsp', 'mcp', 'mod', 'reaches',
+  'relations', 'render', 'set', 'subsume', 'template', 'trim', 'vet',
+  'view', 'why',
 ]
 
 
@@ -4968,6 +5218,10 @@ function main(argv: string[], servers: Servers = SERVERS): void {
   setColor(true === process.stderr.isTTY ? undefined : false)
 
   let mode: Mode = 'json'
+  // THE REPORT FORM (G11 phase 7), default text: every existing caller
+  // reads exactly what it always read, and a caller that asks for json
+  // gets the failure in the finding shape every other verb reports.
+  let format: EvalFormat = 'text'
   // A LIST, though the bare command evaluates exactly one document.
   // It used to be one variable and the last argument won, which made a
   // MISTYPED VERB a silent success: `aontu vet2 schema.aon good.json`
@@ -5046,6 +5300,10 @@ function main(argv: string[], servers: Servers = SERVERS): void {
     return finish(runExplain(argv.slice(3)))
   }
 
+  if ('init' === argv[2]) {
+    return finish(runInit(argv.slice(3)))
+  }
+
   if ('mod' === argv[2]) {
     return finish(runMod(argv.slice(3)))
   }
@@ -5100,6 +5358,14 @@ function main(argv: string[], servers: Servers = SERVERS): void {
         return finish(2)
       }
       trust = parsed
+    }
+    else if ('--format' === arg) {
+      const f = args[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return finish(2)
+      }
+      format = f
     }
     else if ('--jsonl' === arg) {
       jsonl = true
@@ -5160,7 +5426,7 @@ function main(argv: string[], servers: Servers = SERVERS): void {
 
   const file = files[0]
   if (null != file) {
-    finish(runFile(file, mode, trust))
+    finish(runFile(file, mode, format, trust))
   }
   // `--jsonl` overrides the TTY gate: the mode exists to be DRIVEN by
   // a harness over a pipe, so gating it on an interactive terminal
@@ -5170,9 +5436,9 @@ function main(argv: string[], servers: Servers = SERVERS): void {
     runRepl(mode, jsonl, trust)
   }
   else {
-    runStdin(mode, trust).then((code) => finish(code))
+    runStdin(mode, format, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 19 */
+} /* node:coverage ignore next 20 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
@@ -5187,7 +5453,8 @@ export {
   runRender,
   runTemplate,
   runMod,
-  runHash, runGet, runHelp, runExplain, nearestVerb, looksLikeVerb,
+  runHash, runGet, runHelp, runExplain, runInit, nearestVerb,
+  looksLikeVerb,
   KNOWN_VERBS,
   runWhy, renderWhyText, runSet, runAllow, runAgentsMd, runFmt,
   watchChange, watchSignature, vetWaiter, deprecatedAt,

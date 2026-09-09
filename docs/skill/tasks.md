@@ -3,6 +3,21 @@
 The verb for a job, found by the word you arrived with. aontu's own
 vocabulary is on the right; yours is probably on the left.
 
+## Start from a document that works
+
+Nothing written yet? Do not invent the first document, edit one:
+
+```
+aontu init            # into the working directory
+aontu init model/     # or into a named one
+sh check.sh           # the four questions, on what was just written
+```
+
+`init` writes `model.aon` (an entity map constrained with `&:`),
+`data.aon` (an instance of it that holds) and `check.sh` (the four
+checks to run after every edit). It never overwrites: if any
+of the three already stands there, it refuses and writes none of them.
+
 ## Describe a domain
 
 An **ontology**, a **schema**, a **data model**, a **contract** — in

@@ -291,6 +291,28 @@ func runView(argv []string, stdout, stderr io.Writer) int {
 
 	report := aontuForFileTrust(files[0], trust).View(srcs[0], &opts)
 
+	// AN EMPTY FIGURE IS THE SAME BYTES AS A DRAWN ONE MINUS ITS
+	// CONTENT, and every profile spells "empty" differently: text draws
+	// nothing at all, mermaid still draws its `flowchart LR` header, the
+	// matrix still prints its count line. Rather than teach this one
+	// place each of those spellings -- a list that goes stale the first
+	// time a profile gains a header -- ASK THE SAME KIND TO DRAW AN
+	// EMPTY DOCUMENT and compare. Equal texts mean this document
+	// contributed nothing to the figure, whatever the profile.
+	//
+	// It costs one drawing of `{}`, which is the cheapest document
+	// there is, and only on a run that produced a figure at all.
+	// Mirrors ts/src/cli.ts.
+	if "error" != report.Verdict && nil != report.Text {
+		bare := aontuForFileTrust(files[0], trust).View("{}", &opts)
+		if "error" != bare.Verdict && nil != bare.Text &&
+			*bare.Text == *report.Text {
+			vacuous(stderr, "nothing to draw",
+				"this figure is what the same view draws for an empty document"+
+					" — the model declares nothing this kind can show")
+		}
+	}
+
 	if "json" == format {
 		io.WriteString(stdout, renderViewJSON(report)+"\n")
 	} else if "error" == report.Verdict {

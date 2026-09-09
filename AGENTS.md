@@ -173,6 +173,15 @@ The Go copy has to be committed under the command's own package
 because `//go:embed` cannot read above its own directory, and a
 generated copy that nothing compares is a second source of truth.
 
+The **starting documents** `aontu init` writes (G11 phase 6) travel
+the same way: `docs/skill/init/model.aon`, `data.aon` and `check.sh`
+are real files, run by the suites where they live, and the same
+generator stages them into `ts/src/helpdoc.ts` and
+`go/cmd/aontu/helpdoc/init/` (with each file's mode in a generated
+`index.tsv`) so the two ports write the same bytes. Edit them where
+they live; the trio has to keep passing its own `check.sh`, which both
+suites run.
+
 Tab-separated columns: `name <TAB> mode <TAB> src <TAB> expect`
 
 | mode    | assertion                                              |

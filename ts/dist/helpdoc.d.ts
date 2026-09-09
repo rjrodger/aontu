@@ -5,5 +5,12 @@ type HelpTopic = {
     text: string;
 };
 declare const HELPDOC: HelpTopic[];
-export type { HelpTopic };
-export { HELPDOC };
+type InitFile = {
+    file: string;
+    mode: number;
+    name: string;
+    text: string;
+};
+declare const INITDOC: InitFile[];
+export type { HelpTopic, InitFile };
+export { HELPDOC, INITDOC };

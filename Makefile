@@ -104,10 +104,12 @@ sig:
 
 # Regenerate the build-time-inlined TEACHING PACK -- the corpus
 # `aontu help <topic>` serves (G11 phase 1) -- from docs/skill/*.md and
-# grammar/aontu.abnf into ts/src/helpdoc.ts and go/cmd/aontu/helpdoc/.
-# The Go half must be a committed copy: //go:embed cannot read above
-# its own package directory. Both suites assert byte identity with the
-# sources, so a stale copy fails rather than ships.
+# grammar/aontu.abnf into ts/src/helpdoc.ts and go/cmd/aontu/helpdoc/,
+# and with it the STARTING DOCUMENTS `aontu init` writes (G11 phase 6)
+# from docs/skill/init/. The Go half must be a committed copy:
+# //go:embed cannot read above its own package directory. Both suites
+# assert byte identity with the sources, so a stale copy fails rather
+# than ships.
 helpdoc:
 	node ts/scripts/helpdoc.cjs
 

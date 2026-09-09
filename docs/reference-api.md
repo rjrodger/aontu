@@ -55,10 +55,11 @@ Usage: aontu [options] [file]
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu allow --role <role> [--at <path>] <roles-file> <path>...
-       aontu agentsmd [--write <AGENTS.md>] <file>
+       aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu help [topic] [--format text|json]
        aontu explain <code> | --list [--format text|json]
+       aontu init [dir]
        aontu lsp
        aontu mcp [--root <dir>]
 
@@ -113,6 +114,17 @@ than beside it: both answer what an include may read.
   same bytes.
 - Results go to **stdout**; errors go to **stderr** with a non-zero exit
   status (`1` for an evaluation error, `2` for a bad option).
+- **`--format json` makes the answer an object**, so the default entry
+  point reports like every other verb rather than like a stream of
+  prose: `{aontu, findings, ok, out}` on **stdout**, whether the
+  document evaluated or not. `out` is the text the default form
+  prints (the generated JSON, or the canonical form under `--canon`),
+  empty when it did not evaluate; `findings` then carries one finding
+  with the `code` to hand to [`aontu explain`](#aontu-explain), its
+  `class` from the registry, and the headline as `message`. The
+  finding names no site and carries no hint: the frames under the
+  headline are drawn for a person, and hint prose is deliberately
+  outside cross-port parity. Exit codes are unchanged.
 
 ### `aontu vet`
 
@@ -2101,16 +2113,24 @@ Generate the AGENTS.md stanza for a definition: the prose entrypoint,
 derived from the formal source so it cannot drift from it.
 
 ```
-aontu agentsmd [--write <AGENTS.md>] <file.aon>
+aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file.aon>
 ```
 
 The stanza names the document, its [canon-hash](#aontu-hash) pin, its
-root keys and its shape, and spells the `get` / `why` / `vet` / `set`
-commands with a path that actually exists in it. `--write` splices it
-into a file between `<!-- aontu:begin -->` and `<!-- aontu:end -->`,
-appending the markers when they are absent: everything outside them
-is left exactly as it was, so the verb is safe to re-run and safe to
-point at a file someone else writes prose in.
+root keys and its shape, spells the `get` / `why` / `vet` / `set`
+commands with a path that actually exists in it, and points at
+[`aontu help language`](#aontu-help) for the language the document is
+written in. `--write` splices it into a file between
+`<!-- aontu:begin -->` and `<!-- aontu:end -->`, appending the markers
+when they are absent: everything outside them is left exactly as it
+was, so the verb is safe to re-run and safe to point at a file someone
+else writes prose in.
+
+`--depth <n>` is how deep the **shape** line projects, default `2`.
+Two levels name the root keys and say `top` under them, which says
+what the document is about rather than what is in it; `--depth 4` on
+an entity map reaches the fields. The default is unchanged because the
+stanza is spliced into a file people read.
 
 Exit codes: `0` generated, `2` usage, `4` the document does not stand
 up on its own.
@@ -2760,6 +2780,57 @@ prefix's.
 An unknown code exits 2 and names the nearest registered match.
 
 Exit codes: `0` explained, `2` an unknown code or a bad option.
+
+### `aontu init`
+
+Write a working model, an instance of it, and a check script into a
+directory.
+
+```
+aontu init [dir]
+```
+
+The reason this verb exists is that writing a **first** document is the
+most expensive thing to get wrong. A model that reaches for `"*"`,
+where the language spells the template
+[`&:`](reference-language.md#spreads-), constrains nothing, and
+[`vet`](#aontu-vet) over it reports `valid`. A known-good document
+makes the next step an edit rather than an invention.
+
+| file | is |
+|---|---|
+| `model.aon` | the truth: an entity map, constrained with `&:` |
+| `data.aon` | an instance of it that holds |
+| `check.sh` | the four checks to run after every edit, `vet --strict-coverage` first |
+
+```
+$ aontu init
+model.aon
+data.aon
+check.sh
+
+A model, an instance of it, and the four questions to ask.
+Run the checks:  sh check.sh
+Learn the language:  aontu help language
+```
+
+With no directory it writes into the working one, and it creates the
+directory if it is not there. `check.sh` is written executable and
+takes the binary from `$AONTU`, so a checkout with no installed `aontu`
+runs it with `AONTU=./aontu sh check.sh`.
+
+It **never overwrites**. If any member of the trio already stands in
+the directory, it refuses before writing any of them, so the directory
+is never left half scaffolded.
+
+The trio is **generated** into both ports from `docs/skill/init/` by
+the generator that stages the teaching pack (`make helpdoc`), on the
+[`aontu help`](#aontu-help) precedent. Both suites assert the staged
+bytes are identical with their sources, and that the emitted documents
+pass their own `check.sh`.
+
+Exit codes: `0` written, `2` a standing file, a directory it cannot
+write, more than one directory, or a bad option.
 
 ### `aontu lsp`
 

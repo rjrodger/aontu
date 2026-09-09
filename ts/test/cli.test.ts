@@ -1819,6 +1819,142 @@ describe('cli-subsume', () => {
     ).out.includes('aontu agentsmd'), true)
   })
 
+  // --- G11 phase 4: the vacuity signals ---
+
+  // A VERB THAT DID NOTHING AND A VERB THAT SUCCEEDED ANSWERED THE
+  // SAME. The signal is on STDERR, so no `--format json` stdout
+  // contract changes and no exit code moves: what changes is that the
+  // caller is told. The repository already ruled this for `trim` in G8
+  // phase 6 -- doing something else silently is worse than refusing.
+  test('vacuity-signals-on-view-render-relations', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vacuous-'))
+    const plain = Path.join(dir, 'plain.aon')
+    Fs.writeFileSync(plain, 'a: { b: 1 }\n')
+
+    // `pass` over NO declarations: the graph is not sound, it is
+    // unexamined.
+    const rel = vetCapture(() => Assert.equal(runRelations([plain]), 0))
+    Assert.match(rel.out, /verdict: pass/)
+    Assert.match(rel.err, /declares no relations/)
+
+    // A figure identical to what the same kind draws for `{}`.
+    const view = vetCapture(() => Assert.equal(runView(['graph', plain]), 0))
+    Assert.match(view.out, /flowchart LR/)
+    Assert.match(view.err, /nothing to draw/)
+
+    // No profile, so no unit: the exit code is the one --stdout
+    // already had, and the reason is now said.
+    const render = vetCapture(() => runRender(['--stdout', plain]))
+    Assert.match(render.err, /nothing was rendered/)
+    Assert.match(render.err, /no profile was given/)
+
+    // AND THE NEGATIVE: a document that DOES declare says nothing.
+    const graph = Path.join(dir, 'graph.aon')
+    Fs.writeFileSync(graph,
+      'a: {dependsOn: rel() & acyclic() & [path($.b)]}\n' +
+      'b: {}\n')
+    const declared = vetCapture(() => runRelations([graph]))
+    Assert.doesNotMatch(declared.err, /declares no relations/)
+
+    Fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+
+  // --- G11 phase 7: --depth on the stanza, --format json on the bare
+  // command ---
+
+  // TWO LEVELS TELL AN AGENT WHAT THE DOCUMENT IS ABOUT AND NOTHING IT
+  // CAN ACT ON: `{"entity":{&:top}}` names the root key and says `top`
+  // under it. The default is unchanged, because the stanza is spliced
+  // into a file people read; a caller that wants the fields asks.
+  test('agentsmd-depth-projects-the-shape', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-md-depth-'))
+    const entry = Path.join(dir, 'model.aon')
+    Fs.writeFileSync(entry,
+      'entity: { &: { table: string, fields: { &: { type: string } } } }')
+
+    const shapeOf = (args: string[]) => {
+      const r = vetCapture(() => Assert.equal(runAgentsMd([...args, entry]), 0))
+      const line = r.out.split('\n').find((l) => l.startsWith('- Shape: '))
+      Assert.ok(null != line, r.out)
+      return line
+    }
+
+    const deep = shapeOf(['--depth', '4'])
+    Assert.notEqual(deep, shapeOf([]), '--depth changed nothing')
+    Assert.match(deep, /table/)
+    Assert.equal(shapeOf(['--depth', '2']), shapeOf([]),
+      '--depth 2 is not the default')
+
+    vetCapture(() => Assert.equal(runAgentsMd(['--depth', '0', entry]), 2))
+    vetCapture(() => Assert.equal(runAgentsMd(['--depth', 'two', entry]), 2))
+    vetCapture(() => Assert.equal(runAgentsMd(['--depth']), 2))
+
+    // THE LANGUAGE DOOR. A stanza is the first thing an agent reads
+    // about a document, and it says where to learn the language the
+    // document is written in -- offline, from the binary it has.
+    Assert.match(
+      vetCapture(() => Assert.equal(runAgentsMd([entry]), 0)).out,
+      /aontu help language/)
+
+    Fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  // THE DEFAULT ENTRY POINT WAS THE ONE AN AGENT HAD TO PARSE WITH A
+  // REGULAR EXPRESSION: every verb but this one could answer as an
+  // object, and this is the one an agent reaches for first.
+  test('bare-command-format-json', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-fmtjson-'))
+    const good = Path.join(dir, 'good.aon')
+    Fs.writeFileSync(good, 'a:1 b:$.a')
+
+    const ok = run(['--format', 'json', good])
+    Assert.equal(ok.code, 0)
+    const report = JSON.parse(ok.out)
+    Assert.equal(report.aontu.verb, 'eval')
+    Assert.deepEqual(report.findings, [])
+    Assert.equal(report.ok, true)
+    // `out` is exactly what the text form prints.
+    Assert.equal(report.out, run([good]).out.replace(/\n$/, ''))
+
+    // `--canon` chooses what the answer IS, `--format` how it is
+    // wrapped.
+    Assert.equal(JSON.parse(run(['-c', '--format', 'json', good]).out).out,
+      '{"a":1,"b":1}')
+
+    const bad = Path.join(dir, 'bad.aon')
+    Fs.writeFileSync(bad, 'a: 1 & 2\n')
+    const failed = run(['--format', 'json', bad])
+    Assert.equal(failed.code, 1)
+    const report2 = JSON.parse(failed.out)
+    Assert.equal(report2.ok, false)
+    Assert.equal(report2.out, '')
+    Assert.deepEqual(report2.findings, [{
+      class: 'conflict',
+      code: 'scalar_value',
+      // THE HEADLINE ONLY, and no hint: the frames under it are drawn
+      // for a person, and the hint tables are deliberately not in
+      // cross-port parity while the code registry is.
+      message: '[aontu/scalar_value]: Cannot unify values at path $.a',
+      path: '$',
+      severity: 'error',
+      sites: [],
+    }])
+
+    // The stdin entry answers the same way.
+    Assert.equal(
+      JSON.parse(run(['--format', 'json'], 'a: 1 & 2\n').out).findings[0].code,
+      'scalar_value')
+
+    for (const args of [['--format', 'yaml'], ['--format']]) {
+      const r = run([...args, good])
+      Assert.equal(r.code, 2, args.join(' '))
+      Assert.match(r.out, /--format needs text or json/)
+    }
+
+    Fs.rmSync(dir, { recursive: true, force: true })
+  })
+
   // G7 phase 5: the overlay patch verb. What the two ports must agree
   // on (the report) is pinned by test/spec/patch.tsv; these cases hold
   // the command line and, above all, WHEN THE FILE IS WRITTEN.
