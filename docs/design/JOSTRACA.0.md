@@ -121,7 +121,7 @@ registered in `funcMap` (`ts/src/lang.ts`):
 ```
 project(spec?, children?)   folder(spec, children?)   file(spec, children?)
 fragment(spec, children?)   slot(spec, children?)     inject(spec, children?)
-repeat(spec, children?)     copyfile(spec)
+listitems(spec, children?)     copyfiles(spec)
 content(spec)               line(spec)
 ```
 
@@ -137,17 +137,17 @@ meanings: `copy(v)` copies a VALUE and `list()` is the list container
 kind, both declared in `test/spec/signature.tsv` and implemented in
 both ports. Taking those names would either shadow landed language
 surface or make one name mean two things by arity. So jostraca's `Copy`
-is `copyfile` here and its `List` is `repeat`. Capitalisation was what
+is `copyfiles` here and its `List` is `listitems`. Capitalisation was what
 had kept the two vocabularies from colliding; dropping it means the
 overlap has to be settled name by name, and a future jostraca component
 called `Match`, `Each` or `Pick` would need the same treatment.
 
-**`repeat` is the one component the aontu side already subsumes.**
+**`listitems` is the one component the aontu side already subsumes.**
 jostraca's `List` renders its children once per element of `item`,
 binding `{item}` and `{item.path}` macros. `form($.rows, content(...))`
 does the same job in the MODEL, so the repetition is finished before
 the tree exists and every produced node is data a document can
-reference, vet and diff — where `repeat` defers it into jostraca's
+reference, vet and diff — where `listitems` defers it into jostraca's
 define phase behind a string macro aontu cannot see into, which is the
 layer this spike exists to remove. It is implemented so the set is
 complete; a generator should reach for `form` first.
@@ -263,8 +263,8 @@ algebra exists for (every piece carries its `at` and the renderer owns
 every prefix). A `Fragment` primitive would raise the unit from a span
 to a block; it would not make the depth someone else's to change.
 
-**`repeat` and `line` do not compose, and the cause is on the other
-side.** VERIFIED end to end: `repeat` over two rows with a `content`
+**`listitems` and `line` do not compose, and the cause is on the other
+side.** VERIFIED end to end: `listitems` over two rows with a `content`
 child substitutes (`item=alpha`, `item=beta`), and the same with a
 `line` child emits `item={item.n}` twice, literally. jostraca's `Line`
 calls `template(src, model)` and never forwards `props.replace`, while

@@ -125,7 +125,7 @@ type CmpDef = {
   // means a leaf: any child at all is a mistake.
   children: string[]
   // The prop a bare string argument fills. ABSENT means the component
-  // has no one-string spelling and its spec must be a map: `repeat`
+  // has no one-string spelling and its spec must be a map: `listitems`
   // is driven by a LIST, and there is no sensible string to promote.
   text?: string
   // Whether that prop is required. `project`'s folder is the one that
@@ -149,15 +149,15 @@ const CMP_DEF: Record<string, CmpDef> = {
   // `..` segment on the jostraca side, where the tree is data.
   project: {
     cmp: 'Project', text: 'folder', req: false,
-    children: ['project', 'folder', 'file', 'copyfile'],
+    children: ['project', 'folder', 'file', 'copyfiles'],
   },
   folder: {
     cmp: 'Folder', text: 'name', req: true,
-    children: ['folder', 'file', 'copyfile'],
+    children: ['folder', 'file', 'copyfiles'],
   },
   file: {
     cmp: 'File', text: 'name', req: true,
-    children: ['content', 'line', 'fragment', 'inject', 'repeat', 'copyfile'],
+    children: ['content', 'line', 'fragment', 'inject', 'listitems', 'copyfiles'],
   },
   // A span of text, exactly as written. `FileOp` joins a file's spans
   // with the empty string, so a `content` carries its own terminator.
@@ -173,21 +173,21 @@ const CMP_DEF: Record<string, CmpDef> = {
   // A file read from disk with its `<[SLOT]>` markers filled.
   fragment: {
     cmp: 'Fragment', text: 'from', req: true,
-    children: ['slot', 'content', 'line', 'repeat'],
+    children: ['slot', 'content', 'line', 'listitems'],
   },
   slot: {
     cmp: 'Slot', text: 'name', req: true,
-    children: ['content', 'line', 'fragment', 'repeat'],
+    children: ['content', 'line', 'fragment', 'listitems'],
   },
   // A body written between markers in a file that already exists.
   inject: {
     cmp: 'Inject', text: 'name', req: true,
-    children: ['content', 'line', 'repeat'],
+    children: ['content', 'line', 'listitems'],
   },
   // `Copy` under a name aontu has free: `copy` is taken by the builtin
   // that copies a VALUE, and a file copy is a different verb.
-  copyfile: {
-    cmp: 'Copy', text: 'from', req: true,
+  copyfiles: {
+    cmp: 'CopyFiles', text: 'from', req: true,
     children: [],
   },
   // `List` under a name that says what it does: it renders its children
@@ -199,12 +199,12 @@ const CMP_DEF: Record<string, CmpDef> = {
   // generator should reach for `form()` first. `form($.rows, content(...))`
   // repeats in the MODEL, so the repetition is finished before the tree
   // exists and every produced node is data a document can reference,
-  // vet and diff. `repeat` defers it into jostraca's define phase behind
+  // vet and diff. `listitems` defers it into jostraca's define phase behind
   // a string macro aontu cannot see into -- which is the layer this
   // spike exists to remove. It is here so the component set is
   // complete, not because it is the better spelling.
-  repeat: {
-    cmp: 'List', req: true, bag: 'item',
+  listitems: {
+    cmp: 'ListItems', req: true, bag: 'item',
     children: ['content', 'line', 'fragment'],
   },
 }
@@ -313,7 +313,7 @@ class CmpFuncVal extends FuncBaseVal {
       }
     }
 
-    // A bag prop is required and must be a list: `repeat` with no
+    // A bag prop is required and must be a list: `listitems` with no
     // `item` renders nothing, silently, which is the failure a data
     // path must not have.
     if (undefined !== def.bag) {

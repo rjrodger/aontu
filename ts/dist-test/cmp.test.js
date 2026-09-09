@@ -238,14 +238,14 @@ const E = (src) => {
     });
     // EIGHT MORE COMPONENTS, and the two names that were not free.
     // jostraca has ten; `copy` and `list` are aontu builtins already, so
-    // those two are spelled `copyfile` and `repeat` here.
+    // those two are spelled `copyfiles` and `listitems` here.
     (0, node_test_1.test)('the-whole-component-set', () => {
         const nodes = G('x: [project({}), folder("a"), file("b"), content("c"), ' +
-            'line("d"), fragment("e"), slot("f"), inject("g"), copyfile("h"), ' +
-            'repeat({item:[]})]').x;
+            'line("d"), fragment("e"), slot("f"), inject("g"), copyfiles("h"), ' +
+            'listitems({item:[]})]').x;
         Assert.deepEqual(nodes.map((n) => n.cmp), [
             'Project', 'Folder', 'File', 'Content', 'Line',
-            'Fragment', 'Slot', 'Inject', 'Copy', 'List',
+            'Fragment', 'Slot', 'Inject', 'CopyFiles', 'ListItems',
         ]);
         // The FUNCTION is lower case, like every other builtin here; the
         // NODE names the jostraca component the bridge looks up. The two
@@ -261,28 +261,28 @@ const E = (src) => {
         Assert.equal(E('x: project({folder: 1})'), 'invalid-arg');
         // Every other text prop is required.
         Assert.equal(E('x: folder()'), 'invalid-arg');
-        Assert.equal(E('x: copyfile()'), 'invalid-arg');
+        Assert.equal(E('x: copyfiles()'), 'invalid-arg');
     });
-    // `repeat` is driven by a LIST, so it has no one-string spelling and
-    // its `item` is checked: a repeat with no item renders nothing,
+    // `listitems` is driven by a LIST, so it has no one-string spelling and
+    // its `item` is checked: a listitems with no item renders nothing,
     // silently, which is the failure a data path must not have.
-    (0, node_test_1.test)('repeat-is-driven-by-a-list', () => {
-        (0, expect_1.expect)(G('x: repeat({item: [1,2]}, [line("a")])').x.props.item).equal([1, 2]);
-        Assert.equal(E('x: repeat("nope")'), 'invalid-arg');
-        Assert.equal(E('x: repeat({})'), 'invalid-arg');
-        Assert.equal(E('x: repeat({item: "no"})'), 'invalid-arg');
+    (0, node_test_1.test)('listitems-is-driven-by-a-list', () => {
+        (0, expect_1.expect)(G('x: listitems({item: [1,2]}, [line("a")])').x.props.item).equal([1, 2]);
+        Assert.equal(E('x: listitems("nope")'), 'invalid-arg');
+        Assert.equal(E('x: listitems({})'), 'invalid-arg');
+        Assert.equal(E('x: listitems({item: "no"})'), 'invalid-arg');
     });
     // The containment grammar covers the new components too.
     (0, node_test_1.test)('containment-covers-the-whole-set', () => {
         (0, expect_1.expect)(G('x: file("a", [fragment("t", [slot("s", [line("x")])])])')
             .x.children[0].cmp).equal('Fragment');
-        (0, expect_1.expect)(G('x: folder("a", [copyfile("L")])').x.children[0].cmp).equal('Copy');
+        (0, expect_1.expect)(G('x: folder("a", [copyfiles("L")])').x.children[0].cmp).equal('CopyFiles');
         // A slot belongs to a fragment, not to a file.
         Assert.equal(E('x: file("a", [slot("s")])'), 'invalid-arg');
         // A folder does not hold content.
         Assert.equal(E('x: folder("a", [line("x")])'), 'invalid-arg');
-        // copyfile is a leaf.
-        Assert.equal(E('x: copyfile("a", [line("x")])'), 'invalid-arg');
+        // copyfiles is a leaf.
+        Assert.equal(E('x: copyfiles("a", [line("x")])'), 'invalid-arg');
     });
     // CHILDREN FLATTEN. A generator's output lands in the MIDDLE of a
     // written list, so that list holds nodes and LISTS of nodes; a list
