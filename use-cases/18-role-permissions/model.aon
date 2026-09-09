@@ -1,0 +1,54 @@
+# The governed model: three services, two regions, feature flags and
+# the test configuration. Every value a role may change is a default
+# (`*3`), so the model itself accepts a change to any of them and the
+# role gate is what decides who may make it. The vocabulary still
+# holds: a change the gate allows is refused by `set` when it names an
+# undeclared key or breaks a constraint.
+Service: type(close({
+  owner: string
+  tier: "critical" | "standard"
+  replicas: integer & min(1)
+  description: string
+}))
+
+services: { &: $.Service }
+services: auth: {
+  owner: *"identity"
+  tier: *"critical"
+  replicas: *3
+  description: *"Sign-in and sessions"
+}
+services: billing: {
+  owner: *"payments"
+  tier: *"critical"
+  replicas: *2
+  description: *"Invoices and charges"
+}
+services: search: {
+  owner: *"discovery"
+  tier: *"standard"
+  replicas: *4
+  description: *"Full-text search over the catalogue"
+}
+
+# Per region: the replica count of each service, and a canary that
+# runs beside it. `$.deploy.*.replicas` reaches the first and not the
+# second, because `*` matches exactly one key.
+deploy: {
+  &: {
+    region: string
+    replicas: { &: integer & min(1) }
+    canary: replicas: { &: integer & min(1) }
+  }
+  eu1: region: "eu-west-1"
+  eu1: replicas: { auth:*3 billing:*2 search:*4 }
+  eu1: canary: replicas: search: *1
+  us1: region: "us-east-1"
+  us1: replicas: { auth:*3 billing:*2 search:*2 }
+  us1: canary: replicas: auth: *1
+}
+
+features: { &: boolean checkout_v2:*false dark_mode:*true new_search:*false }
+
+tests: smoke: { timeout:*30 retries:*1 }
+tests: regression: { timeout:*600 retries:*0 }

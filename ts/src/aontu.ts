@@ -22,6 +22,10 @@ import { get, why } from './query'
 import { patch } from './patch'
 import { diff } from './diff'
 import { agentsMd } from './agentsmd'
+import { allow } from './allow'
+export type {
+  AllowDecision, AllowOptions, AllowReason, AllowReport, AllowVerdict,
+} from './allow'
 import { graphOf } from './graph'
 import { relationCheck, relationErrors } from './relation'
 import { view, viewSet, viewTree } from './view'
@@ -475,6 +479,11 @@ export {
   patch,
   diff,
   agentsMd,
+
+  // The role gate (docs/design/ALLOW.0.md): may a role modify a
+  // subtree, by a role model that is itself an aontu document. The
+  // question an agent asks before `set`.
+  allow,
   graphOf,
   relationCheck,
   view,

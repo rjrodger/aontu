@@ -101,7 +101,7 @@ Full documentation is in [`docs/`](docs/):
 - [Explanation](docs/explanation.md). How and why the unifier works
 - [Test coverage](docs/test-coverage.md). How it is measured, and the numbers
 
-[use-cases/](use-cases/) holds sixteen enterprise-shaped systems built
+[use-cases/](use-cases/) holds eighteen enterprise-shaped systems built
 as real aontu documents, each with a `check.sh` that drives the CLI and
 asserts every outcome.
 

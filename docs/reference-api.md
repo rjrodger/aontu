@@ -54,6 +54,7 @@ Usage: aontu [options] [file]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu allow --role <role> [--at <path>] <roles-file> <path>...
        aontu agentsmd [--write <AGENTS.md>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu lsp
@@ -1876,6 +1877,150 @@ wrote: changes.aon
 - Exit codes are [`vet`](#aontu-vet)'s verdict classes: `0` valid,
   `1` invalid, `2` usage, `3` incomplete, `4` the entry does not stand
   up on its own.
+
+### `aontu allow`
+
+Ask a role model whether a role may modify every one of the given
+subtrees, and answer before the change is made: the gate an agent runs
+in front of [`set`](#aontu-set), from a document that is itself aontu.
+
+```
+aontu allow --role <role> [--at <path>] [--format text|json]
+            <roles-file> <path>...
+```
+
+- **The role model is an aontu document**: one entry per role, each
+  carrying `allow` (the subtrees it may modify) and optionally `deny`
+  (the ones it may not), as path strings. The map lives at `$.roles`
+  unless `--at` names another path, and a role is whatever identifier
+  its author writes.
+- **A path is allowed when an `allow` entry is at or above it.** Being
+  allowed `$.services` allows `$.services.auth` and
+  `$.services.auth.replicas`; it does not allow `$`, because a change
+  at the root reaches every sibling too.
+- **A path is refused when a `deny` entry is at, above or below it,
+  whatever the order.** Denied `$.services.*.tier` refuses
+  `$.services.auth.tier`, and refuses `$.services.auth` and
+  `$.services` as well, because a change at either could rewrite the
+  tier. Deny wins over allow however the entries were written.
+- `*` in a path matches any one key. It is the only pattern character;
+  every other segment is a map key or a list index compared for
+  equality, as a reference compares them.
+- A role with no `allow` list allows nothing, and so does a role the
+  model does not declare: the verdict is `refused`, and a `no_path`
+  finding at the role's path names the nearest declared role when one
+  is close.
+- Every asked path is answered, and the verdict is `allowed` only when
+  every one of them is. Each answer names the entry that decided it as
+  a path into the role model, so [`aontu why`](#aontu-why) locates the
+  rule and the line that wrote it.
+- Every path starts with `$`, and may be spelled as `set`'s
+  assignment, `<path>=<value>`, so a skill can hand the gate the very
+  arguments the write will get. The value must be one value: `set`
+  appends it as source after the flattened path, so a value carrying
+  a second pair (`3 secrets: key: "x"`) would write a sibling of the
+  overlay root, a subtree the gate was never asked about. Such an
+  argument, an empty one, or a second filename in a path's place is
+  a usage error, exit 2.
+- `--format json` emits `{aontu, findings, paths, role, verdict}`. Each
+  entry of `paths` carries `path`, `allowed` and `reason` (`allow`,
+  `deny`, `uncovered` or `no_role`), plus `by` and `pattern` when an
+  entry decided it.
+- Exit codes: `0` allowed (every path), `1` refused (at least one
+  path, or a role the model does not declare), `2` usage, `4` the role
+  model does not stand up on its own, in which case the engine's own
+  finding follows the verdict after a blank line.
+
+The shape of a role is aontu too. The model meets it at evaluation,
+as data meets a schema under [`vet`](#aontu-vet): a spread template
+over the roles map, `roles: { &: { allow: [&: Entry] deny?: [&:
+Entry] } }` where `Entry` is `string & re("^[$]") & re("[^.]$")`, so
+a malformed role (`allow: "$.a"`, `deny: [1]`, an entry that is empty
+or does not start at `$` or ends in a dot, a roles map that is a
+number) is refused with the engine's own code and site, exit 4. A
+role model that `close()`s its role vocabulary must declare `deny?`
+in it, or the template's optional key is refused as `[aontu/closed]`
+and no role can be asked about. The lists are read from the written
+tree rather than the generated document, so a `hide()`d `deny` still
+denies; each entry must be one concrete string, and a kind (`string`)
+in an entry's place is refused as `no_gen`.
+
+Three limits follow from what the gate compares:
+
+- A key that contains a dot is unreachable, as it is for
+  [`get`](#aontu-get): an asked path and an entry are both split at
+  every dot, quotes included, so neither side can name such a key. A
+  role is one key, looked up as written and never split, and the
+  command refuses a dotted role name, because the entry paths it
+  reports could not then be followed by `why`.
+- The gate answers about the path, and says nothing about where the
+  value is written. A path reached through a reference is `set`'s
+  business: the append lands at the named path, and `--in-place` is
+  refused there.
+- The verb is TypeScript-only for now: the Go CLI does not have it.
+
+Write a `roles.aon` that declares three roles:
+
+<!-- test: scenario allow -->
+<!-- test: file roles.aon -->
+```aontu
+roles: admin: allow: ["$"]
+roles: dev: {
+  allow: ["$.services" "$.deploy.*.replicas"]
+  deny: ["$.services.*.tier"]
+}
+roles: qa: allow: ["$.tests"]
+```
+
+`dev` may change any service, and the replica count of any region:
+
+<!-- test: run -->
+```sh
+$ aontu allow --role dev roles.aon $.services.auth.replicas $.deploy.eu1.replicas
+verdict: allowed
+role: dev
+$.services.auth.replicas: allowed by $.roles.dev.allow.0 ($.services)
+$.deploy.eu1.replicas: allowed by $.roles.dev.allow.1 ($.deploy.*.replicas)
+```
+
+A service's tier is denied, and so is the service above it, because a
+change there could rewrite the tier:
+
+<!-- test: run -->
+```sh
+$ aontu allow --role dev roles.aon $.services.auth
+verdict: refused
+role: dev
+$.services.auth: refused by $.roles.dev.deny.0 ($.services.*.tier)
+$ echo $?
+1
+```
+
+A role the model does not declare may change nothing, and the finding
+says which path was looked for:
+
+<!-- test: run -->
+```sh
+$ aontu allow --role ops roles.aon $.services.auth
+verdict: refused
+role: ops
+$.services.auth: refused (role ops is not declared)
+
+$.roles.ops: no_path [reference]
+  The role ops is not declared at $.roles in this document.
+$ echo $?
+1
+```
+
+The deciding entry is a path into the role model, and `why` names the
+line that wrote it:
+
+<!-- test: run -->
+```sh
+$ aontu why $.roles.dev.deny.0 roles.aon
+$.roles.dev.deny.0 = "$.services.*.tier"
+  1. "$.services.*.tier"  roles.aon:4:10
+```
 
 ### `aontu agentsmd`
 

@@ -1,0 +1,65 @@
+{
+  "deploy": {
+    "eu1": {
+      "canary": {
+        "replicas": {
+          "search": 1
+        }
+      },
+      "region": "eu-west-1",
+      "replicas": {
+        "auth": 3,
+        "billing": 2,
+        "search": 6
+      }
+    },
+    "us1": {
+      "canary": {
+        "replicas": {
+          "auth": 1
+        }
+      },
+      "region": "us-east-1",
+      "replicas": {
+        "auth": 3,
+        "billing": 2,
+        "search": 2
+      }
+    }
+  },
+  "features": {
+    "checkout_v2": false,
+    "dark_mode": true,
+    "new_search": false
+  },
+  "services": {
+    "auth": {
+      "description": "Sign-in, sessions and MFA",
+      "owner": "identity",
+      "replicas": 5,
+      "tier": "critical"
+    },
+    "billing": {
+      "description": "Invoices and charges",
+      "owner": "payments",
+      "replicas": 2,
+      "tier": "critical"
+    },
+    "search": {
+      "description": "Full-text search over the catalogue",
+      "owner": "discovery",
+      "replicas": 4,
+      "tier": "standard"
+    }
+  },
+  "tests": {
+    "regression": {
+      "retries": 0,
+      "timeout": 600
+    },
+    "smoke": {
+      "retries": 1,
+      "timeout": 60
+    }
+  }
+}
