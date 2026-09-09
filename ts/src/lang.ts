@@ -142,6 +142,11 @@ import { DeprecateFuncVal } from './val/DeprecateFuncVal'
 import { ReferFuncVal, RelFuncVal } from './val/ReferFuncVal'
 import { AcyclicFuncVal, InverseFuncVal } from './val/GraphAtomVal'
 import { PackFuncVal } from './val/PackFuncVal'
+import {
+  FolderFuncVal,
+  FileFuncVal,
+  ContentFuncVal,
+} from './val/CmpFuncVal'
 import { EachFuncVal } from './val/EachFuncVal'
 import { FormFuncVal } from './val/FormFuncVal'
 import { FilterFuncVal } from './val/FilterFuncVal'
@@ -989,6 +994,23 @@ help isolate the syntax error.`,
     usc: UscFuncVal,
     rep: RepFuncVal,
     split: SplitFuncVal,
+
+    // THE COMPONENT PRIMITIVES -- SPIKE (ts/src/val/CmpFuncVal.ts,
+    // docs/design/JOSTRACA.0.md). jostraca's component set, spelled
+    // as functions and keeping jostraca's capitalisation, so a
+    // document says what FILES it produces instead of filling in the
+    // `aontu:code` vocabulary as data. Upper case costs the grammar
+    // nothing: a call is a name and a paren, and the name rule never
+    // cared about case.
+    //
+    // TypeScript only, and so deliberately NOT in
+    // test/spec/signature.tsv, BUILTIN_FUNCS (ts/src/lsp.ts) or the
+    // grammar/ files -- each is asserted in cross-port parity and a
+    // TS-only entry turns the Go suite red. Arity and argument shape
+    // are refused in CmpFuncVal.resolve for the same reason.
+    Folder: FolderFuncVal,
+    File: FileFuncVal,
+    Content: ContentFuncVal,
   }
 
 
@@ -2581,10 +2603,25 @@ for (const name in funcSig) {
   }
 }
 
+// THE COMPONENT PRIMITIVES, listed by hand (the spike, see funcMap
+// above and ts/src/val/CmpFuncVal.ts). They carry no signature
+// declaration, so the derivation above cannot see them -- and
+// `File("main.ts", [...])` without this entry arrives as ONE raw
+// array term, which the call then reads as its spec. `Content` takes
+// one argument and is here anyway, so that a written second argument
+// is COUNTED and refused as the arity mistake it is rather than
+// arriving as a one-element list that is merely the wrong shape.
+POSITIONAL_ARG_FUNCS['Folder'] = true
+POSITIONAL_ARG_FUNCS['File'] = true
+POSITIONAL_ARG_FUNCS['Content'] = true
 
-// [min, max]; a max of -1 is unbounded. Every name in funcMap has an
+
+// [min, max]; a max of -1 is unbounded. Every DECLARED name has an
 // entry, and the arity is a property of the language rather than of
-// either port -- go/func.go derives the same table. A required slot
+// either port -- go/func.go derives the same table. The spike's
+// component primitives are the one exception: they carry no
+// declaration, so they have no entry here and refuse a bad count in
+// their own resolve (ts/src/val/CmpFuncVal.ts). A required slot
 // counts toward the minimum; a rest slot makes the maximum unbounded
 // and counts its group size (one, for a plain rest type) toward the
 // minimum, which is what gives `match` its floor of three and `neq`

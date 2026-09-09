@@ -1,0 +1,20 @@
+# The jostraca component primitives -- SPIKE
+# (docs/design/JOSTRACA.0.md, ts/src/val/CmpFuncVal.ts).
+#
+# Run it, and pipe it into jostraca:
+#
+#   node ts/bin/aontu.js ts/test/cmp-spike.aon \
+#     | node ../jostraca/tools/cmptree-gen.js --at out --folder ./build
+#
+# Asserted by ts/test/cmp.test.ts, so the note and this file cannot
+# drift from what the engine does.
+
+model: { name:planet fields:[id name mass] }
+
+out: Folder("src", [
+  File($.model.name + ".ts", [
+    Content("export interface Planet {\n")
+    form($.model.fields, Content("  " + _ + ": string\n"))
+    Content("}\n")
+  ])
+])
