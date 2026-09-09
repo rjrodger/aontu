@@ -853,7 +853,7 @@ function stylePaths(): { file: string, abs: string }[] {
 describe('docs-style', () => {
 
   // The gated set is not empty and did not quietly shrink to the docs
-  // directory: the READMEs and the sixteen published use cases carry
+  // directory: the READMEs and the eighteen published use cases carry
   // the same rules, and a refactor that dropped them would otherwise
   // leave every check below passing over less.
   test('the-gated-set-covers-more-than-docs', () => {
@@ -865,8 +865,8 @@ describe('docs-style', () => {
     Assert.ok(files.includes('README.md'), 'README.md is gated')
     Assert.ok(files.includes('ts/README.md'), 'ts/README.md is gated')
     Assert.equal(
-      files.filter((f) => f.startsWith('use-cases/')).length, 17,
-      'the sixteen published use cases are gated')
+      files.filter((f) => f.startsWith('use-cases/')).length, 18,
+      'the eighteen published use cases are gated')
   })
 
 

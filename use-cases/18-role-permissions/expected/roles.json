@@ -1,0 +1,34 @@
+{
+  "roles": {
+    "admin": {
+      "allow": [
+        "$"
+      ],
+      "desc": "Owns the whole model"
+    },
+    "dev": {
+      "allow": [
+        "$.services",
+        "$.deploy.*.replicas"
+      ],
+      "deny": [
+        "$.services.*.tier",
+        "$.services.*.owner"
+      ],
+      "desc": "Runs the services: scaling and deployment, never ownership or tier"
+    },
+    "product": {
+      "allow": [
+        "$.features",
+        "$.services.*.description"
+      ],
+      "desc": "Feature flags, and what a service says about itself"
+    },
+    "qa": {
+      "allow": [
+        "$.tests"
+      ],
+      "desc": "The test configuration"
+    }
+  }
+}

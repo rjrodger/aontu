@@ -1,0 +1,6 @@
+verdict: refused
+role: ops
+$.features.dark_mode: refused (role ops is not declared)
+
+$.roles.ops: no_path [reference]
+  The role ops is not declared at $.roles in this document.

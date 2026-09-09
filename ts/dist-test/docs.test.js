@@ -738,7 +738,7 @@ function stylePaths() {
 }
 (0, node_test_1.describe)('docs-style', () => {
     // The gated set is not empty and did not quietly shrink to the docs
-    // directory: the READMEs and the sixteen published use cases carry
+    // directory: the READMEs and the eighteen published use cases carry
     // the same rules, and a refactor that dropped them would otherwise
     // leave every check below passing over less.
     (0, node_test_1.test)('the-gated-set-covers-more-than-docs', () => {
@@ -749,7 +749,7 @@ function stylePaths() {
         Assert.ok(60 < files.length, `gated set is ${files.length} files`);
         Assert.ok(files.includes('README.md'), 'README.md is gated');
         Assert.ok(files.includes('ts/README.md'), 'ts/README.md is gated');
-        Assert.equal(files.filter((f) => f.startsWith('use-cases/')).length, 17, 'the sixteen published use cases are gated');
+        Assert.equal(files.filter((f) => f.startsWith('use-cases/')).length, 18, 'the eighteen published use cases are gated');
     });
     // Logical lines, for the reason in logical(): the list is mostly
     // MULTIWORD and the pages wrap near 72 columns, so a physical-line

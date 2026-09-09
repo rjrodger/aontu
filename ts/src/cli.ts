@@ -347,10 +347,13 @@ The allow verb asks a role model whether a role may modify every one
 of the given subtrees, and answers before the change is made. The
 role model is an aontu document: one entry per role, each carrying
 allow (the subtrees it may modify) and optionally deny (the ones it
-may not), as path strings; * in a path matches any one key. A path
-is allowed when an allow entry is at or above it, and refused when a
-deny entry is at, above or below it, whatever the order. A path may
-be spelled as set's assignment, <path>=<value>; the value is ignored.
+may not), as path strings starting at $; * in a path matches any one
+key. A path is allowed when an allow entry is at or above it, and
+refused when a deny entry is at, above or below it, whatever the
+order. Every path starts with $, and may be spelled as set's
+assignment, <path>=<value>, whose value must be one value: a value
+carrying a second pair would write a subtree the gate was not asked
+about.
 
 Allow exit codes: 0 allowed (every path), 1 refused (at least one
 path, or a role the model does not declare), 2 usage, 4 the role
@@ -3905,6 +3908,22 @@ function renderAllowText(report: AllowReport): string {
 }
 
 
+// Does the text after `=` parse as exactly one value? Parsed, never
+// evaluated, with loads denied: the question is the shape of the
+// argument, and reading a file to answer it would be the write the
+// gate exists to precede.
+function oneValue(value: string): boolean {
+  try {
+    const probe: any = new Aontu({ trust: { include: 'none' } })
+      .parse('v: ' + value)
+    return 1 === Object.keys(probe.peg).length
+  }
+  catch {
+    return false
+  }
+}
+
+
 function runAllow(argv: string[]): number {
   const trusted = takeTrust(argv)
   if (null == trusted) {
@@ -3962,6 +3981,39 @@ function runAllow(argv: string[]): number {
   }
   const [file, ...asked] = rest
 
+  // A role is ONE KEY of the roles map. A dotted name would be read as
+  // a path by `why` when it follows the entry the report names, and an
+  // empty one names the map itself.
+  if ('' === role || role.includes('.')) {
+    process.stderr.write('aontu: --role needs one key, without dots\n')
+    return 2
+  }
+
+  // A path may arrive in `set`'s spelling, `$.a.b=1`, so a skill can
+  // hand the gate the very arguments the write will get. The text up
+  // to the first `=` is the path, and it starts with `$`: an empty
+  // argument, or a second file name, would otherwise read as a path
+  // and be answered. The VALUE is checked to be one value. `set`
+  // appends it as source after the flattened path, so a value carrying
+  // a second pair -- `3 secrets: key: "x"` -- writes a sibling of the
+  // overlay root, a subtree the gate was never asked about.
+  const paths: string[] = []
+  for (const arg of asked) {
+    const eq = arg.indexOf('=')
+    const path = eq < 0 ? arg : arg.slice(0, eq)
+    if (!path.startsWith('$')) {
+      process.stderr.write(
+        `aontu: a path starts with $ (got ${JSON.stringify(arg)})\n`)
+      return 2
+    }
+    if (0 <= eq && !oneValue(arg.slice(eq + 1))) {
+      process.stderr.write(
+        `aontu: the value of ${path} is not one value\n`)
+      return 2
+    }
+    paths.push(path)
+  }
+
   let src: string
   try {
     src = readFileSync(file, 'utf8')
@@ -3970,14 +4022,6 @@ function runAllow(argv: string[]): number {
     process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
     return 2
   }
-
-  // A path may arrive in `set`'s spelling, `$.a.b=1`, so a skill can
-  // hand the gate the very arguments the write will get. The text up
-  // to the first `=` is the path; a value is not the gate's business.
-  const paths = asked.map((p) => {
-    const eq = p.indexOf('=')
-    return eq < 0 ? p : p.slice(0, eq)
-  })
 
   const report = allow(src, role, paths, {
     at, path: file, ...verbOpts(trust, entryRootOf(file)),

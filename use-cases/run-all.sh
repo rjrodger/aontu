@@ -28,6 +28,7 @@ CASES="
 15-code-generation
 16-module-deps
 17-lambda-handlers
+18-role-permissions
 "
 
 fail=0

@@ -1,6 +1,6 @@
 # Use cases: practical validation of aontu as an agent-facing ground truth
 
-Sixteen enterprise-shaped use cases, each built as real aontu models and
+Eighteen enterprise-shaped use cases, each built as real aontu models and
 *executed* against the TypeScript CLI (`ts/bin/aontu.js`, the canonical
 implementation). Every case directory carries a `check.sh` that drives
 the verbs (`vet`, `subsume`, `breaking`, `get`, `why`, `set`, `hash`,
@@ -45,6 +45,7 @@ different build.
 | [15-code-generation](15-code-generation/) | The model as the source of the code: Go, TypeScript and SQL from one catalogue, each over a slice | list-spread + `pick` line building, `join` file assembly, backtick target text, `match` type mapping, both-ports byte parity |
 | [16-module-deps](16-module-deps/) | A codebase's own module graph: four layers, no upward dependencies, drawn as a dependency tree and as the architecture layers | `rel(t)` target-shape flow as an architecture rule, `acyclic()`/`inverse(n)`, `reaches`, the tree, matrix and layer views |
 | [17-lambda-handlers](17-lambda-handlers/) | Twelve Lambda handlers and their index from one service model, by a rule set written twice: as canonical aontu, and as a Lambda handler with its aontu on marked lines | `replace` with no hole syntax, `esc: sq`, verbatim whitespace, the empty-selection conditional, `form` order and the split-form-join chain, the template surface and its round trip, both-ports byte parity |
+| [18-role-permissions](18-role-permissions/) | Role permissions for agent edits: which role may change which subtree, asked before the change | `allow` (the deciding entry named as a path into the role model, `--at`, `--format json`, exit classes), a `close()`d role vocabulary, the allow-then-`set` loop, an agent skill, `why` on the rule |
 
 ## Diagrams
 

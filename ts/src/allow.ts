@@ -11,16 +11,28 @@
 // language (spreads, references, includes, `close()`) compose role
 // models the way they compose everything else.
 //
-// The shape of a role is aontu too. It is appended to the model at
-// evaluation as a spread template over the roles map:
+// The shape of a role is aontu too. It is conjoined with the model at
+// evaluation, as a spread template over the roles map:
 //
-//   roles: { &: { allow: [&: string] deny?: [&: string] } }
+//   roles: { &: { allow: [&: Entry] deny?: [&: Entry] } }
+//   Entry = string & re("^[$]") & re("[^.]$")
 //
-// so a malformed role -- `allow: "$.a"`, `deny: [1]`, a roles map that
-// is a number -- is refused by the engine with the engine's own code
-// and site, and this module never invents a finding shape of its own.
+// so a malformed role -- `allow: "$.a"`, `deny: [1]`, an entry that is
+// empty or does not start at the root or ends in a dot, a roles map
+// that is a number -- is refused by the engine with the engine's own
+// code and site, and this module never invents a finding shape of its
+// own. The shape is a VALUE the model meets, not text appended to it:
+// a model whose last line is an unclosed map or a dangling key would
+// swallow appended text, and the shape would then apply to nothing.
 // A role with no `allow` list allows nothing, because the template's
-// empty list is what generates for it.
+// empty list is what the tree holds for it.
+//
+// The lists are read from the WRITTEN tree, not from the generated
+// document: a `hide()` mark keeps a list out of the output, and a gate
+// that read the output would let a hidden `deny` vanish -- the wrong
+// direction to be wrong in. Each entry must still be one concrete
+// string: a kind (`string`) or anything else that does not generate is
+// refused with the engine's `no_gen`.
 //
 // The rule is deliberately small, and it errs towards refusal:
 //
@@ -37,15 +49,18 @@
 //   - `*` in an entry matches exactly one segment, any key. It is the
 //     only pattern character; everything else is a key or a list index
 //     compared for equality, as a reference compares them.
+//   - A role is ONE KEY of the roles map, looked up as written, and a
+//     role the map does not declare may modify nothing.
 //
 // The answer names the entry that decided it, as a path INTO THE ROLE
 // MODEL (`$.roles.dev.deny.0`), so `aontu why` can say who wrote the
 // rule and where.
 
 import { Aontu } from './aontu'
+import { ConjunctVal } from './val/ConjunctVal'
 import { anchorAt } from './vet'
 import type { VetFinding } from './vet'
-import { evalFailure, noPathFinding, pathParts } from './query'
+import { evalFailure, nearestKey, pathParts } from './query'
 import { includeOpts } from './utility'
 import type { IncludeOptions } from './utility'
 
@@ -91,28 +106,26 @@ export type AllowOptions = IncludeOptions & {
 }
 
 
+// One entry: a string that starts at the root and does not end in a
+// dot. `re()` refuses a nested quantifier, so the two conditions are
+// two patterns rather than one grammar; an empty segment in the middle
+// is harmless, because the path split drops it as a reference does.
+const ENTRY = 'string & re("^[$]") & re("[^.]$")'
+
 // The shape every role must satisfy, in the language: a list of
-// subtree strings to allow, and optionally one to deny.
-const ROLE_SHAPE = '{ allow: [&: string] deny?: [&: string] }'
+// subtree entries to allow, and optionally one to deny.
+const ROLE_SHAPE = `{ allow: [&: ${ENTRY}] deny?: [&: ${ENTRY}] }`
 
 
-// The template line appended to the model: a spread over the roles
-// map at `at`, or -- when the roles map IS the document -- a top-level
-// spread. Keys are quoted the way `aontu set` quotes an overlay line,
-// so a segment may be a word the grammar spells otherwise.
-function shapeLine(at: string): string {
+// The shape document: a spread over the roles map at `at`, or -- when
+// the roles map IS the document -- a top-level spread. Keys are quoted
+// the way `aontu set` quotes an overlay line, so a segment may be a
+// word the grammar spells otherwise.
+function shapeSource(at: string): string {
   const keys = pathParts(at).map((p) => JSON.stringify(p))
   return 0 === keys.length
     ? '&: ' + ROLE_SHAPE
     : keys.join(': ') + ': { &: ' + ROLE_SHAPE + ' }'
-}
-
-
-// The model plus its shape, on a line of its own so a source that
-// ends mid-line (a trailing comment, say) is not run into it.
-function withShape(src: string, at: string): string {
-  const head = '' === src || src.endsWith('\n') ? src : src + '\n'
-  return head + shapeLine(at) + '\n'
 }
 
 
@@ -123,6 +136,22 @@ function pathText(parts: string[]): string {
 }
 
 
+// The finding shape `get` reports with, deliberately: the gate invents
+// no error format of its own.
+function finding(
+  code: string, path: string, message: string, note?: string): VetFinding {
+  return {
+    code,
+    class: 'reference',
+    severity: 'error',
+    path,
+    message,
+    sites: [],
+    ...(null == note ? {} : { note }),
+  }
+}
+
+
 type Entry = {
   parts: string[]
   text: string
@@ -130,10 +159,25 @@ type Entry = {
 }
 
 
-function entries(list: string[], by: string): Entry[] {
-  return list.map((text, i) => ({
-    parts: pathParts(text), text, by: `${by}.${i}`,
-  }))
+// The entries of one list of the role, read from the tree. A concrete
+// string is taken as written, hidden or not; anything else is asked
+// to generate, which is where a kind or a hidden kind fails with the
+// engine's own code, and where a preference answers with its default.
+function readEntries(
+  list: any, by: string, ctx: any,
+): { entries: Entry[], finding?: VetFinding } {
+  const entries: Entry[] = []
+  for (let i = 0; i < list.peg.length; i++) {
+    const el: any = list.peg[i]
+    const before = ctx.err.length
+    const text: string = true === el.isString ? el.peg : el.gen(ctx)
+    if (before < ctx.err.length) {
+      const err: any = ctx.err[before]
+      return { entries, finding: finding(err.why, `${by}.${i}`, err.msg) }
+    }
+    entries.push({ parts: pathParts(text), text, by: `${by}.${i}` })
+  }
+  return { entries }
 }
 
 
@@ -187,6 +231,11 @@ function decide(asked: string, allows: Entry[], denies: Entry[]): AllowDecision 
 }
 
 
+function errorReport(role: string, f: VetFinding): AllowReport {
+  return { verdict: 'error', role, paths: [], findings: [f] }
+}
+
+
 // Evaluate the role model, select the role, and decide every path.
 export function allow(
   src: string, role: string, paths: string[], opts?: AllowOptions,
@@ -197,56 +246,61 @@ export function allow(
   const aontu = new Aontu(includeOpts(options))
   const ctx = aontu.ctx({ collect: true })
   const parseOpts = null == options.path ? undefined : { path: options.path }
-  const root: any = aontu.unify(withShape(src, at), parseOpts, ctx)
 
-  // A model that does not stand up decides nothing: the engine's own
-  // first failure is the report, as it is for `get`.
-  if (0 < ctx.err.length || null == root || true === root.isNil) {
-    return { verdict: 'error', role, paths: [], findings: [evalFailure(ctx)] }
+  // The model MEETS the shape as data meets a schema under vet: both
+  // parsed, conjoined, and unified ONCE. A parsed tree is single-use,
+  // and a model evaluated on its own and then met again has already
+  // resolved its references against itself, so a registry written
+  // `roles: close({ &: $.Role ... })` would fail its second pass with
+  // a `$.Role` it cannot find. The shape is parsed FIRST: the context
+  // takes the last parsed document as its root and as the text an
+  // error frame excerpts, and both must be the model's.
+  const shape = aontu.parse(shapeSource(at), undefined, ctx)
+  const model = aontu.parse(src, parseOpts, ctx)
+  if (0 < ctx.err.length) {
+    return errorReport(role, evalFailure(ctx))
+  }
+  const root: any = aontu.unify(
+    new ConjunctVal({ peg: [model, shape] }, ctx), undefined, ctx)
+  if (0 < ctx.err.length || true === root.isNil) {
+    return errorReport(role, evalFailure(ctx))
   }
 
-  // The template made the roles map exist, so what can be missing is
-  // the ROLE -- and an undeclared role may modify nothing. That is the
+  // The shape made the roles map exist, so what can be missing is the
+  // ROLE -- and an undeclared role may modify nothing. That is the
   // question's answer (refused), not a broken model (error), and the
-  // finding carries the nearest declared name.
+  // finding carries the nearest declared name. The role is one key,
+  // looked up as written: not a path, so a name may hold a dot, and
+  // an own key only, so a name the prototype has is not a role.
+  const roles: any = anchorAt(root, at)
   const atRole = `${at}.${role}`
-  const node: any = anchorAt(root, atRole)
-  if (null == node) {
+  if (!Object.prototype.hasOwnProperty.call(roles.peg, role)) {
+    const near = nearestKey(role, Object.keys(roles.peg))
     return {
       verdict: 'refused',
       role,
       paths: paths.map((p) => ({
         path: pathText(pathParts(p)), allowed: false, reason: 'no_role',
       })),
-      findings: [noPathFinding(root, atRole)],
+      findings: [finding(
+        'no_path',
+        atRole,
+        `The role ${role} is not declared at ${at} in this document.`,
+        null == near ? undefined : `did you mean ${near}?`)],
     }
   }
+  const node: any = roles.peg[role]
 
-  // Generation is where a role that is not concrete fails -- `allow:
-  // [string]` unifies and cannot generate -- and under `collect` the
-  // failure lands on the context rather than throwing.
-  const before = ctx.err.length
-  const gen: any = node.gen(ctx)
-  if (before < ctx.err.length) {
-    const err: any = ctx.err[before]
-    return {
-      verdict: 'error',
-      role,
-      paths: [],
-      findings: [{
-        code: err.why,
-        class: 'reference',
-        severity: 'error',
-        path: atRole,
-        message: err.msg,
-        sites: [],
-      }],
-    }
+  const allows = readEntries(node.peg.allow, `${atRole}.allow`, ctx)
+  if (null != allows.finding) {
+    return errorReport(role, allows.finding)
+  }
+  const denies = readEntries(node.peg.deny, `${atRole}.deny`, ctx)
+  if (null != denies.finding) {
+    return errorReport(role, denies.finding)
   }
 
-  const allows = entries(gen.allow, `${atRole}.allow`)
-  const denies = entries(gen.deny ?? [], `${atRole}.deny`)
-  const decisions = paths.map((p) => decide(p, allows, denies))
+  const decisions = paths.map((p) => decide(p, allows.entries, denies.entries))
 
   // Nothing asked is nothing allowed: a gate that answered `allowed`
   // to an empty question would let a caller that dropped its

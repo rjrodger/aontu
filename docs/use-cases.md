@@ -1,7 +1,7 @@
 # Use cases
 
 Documentation examples are small on purpose. Systems are not. The
-sixteen models in [`use-cases/`](../use-cases/) close that gap: each
+eighteen models in [`use-cases/`](../use-cases/) close that gap: each
 one is an enterprise-shaped system built as real aontu documents (a
 service catalog, a schema registry, an RBAC model) and each carries a
 `check.sh` that drives the actual CLI and asserts every outcome, with
@@ -12,7 +12,7 @@ shape lives, running. Run one case, or the whole suite:
 <!-- test: skip runs the full case suite; use-cases/run-all.sh is its own gate, run before every landing -->
 ```sh
 $ ./use-cases/03-api-contract/check.sh   # one case
-$ ./use-cases/run-all.sh                 # all sixteen, one verdict line per case
+$ ./use-cases/run-all.sh                 # all eighteen, one verdict line per case
 ```
 
 The scripts need Node with `ts/node_modules` installed, plus `python3`
@@ -599,6 +599,50 @@ thirteen files are held by `aontu render --check` in both ports:
 The same generator is there twice: `gen.aon` is the canonical aontu
 above, and `handler.ts` is that generator written as a Lambda handler,
 with its aontu on marked lines. Both render the same thirteen files.
+
+## 18. Role permissions
+
+Which role may change which subtree, asked before the change.
+`roles.aon` is a `close()`d role vocabulary (`desc`, `allow`, `deny?`)
+and a closed registry of four roles, `admin`, `dev`, `product` and
+`qa`, over the service model in `model.aon`: services with an owner, a
+tier, replicas and a description, a deploy layer with per-region
+replicas, feature flags and a tests block. The vocabulary and the
+`dev` role, from `roles.aon`:
+
+```aon
+Role: type(close({ desc:string allow:[&: string] deny?:[&: string] }))
+
+roles: close({
+  &: $.Role
+  dev: {
+    desc: "Runs the services: scaling and deployment, never ownership or tier"
+    allow: ["$.services" "$.deploy.*.replicas"]
+    deny: ["$.services.*.tier" "$.services.*.owner"]
+  }
+})
+```
+
+The agent skill asks `aontu allow` with the very assignment it is
+about to hand `set`, and writes on exit 0 alone. A proposal at
+`$.services.auth.replicas` lands in the overlay; one at
+`$.services.auth.tier` is refused with the rule named, and so is one at
+`$.services.auth`, because a change there could rewrite the tier:
+
+```
+$ aontu allow --role dev roles.aon '$.services.auth.tier="standard"'
+verdict: refused
+role: dev
+$.services.auth.tier: refused by $.roles.dev.deny.0 ($.services.*.tier)
+```
+
+Exit 1, and `aontu why '$.roles.dev.deny.0' roles.aon` names the line
+that wrote the rule. A role-model edit that puts a string where the
+`allow` list goes, or adds a key the closed vocabulary does not
+declare, is exit 4 with the engine's own finding, so the rules are
+held to the same shape as everything else. The roles, the proposals
+and the skill:
+[`use-cases/18-role-permissions/`](../use-cases/18-role-permissions/).
 
 Where a page in these docs and a use case disagree, the case wins (its
 checks run; the page does not). File the docs bug.

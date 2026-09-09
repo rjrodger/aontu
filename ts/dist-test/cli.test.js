@@ -2465,9 +2465,24 @@ function fmtFiles(...srcs) {
     });
     (0, node_test_1.test)('allow-takes-the-assignment-spelling', () => {
         const file = rolesFile();
-        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'qa', file, '$.tests.smoke="on"', '$.tests.x=a=b']), 0));
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'qa', file,
+            '$.tests.smoke="on"', '$.tests.x="a=b"', '$.tests.y={ a: 1 }']), 0));
         Assert.match(r.out, /^\$\.tests\.smoke: allowed/m);
         Assert.match(r.out, /^\$\.tests\.x: allowed/m);
+        Assert.match(r.out, /^\$\.tests\.y: allowed/m);
+        // The value must be ONE value. `set` appends it as source after
+        // the flattened path, so a second pair in it writes a sibling of
+        // the overlay root -- a subtree the gate was never asked about.
+        for (const bad of [
+            '$.tests.smoke=3 secrets: key: "x"',
+            '$.tests.smoke=3\nsecrets: 1',
+            '$.tests.smoke="unterminated',
+            '$.tests.smoke=@"other.aon"',
+        ]) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'qa', file, bad]), 2));
+            Assert.match(r.err, /the value of \$\.tests\.smoke is not one value/);
+            Assert.equal(r.out, '');
+        }
     });
     (0, node_test_1.test)('allow-undeclared-role-is-refused-with-a-finding', () => {
         const file = rolesFile();
@@ -2478,7 +2493,7 @@ function fmtFiles(...srcs) {
             '$.a: refused (role ops is not declared)',
             '',
             '$.roles.ops: no_path [reference]',
-            '  The path $.roles.ops names nothing in this document.',
+            '  The role ops is not declared at $.roles in this document.',
             '',
         ].join('\n'));
     });
@@ -2486,6 +2501,11 @@ function fmtFiles(...srcs) {
         const file = rolesFile('roles: dev: { allow: "$.a" }\n');
         const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.a']), 4));
         Assert.match(r.out, /^verdict: error\nrole: dev\n\n\$: scalar_kind \[reference\]/);
+        // The same report as an object.
+        const j = JSON.parse(vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--format', 'json', '--role', 'dev', file, '$.a']), 4)).out);
+        Assert.equal(j.verdict, 'error');
+        Assert.deepEqual(j.paths, []);
+        Assert.equal(j.findings[0].code, 'scalar_kind');
     });
     (0, node_test_1.test)('allow-json-names-the-producer', () => {
         const file = rolesFile();
@@ -2520,6 +2540,18 @@ function fmtFiles(...srcs) {
         vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file]), 2));
         vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role']), 2));
         vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--at']), 2));
+        // A role is one key.
+        for (const role of ['', '.', 'dev.allow', 'a.b']) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', role, file, '$.a']), 2));
+            Assert.match(r.err, /--role needs one key, without dots/);
+        }
+        // A path starts with $: an empty argument, an assignment that
+        // lost its path, and a second file name are all refused rather
+        // than read as paths and answered.
+        for (const arg of ['', '=', '=1', 'services.auth', file]) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'admin', file, arg]), 2));
+            Assert.match(r.err, /a path starts with \$/);
+        }
         vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--format', 'yaml', file, '$.a']), 2));
         vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--bogus', file, '$.a']), 2));
         vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--trust', 'bogus', '--role', 'dev', file, '$.a']), 2));
