@@ -951,12 +951,12 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 	} else if ctx != nil && 0 < len(ctx.slot) {
 		base := n.pathSegments()
 		if len(base) < len(ctx.slot) {
+			// Written branchless to mirror the canonical port's
+			// `nil.path.every((p, i) => p === ctx.path[i])`, which is one
+			// expression there and must not become an extra arm here.
 			prefix := true
 			for i, p := range base {
-				if p != ctx.slot[i] {
-					prefix = false
-					break
-				}
+				prefix = prefix && p == ctx.slot[i]
 			}
 			if prefix {
 				n.path = cp(ctx.slot)
