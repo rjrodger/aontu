@@ -2,6 +2,9 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.splitWords = splitWords;
+exports.lowerASCII = lowerASCII;
+exports.upperASCII = upperASCII;
+exports.capitalise = capitalise;
 exports.caseName = caseName;
 exports.ident = ident;
 exports.quote = quote;

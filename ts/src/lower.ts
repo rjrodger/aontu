@@ -103,19 +103,19 @@ export function splitWords(name: string): string[] {
   return words
 }
 
-function lowerASCII(s: string): string {
+export function lowerASCII(s: string): string {
   return Array.from(s).map((c) =>
     isUpper(c) ? String.fromCharCode(c.charCodeAt(0) + 32) : c).join('')
 }
 
-function upperASCII(s: string): string {
+export function upperASCII(s: string): string {
   return Array.from(s).map((c) =>
     isLower(c) ? String.fromCharCode(c.charCodeAt(0) - 32) : c).join('')
 }
 
 // A word capitalised: the acronym set wins, so `id` is `ID` under a
 // profile that lists it and `Id` under one that does not.
-function capitalise(word: string, acronyms: string[]): string {
+export function capitalise(word: string, acronyms: string[]): string {
   const low = lowerASCII(word)
   for (const a of acronyms) {
     if (lowerASCII(a) === low) {

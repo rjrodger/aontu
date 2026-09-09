@@ -1,0 +1,101 @@
+"use strict";
+/* Copyright (c) 2026 Richard Rodger, MIT License */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TranslateFuncVal = void 0;
+exports.expandSet = expandSet;
+const err_1 = require("../err");
+const StringVal_1 = require("./StringVal");
+const FuncBaseVal_1 = require("./FuncBaseVal");
+// A set with its ranges expanded, or undefined when a range descends.
+// `-` first or last is a literal.
+function expandSet(set) {
+    const cps = Array.from(set);
+    const out = [];
+    for (let i = 0; i < cps.length; i++) {
+        const c = cps[i];
+        const next = cps[i + 1];
+        const after = cps[i + 2];
+        if ('-' === next && undefined !== after && 0 < i + 2) {
+            const lo = c.codePointAt(0);
+            const hi = after.codePointAt(0);
+            if (hi < lo) {
+                return undefined;
+            }
+            for (let cp = lo; cp <= hi; cp++) {
+                out.push(String.fromCodePoint(cp));
+            }
+            i += 2;
+            continue;
+        }
+        out.push(c);
+    }
+    return out;
+}
+// The text a value carries, when it is a concrete string.
+function textOf(v) {
+    const s = v;
+    return (true === s?.isScalar && 'string' === typeof s.peg) ? s.peg : undefined;
+}
+class TranslateFuncVal extends FuncBaseVal_1.FuncBaseVal {
+    constructor(spec, ctx) {
+        super(spec, ctx);
+        this.isTranslateFunc = true;
+    }
+    make(_ctx, spec) {
+        return new TranslateFuncVal(spec);
+    }
+    funcname() {
+        return 'translate';
+    }
+    resolve(ctx, args) {
+        if (args.length < 2 || 3 < args.length) {
+            return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, undefined, 'arity');
+        }
+        const src = textOf(args[0]);
+        if (undefined === src) {
+            return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[0], 'src');
+        }
+        const fromText = textOf(args[1]);
+        if (undefined === fromText) {
+            return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[1], 'from');
+        }
+        const from = expandSet(fromText);
+        if (undefined === from) {
+            return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[1], 'from');
+        }
+        let to = [];
+        if (3 === args.length) {
+            const toText = textOf(args[2]);
+            if (undefined === toText) {
+                return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[2], 'to');
+            }
+            const expanded = expandSet(toText);
+            if (undefined === expanded) {
+                return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[2], 'to');
+            }
+            to = expanded;
+        }
+        // The table, built left to right so a character named twice takes
+        // its last mapping. An empty `to` maps to nothing, which is the
+        // deletion: there is no last character to pad with.
+        const pad = 0 < to.length ? to[to.length - 1] : undefined;
+        const table = new Map();
+        for (let i = 0; i < from.length; i++) {
+            table.set(from[i], i < to.length ? to[i] : pad);
+        }
+        let out = '';
+        for (const c of Array.from(src)) {
+            if (table.has(c)) {
+                const sub = table.get(c);
+                if (undefined !== sub) {
+                    out += sub;
+                }
+                continue;
+            }
+            out += c;
+        }
+        return this.place(new StringVal_1.StringVal({ peg: out }, ctx));
+    }
+} /* node:coverage ignore next 6 */
+exports.TranslateFuncVal = TranslateFuncVal;
+//# sourceMappingURL=TranslateFuncVal.js.map

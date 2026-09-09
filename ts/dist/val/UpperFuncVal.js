@@ -6,6 +6,7 @@ const err_1 = require("../err");
 const ScalarKindVal_1 = require("../val/ScalarKindVal");
 const valutil_1 = require("../val/valutil");
 const Decimal_1 = require("../val/Decimal");
+const caserange_1 = require("./caserange");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
@@ -25,7 +26,22 @@ class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // internal error.
         const arg = args?.[0];
         const oldpeg = arg?.peg;
-        const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() :
+        // THE RANGE (ts/src/val/caserange.ts): `start` names the first
+        // character of the run when it is zero or positive and the last
+        // when it is negative; `len` of -1, and the absent argument, are
+        // the source's length. Refused on a NUMBER, where a run of
+        // characters means nothing -- the numeric arm below is a ceiling,
+        // not a case mapping.
+        const start = (0, caserange_1.rangeArg)(args?.[1]);
+        const len = (0, caserange_1.rangeArg)(args?.[2]);
+        const ranged = undefined !== start || undefined !== len;
+        if (ranged &&
+            (Number.isNaN(start) || Number.isNaN(len) ||
+                'string' !== typeof oldpeg)) {
+            return this.place((0, err_1.makeNilErr)(ctx, 'invalid-arg', this, arg, 'range'));
+        }
+        const peg = 'string' === typeof oldpeg ?
+            (0, caserange_1.caseRange)(oldpeg, start ?? 0, len ?? -1, true) :
             'number' === typeof oldpeg ? Math.ceil(oldpeg) :
                 // The exact leaves take an EXACT ceiling and keep their kind: a
                 // biginteger is already integral so it is its own ceiling, and a
