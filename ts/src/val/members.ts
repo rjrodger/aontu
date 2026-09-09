@@ -6,7 +6,7 @@
 // child that generation would EMIT: a hide()- or type()-marked child
 // is not one, an alias declaration is not one, and an optional key
 // whose value generates nothing -- an unfilled `y?: string`, an absent
-// optional subtree -- is not one. `form`, `emit`, `filter`, `pick`,
+// optional subtree -- is not one. `each`, `emit`, `filter`, `pick`,
 // `join` and the aggregates read a bag through this one function, so a
 // value the document withholds from its output is withheld from every
 // text and every total the document computes from it: a hidden field

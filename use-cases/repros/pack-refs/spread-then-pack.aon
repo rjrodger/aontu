@@ -10,7 +10,7 @@
 # snapshots its source only once the source has finished resolving in
 # the tree, exactly as reference-language.md promises ("a generator's
 # data can still be merged into by ... a spread after it first looks
-# complete" -- generators wait for it). form() over the same source
+# complete" -- generators wait for it). each() over the same source
 # works too. Pinned in the shared spec: gen-pack.tsv
 # pack-over-spread-augmented, gen-each.tsv each-over-spread-augmented.
 # expected: {"out":{"a":{}},"ports":{"a":{"containerPort":1,"port":1}}}

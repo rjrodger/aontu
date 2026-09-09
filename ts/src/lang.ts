@@ -142,7 +142,7 @@ import { DeprecateFuncVal } from './val/DeprecateFuncVal'
 import { ReferFuncVal, RelFuncVal } from './val/ReferFuncVal'
 import { AcyclicFuncVal, InverseFuncVal } from './val/GraphAtomVal'
 import { PackFuncVal } from './val/PackFuncVal'
-import { FormFuncVal } from './val/FormFuncVal'
+import { EachFuncVal } from './val/EachFuncVal'
 import { FilterFuncVal } from './val/FilterFuncVal'
 import { MatchFuncVal } from './val/MatchFuncVal'
 import { EmitFuncVal } from './val/EmitFuncVal'
@@ -921,16 +921,17 @@ help isolate the syntax error.`,
     pack: PackFuncVal,
 
     // RENDER P6: the order-preserving map, and generation to a LIST.
-    // `form` makes one list element per child of its data, being the
+    // `each` makes one list element per child of its data, being the
     // template with `_` bound to the source child. It exists because
     // `pick(pack(...))` re-sorts to code-point order, and a struct's
     // fields or a file's imports are the model's order or they are
     // wrong.
     //
-    // It is also the only list generator, `each` having been retired
-    // (ADR-026): `each(d, t)` was `form(d, _ & t)` and `each(d)` was
-    // `form(d, _)`, one spelling for one concept.
-    form: FormFuncVal,
+    // Mentioning the hole makes it a BOUND instead: `each(d, _ & t)`
+    // meets each child with `t`, and `each(d, _)` is a bag's members
+    // as a list. That is what the retired meet-only `each` spelled
+    // (ADR-026), and why this one could take the name (ADR-027).
+    each: EachFuncVal,
 
     // G8 phase 2: selection. `filter` keeps the children of a bag that
     // unify with a condition; `match` picks the first arm whose
@@ -962,8 +963,8 @@ help isolate the syntax error.`,
     greatest: GreatestFuncVal,
 
     // Projection, which is what lets the aggregates reach a bag of
-    // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `form`
-    // template -- `form(d, _ & t)` MEETS each child, and a meet cannot
+    // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `each`
+    // template -- `each(d, _ & t)` MEETS each child, and a meet cannot
     // select.
     pick: PickFuncVal,
 

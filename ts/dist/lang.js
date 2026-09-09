@@ -71,7 +71,7 @@ const DeprecateFuncVal_1 = require("./val/DeprecateFuncVal");
 const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
 const PackFuncVal_1 = require("./val/PackFuncVal");
-const FormFuncVal_1 = require("./val/FormFuncVal");
+const EachFuncVal_1 = require("./val/EachFuncVal");
 const FilterFuncVal_1 = require("./val/FilterFuncVal");
 const MatchFuncVal_1 = require("./val/MatchFuncVal");
 const EmitFuncVal_1 = require("./val/EmitFuncVal");
@@ -733,16 +733,17 @@ help isolate the syntax error.`,
         // settle before it fires (the staging rule, G8 phase 0).
         pack: PackFuncVal_1.PackFuncVal,
         // RENDER P6: the order-preserving map, and generation to a LIST.
-        // `form` makes one list element per child of its data, being the
+        // `each` makes one list element per child of its data, being the
         // template with `_` bound to the source child. It exists because
         // `pick(pack(...))` re-sorts to code-point order, and a struct's
         // fields or a file's imports are the model's order or they are
         // wrong.
         //
-        // It is also the only list generator, `each` having been retired
-        // (ADR-026): `each(d, t)` was `form(d, _ & t)` and `each(d)` was
-        // `form(d, _)`, one spelling for one concept.
-        form: FormFuncVal_1.FormFuncVal,
+        // Mentioning the hole makes it a BOUND instead: `each(d, _ & t)`
+        // meets each child with `t`, and `each(d, _)` is a bag's members
+        // as a list. That is what the retired meet-only `each` spelled
+        // (ADR-026), and why this one could take the name (ADR-027).
+        each: EachFuncVal_1.EachFuncVal,
         // G8 phase 2: selection. `filter` keeps the children of a bag that
         // unify with a condition; `match` picks the first arm whose
         // pattern the scrutinee unifies with. Both select by
@@ -770,8 +771,8 @@ help isolate the syntax error.`,
         least: AggFuncVal_1.LeastFuncVal,
         greatest: AggFuncVal_1.GreatestFuncVal,
         // Projection, which is what lets the aggregates reach a bag of
-        // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `form`
-        // template -- `form(d, _ & t)` MEETS each child, and a meet cannot
+        // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `each`
+        // template -- `each(d, _ & t)` MEETS each child, and a meet cannot
         // select.
         pick: AggFuncVal_1.PickFuncVal,
         // G9 phase 2: the fold to a STRING. `sum` folds with `add`; this

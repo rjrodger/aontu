@@ -450,8 +450,8 @@ exports.COMPLETION_KEYWORD = COMPLETION_KEYWORD;
 // between G4 phases 1/2 and G8 phase 1.
 const BUILTIN_FUNCS = [
     'above', 'acyclic', 'add', 'below', 'close', 'copy', 'deprecate', 'div',
-    'emit', 'esc',
-    'filter', 'form', 'greatest',
+    'each', 'emit', 'esc',
+    'filter', 'greatest',
     'hide', 'inverse', 'join', 'key', 'least', 'length', 'list', 'lower',
     'map', 'match', 'max', 'min', 'mod', 'move', 'mul', 'must', 'neq', 'open',
     'pack', 'path', 'pick',

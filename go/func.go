@@ -29,7 +29,7 @@ var funcSet = map[string]bool{
 	"inverse":   true,
 	"refer":     true,
 	"pack":      true,
-	"form":      true,
+	"each":      true,
 	"filter":    true,
 	"match":     true,
 	"emit":      true,
@@ -68,12 +68,12 @@ var funcSet = map[string]bool{
 
 // stagedFuncs take THE STAGING RULE (G8 phase 0, see Ctx.settle): they
 // residuate until the model stops moving and fire exactly once. key()
-// because its answer is a segment of its own path; pack() and form()
+// because its answer is a segment of its own path; pack() and each()
 // because their data argument can still be merged into by a sibling
 // after it first looks done. Mirrors the `staged` flag on the TS
 // FuncBaseVal subclasses.
 var stagedFuncs = map[string]bool{
-	"key": true, "pack": true, "form": true, "filter": true,
+	"key": true, "pack": true, "each": true, "filter": true,
 	"match": true,
 	// A dispatch over a selection still being merged into dispatches
 	// over the wrong selection.
@@ -131,7 +131,7 @@ func derivePositional() map[string]bool {
 // report). What they DO need driven -- the data, the condition, the
 // patterns -- is driven by hand instead (stagedDrive).
 var generatorFuncs = map[string]bool{
-	"pack": true, "form": true, "filter": true, "match": true,
+	"pack": true, "each": true, "filter": true, "match": true,
 	// emit's TABLE is templates: driving it would resolve a body's
 	// references at the call site, the one position a body is never
 	// used at.
@@ -343,7 +343,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 
 	// THE STAGING RULE (G8 phase 0, see Ctx.settle). key()'s answer is a
 	// segment of its own path, so it must not answer while a spread, a
-	// reference or a move() can still move it; pack()'s and form()'s
+	// reference or a move() can still move it; pack()'s and each()'s
 	// data can still be merged into after it first looks done. All
 	// three residuate until the model stops changing and fire on the
 	// settle pass. Mirrors the `staged` flag and FuncBaseVal.residuate
@@ -738,8 +738,8 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		return keyFunc(ctx, f, base)
 	case "pack":
 		return packFunc(ctx, f, base, args)
-	case "form":
-		return formFunc(ctx, f, base, args)
+	case "each":
+		return eachFunc(ctx, f, base, args)
 	case "filter":
 		return filterFunc(ctx, f, base, args)
 	case "match":

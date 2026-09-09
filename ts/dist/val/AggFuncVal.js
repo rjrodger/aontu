@@ -12,7 +12,7 @@ const numcmp_1 = require("./numcmp");
 const members_1 = require("./members");
 const PlusOpVal_1 = require("./PlusOpVal");
 // The children of a bag, in the order the aggregate sees them: source
-// order for a list, sorted-key order for a map -- `form`'s order, and
+// order for a list, sorted-key order for a map -- `each`'s order, and
 // for the same reason (a map has no order of its own, so the language
 // picks one and states it).
 // The members of the bag a fold reads: what generation would emit
@@ -26,7 +26,7 @@ class AggFuncVal extends FuncBaseVal_1.FuncBaseVal {
         this.isAggFunc = true;
         // THE STAGING RULE (G8 phase 0). A total over a bag that is still
         // being merged into is a total of the wrong bag -- the same reason
-        // `filter` and `form` wait.
+        // `filter` and `each` wait.
         this.staged = true;
         this.op = op;
     }
@@ -118,8 +118,8 @@ function unpref(v) {
 //
 //   total: sum(pick($.lines, amountCents))
 //
-// IT IS NOT `form` WITH A CLEVER TEMPLATE. `form(d, _ & t)` MEETS each
-// child with `t`, and a meet cannot select: `form($.lines, _ & _.amount)`
+// IT IS NOT `each` WITH A CLEVER TEMPLATE. `each(d, _ & t)` MEETS each
+// child with `t`, and a meet cannot select: `each($.lines, _ & _.amount)`
 // asks for a child that is simultaneously the whole record and one of
 // its fields, which is why every spelling of it answers `no_path`.
 // Selection is a different operation and gets its own verb.

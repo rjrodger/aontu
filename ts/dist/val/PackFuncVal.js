@@ -11,7 +11,7 @@ const Val_1 = require("./Val");
 const PlaceVal_1 = require("./PlaceVal");
 const members_1 = require("./members");
 // The keys a data bag names, in the order the result must carry them,
-// or a code naming what is wrong with it. `form` asks the same
+// or a code naming what is wrong with it. `each` asks the same
 // question of the same argument and answers it with the values rather
 // than the keys (members.ts).
 function dataKeys(data, ctx) {

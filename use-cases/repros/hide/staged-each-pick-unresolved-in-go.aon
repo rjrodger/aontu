@@ -29,5 +29,5 @@
 # Re-probed 2026-08-30 after #99, which fixed G9 phase 0 items 1 and
 # 3. This one and item 4 remain.
 d: {x: {n: "a"}}
-s: form($.d, _ & {o: .n})
+s: each($.d, _ & {o: .n})
 r: pick($.s, o)

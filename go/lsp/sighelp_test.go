@@ -82,9 +82,9 @@ func TestSignatureHelp(t *testing.T) {
 	// Positions clamp: a line beyond the document and a character
 	// beyond the line both land at the nearest real place, and a
 	// multi-line document counts earlier lines into the offset.
-	multi := "a: 1\nb: form($.a,\nc: 2"
+	multi := "a: 1\nb: each($.a,\nc: 2"
 	r = SignatureHelp(multi, 1, 99)
-	if nil == r || "form(d: map|list, template t: any) : list" != r.Signatures[0].Label ||
+	if nil == r || "each(d: map|list, template t: any) : list" != r.Signatures[0].Label ||
 		1 != r.ActiveParameter {
 		t.Fatalf("multi-line clamp: %+v", r)
 	}

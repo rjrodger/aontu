@@ -89,7 +89,7 @@ exports.handler = async (
 //-         decls: [
 //-           {
 //-             k: "frag"
-//-             of: form(pick($.svc, name), "export const " + join(form(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
+//-             of: each(pick($.svc, name), "export const " + join(each(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
 //-           }
 //-         ]
 //-       }

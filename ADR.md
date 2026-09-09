@@ -43,6 +43,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-024](#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition) | The forge's token authorises a publish, and Sigstore is one provider of the proof, not its definition | Accepted |
 | [ADR-025](#adr-025--a-references-copy-is-an-instance-and-a-match-does-not-fire-on-an-unfilled-hole) | A reference's copy is an instance, and a match does not fire on an unfilled hole | Accepted |
 | [ADR-026](#adr-026--each-is-retired-form-carries-the-bound) | `each` is retired: `form` carries the bound | Accepted |
+| [ADR-027](#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound) | The list generator is named `each`, and `_ & t` is its bound | Accepted |
 
 ---
 
@@ -2911,3 +2912,71 @@ non-bag argument answers `form_data`.
 - The G8 phase 1 register entry records the removal rather than being
   rewritten: the phase landed as designed, and this decision came
   after.
+
+
+## ADR-027 — The list generator is named `each`, and `_ & t` is its bound
+
+**Date:** 2026-09-09
+**Status:** Accepted
+
+### Context
+
+[ADR-026](#adr-026--each-is-retired-form-carries-the-bound) retired the
+meet-only `each` because `form(d, _ & t)` spelled the same thing. That
+left one list generator, called `form` — a coinage, chosen because the
+function it most resembles is `map` and `map` is already a kind name in
+this language.
+
+`form` is a poor name for it. It reads as a noun, and this language's
+other constructors are verbs (`pack`, `filter`, `match`, `emit`,
+`split`, `join`). It collides in prose with the several senses of
+"form" the documentation already uses — canonical form, hash form, the
+agreed form, the pair form — and `aontu hash --form` is a flag.
+Meanwhile `each` is now free, is the name every reader arrives with for
+"one element per member", and is what `IDEAS.md` called the operation
+before either function existed ("each - convert to list").
+
+### Decision
+
+**The list generator is `each(d: map|list, template t: any) : list`.**
+`form` is gone.
+
+The two idioms are distinguished by the template, not by the function:
+
+    each(d, t)      the element IS t                   construction
+    each(d, _ & t)  the element is the child MET with t  bound
+    each(d, _)      the element is the child            members as a list
+
+`_` is what carries the distinction, and it was already the language's
+word for "the value here". Mentioning the hole keeps the child;
+leaving it out replaces the child. One generator, one spelling per
+concept, and the idiom is documented under "The `_ & …` idiom" in
+`docs/reference-language.md`.
+
+**`each_data` returns to service and `form_data` retires.** The code
+now names its function again, and — this is the point — its RELEASED
+meaning never changed: "the first argument to `each` has no children".
+`form_data`, which only ever existed while the function was called
+`form`, keeps its row, this registry being append-only.
+
+### Consequences
+
+- **This is a breaking change, and it is loud.** A document calling
+  `form` is refused with `unknown_function` in both ports.
+- **It must not ship in the same release as ADR-026.** Between the two
+  decisions, `each` means the meet and `form` means the replacement. A
+  release carrying both would leave a document written against the
+  previous release parsing unchanged while `each(d, t)` silently
+  stopped meeting and started replacing. `each($.m)` and a kind
+  template fail loudly (arity, no-gen), but a RECORD template does
+  not: `each($.ports, {protocol: *TCP|string})` would quietly drop
+  every port's own fields. The commits are separate so that ADR-026
+  can be released first, with `each` simply absent, and this rename
+  released after. **Releasing them together is the one way to make
+  this change silent, and it must not be done.**
+- `test/spec/gen-form.tsv` is back to `gen-each.tsv`, its rows carrying
+  the same expectations under the new name.
+- The G9 §4 / RENDER P6 design documents still say `form`. They are
+  design records of what was decided then, and the progress register
+  carries the rename, per the AGENTS.md rule that the register is
+  status and the design documents are not.

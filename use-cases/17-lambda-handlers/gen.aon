@@ -60,7 +60,7 @@ svc: $.services & pack($.services, { name:key() })
 })
 
 # One unit per service, and an index that names them all in the
-# model's order: `form` keeps that order where a pack would sort, and
+# model's order: `each` keeps that order where a pack would sort, and
 # the name-derivation chain -- split, form, join -- spells the constant.
 # The unit list is one dispatch over two parts, the service map and the
 # index marker, tried in sorted-key order.
@@ -91,7 +91,7 @@ code: units: emit($.parts, [
         decls: [
           {
             k: "frag"
-            of: form(pick($.svc, name), "export const " + join(form(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
+            of: each(pick($.svc, name), "export const " + join(each(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
           }
         ]
       }

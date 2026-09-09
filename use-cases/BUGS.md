@@ -2763,7 +2763,7 @@ mechanism now writes a value marked hidden into generated source, and
 output.
 
 The fix is already specified: **G9 phase 0 item 4**, `each`, `pick`,
-`join` and `form` skip `hide`-marked children and unfilled optional
+`join` and `each` skip `hide`-marked children and unfilled optional
 keys, landing together with rows pinning the changed behaviour on the
 shipped verbs and a CHANGELOG note. That item was written when `join`
 did not exist and was deferred on the reasoning that `join` "treats

@@ -9,11 +9,11 @@ import (
 )
 
 // THE GENERATION COMBINATORS (G8 phase 1, the Go side of
-// ts/src/val/PackFuncVal.ts and ts/src/val/FormFuncVal.ts,
+// ts/src/val/PackFuncVal.ts and ts/src/val/EachFuncVal.ts,
 // docs/capability-review/g8-generation.md).
 //
 //	pack(data, tmpl)  one KEYED child per child of data
-//	form(data, tmpl)  one LIST ELEMENT per child of data
+//	each(data, tmpl)  one LIST ELEMENT per child of data
 //
 // Both clone their template per destination -- an independent copy for
 // each generated child, because a generator's template IS the child and
@@ -302,7 +302,7 @@ func matchFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 // standing until it is chosen.
 func stagedArgIdx(f *FuncVal) []int {
 	switch f.name {
-	case "pack", "form":
+	case "pack", "each":
 		return []int{0}
 	case "emit":
 		// The SELECTION only. The table is templates, instantiated at
@@ -1115,22 +1115,22 @@ func emitSubstitute(text string, pairs []emitPair) string {
 	return b.String()
 }
 
-// formFunc is form(data, tmpl) (G9 §4; docs/design/RENDER.0.md D11 and
-// P6): one list element per child of data, being tmpl instantiated at
-// that position with `_` bound to the source child. It REPLACES; it
-// does not meet -- and form(d, _ & t) is how a meet is spelled, which
-// is what the retired each(d, t) meant (ADR-026; see the TS
-// FormFuncVal comment). The members come through bagValues, so every
-// bag reader agrees about order, and a hidden child or an unfilled
-// optional is skipped as generation would skip it.
-func formFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
+// eachFunc is each(data, tmpl) (G9 §4 as form; docs/design/RENDER.0.md
+// D11 and P6; renamed by ADR-027): one list element per child of data,
+// being tmpl instantiated at that position with `_` bound to the source
+// child. It REPLACES; it does not meet -- and each(d, _ & t) is how a
+// meet is spelled, which is what the retired meet-only each(d, t) meant
+// (ADR-026; see the TS EachFuncVal comment). The members come through
+// bagValues, so every bag reader agrees about order, and a hidden child
+// or an unfilled optional is skipped as generation would skip it.
+func eachFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	var data Val = top()
 	if 0 < len(args) {
 		data = args[0]
 	}
 	vals, ok := bagValues(data, ctx)
 	if !ok {
-		return makeNilErr(ctx, "form_data", f, nil)
+		return makeNilErr(ctx, "each_data", f, nil)
 	}
 
 	var tmpl Val = top()

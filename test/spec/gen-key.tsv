@@ -16,7 +16,7 @@ key-inside-child-map	gens	n:[a,b]\nd:pack($.n,{s:{k:key()}})\n	{"d":{"a":{"s":{"
 key-in-plus-chain	gens	n:[a,b]\nd:pack($.n,{k:"v-"+key()+"-w"})\n	{"d":{"a":{"k":"v-a-w"},"b":{"k":"v-b-w"}},"n":["a","b"]}
 key-in-nested-funcs	gens	n:[a,b]\nd:pack($.n,{k:lower(upper(key()))})\n	{"d":{"a":{"k":"a"},"b":{"k":"b"}},"n":["a","b"]}
 key-in-nested-generation	gens	n:[x,y]\nd:pack($.n,{m:pack([p],{k:key(),up:key(1)})})\n	{"d":{"x":{"m":{"p":{"k":"p","up":"p"}}},"y":{"m":{"p":{"k":"p","up":"p"}}}},"n":["x","y"]}
-form-key-template-conflict	errc	n:[a,b]\no:form($.n,_ & {k:key()})\n	scalar_kind
+each-key-template-conflict	errc	n:[a,b]\no:each($.n,_ & {k:key()})\n	scalar_kind
 key-at-generated-path-canon	canon	n:[a,b]\nd:pack($.n,{k:key()})\n	{"d":{"a":{"k":"a"},"b":{"k":"b"}},"n":["a","b"]}
 ref-reads-generated-key	gens	n:[a]\nd:pack($.n,{k:key()})\ne:$.d.a.k\n	{"d":{"a":{"k":"a"}},"e":"a","n":["a"]}
 # A TEMPLATE IS APPLIED ONCE, however deep the reference that reaches

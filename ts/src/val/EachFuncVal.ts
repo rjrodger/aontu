@@ -1,33 +1,32 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// TRANSFORMATION: `form(data, tmpl)` (G9 §4; docs/design/RENDER.0.md
-// D11 and P6). One element of the result list per child of `data`,
-// being `tmpl` instantiated at that position with `_` bound to the
-// source child. It REPLACES; it does not meet.
+// GENERATION TO A LIST: `each(data, tmpl)` (G9 §4 as `form`;
+// docs/design/RENDER.0.md D11 and P6; renamed by ADR-027). One element
+// of the result list per child of `data`, being `tmpl` instantiated at
+// that position with `_` bound to the source child. It REPLACES; it
+// does not meet.
 //
 //   names: [web, auth]
-//   units: form($.names, {path: _ + ".ts"})  ->  [{path: "web.ts"}, {path: "auth.ts"}]
+//   units: each($.names, {path: _ + ".ts"})  ->  [{path: "web.ts"}, {path: "auth.ts"}]
 //
-// IT IS ALSO THE BOUND, because a meet is a template away.
-// `form(d, _ & t)` puts the source child back into what it builds, so
-// the element is that child MET with `t` rather than `t` alone:
+// AND `_ & t` IS THE BOUND, because a meet is a template away. Putting
+// the source child back into what is built makes the element that
+// child MET with `t` rather than `t` alone:
 //
-//   form($.ports, _ & integer)   every element is an integer
-//   form($.m, _)                 a map's members as a list
+//   each($.ports, _ & integer)   every element is an integer
+//   each($.m, _)                 a map's members as a list
 //
-// That is what `each(d, t)` and `each(d)` used to spell, and why
-// `each` was retired (ADR-026): one operation had two spellings, and
-// the derived one carried the whole surface -- order, the member rule,
-// staging, the hole's owner, and the identity a link inside a
-// generated element is reported from (the graph being path-native,
-// ADR-014). test/spec/gen-each.tsv holds the rows that proved it
-// before the removal.
+// One generator, two idioms, and the `_` says which: mention the hole
+// and the child survives, leave it out and the template stands alone.
+// That is why the old meet-only `each` was retired (ADR-026) before
+// this function took its name (ADR-027) -- one spelling per concept,
+// and `_` was already the spelling for "the child here".
 //
 // WHY IT EXISTS AT ALL: ORDER. `pick(pack(d, {f: t}), f)` maps too,
 // but it goes through a map and re-sorts to code-point order, and it
 // refuses a list of records outright (pack_key). A struct's fields, a
 // DDL's columns and a file's imports are lists whose order is the
-// model's, and silently alphabetising them is wrong output. `form`
+// model's, and silently alphabetising them is wrong output. `each`
 // reads its members through the one ordering helper every bag reader
 // uses (members.ts), so no two can disagree about order -- source
 // order for a list, sorted-key order for a map -- and it skips what
@@ -38,7 +37,6 @@
 // BUGS.md §34's silent failure -- every existing test passes and the
 // new combinator captures an outer generator's hole -- which is why
 // the shared spec's nesting rows exist.
-
 import type {
   Val,
   ValSpec,
@@ -56,8 +54,8 @@ import { fillPlace } from './PlaceVal'
 import { memberVals } from './members'
 
 
-class FormFuncVal extends FuncBaseVal {
-  isFormFunc = true
+class EachFuncVal extends FuncBaseVal {
+  isEachFunc = true
 
   // THE STAGING RULE, for the reason given in PackFuncVal: the data
   // is not settled merely by being `done` once.
@@ -72,7 +70,7 @@ class FormFuncVal extends FuncBaseVal {
 
 
   funcname() {
-    return 'form'
+    return 'each'
   }
 
 
@@ -96,7 +94,7 @@ class FormFuncVal extends FuncBaseVal {
   resolve(ctx: AontuContext, args: Val[]) {
     const vals = memberVals(args?.[0], ctx)
     if (undefined === vals) {
-      return makeNilErr(ctx, 'form_data', this)
+      return makeNilErr(ctx, 'each_data', this)
     }
 
     // Arity is checked at parse (funcArity), so the template is here.
@@ -120,5 +118,5 @@ class FormFuncVal extends FuncBaseVal {
 
 
 export {
-  FormFuncVal,
+  EachFuncVal,
 }

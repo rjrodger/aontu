@@ -237,7 +237,7 @@ probe_fails quantity-add-refused '[aontu/invalid-arg]' \
 # 2026-08-26: fixed by the spread application rework (see the note in
 # the probe_fails block above) — the DRY port-column derivation works:
 # the nested spread's port/targetPort reach both the tree and the
-# pack's snapshot, and the inner form() emits the augmented entries.
+# pack's snapshot, and the inner each() emits the augmented entries.
 probe_golden spread-column-deadlock \
   "fixed: pack over spread-augmented data fires with resolved columns"
 grep -q '"targetPort": 8080' "$DIR/expected/spread-column-deadlock.json" \

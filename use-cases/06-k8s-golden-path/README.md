@@ -77,9 +77,9 @@ than its value.
   `$.deploy.ghost-svc`), and a service with no version entry leaves the
   required `image: string` ungenerable (`[aontu/mapval_no_gen]` at
   `$.deploy.auth.spec.template.spec.containers.0.image`).
-- `form(_, _)` turns the per-service port and env maps into Kubernetes
-  lists. `form(d, _ & t)` meets each child with its template, so port
-  entries are authored as maps, and `key()` inside a `form` template
+- `each(_, _)` turns the per-service port and env maps into Kubernetes
+  lists. `each(d, _ & t)` meets each child with its template, so port
+  entries are authored as maps, and `key()` inside a `each` template
   answers the destination list index, so every port and env entry
   carries its own name in its value (`http: { name: http, ... }`).
 - `match(_, small, {...}, large, {...})` maps the tier column to
@@ -164,8 +164,8 @@ than its value.
 12. `pick([_], ports)` inside a pack template projects a field out of
     the source row: the generated child carries `"containerPort": 8080`
     (`probes/hole-member-access.aon`).
-13. `form(d, _ & t)` meets each child with its template, so a scalar
-    child cannot become a map element: `form($.ports, _ & {
+13. `each(d, _ & t)` meets each child with its template, so a scalar
+    child cannot become a map element: `each($.ports, _ & {
     containerPort: _, name: key() })` over `{ http: 8080 }` is
     `[aontu/scalar_kind]` (`probes/each-reshape-scalar.aon`).
 14. `+` does not take a list operand: `$.names + ","` is

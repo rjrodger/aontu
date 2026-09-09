@@ -122,10 +122,10 @@ The model adds a class name to each planet row:
 
 <!-- source: ../model.aon -->
 ```aontu
-    rows: form($.seed.planet, _ & { class:"Planet" })
+    rows: each($.seed.planet, _ & { class:"Planet" })
 ```
 
-`form` applies a template to each selected value. `_` is the current
+`each` applies a template to each selected value. `_` is the current
 row, and `&` combines that row with the added class property through
 [unification](../../../../docs/unification.md). The seed generator can
 then read the row and its Rails class in the same place.

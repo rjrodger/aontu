@@ -223,9 +223,9 @@ describe('lsp-completion', () => {
     // Positions clamp: a line beyond the document and a character
     // beyond the line both land at the nearest real place, and a
     // multi-line document counts earlier lines into the offset.
-    open('a: 1\nb: form($.a,\nc: 2')
+    open('a: 1\nb: each($.a,\nc: 2')
     r = help(1, 99)
-    Assert.equal(r.signatures[0].label, 'form(d: map|list, template t: any) : list')
+    Assert.equal(r.signatures[0].label, 'each(d: map|list, template t: any) : list')
     Assert.equal(r.activeParameter, 1)
     Assert.equal(help(99, 0), null)
     r = help(-1, -5)

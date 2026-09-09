@@ -7,6 +7,42 @@ which implementation each change affects.
 
 ## Unreleased
 
+> **These two entries must not ship in one release.** Between them,
+> `each` changes meaning from a meet to a replacement. Cut a release
+> after the removal, with `each` simply absent, and release the rename
+> after that. Together they are silent for a record template; apart,
+> every affected call errors. See
+> [ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
+
+### BREAKING: the list generator is named `each` again, and `_ & t` is its bound
+
+**`form` was a coinage for a function whose natural name had just been
+freed.** With the meet-only `each` retired (below), the one list
+generator is now called `each`, and the template says which job it is
+doing:
+
+```
+each(d, t)      the element IS t                     construction
+each(d, _ & t)  the element is the child MET with t  bound
+each(d, _)      the element is the child             members as a list
+```
+
+`_` was already the language's word for "the value here"; mentioning
+it keeps the source child, leaving it out replaces it. The idiom is
+documented under "The `_ & …` idiom" in
+[`docs/reference-language.md`](docs/reference-language.md).
+
+Both ports refuse `form` with `unknown_function`.
+
+**To migrate:** rewrite `form(...)` as `each(...)`. Nothing else
+changes: the semantics, the order rule, the member rule, staging and
+the hole's owner are all the function's own and are untouched.
+
+`each_data` returns to service and `form_data` retires; its released
+meaning is unchanged, and the registry keeps both rows, being
+append-only. Rationale in
+[ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
+
 ### BREAKING: `each` is removed, `form` carries the bound
 
 **`form`'s hole already spelled the meet, so the language had two list
