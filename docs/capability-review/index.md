@@ -4,12 +4,12 @@
 literature, comparable languages, and industry practice, asking one
 question: what fundamental capabilities does aontu lack to fulfil its
 stated purpose — a systems-definition language and ground truth for
-agents? Each identified gap has a companion design document (G1–G10,
+agents? Each identified gap has a companion design document (G1–G11,
 linked below) with alternatives, boundaries, risks, and an
 implementation plan.*
 
 > **Where the work stands** is recorded in the
-> [progress register](progress.md) — every numbered phase of G1–G10,
+> [progress register](progress.md) — every numbered phase of G1–G11,
 > its status, and the artifact that proves it. This index and the gap
 > documents describe what *should* be built and were written before any
 > of it landed; the register is the only place that says what *has*
@@ -94,6 +94,7 @@ infrastructure around the lattice, not syntax on top of it.
 | G8 | Generation, on the total side of the fork | N children from data without copies that drift — and without losing the termination guarantee | [g8-generation.md](g8-generation.md) |
 | G9 | Declarative transformation | The model is the source of the CODE — one model, many generated artifacts, each over part of it | [g9-transformation.md](g9-transformation.md) |
 | G10 | A transparency log | A lockfile is a private memory; the first resolution of a version needs a public, append-only, auditable record | [g10-transparency.md](g10-transparency.md) |
+| G11 | The offline agent on-ramp | An agent holding only the binary, with no network, can operate every verb and cannot learn the language — and a check that examined nothing answers like a check that passed | [g11-agent-onramp.md](g11-agent-onramp.md) |
 
 ## What aontu already has right
 

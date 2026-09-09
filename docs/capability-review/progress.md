@@ -1,7 +1,7 @@
 # Capability review — progress register
 
 This is the single record of **where the [capability review](index.md)
-stands**: every numbered phase of G1–G10, its status, and the artifact
+stands**: every numbered phase of G1–G11, its status, and the artifact
 that proves it.
 
 An entry belongs here when it is a *numbered phase of a gap document's
@@ -153,7 +153,8 @@ the fix was and why the earlier tests could not see the defect.
 | [G8](g8-generation.md) | Generation | C | 6 | 0 | 0 | 1 |
 | [G9](g9-transformation.md) | Declarative transformation | D | 6 | 1 | 0 | 3 |
 | [G10](g10-transparency.md) | Transparency log | D | 2 | 0 | 3 | 1 |
-| | | **total** | **56** | **2** | **3** | **7** |
+| [G11](g11-agent-onramp.md) | Offline agent on-ramp | A | 0 | 0 | 7 | 0 |
+| | | **total** | **56** | **2** | **10** | **7** |
 
 *Retired* counts the rows whose status is SUPERSEDED, RETIRED or
 REMOVED — G4.0 and G4.1 (ADR-014), G8.4 (ADR-018), G10.5 (ADR-019),
@@ -1893,3 +1894,40 @@ Git LFS, SSRF, decompression bombs, forge quotas, size budgets over a
 Worker isolate — was a consequence of the service downloading source,
 and disappears when it does not. The review's own reasoning is in
 [g10-transparency.md](g10-transparency.md#design-space).
+
+## G11 — the offline agent on-ramp
+
+Opened 2026-09-09, and it is the question [G7](g7-machine-access.md)
+did not ask. G7 settled whether an agent can CONSUME a definition —
+`get`, `why`, `set`, `hash`, the MCP server — and all seven phases
+landed. G11 asks whether an agent can ARRIVE at one: what it can learn
+about aontu from aontu alone, offline, holding the binary and nothing
+else. Design is [g11-agent-onramp.md](g11-agent-onramp.md).
+
+The measurement that opened it, driven cold against the Go binary at
+`f661a87`: `&` — the map template, the one construct an ontology
+cannot be written without — occurs **zero** times in `--help`, while
+`template` occurs fourteen times and names a different feature every
+time. `aontu help` answers `cannot read help: open help: no such file
+or directory`. All 157 registered error codes carry a hint text and
+none can be looked up. And the defect the gap exists for: a schema
+written with the wildcard every neighbouring tool uses (`"*"`, a
+literal key in aontu) constrains nothing, and `aontu vet --partial`
+answers `verdict: valid`, exit 0, over data that violates it — **a
+check that examined nothing is byte-identical to a check that
+passed**.
+
+The principle is not new here, only ungeneralised. G8 phase 6 already
+ruled it for one verb: "`--check` is REQUIRED — `aontu trim f.aon`
+reads as 'trim this file', and doing something else silently is worse
+than refusing."
+
+| Phase | Size | Status | Pin |
+|-------|------|--------|-----|
+| **1** — `aontu help [topic]`, the teaching pack embedded | M | NOT STARTED | The generator, the committed corpora in both ports, the verb, the byte-identity assertions, and `docs/skill/tasks.md` as new content. On the `sigdecl` precedent (`make sig` → `go/sigdecl.txt` + `ts/src/sigdecl.ts`, byte identity asserted by both suites), which is not a preference for Go: `//go:embed` cannot read above its own package directory, so a committed generated copy is the only mechanism. Topics `language`, `examples`, `codes`, `tasks`, `grammar` from `docs/skill/*.md` and `grammar/aontu.abnf` — roughly 15 KB against a 9.4 MB binary. |
+| **2** — the one-argument mistyped-verb hint | S | NOT STARTED | The existing refusal is correct and mis-scoped: it is gated behind `1 < len(files)`, so it fires for two arguments and never for the one-word guesses (`help`, `init`, `ontology`, `docs`) an agent makes first. Extend it to one unreadable argument that is shaped like a bare word rather than a path, and name the nearest verb. `aontu ./help` must keep meaning "read the file named help", which is the escape hatch the subcommand dispatch already documents. |
+| **3** — `aontu explain <code>` | S | NOT STARTED | `rustc --explain`, over a table this repository already maintains complete: `test/spec/errcodes.tsv` has 157 rows, `ts/src/hints.ts` and `go/hints.go` carry a hint for every one, and the spec suite already asserts set equality between registry and table. A pure projection of an existing contract — no text has to be written, and the verb cannot ship a code that answers nothing. `--format json` returns `{code, class, hint, since}`; an unknown code exits 2 with near matches. |
+| **4** — vacuity signals on `view`, `render`, `relations` | M | NOT STARTED | Each verb that can do nothing says so on **stderr**, so no `--format json` stdout contract changes: `view` with an empty figure (1 byte, exit 0 today), `render` with no profile (0 bytes, exit 0), `relations` over a document declaring none (`verdict: pass`, exit 0). No exit code and no verdict word changes in this phase. CLI-level messages belong in the port-native command suites, as the mistyped-verb refusal already does, not in a shared spec mode. |
+| **5** — `vet --coverage` and `--strict-coverage` | L | NOT STARTED | The phase that closes the defect. A `coverage` object on the report — schema paths that constrained no data, data paths no clause touched, and `vacuous` when NO schema path constrained ANY data path, which is the exact condition of the `"*"` failure. `--strict-coverage` makes a vacuous verdict exit 1; without it the verdict contract is unchanged, so nothing that passes today starts failing. Modelled on `render --coverage`, which already ships and already refuses to write. Sequenced after 1–4 because those are what stop an agent reaching this state. |
+| **6** — `aontu init` | S/M | NOT STARTED | A minimal correct trio — `model.aon` using `&:`, a `data.aon` that satisfies it, a `check.sh` that checks it — refusing to overwrite. Not scaffolding convenience: the agent's most expensive failure is writing a first document at all, and a known-good starting document turns generation into editing. Minimised from the seventeen `use-cases/` directories. |
+| **7** — `--format json` on the bare command, `agentsmd --depth` | S | NOT STARTED | The bare command refuses `--format` as an unknown option today, so the DEFAULT entry point is the only one an agent must parse with a regular expression. `agentsmd`'s shape projection is fixed at `depth: 2`, so a two-level model reports `{"entity":{&:top}}` and the agent learns the root key and nothing under it. Listed last: a convenience where 1–5 are corrections. |
