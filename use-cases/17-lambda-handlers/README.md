@@ -15,7 +15,7 @@ of one generator: `gen.aon`, the canonical aontu, and `handler.ts`, the
 same thing written as a Lambda handler with its aontu on marked lines. Both render the same thirteen files.
 
 Nothing in the mechanism is about handlers. `emit`, `match`, `replace`,
-`body`, `esc` and `form` are the whole vocabulary; what makes this
+`body`, `esc` and `each` are the whole vocabulary; what makes this
 produce Lambda handlers is the target text in the body.
 
 ## The model tree
@@ -104,8 +104,8 @@ Four things to read off it:
 The unit list is one dispatch over two parts, the service map and an
 index marker: each service becomes a unit at `handlers/<name>.ts`, and
 `index.ts` names every service in the model's order with a constant
-spelled by the name-derivation chain, `join(form(split(_, "-"),
-upper(_)), "_")`, so `index-build` is `INDEX_BUILD`. `form` keeps the
+spelled by the name-derivation chain, `join(each(split(_, "-"),
+upper(_)), "_")`, so `index-build` is `INDEX_BUILD`. `each` keeps the
 order where a `pack` would sort, and `aontu render --check expected`
 holds all thirteen files.
 

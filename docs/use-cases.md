@@ -503,7 +503,7 @@ records: [
   body: ["type " + .name + " struct {" emit(.fields, %field) "}"]
 })
 
-code: units: [
+aontu: Code: units: [
   {
     path: "types.go"
     lang: "go"
@@ -592,8 +592,8 @@ single-quoted literal it lands in, so a service named `o'brien`
 compiles. A service with no S3 events gets no gateway hook, because a
 dispatch over an empty selection emits nothing, and the two lines of
 two spaces in every handler survive because a line is verbatim. An
-index names the services in the model's order through `form`, with a
-constant spelled by `join(form(split(_, "-"), upper(_)), "_")`. All
+index names the services in the model's order through `each`, with a
+constant spelled by `join(each(split(_, "-"), upper(_)), "_")`. All
 thirteen files are held by `aontu render --check` in both ports:
 [`use-cases/17-lambda-handlers/`](../use-cases/17-lambda-handlers/).
 The same generator is there twice: `gen.aon` is the canonical aontu

@@ -129,7 +129,7 @@ Verified in five forms ([BUGS.md](BUGS.md) §1–5): the fail-open enum;
 the bypassed constraint branch (`*8080 | (integer & neq(80))` accepts
 80); the rank≥2 default silently swallowed by a bare-kind conjunct;
 the `pref_not_instance` lint that fires on the correct idiom
-(including on the bundled `std/system`'s own `direction:` field), can
+(including on the bundled `aontu:system`'s own `direction:` field), can
 be silenced only by a spelling that restores no enforcement, and has a
 genuine false positive on ranked defaults; and `match()` on a
 defaulted scrutinee deriving a value that contradicts the generated
@@ -365,7 +365,7 @@ relation checks) and exposed the ceiling: relation `target` is inert
 edge properties, inverses hand-maintained because membership queries
 are inexpressible (filter is prefix-match on lists), no transitive
 closure or instance-of query, and the practical typed-refer idiom
-(`refer($.std.Service)`) trips the fixpoint (BUGS.md §19). The honest
+(`refer($.aontu.System.Service)`) trips the fixpoint (BUGS.md §19). The honest
 current statement: aontu is a sound *entity-and-edge substrate* whose
 query and constraint layers over that substrate are one more
 capability review away. The `graph`/`relations` machinery plus `get`

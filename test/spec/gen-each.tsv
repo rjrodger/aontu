@@ -1,61 +1,113 @@
-# GENERATION: each(data, tmpl?) (G8 phase 1,
-# docs/capability-review/g8-generation.md). One element of the result
-# list per child of `data`, each of them that child met with `tmpl`.
-# Written with one argument, `each(m)` is a map's children as a list.
+# TRANSFORMATION: each(data, tmpl) (G9 §4; docs/design/RENDER.0.md D11
+# and P6). The order-preserving MAP: one element per child of `data`,
+# being `tmpl` instantiated at that position with `_` bound to the
+# source child. It REPLACES; it does not meet -- the construction
+# where `each` is the bound.
 # Columns: name<TAB>mode<TAB>src<TAB>expect
 #
-# ORDER IS FIXED, and fixed the way canon already fixes it: source
-# order for a list, sorted-key order for a map. A generated list whose
-# order depended on insertion history would differ between two runs of
-# one document, and between the two ports.
-each-list	gens	p:[1,2]\no:each($.p)\n	{"o":[1,2],"p":[1,2]}
-each-map-sorted	gens	m:{b:2,a:1}\no:each($.m)\n	{"m":{"a":1,"b":2},"o":[1,2]}
-each-map-sorted-canon	canon	m:{b:2,a:1}\no:each($.m)\n	{"m":{"a":1,"b":2},"o":[1,2]}
-each-list-kind	gens	p:[1,2]\no:each($.p,integer)\n	{"o":[1,2],"p":[1,2]}
-each-map-template	gens	m:{a:{v:1},b:{v:2}}\no:each($.m,{v:integer})\n	{"m":{"a":{"v":1},"b":{"v":2}},"o":[{"v":1},{"v":2}]}
-each-pref-template	gens	o:each([1,2],*3|integer)\n	{"o":[1,2]}
-each-empty-list	gens	o:each([])\n	{"o":[]}
-each-empty-map	gens	o:each({})\n	{"o":[]}
-each-of-pack	gens	n:[a,b]\no:each(pack($.n,{x:1}))\n	{"n":["a","b"],"o":[{"x":1},{"x":1}]}
-each-list-strings	gens	n:[a,b]\no:each($.n)\n	{"n":["a","b"],"o":["a","b"]}
-each-map-kind	gens	m:{a:1,b:2}\no:each($.m,integer)\n	{"m":{"a":1,"b":2},"o":[1,2]}
-# FLIPPED 2026-08-26 (spread application rework): a staged argument now
-# snapshots its source only once the source has SETTLED in the tree
-# (Ctx.argsnap / RefVal.find), so a generator over a permanently stuck
-# source canons with the reference still standing -- which reparses to
-# the same document, where the baked-in copy of the stuck value did not
-# round-trip the model's structure. Parity-probed 2026-08-26.
-each-unfired-canon	canon	n:[1+true]\no:each($.n)\n	{"n":[1+true],"o":each($.n)}
-each-unfired-template-canon	canon	n:{a:1+true}\no:each($.n,integer)\n	{"n":{"a":1+true},"o":each($.n,integer)}
-each-literal-canon	canon	o:each([1,2])\n	{"o":[1,2]}
-each-literal-kind-canon	canon	o:each([1,2],integer)\n	{"o":[1,2]}
-each-template-conflict	errc	p:[1,x]\no:each($.p,integer)\n	no_scalar_unify
-each-data-integer	errc	o:each(1)\n	each_data
-each-data-string	errc	o:each("s")\n	each_data
-each-arity-none	errc	o:each()\n	func_arity
-each-arity-three	errc	o:each([1],integer,integer)\n	func_arity
+# Every expectation below was obtained by running BOTH engines and
+# diffing, error text included.
+# THE ELEMENT IS THE TEMPLATE, with `_` the source child. `each` would
+# have met the child into it; `each` writes the template and nothing
+# else, which is what makes it a construction rather than a bound.
+each-list	gens	o:each([a,b],{n:_})\n	{"o":[{"n":"a"},{"n":"b"}]}
+each-replaces-not-meets	gens	o:each([{a:1}],{b:2})\n	{"o":[{"b":2}]}
+each-meets-with-the-hole-by-contrast	gens	o:each([{a:1}],_ & {b:2})\n	{"o":[{"a":1,"b":2}]}
+each-hole-in-call	gens	o:each([a,b],upper(_))\n	{"o":["A","B"]}
+each-hole-in-expression	gens	o:each([1,2],_+1)\n	{"o":[2,3]}
+each-template-alone	gens	o:each([a,b],x)\n	{"o":["x","x"]}
+each-hole-twice	gens	o:each([a],{x:_,y:_})\n	{"o":[{"x":"a","y":"a"}]}
+# ORDER IS THE DATA'S, through the one helper every bag reader reads
+# its members with: source order for a list, sorted-key order for a map. This is
+# the reason each() exists: pick(pack(d, {f: t}), f) maps too, and
+# re-sorts to code-point order on the way.
+each-map-sorted	gens	o:each({b:2,a:1},_+1)\n	{"o":[2,3]}
+each-list-order-kept	gens	o:each([c,a,b],{n:_})\n	{"o":[{"n":"c"},{"n":"a"},{"n":"b"}]}
+each-pack-resorts-by-contrast	gens	o:pick(pack([c,a,b],{n:_}),n)\n	{"o":["a","b","c"]}
+each-empty-list	gens	o:each([],{v:_})\n	{"o":[]}
+each-empty-map	gens	o:each({},{v:_})\n	{"o":[]}
+# THE MEMBERS ARE WHAT GENERATION WOULD EMIT (RENDER P2): a hidden
+# child and an unfilled optional are skipped.
+each-skips-hidden	gens	l:[a,hide(b)]\no:each($.l,{v:_})\n	{"l":["a"],"o":[{"v":"a"}]}
+each-skips-unfilled-optional	gens	m:{a:1,b?:integer}\no:each($.m,{v:_})\n	{"m":{"a":1},"o":[{"v":1}]}
+# key() AT THE ELEMENT is its index, as it is for pack()'s children.
+each-key-is-index	gens	o:each([a,b],{k:key()})\n	{"o":[{"k":"0"},{"k":"1"}]}
+# NESTING: a hole belongs to its nearest enclosing generator
+# (boundArgStart). An outer each, pack or emit must not capture the
+# form's `_`, and a form must not capture theirs -- BUGS.md §34's
+# silent failure, which is why these rows exist.
+each-in-a-bound-each	gens	o:each([{a:1}],_ & {o:each([x,y],{v:_})})\n	{"o":[{"a":1,"o":[{"v":"x"},{"v":"y"}]}]}
+each-in-pack	gens	o:pack([p,q],{items:each([x,y],{v:_})})\n	{"o":{"p":{"items":[{"v":"x"},{"v":"y"}]},"q":{"items":[{"v":"x"},{"v":"y"}]}}}
+each-in-emit-body	gens	o:emit([{l:[x,y]}],{match:{l:list()},body:[each(.l,{v:_})]})\n	{"o":[{"v":"x"},{"v":"y"}]}
+each-of-each	gens	o:each([a,b],each([1,2],{v:_}))\n	{"o":[[{"v":1},{"v":2}],[{"v":1},{"v":2}]]}
+each-of-a-bound-each	gens	o:each(each([1,2],_ & integer),{v:_})\n	{"o":[{"v":1},{"v":2}]}
+each-of-filter	gens	o:each(filter([1,x,2],integer),{v:_})\n	{"o":[{"v":1},{"v":2}]}
+# THE NAME-DERIVATION CHAIN closes: split a name into words, form each
+# word, join them back.
+each-chain	gens	o:join(each(split("a-b-c","-"),upper(_)),"")\n	{"o":"ABC"}
+# STAGED: until the data settles the call stands, and canons as itself.
+each-unfired-canon	canon	n:[1+true]\no:each($.n,{v:_})\n	{"n":[1+true],"o":each($.n,{"v":_})}
+# each_data: the data is not a bag.
+each-data-scalar	errc	o:each(1,_)\n	each_data
+each-data-string	errc	o:each(x,{v:_})\n	each_data
 
-# GENERATOR OVER SPREAD-AUGMENTED DATA -- the each() twin of
-# gen-pack.tsv's pack-over-spread-augmented (2026-08-26, the spread
-# application rework): the snapshot waits for the settled source, so
-# the spread-injected relative reference arrives resolved and the
-# elements carry the augmented values. Parity-probed.
-each-over-spread-augmented	gens	ports:{a:{containerPort:1}}\nports:&:{port:.containerPort}\nout:each($.ports)\n	{"out":[{"containerPort":1,"port":1}],"ports":{"a":{"containerPort":1,"port":1}}}
-# A HOLE IN THE DATA ARGUMENT IS FILLED BY THE PEER, exactly as it is
-# in an unstaged call (`"hello" & upper(_)`). `_` is never done -- it is
-# FILLED -- so a generator gated on its data being done stayed residual
-# for ever and answered *_no_gen; the gate now passes a placeheld call
-# through to the fill. Against TOP there is nothing to fill with, and a
-# placeheld generator waits exactly as the hole itself does.
-each-place-data	gens	o:['a'] & each(_)\n	{"o":["a"]}
+# ==== THE BOUND SPELLING: each(d, _ & t) ====
 #
-# THE MEMBERS each SEES ARE THE MEMBERS GENERATION EMITS (BUGS.md §79):
-# a hidden child and an unfilled optional key are not members. The rule
-# is gen-join.tsv's, shared.
-each-skips-a-hidden-member	gens	m: {a: "keep", b: hide("SECRET")}\no: each($.m, _)	{"m":{"a":"keep"},"o":["keep"]}
-each-skips-an-unfilled-optional	gens	m: {x: 1, y?: integer}\no: each($.m, _)	{"m":{"x":1},"o":[1]}
-# An optional key is a member exactly when generation emits it: a null
-# is emitted, so it is one; a subtree whose required field never
-# resolved is dropped by generation, so it is not.
-each-keeps-an-optional-null	gens	m: {x: 1, y?: null}\no: each($.m, _)	{"m":{"x":1,"y":null},"o":[1,null]}
-each-skips-an-optional-subtree-that-cannot-generate	gens	m: {x: 1, y?: {z: string}}\no: each($.m, _)	{"m":{"x":1},"o":[1]}
+# `each` REPLACES, but a meet is a template away: putting the source
+# child back into what is built makes the element that child MET with
+# `t` rather than `t` alone.
+#
+#   each(d, _)      every member of d, as a list
+#   each(d, _ & t)  ... each of them also t
+#
+# That is what `each(d)` and `each(d, t)` spelled until `each` was
+# retired (ADR-026). The rows below are `each`'s whole former surface
+# under this spelling, carried over unchanged in expectation: both
+# arities, kind/map/preference/constraint templates, empty bags,
+# generation over a generator, the spread-augmented snapshot, a hole as
+# the data argument, the member rule, code-point key order, staged
+# canon, composition under `sum` and `join`, and the refusals. Every
+# expectation was parity-probed, and every one of them is the value
+# the `each` row it replaces asserted, which is what made the removal
+# a spelling change rather than a behaviour change.
+#
+# The nesting row is the load-bearing one. `each(_,_)` inside a `pack`
+# template gives the two holes different owners -- the first is the
+# pack's source child (the data argument), the second is the form's own
+# (boundArgStart, PlaceVal.ts). That is BUGS.md 34's silent failure,
+# and the bound spelling would be worthless without it.
+#
+# ONE THING DID NOT CARRY OVER, and could not: `each_data`. A non-bag
+# argument now raises `each_data`, `each_data` being unraisable with
+# nothing left to raise it. Its registry row stays -- errcodes.tsv is
+# append-only -- and errcodes.tsv records that it is retired.
+each-bound-list	gens	p:[1,2]\no:each($.p,_)\n	{"o":[1,2],"p":[1,2]}
+each-bound-map-sorted	gens	m:{b:2,a:1}\no:each($.m,_)\n	{"m":{"a":1,"b":2},"o":[1,2]}
+each-bound-map-sorted-canon	canon	m:{b:2,a:1}\no:each($.m,_)\n	{"m":{"a":1,"b":2},"o":[1,2]}
+each-bound-list-strings	gens	n:[a,b]\no:each($.n,_)\n	{"n":["a","b"],"o":["a","b"]}
+each-bound-list-kind	gens	p:[1,2]\no:each($.p,_ & integer)\n	{"o":[1,2],"p":[1,2]}
+each-bound-map-kind	gens	m:{a:1,b:2}\no:each($.m,_ & integer)\n	{"m":{"a":1,"b":2},"o":[1,2]}
+each-bound-map-template	gens	m:{a:{v:1},b:{v:2}}\no:each($.m,_ & {v:integer})\n	{"m":{"a":{"v":1},"b":{"v":2}},"o":[{"v":1},{"v":2}]}
+each-bound-pref-template	gens	o:each([1,2],_ & (*3|integer))\n	{"o":[1,2]}
+each-bound-constraint-template	gens	o:each([5,7],_ & min(3))\n	{"o":[5,7]}
+each-bound-meets-not-replaces	gens	o:each([{a:1}],_ & {b:2})\n	{"o":[{"a":1,"b":2}]}
+each-bound-empty-list	gens	o:each([],_)\n	{"o":[]}
+each-bound-empty-map	gens	o:each({},_)\n	{"o":[]}
+each-bound-of-pack	gens	n:[a,b]\no:each(pack($.n,{x:1}),_)\n	{"n":["a","b"],"o":[{"x":1},{"x":1}]}
+each-bound-literal-canon	canon	o:each([1,2],_)\n	{"o":[1,2]}
+each-bound-literal-kind-canon	canon	o:each([1,2],_ & integer)\n	{"o":[1,2]}
+each-bound-unfired-canon	canon	n:[1+true]\no:each($.n,_)\n	{"n":[1+true],"o":each($.n,_)}
+each-bound-unfired-template-canon	canon	n:{a:1+true}\no:each($.n,_ & integer)\n	{"n":{"a":1+true},"o":each($.n,_&integer)}
+each-bound-astral-key-order	canon	m:{"😀":1,"￰":2} e:each($.m,_ & integer)	{"e":[2,1],"m":{"￰":2,"😀":1}}
+each-bound-over-spread-augmented	gens	ports:{a:{containerPort:1}}\nports:&:{port:.containerPort}\nout:each($.ports,_)\n	{"out":[{"containerPort":1,"port":1}],"ports":{"a":{"containerPort":1,"port":1}}}
+each-bound-place-data	gens	o:['a'] & each(_,_)\n	{"o":["a"]}
+each-bound-hole-as-inner-data	gens	m:{a:{x:1,y:2},b:{z:3}}\nd:pack($.m,{inner:each(_,_)})\n	{"d":{"a":{"inner":[1,2]},"b":{"inner":[3]}},"m":{"a":{"x":1,"y":2},"b":{"z":3}}}
+each-bound-skips-a-hidden-member	gens	m: {a: "keep", b: hide("SECRET")}\no: each($.m, _ & _)	{"m":{"a":"keep"},"o":["keep"]}
+each-bound-skips-an-unfilled-optional	gens	m: {x: 1, y?: integer}\no: each($.m, _ & _)	{"m":{"x":1},"o":[1]}
+each-bound-keeps-an-optional-null	gens	m: {x: 1, y?: null}\no: each($.m, _ & _)	{"m":{"x":1,"y":null},"o":[1,null]}
+each-bound-skips-an-optional-subtree-that-cannot-generate	gens	m: {x: 1, y?: {z: string}}\no: each($.m, _ & _)	{"m":{"x":1},"o":[1]}
+each-bound-sum-over	canon	x:sum(each({p:1,q:2},_))	{"x":3}
+each-bound-join-of	gens	m:{x:1,y:2}\no:join(each($.m,_ & integer),"+")\n	{"m":{"x":1,"y":2},"o":"1+2"}
+each-bound-template-conflict	errc	p:[1,x]\no:each($.p,_ & integer)\n	no_scalar_unify
+each-bound-key-template-conflict	errc	n:[a,b]\no:each($.n,_ & {k:key()})\n	scalar_kind
+each-bound-empty-template	errc	n:[a,b]\no:each($.n,_ & {})\n	scalar_kind

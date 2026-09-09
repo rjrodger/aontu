@@ -41,7 +41,7 @@ only the declared virtual file set, and `{root}` reads real files
 realpath-confined below the root (a symlink inside the root pointing
 outside it is an escape and is denied; package resolution never runs).
 A few names are served under every capability but `none`, because they
-are BUNDLED with the engine: `@"std/system"` and `@"std/view"`, the
+are BUNDLED with the engine: `@"aontu:system"` and `@"aontu:view"`, the
 [system and view vocabularies](reference-language.md#the-bundled-vocabularies),
 and every `@"aontu:…"` name: the
 [language-supplied models](reference-language.md#the-aontu-models),

@@ -225,7 +225,7 @@ const hints: Record<string, string> = {
 
   pack_key: 'A list packed by pack() holds something that is not a string. The\nelements of a packed list ARE the generated keys, and only a string\nis a key — an element keyed by its position would churn every\ngenerated child the moment the list was reordered.\n \nExamples:\n  pack([a,b], {x:1})   -> {..}  # Names;\n  pack(["a b"], {x:1}) -> {..}  # ... a quoted name is still a name;\n  pack([1,2], {x:1})   -> nil   # ... but a number is not one.',
 
-  each_data: 'The first argument to each() is not a bag. `each` makes one list\nelement per child of its DATA, so the data has to have children: a\nlist, or a map whose values become the elements in sorted-key order.\n \nExamples:\n  each([1,2])       -> [..]  # A list, in source order;\n  each({b:2,a:1})   -> [..]  # ... a map, in sorted-key order;\n  each(1)           -> nil   # ... but a scalar has no children.',
+  each_data: 'The first argument to each() is not a bag. `each` makes one list\nelement per child of its DATA, so the data has to have children: a\nlist, or a map whose values are taken in sorted-key order.\n \nExamples:\n  each([a,b], upper(_))  -> [..]  # A list, in source order;\n  each({b:2,a:1}, _)     -> [..]  # ... a map, in sorted-key order;\n  each(1, _)             -> nil   # ... but a scalar has no children.',
 
   filter_data: 'The first argument to filter() is not a bag. `filter` keeps the\nchildren of its DATA that already satisfy a condition, so the data\nhas to have children: a list, or a map.\n \nExamples:\n  filter([1,x], integer)      -> [..]  # A list;\n  filter({a:1,b:x}, integer)  -> {..}  # ... or a map, keys kept;\n  filter(1, integer)          -> nil   # ... but a scalar has none.',
 
@@ -249,6 +249,9 @@ const hints: Record<string, string> = {
 
   replace_value: 'A replacement value is not text: the `replace` key {key} came to\n{value} at the node. A value reaches the body as a string -- a number\nor a boolean spells itself, as it does after `+` -- and it has to\nhave settled by the time the dispatch fires, so a map, a list, a\nnull or a value still unresolved is refused rather than written into\na file as something else.\n \nExamples:\n  replace: {PIN: .pin}    # A string field;\n  replace: {PORT: .port}  # ... or a number, as digits;\n  replace: {ALL: _}       # ... but the node itself is a map.',
 
+  // RETIRED with the name `form` (ADR-027): the function is `each` now
+  // and answers `each_data`. Registered still, errcodes.tsv being
+  // append-only, so a code a released engine raised keeps its meaning.
   form_data: 'The first argument to form() is not a bag. `form` makes one list\nelement per child of its DATA, so the data has to have children: a\nlist, or a map whose values are taken in sorted-key order.\n \nExamples:\n  form([a,b], upper(_))  -> [..]  # A list, in source order;\n  form({b:2,a:1}, _)     -> [..]  # ... a map, in sorted-key order;\n  form(1, _)             -> nil   # ... but a scalar has no children.',
 
   esc_variant: 'esc(), usc() or a template\'s `esc:` key were given a variant that\nnames no convention.\nA variant names a CONVENTION rather than a language, because several\nlanguages share one and one language has several. The names are `sq`,\n`sql`, `shell`, `xml`, `uri` and `regex`; written with no variant at\nall it is the C escape, JSON canonical, which covers the double-quoted\nliteral of every C-family language.\n \nExamples:\n  esc(text)          -> ...   # C / JSON, the default;\n  esc(text, sq)      -> ...   # ... single-quoted C-family;\n  esc(text, pascal)  -> nil   # ... but that is not a convention.',
@@ -626,7 +629,7 @@ const codeClasses: Record<string, string> = {
   // template checks are class `parse`: what is wrong is the TEMPLATE
   // as written, before any node. `replace_value` is class `conflict`:
   // the node's value and the body that wanted text disagreed.
-  // `form_data` is `each_data`'s twin.
+  // `form_data` is `each_data`'s retired twin (ADR-027).
   replace_overlap: 'parse',
   replace_unused: 'parse',
   replace_value: 'conflict',

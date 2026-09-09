@@ -59,8 +59,8 @@ step: {
   test: { run: "make test" }
 }
 order: [$.step.build $.step.test $.step.deploy]
-by_key: form($.step, _ & { at: key() })
-by_order: form($.order, _ & { at: key() })
+by_key: each($.step, _ & { at: key() })
+by_order: each($.order, _ & { at: key() })
 ```
 
 `by_key` comes out `make`, `bin/deploy`, `make test` — build, deploy,
@@ -69,8 +69,8 @@ test, alphabetically. `by_order` comes out `make`, `make test`,
 
 Two more facts worth knowing before you convert anything:
 
-- **`form` over a map produces a list**, and `key()` inside its template
-  is the element's POSITION in that list, not the map key. `form` exists
+- **`each` over a map produces a list**, and `key()` inside its template
+  is the element's POSITION in that list, not the map key. `each` exists
   precisely to keep an order, so it hands you an ordinal.
 - **`pack` over a map produces a map**, and there `key()` IS the key. It
   is how you put a name inside the node that carries it:

@@ -302,8 +302,8 @@ grep -q 'dead: \$\.code' "$WORK/cover.out" \
 # Every declaration here is written by pack and pick rather than by a
 # rule set, so the rule layer governs none of this output and the report
 # says so: four records, twice.
-has cover 'unruled: ts/domain.ts $.code.units.0.decls.0'
-has cover 'unruled: go/domain.go $.code.units.1.decls.3'
+has cover 'unruled: ts/domain.ts $.aontu.Code.units.0.decls.0'
+has cover 'unruled: go/domain.go $.aontu.Code.units.1.decls.3'
 ok "coverage names the three bags no output consumed, and the unruled declarations"
 
 if command -v go >/dev/null 2>&1; then
