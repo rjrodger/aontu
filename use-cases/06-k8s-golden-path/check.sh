@@ -161,7 +161,7 @@ run p-hole-member-access 0 "$DIR/probes/hole-member-access.aon"
 has p-hole-member-access '"containerPort": 8080' "the projected field"
 ok "probe hole-member-access: pick([_], k) projects out of the pack row"
 probe_fails each-reshape-scalar '[aontu/scalar_kind]' \
-  "each cannot reshape scalar children into maps"
+  "a bound form cannot reshape scalar children into maps"
 probe_fails join-list '[aontu/mapval_no_gen]' \
   "no join(): list + string does not evaluate"
 # 2026-08-26: fixed by the spread application rework — a generator's
@@ -170,7 +170,7 @@ probe_fails join-list '[aontu/mapval_no_gen]' \
 # resolved and the pack fires (was [aontu/mapval_no_gen], the whole
 # model dead). Moved from the expected-failure probes to the goldens
 # below. Shared-spec pins: gen-pack.tsv pack-over-spread-augmented,
-# gen-each.tsv each-over-spread-augmented.
+# gen-form.tsv form-bound-over-spread-augmented.
 probe_fails env-append '[aontu/scalar_value]' \
   "appending to a generated list collides positionally"
 probe_fails kebab-bare '[aontu/negative]' \
@@ -217,7 +217,7 @@ probe_golden inner-close-crosswire \
 grep -q '"name": "auth"' "$DIR/expected/inner-close-crosswire.json" \
   || die "inner-close-crosswire golden lost its point"
 probe_golden pref-key-crosswire \
-  "fixed: **key(n) default in an each-under-pack answers per child"
+  "fixed: **key(n) default in a form-under-pack answers per child"
 grep -q '"value": "auth"' "$DIR/expected/pref-key-crosswire.json" \
   || die "pref-key-crosswire golden lost its point"
 probe_golden hide-pack-loss \
@@ -237,7 +237,7 @@ probe_fails quantity-add-refused '[aontu/invalid-arg]' \
 # 2026-08-26: fixed by the spread application rework (see the note in
 # the probe_fails block above) — the DRY port-column derivation works:
 # the nested spread's port/targetPort reach both the tree and the
-# pack's snapshot, and the inner each() emits the augmented entries.
+# pack's snapshot, and the inner form() emits the augmented entries.
 probe_golden spread-column-deadlock \
   "fixed: pack over spread-augmented data fires with resolved columns"
 grep -q '"targetPort": 8080' "$DIR/expected/spread-column-deadlock.json" \

@@ -39,7 +39,7 @@ place-binds-pack-func	gens	n:[a,b]\nd:pack($.n,{k:upper(_)})\n	{"d":{"a":{"k":"A
 place-with-key-in-pack	gens	p:{a:1,b:2}\nq:pack($.p,{v:_,k:key()})\n	{"p":{"a":1,"b":2},"q":{"a":{"k":"a","v":1},"b":{"k":"b","v":2}}}
 place-binds-filter-cond	gens	l:[1,2,3]\nd:filter($.l,_)\n	{"d":[1,2,3],"l":[1,2,3]}
 place-binds-filter-map	gens	m:{a:{v:1},b:{v:2}}\nd:filter($.m,_)\n	{"d":{"a":{"v":1},"b":{"v":2}},"m":{"a":{"v":1},"b":{"v":2}}}
-place-binds-each	gens	o:each([1,2],_)\n	{"o":[1,2]}
+place-binds-form	gens	o:form([1,2],_ & _)\n	{"o":[1,2]}
 # A hole under a PREFERENCE: the generated default is the source
 # child, still overridable per child. This is the row that reaches the
 # pref arm of the fill walk, whose peg is a Val rather than a list of
@@ -71,10 +71,11 @@ place-nested-pack-inner-binding	gens	envs:[dev]\nfleet:{web:{replicas:1}}\ndeplo
 place-nested-pack-inner-meet	gens	envs:[dev,prod]\nfleet:{web:{replicas:1}}\ndeploy:pack($.envs,{services:pack($.fleet,_&{extra:2})})\n	{"deploy":{"dev":{"services":{"web":{"extra":2,"replicas":1}}},"prod":{"services":{"web":{"extra":2,"replicas":1}}}},"envs":["dev","prod"],"fleet":{"web":{"replicas":1}}}
 
 # A HOLE AS A GENERATOR'S DATA (the other side of the boundary): the
-# hole in `each(_)` is in the DATA argument — a binding position it is
-# NOT — so the OUTER pack's fill pass fills it with the outer source
-# child, and the inner each() then iterates that child. The two-arg
+# first hole in `form(_, _)` is in the DATA argument — a binding
+# position it is NOT — so the OUTER pack's fill pass fills it with the
+# outer source child, and the inner form() then iterates that child
+# (its own hole, the second, stays its own). The two-arg
 # spelling pins that the inner TEMPLATE argument rides through the
 # fill untouched. Parity-probed in both engines.
-place-hole-as-inner-data	gens	m:{a:{x:1,y:2},b:{z:3}}\nd:pack($.m,{inner:each(_)})\n	{"d":{"a":{"inner":[1,2]},"b":{"inner":[3]}},"m":{"a":{"x":1,"y":2},"b":{"z":3}}}
-place-hole-as-inner-data-tmpl	gens	m:{a:{x:1,y:2}}\nd:pack($.m,{inner:each(_,integer)})\n	{"d":{"a":{"inner":[1,2]}},"m":{"a":{"x":1,"y":2}}}
+place-hole-as-inner-data	gens	m:{a:{x:1,y:2},b:{z:3}}\nd:pack($.m,{inner:form(_,_)})\n	{"d":{"a":{"inner":[1,2]},"b":{"inner":[3]}},"m":{"a":{"x":1,"y":2},"b":{"z":3}}}
+place-hole-as-inner-data-tmpl	gens	m:{a:{x:1,y:2}}\nd:pack($.m,{inner:form(_,_ & integer)})\n	{"d":{"a":{"inner":[1,2]}},"m":{"a":{"x":1,"y":2}}}

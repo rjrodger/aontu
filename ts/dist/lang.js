@@ -71,7 +71,6 @@ const DeprecateFuncVal_1 = require("./val/DeprecateFuncVal");
 const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
 const PackFuncVal_1 = require("./val/PackFuncVal");
-const EachFuncVal_1 = require("./val/EachFuncVal");
 const FormFuncVal_1 = require("./val/FormFuncVal");
 const FilterFuncVal_1 = require("./val/FilterFuncVal");
 const MatchFuncVal_1 = require("./val/MatchFuncVal");
@@ -728,19 +727,21 @@ help isolate the syntax error.`,
         // govern. Lattice-inert; the verdict lands at generation.
         acyclic: GraphAtomVal_1.AcyclicFuncVal,
         inverse: GraphAtomVal_1.InverseFuncVal,
-        // G8 phase 1: the generation combinators. `pack` makes one keyed
-        // child per child of its data, `each` one list element; both clone
-        // their template per destination exactly as a spread does, and both
-        // wait for the model to settle before they fire (the staging rule,
-        // G8 phase 0).
+        // G8 phase 1: generation to KEYED CHILDREN. `pack` makes one keyed
+        // child per child of its data, cloning its template per
+        // destination exactly as a spread does, and waits for the model to
+        // settle before it fires (the staging rule, G8 phase 0).
         pack: PackFuncVal_1.PackFuncVal,
-        each: EachFuncVal_1.EachFuncVal,
-        // RENDER P6: the order-preserving map. `form` makes one list
-        // element per child of its data, being the template with `_`
-        // bound to the source child -- a construction, where `each` is a
-        // bound (G9 §4). It exists because `pick(pack(...))` re-sorts to
-        // code-point order, and a struct's fields or a file's imports
-        // are the model's order or they are wrong.
+        // RENDER P6: the order-preserving map, and generation to a LIST.
+        // `form` makes one list element per child of its data, being the
+        // template with `_` bound to the source child. It exists because
+        // `pick(pack(...))` re-sorts to code-point order, and a struct's
+        // fields or a file's imports are the model's order or they are
+        // wrong.
+        //
+        // It is also the only list generator, `each` having been retired
+        // (ADR-026): `each(d, t)` was `form(d, _ & t)` and `each(d)` was
+        // `form(d, _)`, one spelling for one concept.
         form: FormFuncVal_1.FormFuncVal,
         // G8 phase 2: selection. `filter` keeps the children of a bag that
         // unify with a condition; `match` picks the first arm whose
@@ -769,8 +770,9 @@ help isolate the syntax error.`,
         least: AggFuncVal_1.LeastFuncVal,
         greatest: AggFuncVal_1.GreatestFuncVal,
         // Projection, which is what lets the aggregates reach a bag of
-        // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `each`
-        // template -- `each` MEETS each child, and a meet cannot select.
+        // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `form`
+        // template -- `form(d, _ & t)` MEETS each child, and a meet cannot
+        // select.
         pick: AggFuncVal_1.PickFuncVal,
         // G9 phase 2: the fold to a STRING. `sum` folds with `add`; this
         // folds with `+`, so it inherits the one number-to-text rule and

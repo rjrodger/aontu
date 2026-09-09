@@ -29,7 +29,7 @@
 // not match costs nothing and reports nothing.
 //
 // TOTALITY. `filter` iterates a finite, settled bag and cannot call
-// itself, exactly as `pack` and `each` cannot.
+// itself, exactly as `pack` and `form` cannot.
 
 import type {
   Val,

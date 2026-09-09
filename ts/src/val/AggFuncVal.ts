@@ -13,7 +13,7 @@
 //   cheapest: least($.quotes)             # ... and the extremes
 //   peak:    greatest($.hourly)
 //
-// A FOLD OVER A FINITE, SETTLED BAG IS AS TOTAL AS `each`. There is no
+// A FOLD OVER A FINITE, SETTLED BAG IS AS TOTAL AS `form`. There is no
 // recursion here and no user-supplied step: the bag is the one the
 // model already holds, the operation is fixed, and the walk visits each
 // child exactly once. That is the whole reason these are built-ins
@@ -67,7 +67,7 @@ type AggOp = 'sum' | 'least' | 'greatest'
 
 
 // The children of a bag, in the order the aggregate sees them: source
-// order for a list, sorted-key order for a map -- `each`'s order, and
+// order for a list, sorted-key order for a map -- `form`'s order, and
 // for the same reason (a map has no order of its own, so the language
 // picks one and states it).
 // The members of the bag a fold reads: what generation would emit
@@ -82,7 +82,7 @@ class AggFuncVal extends FuncBaseVal {
 
   // THE STAGING RULE (G8 phase 0). A total over a bag that is still
   // being merged into is a total of the wrong bag -- the same reason
-  // `filter` and `each` wait.
+  // `filter` and `form` wait.
   staged = true
 
   op: AggOp
@@ -204,8 +204,8 @@ function unpref(v: any): any {
 //
 //   total: sum(pick($.lines, amountCents))
 //
-// IT IS NOT `each` WITH A CLEVER TEMPLATE. `each(d, t)` MEETS each
-// child with `t`, and a meet cannot select: `each($.lines, _.amount)`
+// IT IS NOT `form` WITH A CLEVER TEMPLATE. `form(d, _ & t)` MEETS each
+// child with `t`, and a meet cannot select: `form($.lines, _ & _.amount)`
 // asks for a child that is simultaneously the whole record and one of
 // its fields, which is why every spelling of it answers `no_path`.
 // Selection is a different operation and gets its own verb.

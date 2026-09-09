@@ -63,7 +63,7 @@ agg-greatest-map	canon	x:greatest({a:3,b:1})	{"x":3}
 agg-least-single	canon	x:least([1])	{"x":1}
 agg-least-keeps-kind	canon	x:least([0d1.5,2])	{"x":0d1.5}
 agg-least-pref-member	canon	x:least([pref(5),9])	{"x":5}
-agg-sum-over-each	canon	x:sum(each({p:1,q:2}))	{"x":3}
+agg-sum-over-form	canon	x:sum(form({p:1,q:2},_))	{"x":3}
 # A bag that is not yet resolved residuates and the call is rebuilt.
 agg-forward-reference	canon	y:sum($.x)\nx:[1,2]	{"x":[1,2],"y":3}
 agg-greatest-exact-compare	canon	x:greatest([0d9007199254740993,9007199254740992])	{"x":0d9007199254740993}
@@ -91,8 +91,8 @@ agg-arity	errc	x:sum([1],[2])	func_arity
 #
 #   total: sum(pick($.lines, amountCents))
 #
-# IT IS NOT `each` WITH A CLEVER TEMPLATE. each(d, t) MEETS each child
-# with t, and a meet cannot select: `each($.lines, _.amount)` asks for a
+# IT IS NOT `form` WITH A CLEVER TEMPLATE. form(d, _ & t) MEETS each
+# child with t, and a meet cannot select: `form($.lines, _ & _.amount)` asks for a
 # child that is simultaneously the whole record and one of its fields,
 # which is why every spelling of it answers no_path.
 #
@@ -138,7 +138,7 @@ pick-arity	errc	x:pick([{a:1}])	func_arity
 # BMP U+FFF0, then astral U+1F600 -- which is the ordering a bare
 # `.sort()` gets wrong in the middle.
 pick-astral-key-order	canon	m:{"😀":{v:"astral"},"￰":{v:"bmp"}} p:pick($.m,v)	{"m":{"￰":{"v":"bmp"},"😀":{"v":"astral"}},"p":["bmp","astral"]}
-each-astral-key-order	canon	m:{"😀":1,"￰":2} e:each($.m,integer)	{"e":[2,1],"m":{"￰":2,"😀":1}}
+form-astral-key-order	canon	m:{"😀":1,"￰":2} e:form($.m,_ & integer)	{"e":[2,1],"m":{"￰":2,"😀":1}}
 pick-astral-key-order-three	canon	m:{"😀":{v:1},"￰":{v:2},"a":{v:3}} p:pick($.m,v)	{"m":{"a":{"v":3},"￰":{"v":2},"😀":{"v":1}},"p":[3,2,1]}
 #
 # THE MEMBERS A FOLD SEES ARE THE MEMBERS GENERATION EMITS (BUGS.md

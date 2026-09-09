@@ -77,11 +77,11 @@ than its value.
   `$.deploy.ghost-svc`), and a service with no version entry leaves the
   required `image: string` ungenerable (`[aontu/mapval_no_gen]` at
   `$.deploy.auth.spec.template.spec.containers.0.image`).
-- `each(_)` turns the per-service port and env maps into Kubernetes
-  lists. `each()` meets each child with its template, so port entries
-  are authored as maps, and `key()` inside an `each` template answers
-  the destination list index, so every port and env entry carries its
-  own name in its value (`http: { name: http, ... }`).
+- `form(_, _)` turns the per-service port and env maps into Kubernetes
+  lists. `form(d, _ & t)` meets each child with its template, so port
+  entries are authored as maps, and `key()` inside a `form` template
+  answers the destination list index, so every port and env entry
+  carries its own name in its value (`http: { name: http, ... }`).
 - `match(_, small, {...}, large, {...})` maps the tier column to
   resource blocks. Every quantity in a block is a ranked default
   (`*"500m" | string`), so an override replaces one field while the
@@ -164,10 +164,10 @@ than its value.
 12. `pick([_], ports)` inside a pack template projects a field out of
     the source row: the generated child carries `"containerPort": 8080`
     (`probes/hole-member-access.aon`).
-13. `each()` meets each child with its template, so a scalar child
-    cannot become a map element: `each($.ports, { containerPort: _,
-    name: key() })` over `{ http: 8080 }` is `[aontu/scalar_kind]`
-    (`probes/each-reshape-scalar.aon`).
+13. `form(d, _ & t)` meets each child with its template, so a scalar
+    child cannot become a map element: `form($.ports, _ & {
+    containerPort: _, name: key() })` over `{ http: 8080 }` is
+    `[aontu/scalar_kind]` (`probes/each-reshape-scalar.aon`).
 14. `+` does not take a list operand: `$.names + ","` is
     `[aontu/mapval_no_gen]` (`probes/join-list.aon`).
 15. Lists unify by position: an entry written onto a generated env list

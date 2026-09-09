@@ -7,7 +7,7 @@ platform: hide({
   registry: "registry.acme.io/payments"
   namespace: "payments"
   # Base env vars every container gets.  Each entry repeats its own
-  # name in the value because each() cannot recover the source map key
+  # name in the value because form() cannot recover the source map key
   # (key() inside an each template answers the list index).
   # OTEL_SERVICE_NAME deliberately has no value here: injecting it per
   # service happens in internal.envmaps below, where key(2) is the
@@ -26,7 +26,7 @@ platform: hide({
 # Derived, still hidden: per-service env MAPS (base merged with the
 # team's extraEnv column).  Merging happens at the map level so a team
 # override of LOG_LEVEL beats the *info default; the list shape is
-# produced later, once, by each().  hide() must wrap the enclosing map,
+# produced later, once, by form().  hide() must wrap the enclosing map,
 # not the pack itself: hide(pack(...)) silently loses the template
 # (probes/hide-pack-loss.aon).
 internal: hide({
@@ -93,10 +93,10 @@ deploy: pack($.svc.version, {
 })
 
 deploy: pack($.svc.ports, {
-  spec: template: spec: containers: [ports:each(_, { protocol:*TCP | string })]
+  spec: template: spec: containers: [ports:form(_, _ & { protocol:*TCP | string })]
 })
 
-deploy: pack($.internal.envmaps, { spec:template:spec:containers:[env:each(_)] })
+deploy: pack($.internal.envmaps, { spec:template:spec:containers:[env:form(_, _)] })
 
 # Resource tiers: match() on the tier column value; every quantity is a
 # ranked default so a team may still override one field (overrides.aon).
@@ -131,6 +131,6 @@ service: close(pack($.svc.ports, {
   metadata: { name:key(2) namespace:$.platform.namespace }
   spec: {
     selector: app: key(3)
-    ports: each(_, { protocol:*TCP | string }) & unique()
+    ports: form(_, _ & { protocol:*TCP | string }) & unique()
   }
 }))

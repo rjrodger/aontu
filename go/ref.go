@@ -663,7 +663,7 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 	// bag was hidden IN ITS OWN RIGHT, and the verb's enumeration
 	// (members.go, BUGS.md §79) needs the mark to leave the member out,
 	// as generation does. A marked target lifts even there, or
-	// each($.schema.entities, _) under schema: hide({...}) would see
+	// form($.schema.entities, _) under schema: hide({...}) would see
 	// every entity as hidden, since hide() marks to the leaves.
 	lifted := !ctx.argsnap || node.markedType() || node.markedHide()
 	// A REFERENCE'S COPY OWNS ITS ARGUMENTS (ADR-025): the copy is a

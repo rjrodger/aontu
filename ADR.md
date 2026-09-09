@@ -42,6 +42,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-023](#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired) | G9 completes at the renderer: the reflection sidecar, the Jostraca bridge and string interpolation are retired | Accepted |
 | [ADR-024](#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition) | The forge's token authorises a publish, and Sigstore is one provider of the proof, not its definition | Accepted |
 | [ADR-025](#adr-025--a-references-copy-is-an-instance-and-a-match-does-not-fire-on-an-unfilled-hole) | A reference's copy is an instance, and a match does not fire on an unfilled hole | Accepted |
+| [ADR-026](#adr-026--each-is-retired-form-carries-the-bound) | `each` is retired: `form` carries the bound | Accepted |
 
 ---
 
@@ -2824,3 +2825,89 @@ alone — an accident that happened to be the safe answer.
   changing together. The ledger entries are
   [use-cases/BUGS.md](use-cases/BUGS.md) §90 and §91, with repros
   under `use-cases/repros/`.
+
+
+## ADR-026 — `each` is retired: `form` carries the bound
+
+**Date:** 2026-09-08
+**Status:** Accepted
+
+### Context
+
+The language shipped two list generators. `each(data, tmpl?)` (G8
+phase 1) made one element per member of its data, each of them that
+member MET with the template. `form(data, tmpl)` (G9 §4, RENDER.0.md
+P6) made one element per member, each of them the template
+instantiated with `_` bound to the source member: it REPLACED where
+`each` met.
+
+They were argued as a pair, on the same line the language draws twice
+elsewhere — `min`/`max` (bounds) against `least`/`greatest`
+(aggregates), `filter` (select by unifiability) against `match`
+(choose a result). `each` was the bound, a monotone lattice citizen;
+`form` was the construction.
+
+The pair does not survive contact with `_`. `form`'s hole binds the
+source member, so putting that member back into the template recovers
+the meet exactly:
+
+    each(d)     ==  form(d, _)
+    each(d, t)  ==  form(d, _ & t)
+
+This was probed rather than argued: `each`'s whole surface — both
+arities, kind, map, preference and constraint templates, empty bags,
+generation over a generator, the spread-augmented snapshot, a hole as
+the data argument, the member rule (hidden child, unfilled optional,
+optional null), code-point key order including astral keys, staged
+canon, composition under `sum` and `join`, and every refusal — was run
+in both spellings, through both engines, in both modes. Every value
+agreed, and so did the DERIVED GRAPH: a `refer()` link inside a
+generated element is reported from the destination path under either
+spelling, the graph being path-native
+([ADR-014](#adr-014--the-tree-is-the-namespace-there-is-no-identity-mark)).
+Two things differed, and neither was semantic: an unfired call canons
+as ITSELF, so two different sources round-trip differently; and a
+non-bag argument raised `each_data` from one and `form_data` from the
+other.
+
+### Decision
+
+**`each` is removed. `form(d, _ & t)` is the bound, and `form(d, _)`
+is a bag's members as a list.**
+
+The rule this follows is
+[ADR-008](#adr-008--constraints-are-named-not-spelled-with-operators)'s,
+generalised past constraints: **one spelling per concept.** A second
+spelling for an operation the language already had is a second thing
+to learn, a second thing to document, a second thing to keep in parity
+across two ports, and a second place for the two ports to drift. The
+bound/construction distinction is real, but it is a distinction
+between two ARGUMENTS to one generator, not between two generators.
+
+`each_data` is RETIRED but stays REGISTERED. This registry is
+append-only and renames are forbidden (`test/spec/errcodes.tsv`): a
+code a released engine could raise keeps its class and its meaning
+whether or not anything raises it still. Nothing raises it now; a
+non-bag argument answers `form_data`.
+
+### Consequences
+
+- **This is a breaking change.** A document calling `each` is refused
+  with `unknown_function`, in both ports. It fails LOUDLY: the removal
+  was taken on its own rather than combined with any renaming of
+  `form`, because a rename that moved the name `each` onto `form`
+  would leave every existing `each(d, t)` parsing and silently
+  changing from a meet to a replacement — no diagnostic anywhere.
+  Removal errors; a swap would not.
+- The count of built-ins falls from forty-three to forty-two.
+- `test/spec/gen-each.tsv` is gone; its rows live in
+  `test/spec/gen-form.tsv` under "THE BOUND SPELLING", carried over
+  with their expectations UNCHANGED, which is what makes this a
+  spelling change rather than a behaviour change.
+- The one-argument `each(m)` was the map-to-list conversion the name
+  was coined for (IDEAS.md: "each - convert to list"). `form(m, _)`
+  is a longer spelling of it, and that cost is accepted: it is one
+  reading of `_`, against a whole second builtin.
+- The G8 phase 1 register entry records the removal rather than being
+  rewritten: the phase landed as designed, and this decision came
+  after.

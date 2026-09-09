@@ -24,7 +24,7 @@ filter-nested-condition	gens	m:{a:{x:1},b:{x:2}}\nd:filter($.m,{x:min(2)})\n	{"d
 filter-empty-list	gens	d:filter([],integer)\n	{"d":[]}
 filter-empty-map	gens	d:filter({},integer)\n	{"d":{}}
 filter-keeps-nothing	gens	d:filter([1,2],string)\n	{"d":[]}
-filter-then-pack	gens	p:{x:{k:1},y:{k:2}}\nq:filter($.p,{k:1})\nr:pack(each($.n),{})\nn:[m]\n	{"n":["m"],"p":{"x":{"k":1},"y":{"k":2}},"q":{"x":{"k":1}},"r":{"m":{}}}
+filter-then-pack	gens	p:{x:{k:1},y:{k:2}}\nq:filter($.p,{k:1})\nr:pack(form($.n,_),{})\nn:[m]\n	{"n":["m"],"p":{"x":{"k":1},"y":{"k":2}},"q":{"x":{"k":1}},"r":{"m":{}}}
 filter-data-integer	errc	d:filter(1,integer)\n	filter_data
 filter-data-string	errc	d:filter("s",string)\n	filter_data
 filter-arity-one	errc	d:filter([1])\n	func_arity

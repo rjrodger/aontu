@@ -24,7 +24,7 @@ the [Explanation](explanation.md).
 - [Preference / default `*`](#preference--default-)
 - [Optional keys `?`](#optional-keys-)
 - [Spreads `&:`](#spreads-)
-- [Generating children: `pack` and `each`](#generating-children-pack-and-each)
+- [Generating children: `pack` and `form`](#generating-children-pack-and-form)
 - [Selecting: `filter` and `match`](#selecting-filter-and-match)
 - [The placeholder `_`](#the-placeholder-_)
 - [Transforming: `emit`](#transforming-emit)
@@ -844,9 +844,9 @@ w: y: {p:2, r:6}
 {"w":{"x":{"p":1,"r":5},"y":{"p":2,"r":6}}}
 ```
 
-## Generating children: `pack` and `each`
+## Generating children: `pack` and `form`
 
-A spread constrains children that already exist. `pack` and `each`
+A spread constrains children that already exist. `pack` and `form`
 **make** them, from data that is already in the model, so the list of
 names and the children built from it cannot drift apart:
 
@@ -889,15 +889,17 @@ child's resolution can never answer for the others. The same rule
 instantiates a `filter` condition per trial and a spread constraint
 (`&:`) per application.
 
-`each(data, tmpl?)` makes one **list element** per child of `data`,
-each of them that child met with `tmpl`. The order is fixed: source
-order for a list, sorted-key order for a map. Written with one
-argument, `each(m)` is a map's children as a list.
+`form(data, tmpl)` makes one **list element** per child of `data`. It
+is documented in full under [`form`](#form-the-order-preserving-map)
+below; what matters here is that the same `_` that binds the source
+child also lets it be kept, so `form(d, _ & t)` is every member of `d`
+met with `t`, and `form(d, _)` is a map's children as a list. The
+order is fixed: source order for a list, sorted-key order for a map.
 
 ```aon
 ports: { http:80 https:443 }
-open: each($.ports, integer)
-names: each({ b:2 a:1 })
+open: form($.ports, _ & integer)
+names: form({ b:2 a:1 }, _)
 ```
 
 ```json
@@ -930,10 +932,10 @@ evaluation still terminates by construction.
 
 `form(data, tmpl)` makes one **list element** per child of `data`,
 being `tmpl` instantiated at that position with `_` bound to the
-source child. It **replaces** where `each` meets: the element is the
+source child. It **replaces** rather than meets: the element is the
 template and nothing else, which is what makes it a construction
-rather than a bound, and why it sits beside `each` rather than in
-place of it.
+rather than a bound. Meeting the source child back in, `form(d, _ &
+t)`, is how a bound is spelled: that is what the retired `each` said.
 
 ```aon
 names: [web auth billing]
@@ -950,13 +952,13 @@ tag: join(form(split("index-build", "-"), upper(_)), "_")
 ```
 
 The order is the data's (source order for a list, sorted-key order for
-a map) through the same rule `each` reads its members by, and a hidden
+a map) through the one rule every bag reader uses, and a hidden
 child or an unfilled optional is skipped as generation would skip it.
 That order is the reason `form` exists: `pick(pack(d, {f: t}), f)`
 maps too, but through a map, so it re-sorts to code-point order, and
 the fields of a struct, the imports of a file or an index in the
 model's order would come out alphabetised. With `split` and `join` it closes the
-name-derivation chain, as `tag` shows. Like `each`, it waits for the
+name-derivation chain, as `tag` shows. Like `pack`, it waits for the
 model to settle and fires once; a `_` inside its template is its own
 to bind, never an enclosing generator's.
 
@@ -1021,7 +1023,7 @@ generated beside it. A pref-free open disjunction still matches by plain
 unifiability.
 
 Both wait for the model to settle before they answer, for the reason
-`pack` and `each` do: a bag that is still being merged into is the
+`pack` and `form` do: a bag that is still being merged into is the
 wrong bag to take a subset of, and a scrutinee that is still being
 narrowed can match an earlier arm than the one it will end up matching.
 
@@ -1076,7 +1078,7 @@ generator's fill pass never reaches into a nested generator's template
 (or a `filter`'s condition), so in `pack($.envs, {services:
 pack($.fleet, {v: _})})` the inner `_` is the fleet entry, not the env.
 A hole in a generator's *data* argument is not a binding position, so it
-is still the outer generator's to fill: `pack($.m, {inner: each(_)})`
+is still the outer generator's to fill: `pack($.m, {inner: form(_, _)})`
 iterates the outer source child. A generator whose data is a hole is
 filled by its **peer**, exactly as any other call is (`["a"] &
 pack(_, {x:1})` packs the list) which is what lets a rule table be named
@@ -1660,13 +1662,13 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-aontu provides a fixed set of forty-three built-in functions. There
+aontu provides a fixed set of forty-two built-in functions. There
 are no user-defined functions. The count breaks down so that it can be
 checked rather than trusted:
 
 | group | how many | which |
 |---|---|---|
-| general-purpose | 20 | tabulated below |
+| general-purpose | 19 | tabulated below |
 | [arithmetic](#arithmetic-add-sub-mul-div-mod-rem) | 6 | `add` `sub` `mul` `div` `mod` `rem` |
 | [aggregates](#aggregating-sum-least-greatest) | 3 | `sum` `least` `greatest` |
 | [projection](#aggregating-sum-least-greatest) | 1 | `pick` |
@@ -1691,8 +1693,7 @@ checked rather than trusted:
 | `map() : map` | the map **kind**: admits any map, defaults to nothing. See [Container kinds](#container-kinds-map-and-list) | `y: map() & {a:1}`→`{a:1}`; `y: map()`→ error |
 | `list() : list` | the list **kind**: admits any list, defaults to nothing | `y: list() & [1]`→`[1]` |
 | `refer(template t?: any) : constraint` | constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert) | `dependsOn: [&: refer($.std.Service), path($.services.auth)]` |
-| `pack(d: map\|list, template t: any) : map` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each) | `deploy: pack($.names, {replicas:*2\|integer})` |
-| `each(d: map\|list, template t?: any) : list` | one list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map | `open: each($.ports, integer)` |
+| `pack(d: map\|list, template t: any) : map` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-form) | `deploy: pack($.names, {replicas:*2\|integer})` |
 | `filter(d: map\|list, trial c: any) : map\|list` | the children of `d` that ALREADY satisfy `c`: the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match) | `debugged: filter($.services, {debug:true})` |
 | `match(s: any, ...pr: (trial any, any), dflt?: any) : any` | the result of the first pattern `v` unifies with; a trailing argument is the default. No match and no default is an error naming the patterns tried | `size: match($.tier, small, {cpu:1}, {cpu:2})` |
 | `emit(s: map\|list, template t: map\|list) : list` | one flat list of pieces from a selection and a rule table: for each node, the first template whose `match` it unifies with, its `body` instantiated at that node. See [Transforming](#transforming-emit) | `lines: emit($.services, {match:{pin:string}, body:[.pin]})` |
@@ -1893,7 +1894,7 @@ spike: greatest($.hourly)
 ```
 
 A map is folded in **sorted-key order** and a list in source order,
-which is `each`'s rule; for these three it changes nothing, since every
+which is `form`'s rule; for these three it changes nothing, since every
 operation is commutative, but it is stated so that it cannot drift.
 
 They are named `least` and `greatest` rather than `min` and `max`
@@ -1931,7 +1932,7 @@ wrote rather than against the `add` inside it.
 There is no `fold` combinator and will not be one: a fold takes a
 function, and this language has no user functions to give it. These
 three are total because the bag is finite, the operation is fixed, and
-each child is visited once: the same argument that makes `each` safe.
+each child is visited once: the same argument that makes `form` safe.
 
 ## Folding to a string: `join`
 
@@ -1957,7 +1958,7 @@ $ echo 'a: join([x, y, z])  b: join([x, y, z], ", ")' | aontu -c
 ```
 
 **A fold sees the members generation emits.** `join`, and with it
-`each`, `emit`, `filter`, `pack`, `pick` and the aggregates, read a
+`form`, `emit`, `filter`, `pack`, `pick` and the aggregates, read a
 bag's *members*: a `hide()`- or `type()`-marked child is not one, and
 an optional key whose value generates nothing is not one, so a value
 the document withholds from its output never reaches a string or a
@@ -1970,7 +1971,7 @@ $ echo 'm: {a: "keep", b: hide("SECRET")}  s: join($.m, "-")' | aontu -c
 {"m":{"a":"keep","b":"SECRET"},"s":"keep"}
 ```
 
-A reference still lifts a hidden bag: `each($.schema.entities, _)`
+A reference still lifts a hidden bag: `form($.schema.entities, _)`
 under `schema: hide({…})` sees every entity, because there the mark
 belongs to the schema, not to any one entity.
 
@@ -1990,7 +1991,7 @@ $ echo 'a: join([1, 2.0, 0d0.5, true], "|")' | aontu -c
 comparison has no identity to answer with.
 
 A map folds in **sorted-key order** and a list in source order, which
-is `each`'s rule and `pick`'s. For a generated file this matters: list
+is `form`'s rule and `pick`'s. For a generated file this matters: list
 order is *source* order, so a list is what a transform should build
 its lines in.
 
@@ -3996,7 +3997,7 @@ run against the first fragment would refuse `a: must(length(2),m)` /
 its conjunct is only half the rule, because a container can settle in
 one document and still gain members from another: the data half of a
 [`vet`](reference-api.md#aontu-vet) meet, an
-[`@` include](#source-loading-), a later [`pack`](#generating-children-pack-and-each).
+[`@` include](#source-loading-), a later [`pack`](#generating-children-pack-and-form).
 An atom that decided when its own conjunct settled decided too early
 there, and `vet` then reported `valid` for data the evaluator refuses.
 

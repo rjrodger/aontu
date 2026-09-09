@@ -66,7 +66,7 @@ join-pref-member	gens	o:join([pref(1),pref(2)],"-")\n	{"o":"1-2"}
 
 # ---- composition ----
 join-of-pick	gens	r:[{n:a},{n:b}]\no:join(pick($.r,n),",")\n	{"o":"a,b","r":[{"n":"a"},{"n":"b"}]}
-join-of-each	gens	m:{x:1,y:2}\no:join(each($.m,integer),"+")\n	{"m":{"x":1,"y":2},"o":"1+2"}
+join-of-form	gens	m:{x:1,y:2}\no:join(form($.m,_ & integer),"+")\n	{"m":{"x":1,"y":2},"o":"1+2"}
 join-of-pack	gens	n:[a,b]\no:join(pick(pack($.n,{v:1}),v),"-")\n	{"n":["a","b"],"o":"1-1"}
 join-feeds-plus	gens	o:join([a,b],",")+"!"\n	{"o":"a,b!"}
 join-nested	gens	o:join([join([a,b],"-"),c],"+")\n	{"o":"a-b+c"}
@@ -161,7 +161,7 @@ join-skips-a-hidden-member-inline	gens	k: join({a: "keep", b: hide("SECRET")}, "
 # A HIDDEN BAG'S MEMBERS ARE WHAT IT HOLDS. Under hide() every child
 # carries the mark, so the mark says nothing about the member: the fold
 # sees them all, exactly as a reference to the bag lifts them -- which
-# is what keeps `each($.schema.entities, _)` working under a hidden
+# is what keeps `form($.schema.entities, _)` working under a hidden
 # schema, the code-generation idiom.
 join-over-a-hidden-bag-folds-its-members	gens	h: join(hide(["a", "b"]), "-")	{"h":"a-b"}
 join-through-a-hidden-schema-folds-its-members	gens	schema: hide({ents: {u: {n: "user"}, s: {n: "sess"}}})\nnames: join(pick($.schema.ents, n), ",")	{"names":"sess,user"}

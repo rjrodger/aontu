@@ -73,7 +73,7 @@
 // of the placeheld call; `.listen & %wire` fills the hole. Both are
 // the same dispatch, and it is what lets a rule set name ITSELF.
 //
-// TERMINATION IS THE SELECTION'S. Unlike `pack` and `each`, this one
+// TERMINATION IS THE SELECTION'S. Unlike `pack` and `form`, this one
 // recurses -- a nested model walked into nested output is the
 // capability the rule layer exists to add -- so the bound is not "it
 // cannot call itself" but "each dispatch descends into a finite bag

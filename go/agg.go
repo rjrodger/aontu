@@ -268,8 +268,8 @@ func joinBag(ctx *Ctx, f *FuncVal, base []string, data, sep Val) Val {
 //
 //	total: sum(pick($.lines, amountCents))
 //
-// IT IS NOT each WITH A CLEVER TEMPLATE. each(d, t) MEETS each child
-// with t, and a meet cannot select: each($.lines, _.amount) asks for a
+// IT IS NOT form WITH A CLEVER TEMPLATE. form(d, _ & t) MEETS each
+// child with t, and a meet cannot select: form($.lines, _ & _.amount) asks for a
 // child that is simultaneously the whole record and one of its fields,
 // which is why every spelling of it answers no_path.
 //

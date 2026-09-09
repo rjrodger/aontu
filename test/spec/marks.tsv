@@ -141,4 +141,4 @@ hide-over-a-map-resolves-a-relative-ref	canon	rows: hide({n: "a", o: .n})	{"rows
 hide-over-a-list-missing-target	errc	rows: hide([.nope])	no_path
 hide-over-a-spread-template	canon	src: [{n: "a"}]\nu: {rows: hide([&: {o: .n}] & $.src)}	{"src":[{"n":"a"}],"u":{"rows":[&:{"o":.n},{"n":"a","o":"a"}]}}
 hide-over-a-spread-template-generates	gens	src: [{n: "a"}]\nu: {rows: hide([&: {o: .n}] & $.src)}	{"src":[{"n":"a"}],"u":{}}
-hide-staged-then-picked	gens	d: {x: {n: "a"}}\ns: hide(each($.d, {o: .n}))\nr: pick($.s, o)	{"d":{"x":{"n":"a"}},"r":["a"]}
+hide-staged-then-picked	gens	d: {x: {n: "a"}}\ns: hide(form($.d, _ & {o: .n}))\nr: pick($.s, o)	{"d":{"x":{"n":"a"}},"r":["a"]}

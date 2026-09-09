@@ -8,24 +8,29 @@
 //   names: [web, auth]
 //   units: form($.names, {path: _ + ".ts"})  ->  [{path: "web.ts"}, {path: "auth.ts"}]
 //
-// WHY BESIDE `each`. `each($.ports, integer)` is a schema statement
-// and is monotone -- more information about the template narrows the
-// children -- so it is a lattice citizen, and a constructor is not.
-// The language draws this line twice already: `min`/`max` (bounds)
-// against `least`/`greatest` (aggregates), and `filter` (select by
-// unifiability) against `match` (choose a result). `each` is the
-// bound; `form` is the construction. `each` also carries the source
-// child's identity (its clone keeps the entity), where `form`'s
-// element IS the template.
+// IT IS ALSO THE BOUND, because a meet is a template away.
+// `form(d, _ & t)` puts the source child back into what it builds, so
+// the element is that child MET with `t` rather than `t` alone:
+//
+//   form($.ports, _ & integer)   every element is an integer
+//   form($.m, _)                 a map's members as a list
+//
+// That is what `each(d, t)` and `each(d)` used to spell, and why
+// `each` was retired (ADR-026): one operation had two spellings, and
+// the derived one carried the whole surface -- order, the member rule,
+// staging, the hole's owner, and the identity a link inside a
+// generated element is reported from (the graph being path-native,
+// ADR-014). test/spec/gen-each.tsv holds the rows that proved it
+// before the removal.
 //
 // WHY IT EXISTS AT ALL: ORDER. `pick(pack(d, {f: t}), f)` maps too,
 // but it goes through a map and re-sorts to code-point order, and it
 // refuses a list of records outright (pack_key). A struct's fields, a
 // DDL's columns and a file's imports are lists whose order is the
 // model's, and silently alphabetising them is wrong output. `form`
-// reads its members through the one ordering helper `each` uses
-// (members.ts), so the two can never disagree about order -- source
-// order for a list, sorted-key order for a map -- and skips what
+// reads its members through the one ordering helper every bag reader
+// uses (members.ts), so no two can disagree about order -- source
+// order for a list, sorted-key order for a map -- and it skips what
 // generation would not emit: a hidden child, an unfilled optional.
 //
 // It joins `boundArgStart` (PlaceVal.ts): a `_` inside its template

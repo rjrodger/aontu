@@ -7,6 +7,45 @@ which implementation each change affects.
 
 ## Unreleased
 
+### BREAKING: `each` is removed, `form` carries the bound
+
+**`form`'s hole already spelled the meet, so the language had two list
+generators for one operation.** `form(data, tmpl)` binds `_` to the
+source member and replaces it; putting that member back into the
+template recovers exactly what `each` did:
+
+```
+each(d)     ->  form(d, _)
+each(d, t)  ->  form(d, _ & t)
+```
+
+Both ports now refuse `each` with `unknown_function`. The count of
+built-ins falls from forty-three to forty-two.
+
+This was probed before it was decided, not after: `each`'s whole
+surface — both arities, kind, map, preference and constraint
+templates, empty bags, generation over a generator, the
+spread-augmented snapshot, a hole as the data argument, the member
+rule, code-point key order, staged canon, composition under `sum` and
+`join`, and every refusal — was run in both spellings, through both
+engines, in both modes, and the derived graph with it. Every value
+agreed. `test/spec/gen-each.tsv` is gone; its rows are now
+`test/spec/gen-form.tsv`'s "THE BOUND SPELLING" section, with their
+expectations unchanged, which is what makes this a spelling change
+rather than a behaviour change.
+
+**To migrate:** rewrite `each(d, t)` as `form(d, _ & t)` and `each(d)`
+as `form(d, _)`. The refusal is loud — an unknown function, at the
+call — which is why the removal was taken on its own rather than
+alongside any renaming of `form`: moving the name `each` onto `form`
+would leave existing calls parsing and silently changing from a meet
+to a replacement.
+
+`each_data` is retired but stays registered in
+`test/spec/errcodes.tsv`, which is append-only; a non-bag argument now
+answers `form_data`. Rationale in
+[ADR-026](ADR.md#adr-026--each-is-retired-form-carries-the-bound).
+
 ### `aontu fmt`: the repeat stops at a record
 
 **A four-key prefix in front of a one-word fact says nothing, and the
