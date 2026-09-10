@@ -531,12 +531,13 @@ user-facing rules are in
 ### Comments are for the surprising code, and nothing else
 
 [ADR-032](ADR.md#adr-032--code-comments-are-sparse-and-terse-intent-lives-in-names-requirements-live-in-documents)
-is the rule and `make comments` is the gate. A comment exists only
-where the code is intricate or its correct form is surprising; it runs
-to a line or two rather than a paragraph; semantic intent is carried by
-the identifier name instead; and business logic and requirements are
-carried by a document instead. When a comment fails one of those
-tests, deletion is the default move, not rewriting.
+is the rule and `make comments` is the gate, over every `.ts`, `.go` and
+`.rs` source outside the generated files and the worked-example corpora.
+A comment exists only where the code is intricate or its correct form is
+surprising; it runs to a line or two rather than a paragraph; semantic
+intent is carried by the identifier name instead; and business logic and
+requirements are carried by a document instead. When a comment fails one
+of those tests, deletion is the default move, not rewriting.
 
 The gate is not only about form. Its accuracy rules refuse a comment
 naming a path, a symbol or a decision number that does not resolve, and

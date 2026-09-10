@@ -38,6 +38,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // `make comments` and .githooks/pre-push call the same checker.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
+const Fs = __importStar(require("node:fs"));
 const Path = __importStar(require("node:path"));
 const REPO = Path.join(__dirname, '..', '..');
 const gate = require(Path.join(REPO, 'ts', 'scripts', 'comment-gate.cjs'));
@@ -62,15 +63,23 @@ function render(findings) {
         for (const covered of [
             'ts/src/aontu.ts',
             'ts/test/comments.test.ts',
-            'ts/scripts/comment-gate.cjs',
+            'editors/vscode/src/extension.ts',
             'go/aontu.go',
             'go/cmd/aontu/main.go',
         ]) {
             Assert.ok(files.includes(covered), `not gated: ${covered}`);
         }
-        for (const excluded of ['ts/src/sigdecl.ts', 'ts/src/helpdoc.ts']) {
-            Assert.ok(!files.includes(excluded), `generated file gated: ${excluded}`);
+        for (const excluded of [
+            'ts/src/sigdecl.ts',
+            'ts/src/helpdoc.ts',
+            'ts/scripts/comment-gate.cjs',
+            'use-cases/17-lambda-handlers/handler.ts',
+            'test/system/rb-solar/ref/validate.ts',
+        ]) {
+            Assert.ok(Fs.existsSync(Path.join(REPO, excluded)), `gone: ${excluded}`);
+            Assert.ok(!files.includes(excluded), `gated: ${excluded}`);
         }
+        Assert.ok(files.every((f) => /\.(ts|go|rs)$/.test(f)), 'a non-source file is gated');
         Assert.ok(!files.some((f) => f.startsWith('ts/dist')), 'build output gated');
     });
     (0, node_test_1.test)('lexer', () => {

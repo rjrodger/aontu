@@ -5,6 +5,7 @@
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
+import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
 const REPO = Path.join(__dirname, '..', '..')
@@ -44,17 +45,25 @@ describe('comments', () => {
     for (const covered of [
       'ts/src/aontu.ts',
       'ts/test/comments.test.ts',
-      'ts/scripts/comment-gate.cjs',
+      'editors/vscode/src/extension.ts',
       'go/aontu.go',
       'go/cmd/aontu/main.go',
     ]) {
       Assert.ok(files.includes(covered), `not gated: ${covered}`)
     }
 
-    for (const excluded of ['ts/src/sigdecl.ts', 'ts/src/helpdoc.ts']) {
-      Assert.ok(!files.includes(excluded), `generated file gated: ${excluded}`)
+    for (const excluded of [
+      'ts/src/sigdecl.ts',
+      'ts/src/helpdoc.ts',
+      'ts/scripts/comment-gate.cjs',
+      'use-cases/17-lambda-handlers/handler.ts',
+      'test/system/rb-solar/ref/validate.ts',
+    ]) {
+      Assert.ok(Fs.existsSync(Path.join(REPO, excluded)), `gone: ${excluded}`)
+      Assert.ok(!files.includes(excluded), `gated: ${excluded}`)
     }
 
+    Assert.ok(files.every((f) => /\.(ts|go|rs)$/.test(f)), 'a non-source file is gated')
     Assert.ok(!files.some((f) => f.startsWith('ts/dist')), 'build output gated')
   })
 

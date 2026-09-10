@@ -37,9 +37,10 @@ install-go:
 	@bin=$$(cd go && go env GOBIN); [ -n "$$bin" ] || bin=$$(cd go && go env GOPATH)/bin; \
 	  echo "install-go: aontu and aontu-lsp built into $$bin"
 
-# The code-comment gate (ADR-032). Reads ts/src, ts/test, ts/scripts,
-# go, web/build and editors; refuses narrative, requirements, stale
-# references and unverifiable claims. The same checker runs in
+# The code-comment gate (ADR-032). Reads every .ts, .go and .rs source
+# outside the generated files and the worked-example corpora; refuses
+# narrative, requirements, stale references and unverifiable claims.
+# The same checker runs in
 # ts/test/comments.test.ts (so CI runs it on every push) and in
 # .githooks/pre-push.
 comments:
