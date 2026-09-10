@@ -42,6 +42,9 @@ var hints = map[string]string{
 		"                                                   #     with \"tier\";\n" +
 		"  min(0) & must(integer,\"whole\") & 3    -> 3      # Bands compose.",
 
+	"abnf_grammar":            "This ABNF grammar could not be compiled:\n{reason}\n \nabnf() takes RFC 5234 ABNF -- `=` and `/`, not `::=`. The\ncompiler reports the first thing it could not read; a rule\nreferenced but never defined is the usual cause, after a\nquantifier written the EBNF way.",
+	"parse_arg":               "parse(grammar, text) takes two strings: a grammar, normally the\nanswer of an abnf() call, and the text to parse.\n \nExamples:\n  G: abnf(\"v = 1*DIGIT\")\n  a: parse($.G, \"12\")     # the AST\n  b: parse($.G, 12)       # parse_arg: the text is not a string",
+	"parse_failed":            "The text does not parse under this grammar:\n{reason}\n \nA failure to parse is a failure to unify, so the field is\nrefused rather than set to a value meaning \"no\".",
 	"constraint_pattern":       "This re() pattern is outside the supported subset. It uses\n{reason}.\n \nre() accepts classical regular expressions over Unicode code\npoints, with one meaning in both implementations:\n \n  literals     a  \\.  \\*  \\xHH        (escape . \\ + * ? ( ) [ ] { } | ^ $ /)\n  classes      [abc]  [^abc]  [a-z]\n  abbreviations \\d \\D \\w \\W \\s \\S  and  .\n  repetition   *  +  ?  {n}  {n,}  {n,m}   (lazy: *? +? ??)\n  grouping     (...)  (?:...)      alternation  a|b\n  anchors      ^  $  \\A  \\z  \\b  \\B\n \naontu DEFINES the abbreviations rather than inheriting either\nhost regex engine, so they mean the same in both ports:\n  \\d [0-9]   \\w [0-9A-Za-z_]   \\s [ \\t\\n\\r\\f\\v]   . [^\\n]\nNote \\s is these six ASCII characters only -- not U+00A0.\n \nNOT accepted, because no rewriting can make the two engines\nagree:\n  backreferences (\\1, \\k<n>) and lookaround ((?=) (?!) (?<=))\n  named groups, inline flags, and any (?...) but (?:\n  POSIX classes [[:alpha:]], \\p{...}, \\x{...}, \\u\n  a quantifier on a group containing a quantifier or an\n    alternation -- (a+)+ backtracks exponentially in one port,\n    so write [ab]+ rather than (?:a|b)+\n \nExamples:\n  re(\"^[a-z][a-z0-9-]*$\")  # Fine;\n  re(\"^\\d{3}-\\d{4}$\")      # Fine;\n  re(\"(?:ab)+\")            # Fine (non-capturing group);\n  re(\"(?=x)y\")             # Refused (lookahead);\n  re(\"(a+)+\")              # Refused (nested quantifier).",
 	"conjunct":                 "This conjunction (& operator) could not be completed as some terms\ncould not be resolved.",
 	"no_path":                  "The path reference could not be found.\n \nExamples:\n  a:1 b:$.a  -> a:1,b:1  # $.a is a valid path reference as a is a key of root ($).\n  a:$.b      -> nil      # $.b is not a valid path reference as there is no key b in root ($).\n",
@@ -350,6 +353,12 @@ var codeClasses = map[string]string{
 	// empty meets at composition time, and domain/kind mixing.)
 	"constraint":            "conflict",
 	"constraint_pattern":    "conflict",
+	// G9 grammar pair: a grammar that does not compile is the author's
+	// mistake in the CALL (parse), where a text that does not parse is a
+	// disagreement between two values (conflict).
+	"abnf_grammar":          "parse",
+	"parse_arg":             "parse",
+	"parse_failed":          "conflict",
 	"must":                  "conflict",
 	"scalar_value":          "conflict",
 	"scalar_kind":           "conflict",

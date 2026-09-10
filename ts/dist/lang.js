@@ -67,6 +67,7 @@ const CopyFuncVal_1 = require("./val/CopyFuncVal");
 const KeyFuncVal_1 = require("./val/KeyFuncVal");
 const TypeFuncVal_1 = require("./val/TypeFuncVal");
 const HideFuncVal_1 = require("./val/HideFuncVal");
+const AbnfFuncVal_1 = require("./val/AbnfFuncVal");
 const DeprecateFuncVal_1 = require("./val/DeprecateFuncVal");
 const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
@@ -712,6 +713,12 @@ help isolate the syntax error.`,
         // reported with the author's own message, never simplified and
         // never consulted for emptiness or subsumption.
         must: ConstraintVal_1.MustConstraintVal,
+        // G9: the grammar pair. `abnf` compiles an RFC 5234 grammar and
+        // answers its source, so a parser is an ordinary string; `parse`
+        // applies one and answers the tabnas AST as ordinary maps and
+        // lists, or a located nil when the input does not parse.
+        abnf: AbnfFuncVal_1.AbnfFuncVal,
+        parse: AbnfFuncVal_1.ParseFuncVal,
         // G3 phase 4: the deprecation mark. Unification-transparent; the
         // record rides the result (Val.deprecation) and canon renders the
         // call back (canonRiders).

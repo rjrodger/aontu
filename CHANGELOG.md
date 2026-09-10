@@ -7,6 +7,76 @@ which implementation each change affects.
 
 ## Unreleased
 
+### Grammars: `abnf()` and `parse()`
+
+`re()` is deliberately small -- the portable pattern subset both
+engines agree on -- and real formats are published as **grammars**
+rather than as regexes. Transcribing one into that subset is at best
+lossy. Two new builtins take the grammar as written:
+
+```aon
+G: abnf("v = n \".\" n\nn = 1*d\nd = %x30-39\n")
+a: parse($.G, "1.2")   # { rule:"v" src:"1.2" kids:[...] }
+```
+
+**`abnf(g)` compiles an RFC 5234 grammar and answers its source**, so a
+parser is an ordinary string that canons, hashes and unifies like any
+other value -- no new kind in the lattice. The compile is what the call
+is for: a grammar that does not compile is refused where it is
+DECLARED, once, rather than at every site that parses with it.
+
+**`parse(g, v)` answers the syntax tree** as ordinary maps and lists --
+`rule`, `src` and `kids`, with `kids` always present and always a list.
+**A failure to parse is a failure to unify**, so a grammar acts as a
+check: the field is refused (`parse_failed`) rather than set to a value
+meaning "no".
+
+**`parse(g)` with no value is the grammar as a CONSTRAINT**, which is
+what a schema position wants: there is no value there yet to hand the
+call.
+
+```aon
+G: abnf("v = 1*d\nd = %x30-39\n")
+tag: *"" | parse($.G)          # ""   -- nothing met it
+ver: (*"" | parse($.G)) & "12" # "12" -- the grammar takes it
+```
+
+It is value-preserving, like every other constraint atom: it admits a
+string the grammar accepts and answers **that string**, so it stays
+idempotent and order-independent under a meet, and a default can sit
+beside it. The tree is what the two-argument form is for.
+
+Three limits, each deliberate:
+
+- **Whitespace is not skipped.** These grammars describe strings with
+  no spaces in them, so `1 . 2` does not parse as `1.2`.
+- **The empty string parses under no grammar.** The host engine answers
+  an empty tree for empty input, which would make `parse(g, "")`
+  succeed under every grammar.
+- **The parse is bounded** at 100 000 steps, for the reason `re()`
+  refuses a pattern that backtracks exponentially: a regex match, and
+  now a parse, is counted by no evaluator budget otherwise.
+
+A fourth rule is the author's, not the engine's: **a character class
+must not contain a literal used elsewhere.** Write
+`digit = "0" / positive-digit`, never `digit = %x30-39`, when `"0"` also
+appears on its own -- where a class overlaps a literal the class wins,
+and the literal's alternative silently becomes unreachable.
+
+The answer is the RAW tree. Choosing a different shape means naming the
+host engine's own value builders from the grammar, which its compiler
+cannot yet express as data.
+
+**TypeScript's `@tabnas/parser` moves to 0.9.0**, which Go already
+pinned; TypeScript had been a minor behind at 0.8.7. All three grammar
+packages are now pinned EXACTLY and identically in the two ports:
+`parser` 0.9.0, `abnf` 0.4.7, `bnf` 0.1.10. Exactly rather than by
+range, because `bnf` 0.1.11 peer-asks for `parser` 0.9.1, and 0.9.1
+regresses `path($.z.x.a)` in TypeScript alone.
+
+New codes: `abnf_grammar`, `parse_arg`, `parse_failed`. Rationale in
+[ADR-032](ADR.md#adr-032--a-grammar-is-a-string-and-parsing-is-a-function).
+
 > **RELEASE SEQUENCING.** The two `each` entries below (the removal and
 > the rename) must not ship in one release. Between them, `each`
 > changes meaning from a meet to a replacement. Cut a release after the
@@ -112,11 +182,11 @@ Rationale in
 ### `aontu:system` gains `Semver`
 
 A version (semver.org 2.0.0) as an **ordered tuple** — major, minor,
-patch, pre-release — **with the tail defaulted**:
+patch, pre-release, build — **with the tail defaulted**:
 
 ```
-v: $.aontu.System.Semver & [1]   ->  [1, 0, 0, ""]
-v: $.aontu.System.Semver & [1 2 3 "alpha.1"]
+v: $.aontu.System.Semver & [1]   ->  [1, 0, 0, "", ""]
+v: $.aontu.System.Semver & [1 2 3 "alpha.1" "exp.sha.5114f85"]
 ```
 
 A list, not a dotted string and not a map. A version is compared
@@ -124,21 +194,30 @@ rather than read, and the comparison runs component by component from
 the left: `"1.10.0"` sorts below `"1.9.0"` as text, and a map has no
 order of its own to compare along.
 
-**Leading zeroes need no rule**: the numeric parts are integers, and
-`01` is not a distinct integer literal, so the spec's "MUST NOT contain
-leading zeroes" is impossible to write rather than merely forbidden.
+**Leading zeroes need no rule in the numeric parts**: they are
+integers, and `01` is not a distinct integer literal, so the spec's
+"MUST NOT contain leading zeroes" is impossible to write there rather
+than merely forbidden.
 
-**The pre-release check is the alphabet, not the structure**, and the
-vocabulary says so. The spec's grammar is dot-separated identifiers,
-which as a regex is a quantified group containing a quantifier — a
-shape `re()` refuses outright (`constraint_pattern`) for backtracking
-exponentially. So `"beta_1"` is refused and `"alpha..1"` is not.
-Carrying the pre-release as a list of identifiers would check it in
-full, and is the change to make if that matters more than `[1]` does.
+**The pre-release and the build are checked BY GRAMMAR**, each by an
+inline ABNF grammar applied through the one-argument `parse()` above.
+That is what a pattern could not do: the spec spells both as
+dot-separated identifiers, which as a regex is a quantified group
+containing a quantifier — a shape `re()` refuses outright
+(`constraint_pattern`) for backtracking exponentially. So `"beta_1"`,
+`"alpha..1"` and `"01"` are all refused, where an alphabet check would
+have let the last two through.
 
-**Build metadata is not carried.** The spec has it, and also says it
-MUST be ignored when determining precedence — so a type whose purpose
-is comparison is the wrong place for it.
+**The two grammars differ where the spec does.** A wholly numeric
+pre-release identifier may not carry a leading zero, because
+pre-releases are compared numerically; a build identifier may, because
+build metadata is never compared. `[1 0 0 "0alpha"]` and
+`[1 0 0 "" "001"]` both stand.
+
+**Build metadata comes last.** The spec says it MUST be ignored when
+determining precedence, and last is the one position where a
+comparison walking the tuple from the left can stop before it without
+leaving a hole.
 
 Additive: the vocabulary's canon-hash moves, as it does for any change
 to a bundled model.

@@ -64,6 +64,12 @@ var funcSet = map[string]bool{
 	// with `+`, so it inherits the one number-to-text rule and the
 	// language does not grow a second.
 	"join": true,
+	// G9: the grammar pair. abnf compiles an RFC 5234 grammar and
+	// answers its source, so a parser is an ordinary string; parse
+	// applies one and answers the tabnas AST as ordinary maps and
+	// lists, or a located nil when the input does not parse.
+	"abnf":  true,
+	"parse": true,
 }
 
 // stagedFuncs take THE STAGING RULE (G8 phase 0, see Ctx.settle): they
@@ -341,6 +347,14 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		base = f.path
 	}
 
+	// THE CONSTRAINT FORM of parse (twin: ParseFuncVal.unify in
+	// ts/src/val/AbnfFuncVal.ts). `parse(g)` written with no value MEETS
+	// its peer rather than resolving, so it has to see the peer before
+	// the argument loop below drives it to resolve.
+	if "parse" == f.name && 1 == len(f.peg) {
+		return constrainParse(ctx, f, base, peer)
+	}
+
 	// THE STAGING RULE (G8 phase 0, see Ctx.settle). key()'s answer is a
 	// segment of its own path, so it must not answer while a spread, a
 	// reference or a move() can still move it; pack()'s and each()'s
@@ -382,37 +396,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		ready := (driven || fillable) && ctx.settle
 
 		if !ready {
-			f.notdone()
-			switch {
-			case isTop(peer):
-				// The residuation clone re-paths via the driving ctx (TS
-				// `this.clone(ctx)` — overlay of the stored path on
-				// ctx.path).
-				return clonePath(f, overlayPath(base, f.path))
-			case peer.Nil():
-				return peer
-			default:
-				// An identical twin at the same position collapses (the
-				// same-name same-path same-args check in TS
-				// FuncBaseVal.residuate): `key()&key()` folds to one
-				// pending key() while both residuate.
-				if pf, ok := peer.(*FuncVal); ok && pf.name == f.name &&
-					pathEq(pf.path, f.path) && pf.Canon() == f.Canon() {
-					return f
-				}
-				// THE RESIDUAL STANDS WHERE THE CALL STANDS. Without
-				// the path a finding raised on this conjunct named the
-				// meet's root (`$`) rather than the field, so a vet
-				// --at run reported "cannot resolve value at path $"
-				// over a value the schema names. The same two lines as
-				// the deferred-resolution branch below, and the same
-				// TS twin: FuncBaseVal.residuate builds its conjunct
-				// with the driving ctx, which carries the path.
-				cj := newConjunct([]Val{f, peer})
-				cj.path = cp(f.path)
-				cj.sp, cj.spu, cj.surl = f.sp, f.spu, f.surl
-				return cj
-			}
+			return residuate(f, base, peer)
 		}
 	}
 
@@ -696,6 +680,42 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	return out
 }
 
+// residuate holds a call that cannot answer yet, so it survives to meet
+// a value on a later pass. Twin of FuncBaseVal.residuate in
+// ts/src/val/FuncBaseVal.ts, and used by both callers that hold: the
+// staging rule above, and the constraint form of parse below.
+func residuate(f *FuncVal, base []string, peer Val) Val {
+	f.notdone()
+	switch {
+	case isTop(peer):
+		// The residuation clone re-paths via the driving ctx (TS
+		// `this.clone(ctx)` — overlay of the stored path on ctx.path).
+		return clonePath(f, overlayPath(base, f.path))
+	case peer.Nil():
+		return peer
+	default:
+		// An identical twin at the same position collapses (the
+		// same-name same-path same-args check in TS
+		// FuncBaseVal.residuate): `key()&key()` folds to one pending
+		// key() while both residuate.
+		if pf, ok := peer.(*FuncVal); ok && pf.name == f.name &&
+			pathEq(pf.path, f.path) && pf.Canon() == f.Canon() {
+			return f
+		}
+		// THE RESIDUAL STANDS WHERE THE CALL STANDS. Without the path a
+		// finding raised on this conjunct named the meet's root (`$`)
+		// rather than the field, so a vet --at run reported "cannot
+		// resolve value at path $" over a value the schema names. The
+		// same two lines as the deferred-resolution branch below, and
+		// the same TS twin: FuncBaseVal.residuate builds its conjunct
+		// with the driving ctx, which carries the path.
+		cj := newConjunct([]Val{f, peer})
+		cj.path = cp(f.path)
+		cj.sp, cj.spu, cj.surl = f.sp, f.spu, f.surl
+		return cj
+	}
+}
+
 // pathEq reports whether two paths are identical.
 func pathEq(a, b []string) bool {
 	if len(a) != len(b) {
@@ -781,6 +801,22 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 			return makeNilErr(ctx, "invalid-arg", f, nil)
 		}
 		return project(ctx, f, base, args[0], args[1])
+	case "abnf":
+		if len(args) < 1 { //coverage:ignore arity {1,1} is refused at parse
+			// UNREACHABLE, and kept for the reason the guards above are.
+			return makeNilErr(ctx, "invalid-arg", f, nil)
+		}
+		return grammarSource(ctx, f, args[0])
+	case "parse":
+		if len(args) < 2 { //coverage:ignore the 1-arg form never gets here
+			// UNREACHABLE, and kept for the reason the guards above are.
+			// The declared arity is {1,2}, but the ONE-argument form is
+			// the constraint (constrainParse, go/abnf.go) and returns
+			// from Unify before the argument loop reaches resolve; a
+			// zero-argument call is refused at parse.
+			return makeNilErr(ctx, "invalid-arg", f, nil)
+		}
+		return applyGrammar(ctx, f, args[0], args[1])
 	case "join":
 		if len(args) < 1 { //coverage:ignore arity {1,2} is refused at parse
 			// UNREACHABLE, and kept for the reason the guards above are.

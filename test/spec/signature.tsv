@@ -64,3 +64,5 @@ usc(s: string, variant?: string) : string
 rep(s: string, text p: string, text sub: string) : string
 split(s: string, sep: string|constraint) : list
 emit(s: map|list, template t: map|list) : list
+abnf(g: string) : string
+parse(g: string, v?: string) : map|constraint

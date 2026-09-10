@@ -1,0 +1,72 @@
+# The grammar pair: abnf(src) and parse(g, v) -- G9.
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; modes: gens|errc ; escapes: \n \t \\
+#
+# abnf(src) COMPILES an RFC 5234 grammar and answers the grammar
+# SOURCE, so a parser is an ordinary string: it canons, it hashes and it
+# unifies with no new kind in the lattice. The compile is what the call
+# is for -- a grammar that does not compile is refused at the
+# DECLARATION rather than at every site that parses with it.
+#
+# parse(g, v) applies the grammar and answers the tabnas AST --
+# {rule, src, kids} all the way down -- as ordinary maps and lists.
+# `kids` is always present and always a list, so a vocabulary written
+# against the AST need not ask whether a leaf has the key.
+#
+# parse(g) -- the ONE-ARGUMENT form -- is the same grammar as a
+# CONSTRAINT on whatever meets it, which is what a schema position
+# wants where there is no value yet to hand the call.
+#
+# Every expectation was obtained by running BOTH engines and requiring
+# agreement.
+abnf-answers-the-grammar-source	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")	{"G":"v = 1*d\\nd = %x30-39\\n"}
+parse-answers-the-ast	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G, "12")	{"G":"v = 1*d\\nd = %x30-39\\n","a":{"kids":[{"kids":[],"rule":"d","src":"1"},{"kids":[],"rule":"d","src":"2"}],"rule":"v","src":"12"}}
+parse-single-leaf	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G, "7")	{"G":"v = 1*d\\nd = %x30-39\\n","a":{"kids":[{"kids":[],"rule":"d","src":"7"}],"rule":"v","src":"7"}}
+parse-grammar-inline	gens	a: parse("v = 1*d\\nd = %x30-39\\n", "5")	{"a":{"kids":[{"kids":[],"rule":"d","src":"5"}],"rule":"v","src":"5"}}
+parse-nested-rules	gens	G: abnf("v = n \\".\\" n\\nn = 1*d\\nd = %x30-39\\n")\na: parse($.G, "1.2")	{"G":"v = n \\".\\" n\\nn = 1*d\\nd = %x30-39\\n","a":{"kids":[{"kids":[],"rule":"d","src":"1"},{"kids":[{"kids":[],"rule":"d","src":"2"}],"rule":"n","src":"2"}],"rule":"v","src":"1.2"}}
+#
+# A FAILURE TO PARSE IS A FAILURE TO UNIFY: the call answers a located
+# nil, so the field is refused rather than set to a value meaning "no".
+parse-refuses-text-outside-the-grammar	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G, "x")	parse_failed
+parse-refuses-a-trailing-remainder	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G, "12x")	parse_failed
+# THE EMPTY STRING IS NOT A PARSE. Both host engines answer an empty
+# tree for empty input rather than refusing it, which would make
+# parse(g, "") succeed under EVERY grammar; a validator whose whole job
+# is to refuse malformed input cannot have that.
+parse-refuses-the-empty-string	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G, "")	parse_failed
+# A grammar that does not compile is refused where it is DECLARED, with
+# the compiler's own first line as the reason.
+abnf-refuses-a-grammar-that-does-not-compile	errc	a: abnf("bad ::= x")	abnf_grammar
+abnf-refuses-an-undefined-rule	errc	a: abnf("v = missing\\n")	abnf_grammar
+#
+# THE CONSTRAINT FORM is VALUE-PRESERVING, like every other atom in the
+# algebra: it admits the string it was written with and answers that
+# string, which is what keeps it idempotent and order-independent under
+# a meet. The tree is what the two-argument form is for.
+parse-constraint-admits-its-peer	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: "12" & parse($.G)	{"G":"v = 1*d\\nd = %x30-39\\n","a":"12"}
+parse-constraint-is-order-independent	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G) & "12"	{"G":"v = 1*d\\nd = %x30-39\\n","a":"12"}
+parse-constraint-is-idempotent	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G) & parse($.G) & "12"	{"G":"v = 1*d\\nd = %x30-39\\n","a":"12"}
+# THE DEFAULT SITS BESIDE IT, which is the whole reason for the form:
+# `*"" | parse(G)` is either the default or a string the grammar takes.
+parse-constraint-defaults	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: *"" | parse($.G)	{"G":"v = 1*d\\nd = %x30-39\\n","a":""}
+parse-constraint-narrows-a-default	gens	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: (*"" | parse($.G)) & "12"	{"G":"v = 1*d\\nd = %x30-39\\n","a":"12"}
+parse-constraint-empties-a-disjunct	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: (*"" | parse($.G)) & "xy"	empty
+# A FAILURE TO PARSE IS A FAILURE TO UNIFY here too.
+parse-constraint-refuses-text-outside-the-grammar	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: "x" & parse($.G)	parse_failed
+parse-constraint-refuses-the-empty-string	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: "" & parse($.G)	parse_failed
+parse-constraint-refuses-a-grammar-that-does-not-compile	errc	a: "12" & parse("bad ::= x")	abnf_grammar
+# THE CONSTRAINT HOLDS while it has no value to check: a peer that is
+# not a settled string keeps both terms, so the constraint survives to
+# meet a value on a later pass and refuses at generation if none comes.
+parse-constraint-holds-for-a-non-string	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: 12 & parse($.G)	mapval_no_gen
+parse-constraint-holds-unmet	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G)	mapval_no_gen
+parse-constraint-holds-for-an-unsettled-grammar	errc	a: parse($.NOPE) & "12"	no_path
+# A grammar that does not compile is refused at a two-argument call
+# too, and not only where it is declared: the call may spell it inline.
+parse-refuses-a-grammar-that-does-not-compile	errc	a: parse("bad ::= x", "12")	abnf_grammar
+# A NIL PASSES THROUGH every argument position and both forms
+# unchanged, so the refusal a reader sees is the one that happened
+# rather than a second one about parsing.
+abnf-refuses-a-nil-argument	errc	a: abnf(1 & "x")	scalar_kind
+parse-refuses-a-nil-grammar	errc	a: parse(1 & "x", "5")	scalar_kind
+parse-refuses-a-nil-argument	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G, 1 & "x")	scalar_kind
+parse-constraint-refuses-a-nil-peer	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G) & (1 & "x")	scalar_kind

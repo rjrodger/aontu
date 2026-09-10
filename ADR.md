@@ -48,6 +48,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root) | A bundled model lands under `$.aontu`, not at the document root | Accepted |
 | [ADR-030](#adr-030--the-path-of-a-meet-is-the-slot-it-was-driven-at) | The path of a meet is the slot it was driven at | Accepted |
 | [ADR-031](#adr-031--a-path-part-that-names-a-type-is-camelcase) | A path part that names a type is CamelCase | Accepted |
+| [ADR-032](#adr-032--a-grammar-is-a-string-and-parsing-is-a-function) | A grammar is a string, and parsing is a function | Accepted |
 
 ---
 
@@ -3250,4 +3251,139 @@ in both ports, for a matter of taste.
   the case of a bundled key depend on what its members happen to be,
   which is a worse thing for a reader to have to know.
 - The renderer's input contract moves with it in both ports.
+
+
+## ADR-032 — A grammar is a string, and parsing is a function
+
+**Date:** 2026-09-09
+**Status:** Accepted *(Amended 2026-09-10: the one-argument constraint
+form, and `Semver` rebuilt on it.)*
+
+### Context
+
+`re()` is the only way a document can say what a string may look like,
+and it is deliberately small: the portable regex subset both host
+engines agree on, with a guard that refuses a quantified group holding
+a quantifier (`constraint_pattern`) because that backtracks
+exponentially in one port. Real formats are published as grammars, not
+as regexes — semver, RFC 3986 URIs, media types — and transcribing one
+into the `re()` subset is at best lossy and at worst impossible: the
+semver pre-release grammar cannot be written at all.
+
+`@tabnas/abnf` compiles RFC 5234 ABNF to a `@tabnas/parser` grammar,
+and both are already dependencies of both ports, so the capability is a
+call away rather than a new engine.
+
+### Decision
+
+**`abnf(src) : string`** compiles a grammar and answers the grammar
+SOURCE. A parser is an ordinary string value: it canons, it hashes and
+it unifies with no new kind in the lattice. The compile is what the
+call is for — a grammar that does not compile is refused at the
+DECLARATION, once, with the compiler's own first line as the reason,
+rather than at every site that parses with it.
+
+**`parse(g, v) : map`** applies a grammar to a string and answers the
+tabnas AST — `{rule, src, kids}` all the way down — as ordinary maps
+and lists. `kids` is always present and always a list, so a vocabulary
+written against the AST need not ask whether a leaf has the key.
+
+**`parse(g) : constraint`** — the one-argument form — is the same
+grammar as a CONSTRAINT on whatever meets it, which is what a schema
+position wants: there is no value there yet to hand the call. It is
+VALUE-PRESERVING, like every other atom in the algebra: it admits a
+string the grammar accepts and answers that string unchanged, so it
+stays idempotent and order-independent under a meet and a default can
+sit beside it (`*"" | parse(G)`). Once its grammar argument settles the
+constraint is a STABLE value, exactly as a residual constraint atom is,
+so a `type()` holding one resolves rather than waiting for a value that
+may never come.
+
+**A failure to parse is a failure to unify.** The call answers a
+located nil (`parse_failed`), so a field is refused rather than set to
+a value meaning "no". Both forms refuse the same way.
+
+**The parse is bounded.** The host engine's cancellation hook is called
+every 100 rule iterations and refuses past 100 000 steps. This is a
+constant, not a trust knob: the budgets a profile may lower or raise
+bound aontu's own evaluation, and this bounds a third party's grammar.
+Without it `abnf()` would reopen exactly the hole `constraint_pattern`
+exists to close, and the compiler's own notes warn that pathological
+grammars grow under Paull's algorithm.
+
+**The empty string is not a parse.** Both host engines answer an empty
+tree for empty input rather than refusing it, which would make
+`parse(g, "")` succeed under every grammar. A validator whose whole job
+is to refuse malformed input cannot have that, so the pair refuses it
+itself.
+
+### Consequences
+
+- **Whitespace is not skipped.** The grammars aontu runs describe
+  strings with no spaces in them, and the host lexer would otherwise
+  read `1 . 2 . 3` as `1.2.3` — accepting input the grammar's author
+  did not. The engine is constructed with space lexing off.
+- **The TypeScript port's `@tabnas/parser` moves to 0.9.0**, which the
+  Go port already pinned. The cancellation hook is 0.9.0's; the two
+  ports were on different versions of the engine's own parser before
+  this, and are not now. All three grammar packages are pinned
+  EXACTLY and identically across the ports — `parser` 0.9.0, `abnf`
+  0.4.7, `bnf` 0.1.10 — rather than by range: `bnf` 0.1.11 peer-asks
+  for `parser` 0.9.1, and 0.9.1 regresses `path($.z.x.a)` in
+  TypeScript alone (it captures `.x.a`), which ADR-001 makes fatal.
+  A range would have let a fresh install cross that line silently.
+- **The answer is the RAW AST**, which is verbose and whose `src` is
+  the concatenation of matched tokens rather than a slice of the input.
+  Shaping it is the next step and it needs the host compiler to grow
+  one thing: `ActionsMap` values are host callbacks today, so nothing
+  connects an ABNF production to the engine's own native-value builders
+  (`@array$`, `@push$`, `@object$`). A document cannot write a
+  callback, so until a builtin can be named as DATA the output shape is
+  not something a `.aon` file can choose.
+- **A parser is a constraint, and it is not a TRANSFORMING one.**
+  `parse(g)` preserves its peer, as every other atom in the algebra
+  does, which is what keeps it idempotent and order-independent under
+  a meet with no extra machinery. A constraint that also REWROTE its
+  value to the tree would need the result to carry the grammar that
+  produced it for a second meet to mean anything, and nothing needs
+  that while the tree is what the two-argument form is for. That step
+  is a later decision, not this one.
+- **`Semver` uses the pair, and stays a list.** The tuple is now
+  `[major minor patch pre-release build]`, five elements, with the two
+  string parts checked by an INLINE ABNF grammar applied through
+  `parse(g)`. This is the decision's own validation: the pre-release
+  shape is precisely what `re()` cannot express (a quantified group
+  holding a quantifier, refused as `constraint_pattern`), so the
+  vocabulary previously checked its ALPHABET and let `"alpha..1"` and
+  `"01"` through. Both are now refused, and the build part is carried
+  rather than dropped.
+  - The grammars are INLINE, not members of the vocabulary referred to
+    by name: a reference from one member of an included file to another
+    does not survive the include, which is the same reason `Service` is
+    written out rather than as `Component & {kind: service}`.
+  - The numeric parts stay INTEGERS in a list, not a parsed dotted
+    string, for the reason ADR-028 chose a list: a version is COMPARED,
+    component by component from the left, which a string does not do by
+    itself. Build metadata comes LAST because the spec says it MUST be
+    ignored when determining precedence, and last is the one position
+    where a comparison can stop before it without leaving a hole.
+  - The two grammars differ where the spec does: a wholly numeric
+    pre-release identifier may not carry a leading zero, a build
+    identifier may.
+  - This needed no version bump. The bare-`"0"` disagreement that held
+    this back is avoided outright by the `digit = "0" / positive-digit`
+    factoring below, which never puts a class and a literal in the same
+    slot, so both grammars parse identically on the pinned 0.9.0/0.4.7
+    pair.
+
+- **A class must not contain a literal used elsewhere.** Write
+  `digit = "0" / positive-digit`, not `digit = %x30-39`, whenever `"0"`
+  also appears as a literal. Where a character class overlaps a fixed
+  literal, the class wins the cut, and the literal's alternative
+  becomes unreachable. It is the shape `@tabnas/semver`'s own grammar
+  uses throughout, and the reason its pre-release factoring works.
+  A related limit survives in both ports EQUALLY, so it is a grammar
+  fact and not a parity break: an alternative shaped `LITERAL [ group ]`
+  can fail on re-entry to its rule when the optional's contents put the
+  overlapping class in the same lookahead slot.
 
