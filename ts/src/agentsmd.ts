@@ -34,6 +34,12 @@ export type AgentsMdReport = {
 }
 
 export type AgentsMdOptions = {
+  // How deep the SHAPE line projects, default 2 (G11 phase 7). Two
+  // levels name the root keys and say `top` under them, which tells an
+  // agent what the document is ABOUT and nothing it can act on; a
+  // caller that wants the fields asks for them. The default is
+  // unchanged, because the stanza is spliced into a file people read.
+  depth?: number
   // The name the stanza should call the document. The engine never
   // reads a file; the CLI passes what the author typed.
   name?: string
@@ -70,8 +76,10 @@ export function agentsMd(
   // arrive through a `--text-ext` include listed those keys and then
   // reported an EMPTY shape, because the read the shape came from
   // refused the include the read above it had just honoured.
-  const shape = get(src, '$',
-    { view: 'types', depth: 2, path: options.path, ...includeOpts(options) })
+  const shape = get(src, '$', {
+    view: 'types', depth: options.depth ?? 2,
+    path: options.path, ...includeOpts(options),
+  })
 
   // A REAL path, so the example command works as written: the first
   // root key when there is one, the root itself when there is not.
@@ -107,6 +115,9 @@ export function agentsMd(
     '# change it without editing it',
     'aontu set ' + example + '=<value> --entry ' + name +
     ' --overlay overlay.aon',
+    '',
+    '# the language itself, offline: the whole grammar on one page',
+    'aontu help language',
     '```',
     '',
     'Regenerate this section with `aontu agentsmd ' + name + '`.',

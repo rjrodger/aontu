@@ -30,6 +30,12 @@ type AgentsMdReport struct {
 }
 
 type AgentsMdOptions struct {
+	// Depth is how deep the SHAPE line projects, default 2 (G11 phase
+	// 7). Two levels name the root keys and say `top` under them, which
+	// tells an agent what the document is ABOUT and nothing it can act
+	// on; a caller that wants the fields asks for them. The default is
+	// unchanged, because the stanza is spliced into a file people read.
+	Depth int
 	// Name is what the stanza should call the document. The engine
 	// never reads a file; the CLI passes what the author typed.
 	Name string
@@ -41,6 +47,10 @@ func (a *Aontu) AgentsMd(src string, opts *AgentsMdOptions) AgentsMdReport {
 	name := "the definition"
 	if nil != opts && "" != opts.Name {
 		name = opts.Name
+	}
+	depth := 2
+	if nil != opts && 0 < opts.Depth {
+		depth = opts.Depth
 	}
 
 	v, uerr := a.Unify(src)
@@ -54,7 +64,7 @@ func (a *Aontu) AgentsMd(src string, opts *AgentsMdOptions) AgentsMdReport {
 		keys = append(keys, m.keys...)
 		sort.Strings(keys)
 	}
-	shape := a.Get(src, "$", &QueryOptions{View: QueryTypes, Depth: 2})
+	shape := a.Get(src, "$", &QueryOptions{View: QueryTypes, Depth: depth})
 
 	// A REAL path, so the example command works as written.
 	example := "$"
@@ -100,6 +110,9 @@ func (a *Aontu) AgentsMd(src string, opts *AgentsMdOptions) AgentsMdReport {
 		"# change it without editing it",
 		"aontu set " + example + "=<value> --entry " + name +
 			" --overlay overlay.aon",
+		"",
+		"# the language itself, offline: the whole grammar on one page",
+		"aontu help language",
 		"```",
 		"",
 		"Regenerate this section with `aontu agentsmd " + name + "`.",

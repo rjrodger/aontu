@@ -55,8 +55,11 @@ Usage: aontu [options] [file]
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu allow --role <role> [--at <path>] <roles-file> <path>...
-       aontu agentsmd [--write <AGENTS.md>] <file>
+       aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu help [topic] [--format text|json]
+       aontu explain <code> | --list [--format text|json]
+       aontu init [dir]
        aontu lsp
        aontu mcp [--root <dir>]
 
@@ -88,6 +91,14 @@ than beside it: both answer what an include may read.
   than a plausible pass: in the one place a tool loop reads the exit
   code to decide whether the data is good. A file genuinely named like
   a verb is still reachable as `./vet`.
+- **One mistyped verb is diagnosed too.** A single argument that cannot
+  be read and is shaped like a bare word (no separator, no extension)
+  is reported as a verb rather than as a missing file, with the nearest
+  verb named: `aontu vett` answers ``aontu: `vett` is not a file, and
+  not a verb this port knows`` and suggests `aontu vet`, at exit 2. A
+  path-shaped argument (`./help`, `help.aon`, `/tmp/help`) keeps the
+  file diagnosis and its exit 1, which is the same escape hatch the
+  subcommand dispatch uses.
 - **Stdin:** `echo 'a:1 b:$.a' | aontu` reads source from the pipe.
 - **REPL:** `aontu` with no file on a terminal starts an interactive
   loop; each line is evaluated and printed.
@@ -103,6 +114,17 @@ than beside it: both answer what an include may read.
   same bytes.
 - Results go to **stdout**; errors go to **stderr** with a non-zero exit
   status (`1` for an evaluation error, `2` for a bad option).
+- **`--format json` makes the answer an object**, so the default entry
+  point reports like every other verb rather than like a stream of
+  prose: `{aontu, findings, ok, out}` on **stdout**, whether the
+  document evaluated or not. `out` is the text the default form
+  prints (the generated JSON, or the canonical form under `--canon`),
+  empty when it did not evaluate; `findings` then carries one finding
+  with the `code` to hand to [`aontu explain`](#aontu-explain), its
+  `class` from the registry, and the headline as `message`. The
+  finding names no site and carries no hint: the frames under the
+  headline are drawn for a person, and hint prose is deliberately
+  outside cross-port parity. Exit codes are unchanged.
 
 ### `aontu vet`
 
@@ -118,6 +140,9 @@ aontu vet [options] <schema> <data> [more-data...]
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
+  --coverage        Report what the check examined
+  --strict-coverage --coverage, and exit 1 when the run was vacuous
+  --coverage-at <p> Measure coverage under this path of the data only
   --format <f>      text (default), json or sarif
   --watch           Re-run whenever a watched file changes
 ```
@@ -128,7 +153,7 @@ three ways to fail call for three different responses:
 | Exit | Verdict | Meaning |
 |------|---------|---------|
 | 0 | `valid` | the data unifies and is concrete (or `--partial`) |
-| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse |
+| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse. Also a vacuous run under `--strict-coverage`, below |
 | 2 |: | usage: a bad option, or a file that cannot be read |
 | 3 | `incomplete` | no contradiction, but the truth is not yet satisfied |
 | 4 | `error` | the run could not be set up from the schema side: an unusable schema, or an `--at` that names nothing: never the data's fault |
@@ -143,6 +168,66 @@ reported as one `parse`-class finding with a site in that file: not as
 a broken schema. The distinction matters to the loop the verb exists
 for: exit 1 says "repair what you emitted", exit 4 says "the truth you
 were given is unusable, stop".
+
+#### What the check examined
+
+A check that examined **nothing** and a check that **passed** answer
+the same. That is not a bug in the unifier, which answered correctly
+about the document it was given, but it is a hole in a gate: the
+caller reads exit 0 and reports success.
+
+The usual cause is one construct. A schema written with the wildcard
+other tools use is not a wildcard here:
+
+```
+entity: { "*": { table: string } }
+```
+
+`"*"` is a key **named** `*`. It declares an entity called `*`, meets
+no data key, and constrains nothing, so data with `table: 42` vets
+`valid`. The template is [`&:`](reference-language.md), which meets
+every key of the map it sits in.
+
+`--coverage` adds a `coverage` object to the report, and the report is
+the answer:
+
+| field | is |
+|---|---|
+| `checked` | data **leaves** a schema declaration constrained |
+| `leaves` | data leaves in all, under `--coverage-at` when given |
+| `declared` | declarations the schema makes under the anchor: a map key, a list index, or a template, at every depth |
+| `unchecked` | the shallowest data paths no declaration constrained |
+| `unused` | the shallowest declarations no data path met |
+| `vacuous` | no data leaf was constrained, over a document that has leaves |
+
+**Leaves, not paths.** A leaf is where a value lives, and matching a
+container constrains no value: a schema saying only "there is a key
+called `entity`" has checked nothing, and `checked` is the number that
+says so. A document with no leaves is not vacuous either, because
+there was nothing to examine.
+
+The lists name the **shallowest** paths, as
+[`render --coverage`](#aontu-render)'s dead report does: a subtree
+nothing constrained is named once rather than once per leaf. The text
+form prints the first ten of each and counts the rest; the JSON form
+carries every one.
+
+`--strict-coverage` makes a vacuous run **exit 1**. The verdict word
+is unchanged (the unification really did hold), so nothing that passes
+today starts failing, and the reason goes to stderr while stdout stays
+a report contract. It is the flag a CI gate and an agent
+loop both want, and it implies `--coverage`, because a gate cannot
+fire on what was never measured.
+
+Across several data files the schema side is counted once and the data
+side adds up: a declaration one file exercised is not unused, and
+`vacuous` means no file constrained anything.
+
+The accounting is **structural**: what the schema declares about the
+data, rather than a reading of the meet. A meet-based reading would
+count a value the data supplied to itself as covered, which is the
+opposite of the question. It costs one extra evaluation of the data
+document, and only when asked for.
 
 **A parse failure is located.** Its single site carries the parser's
 own row and column, 1-based: the same position the human renderer
@@ -2028,16 +2113,24 @@ Generate the AGENTS.md stanza for a definition: the prose entrypoint,
 derived from the formal source so it cannot drift from it.
 
 ```
-aontu agentsmd [--write <AGENTS.md>] <file.aon>
+aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file.aon>
 ```
 
 The stanza names the document, its [canon-hash](#aontu-hash) pin, its
-root keys and its shape, and spells the `get` / `why` / `vet` / `set`
-commands with a path that actually exists in it. `--write` splices it
-into a file between `<!-- aontu:begin -->` and `<!-- aontu:end -->`,
-appending the markers when they are absent: everything outside them
-is left exactly as it was, so the verb is safe to re-run and safe to
-point at a file someone else writes prose in.
+root keys and its shape, spells the `get` / `why` / `vet` / `set`
+commands with a path that actually exists in it, and points at
+[`aontu help language`](#aontu-help) for the language the document is
+written in. `--write` splices it into a file between
+`<!-- aontu:begin -->` and `<!-- aontu:end -->`, appending the markers
+when they are absent: everything outside them is left exactly as it
+was, so the verb is safe to re-run and safe to point at a file someone
+else writes prose in.
+
+`--depth <n>` is how deep the **shape** line projects, default `2`.
+Two levels name the root keys and say `top` under them, which says
+what the document is about rather than what is in it; `--depth 4` on
+an entity map reaches the fields. The default is unchanged because the
+stanza is spliced into a file people read.
 
 Exit codes: `0` generated, `2` usage, `4` the document does not stand
 up on its own.
@@ -2612,6 +2705,133 @@ aontu> a:1|2|3
 aontu> :quit
 ```
 
+### `aontu help`
+
+Print the embedded teaching pack: the **language**, where `--help`
+documents the **tool**.
+
+```
+aontu help [topic] [--format text|json]
+```
+
+With no topic it lists them. The corpus travels inside the binary, so
+it answers with no network, no checkout and no documentation site,
+which is the condition it exists for.
+
+| topic | is |
+|---|---|
+| `tasks` | which verb does the job you have, indexed by the word you arrived with |
+| `language` | the grammar card: everything the language spells, on one page |
+| `examples` | the ladder, from plain JSON upward |
+| `codes` | what a refusal means, and what to do about it |
+| `grammar` | the published [ABNF](#the-published-grammar) |
+
+The corpus is **generated** from [`docs/skill/`](skill/) and
+`grammar/aontu.abnf` by `ts/scripts/helpdoc.cjs` (`make helpdoc`, which
+`make build-ts` runs), into `ts/src/helpdoc.ts` and
+`go/cmd/aontu/helpdoc/`. Both suites assert the embedded copy is
+byte-identical with its source, so the pack cannot drift from the
+published files: a Go binary needs a copy inside its own package
+directory, because `//go:embed` cannot read above one, and a generated
+copy that nothing compares is a second source of truth.
+
+`--format json` answers `{aontu, topics}` for the index and
+`{aontu, source, summary, text, topic}` for a topic.
+
+Exit codes: `0` printed, `2` an unknown topic (the topics are listed)
+or a bad option.
+
+### `aontu explain`
+
+Explain one error code, from the same table the engine attaches to a
+finding.
+
+```
+aontu explain <code> [--format text|json]
+aontu explain --list [--format text|json]
+```
+
+Every code in [the registry](#behavioural-parity) resolves, so a code
+read out of a report always answers:
+
+```
+$ aontu explain mapval_no_gen
+code:  mapval_no_gen
+class: incomplete
+
+This value was present after unification, and cannot be generated
+because it is not a literal value.
+```
+
+The list is the **registry**, not the hint table. The registry is in
+cross-port parity (`test/spec/errcodes.tsv`, asserted set-equal with
+the engine's class map in both ports), while the hint tables are
+smaller and are not themselves in parity, so listing from them would
+make the two ports differ over something that is not about what either
+can report. A registered code carrying no explanation text is marked
+`(no text)` in the listing and says so when asked, rather than printing
+an empty block.
+
+A dynamic code is registered through the prefix it extends, and carries
+that prefix's text: `func:upper` answers with the `func:` explanation,
+because the suffix names the operator and the explanation is the
+prefix's.
+
+An unknown code exits 2 and names the nearest registered match.
+
+Exit codes: `0` explained, `2` an unknown code or a bad option.
+
+### `aontu init`
+
+Write a working model, an instance of it, and a check script into a
+directory.
+
+```
+aontu init [dir]
+```
+
+The reason this verb exists is that writing a **first** document is the
+most expensive thing to get wrong. A model that reaches for `"*"`,
+where the language spells the template
+[`&:`](reference-language.md#spreads-), constrains nothing, and
+[`vet`](#aontu-vet) over it reports `valid`. A known-good document
+makes the next step an edit rather than an invention.
+
+| file | is |
+|---|---|
+| `model.aon` | the truth: an entity map, constrained with `&:` |
+| `data.aon` | an instance of it that holds |
+| `check.sh` | the four checks to run after every edit, `vet --strict-coverage` first |
+
+```
+$ aontu init
+model.aon
+data.aon
+check.sh
+
+A model, an instance of it, and the four questions to ask.
+Run the checks:  sh check.sh
+Learn the language:  aontu help language
+```
+
+With no directory it writes into the working one, and it creates the
+directory if it is not there. `check.sh` is written executable and
+takes the binary from `$AONTU`, so a checkout with no installed `aontu`
+runs it with `AONTU=./aontu sh check.sh`.
+
+It **never overwrites**. If any member of the trio already stands in
+the directory, it refuses before writing any of them, so a refused run
+never leaves the directory half written.
+
+The trio is **generated** into both ports from `docs/skill/init/` by
+the generator that stages the teaching pack (`make helpdoc`), on the
+[`aontu help`](#aontu-help) precedent. Both suites assert the staged
+bytes are identical with their sources, and that the emitted documents
+pass their own `check.sh`.
+
+Exit codes: `0` written, `2` a standing file, a directory it cannot
+write, more than one directory, or a bad option.
+
 ### `aontu lsp`
 
 ```
@@ -2711,10 +2931,19 @@ directions.
 ### The skill
 
 [`docs/skill/`](skill/) holds the agent-facing sources: a trigger
-stub, a one-page grammar card, a JSON-first example ladder, and the
-error-code index for repair loops. Every example document in the
-ladder is evaluated by `ts/test/skill.test.ts`, so a skill that
-teaches something the engine no longer does fails the build.
+stub, a task-to-verb index, a one-page grammar card, a JSON-first
+example ladder, and the error-code index for repair loops. Every
+example document in the ladder is evaluated by
+`ts/test/skill.test.ts`, so a skill that teaches something the engine
+no longer does fails the build.
+
+They reach a caller by three routes, and the third is the one that
+works when nothing was configured. The npm tarball stages them as
+`skill/` (`ts/scripts/prepack.js`, which rewrites the links that
+would otherwise escape the package). A harness can mount the directory
+as a skill. And [`aontu help`](#aontu-help) serves them **from inside
+the binary**, which is what an agent holding the command and no
+network has.
 
 ### LSP hover provenance
 

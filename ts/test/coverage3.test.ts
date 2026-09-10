@@ -1006,15 +1006,28 @@ describe('coverage3-process', () => {
       generate() { throw err },
     }) as any
 
+    // AN AontuError WITH NO COLLECTED NILS carries no finding rather
+    // than an invented code (G11 phase 7): the engine collects them
+    // before it throws, and a refusal raised outside that collection
+    // (exactJSON's circular structure) has none to report.
     const aerr = evalSource(thrower(new AontuError('real-aontu')), 'a:1', 'json')
-    Assert.deepEqual(aerr, { ok: false, text: 'real-aontu' })
+    Assert.deepEqual(aerr, { findings: [], ok: false, text: 'real-aontu' })
 
     const foreign = evalSource(
       thrower({ aontu: true, message: 'foreign-aontu' }), 'a:1', 'json')
-    Assert.deepEqual(foreign, { ok: false, text: 'foreign-aontu' })
+    Assert.deepEqual(foreign,
+      { findings: [], ok: false, text: 'foreign-aontu' })
 
     const bare = evalSource(thrower('just-a-string'), 'a:1', 'canon')
-    Assert.deepEqual(bare, { ok: false, text: 'just-a-string' })
+    Assert.deepEqual(bare, { findings: [], ok: false, text: 'just-a-string' })
+
+    // AND THE COLLECTING SHAPE: the nils an engine failure carries are
+    // what the finding is built from, which is what `--format json`
+    // reports.
+    const real = evalSource(new Aontu(), 'a: 1 & 2', 'json')
+    Assert.equal(real.ok, false)
+    Assert.deepEqual(real.findings.map((f: any) => [f.code, f.class, f.path]),
+      [['scalar_value', 'conflict', '$']])
   })
 
   test('cli-version-without-a-version-field', () => {
@@ -1108,6 +1121,35 @@ describe('coverage3-process', () => {
     const r = capture(() => cliMain(['node', 'cli', file]))
     Assert.equal(r.out, '')
     Assert.match(r.err, /Cannot unify value/)
+  })
+
+  // THE BARE COMMAND'S MACHINE-READABLE REPORT (G11 phase 7),
+  // IN-PROCESS. `ts/test/cli.test.ts` asserts it through the packaged
+  // binary, which is a child whose coverage is deliberately not
+  // counted; this drives the same three arms here so the emitter is
+  // measured where the gate can see it.
+  test('cli-bare-format-json', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-cov3-json-'))
+    const good = Path.join(dir, 'good.aontu')
+    Fs.writeFileSync(good, 'a:1 b:$.a')
+    const ok = capture(() => cliMain(['node', 'cli', '--format', 'json', good]))
+    Assert.equal(JSON.parse(ok.out).ok, true)
+    Assert.equal(ok.err, '')
+
+    const bad = Path.join(dir, 'bad.aontu')
+    Fs.writeFileSync(bad, 'a:1 a:2')
+    const failed = capture(() =>
+      cliMain(['node', 'cli', '--format', 'json', bad]))
+    const report = JSON.parse(failed.out)
+    Assert.equal(report.ok, false)
+    Assert.equal(report.findings[0].code, 'scalar_value')
+    Assert.equal(report.findings[0].class, 'conflict')
+
+    Assert.match(
+      capture(() => cliMain(['node', 'cli', '--format', 'yaml', good])).err,
+      /--format needs text or json/)
+
+    Fs.rmSync(dir, { recursive: true, force: true })
   })
 
   test('lsp-server-default-streams', () => {

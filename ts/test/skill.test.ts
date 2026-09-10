@@ -109,6 +109,12 @@ describe('skill', () => {
   // worse than no pointer.
   test('every-linked-file-exists', () => {
     for (const file of Fs.readdirSync(SKILL_DIR)) {
+      // The pack is the MARKDOWN. `init/` beside it holds the starting
+      // documents `aontu init` writes (G11 phase 6), which are files
+      // to run rather than prose to link out of.
+      if (!file.endsWith('.md')) {
+        continue
+      }
       const md = readText(SKILL_DIR, file)
       for (const m of md.matchAll(/\]\(([^)#][^)]*)\)/g)) {
         const target = Path.resolve(SKILL_DIR, m[1])

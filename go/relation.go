@@ -47,6 +47,14 @@ type RelationFinding struct {
 
 // RelationReport is the relation checks for one document.
 type RelationReport struct {
+	// Declared is how many relation declarations the document makes
+	// (G11 phase 4). ZERO is the answer that matters: `pass` over no
+	// declarations means nothing was checked, and without this the two
+	// are one word. A POINTER, because `omitempty` would drop the zero
+	// that carries the meaning; nil is "the run did not ask", &0 is
+	// "asked, and there were none". Absent unless RelationOptions.Count
+	// asked for it, so no existing caller's report changes shape.
+	Declared *int `json:"declared,omitempty"`
 	// Errors is WHY the graph could not be looked at, in the same
 	// finding shape Vet reports in (the review's finding F). Findings is
 	// about the GRAPH and stays that way; a document that does not stand
@@ -56,6 +64,14 @@ type RelationReport struct {
 	Errors   []VetFinding      `json:"errors,omitempty"`
 	Findings []RelationFinding `json:"findings"`
 	Verdict  string            `json:"verdict"`
+}
+
+// RelationOptions are the run's knobs. A nil value is the default run.
+type RelationOptions struct {
+	// Count fills RelationReport.Declared, so a caller can tell a graph
+	// that CHECKED CLEAN from one there was nothing to check. Mirrors
+	// the canonical port's RelationOptions.count.
+	Count bool
 }
 
 // declaredRelation is one declared relation, as the document spells it.
@@ -258,6 +274,19 @@ func relationErrors(ctx *Ctx, root Val) error {
 // RelationCheck runs the relation checks over one document: evaluate,
 // then report the same verdict generation enforces.
 func (a *Aontu) RelationCheck(src string) RelationReport {
+	return a.RelationCheckOpts(src, nil)
+}
+
+// RelationCheckOpts is RelationCheck with the run's knobs. Split from
+// it rather than folded into it because every existing caller wants
+// the default run, and the Vet precedent is a package surface whose
+// options are a pointer that may be nil.
+func (a *Aontu) RelationCheckOpts(
+	src string, opts *RelationOptions) RelationReport {
+	options := RelationOptions{}
+	if nil != opts {
+		options = *opts
+	}
 	// Parsed and unified in two steps rather than through Unify, so the
 	// failure can be REPORTED: the context carries the engine's own
 	// first error, and Unify hands back only that something went wrong.
@@ -277,8 +306,18 @@ func (a *Aontu) RelationCheck(src string) RelationReport {
 			Errors: []VetFinding{failureFinding(ctx, a.File, src, root)}}
 	}
 
+	// The count rides every report from here down: the engine knows it
+	// at exactly this point, and a caller asking "was there anything to
+	// check?" should not have to evaluate the document a second time to
+	// find out.
+	var declared *int
+	if options.Count {
+		n := len(ctx.reldecls)
+		declared = &n
+	}
 	if 0 == len(ctx.reldecls) {
-		return RelationReport{Verdict: "pass", Findings: []RelationFinding{}}
+		return RelationReport{Verdict: "pass", Declared: declared,
+			Findings: []RelationFinding{}}
 	}
 
 	// NOR IS A DOCUMENT THAT CANNOT BE GENERATED. Unification can
@@ -305,5 +344,6 @@ func (a *Aontu) RelationCheck(src string) RelationReport {
 	if 0 < len(findings) {
 		verdict = "fail"
 	}
-	return RelationReport{Verdict: verdict, Findings: findings}
+	return RelationReport{Verdict: verdict, Declared: declared,
+		Findings: findings}
 }

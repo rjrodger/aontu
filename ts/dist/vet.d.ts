@@ -22,16 +22,27 @@ export type VetFinding = {
     actual?: string;
     note?: string;
 };
+export type VetCoverage = {
+    checked: number;
+    declared: number;
+    leaves: number;
+    unchecked: string[];
+    unused: string[];
+    vacuous: boolean;
+};
 export type VetReport = {
     verdict: VetVerdict;
     truncated: boolean;
     findings: VetFinding[];
+    coverage?: VetCoverage;
 };
 export type VetOptions = {
     at?: string;
     closed?: boolean;
     partial?: boolean;
     maxErrors?: number;
+    coverage?: boolean;
+    coverageAt?: string;
     schemaUrl?: string;
     dataUrl?: string;
     schemaPath?: string;
@@ -44,4 +55,5 @@ export declare function displayFile(url: string, label: string, path?: string): 
 export declare function failureFinding(ctx: any, url?: string, failed?: any): VetFinding;
 export declare function anchorAt(root: any, at: string): Val | undefined;
 export declare function throughResidue(v: any): any;
+export declare function vetCoverage(anchor: any, dataVal: any, coverageAt?: string): VetCoverage;
 export declare function vet(schemaSrc: string, dataSrc: string, opts?: VetOptions): VetReport;

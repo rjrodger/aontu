@@ -13,11 +13,13 @@ export type RelationReport = {
     verdict: RelationVerdict;
     findings: RelationFinding[];
     errors?: VetFinding[];
+    declared?: number;
 };
 export type RelationOptions = {
     path?: string;
     trust?: TrustOptions;
     textExt?: string[];
+    count?: boolean;
 };
 export declare function relationFindings(decls: Map<string, RelDecl>, graph: Graph): RelationFinding[];
 export declare function relationErrors(ctx: any, root: any): void;

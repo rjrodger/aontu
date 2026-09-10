@@ -14,7 +14,10 @@
 > sets, the meet ladder, the subsumption poset, the key document and
 > the value lattice), `fmt` writes the one agreed form,
 > `jsonschema` exports the model as JSON Schema and reports
-> what that export cannot carry, and an MCP server exposes the same
+> what that export cannot carry, `help` serves the language itself
+> from inside the binary, `explain` answers what one error code
+> means and `init` writes a working model, its data and a check script
+> to start from, and an MCP server exposes the same
 > contracts over stdio. Two
 > implementations (TypeScript, canonical, npm `aontu`; a Go port) are
 > kept in parity by one shared conformance suite, under a written trust
@@ -36,7 +39,11 @@
 ## Agent-facing
 
 - [aontu skill](docs/skill/SKILL.md): a teaching pack for agents — the
-  grammar card, a worked example ladder, and the error-code index
+  task-to-verb index, the grammar card, a worked example ladder, and
+  the error-code index. It also ships INSIDE the command: `aontu help`
+  lists the topics and `aontu help language` prints the grammar card,
+  so an agent with the binary and no network still has it, and
+  `aontu init` writes a known-good document to edit rather than invent
 - [Grammars](grammar/): `aontu.abnf`, the notation a person reads, and
   `aontu.gbnf`, `aontu.lark` and `aontu.tmLanguage.json` — the emission
   surface for constrained decoding of canonical aontu, and the

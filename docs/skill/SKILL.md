@@ -19,6 +19,8 @@ Start here:
 
 - Every JSON document is an aontu document. Write JSON, then add
   what JSON cannot say.
+- [`tasks.md`](tasks.md) — the verb for a job, indexed by the word
+  you arrived with (ontology, schema, validate, model).
 - [`grammar-card.md`](grammar-card.md) — the whole surface on one
   page.
 - [`examples.md`](examples.md) — the JSON-superset ladder: plain
@@ -36,3 +38,8 @@ aontu set $.a.b=1 --entry file.aon --overlay over.aon
 aontu allow --role dev roles.aon $.a.b   # may this role change that subtree?
 aontu hash file.aon             # a pin that survives reformatting
 ```
+
+These four files also ship INSIDE the command, so they answer with no
+network and no checkout: `aontu help` lists the topics, `aontu help
+language` is the grammar card, and `aontu explain <code>` says what one
+refusal means.

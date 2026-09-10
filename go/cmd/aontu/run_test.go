@@ -348,3 +348,190 @@ func TestRunTextExtOnVerbs(t *testing.T) {
 		t.Fatalf("verb trailing flag: %d %q", code, errw.String())
 	}
 }
+
+// --- G11 phase 7: the bare command's machine-readable report ---
+
+// evalReportOf drives the bare command in json mode and reads the
+// envelope back, so the assertions are about the SHAPE rather than
+// about a formatting of it.
+func evalReportOf(t *testing.T, args ...string) (evalReportJSON, int, string) {
+	t.Helper()
+	var out, errw bytes.Buffer
+	code := run(args, strings.NewReader(""), &out, &errw, false)
+	var report evalReportJSON
+	if err := json.Unmarshal(out.Bytes(), &report); nil != err {
+		t.Fatalf("not JSON (%v): %q", err, out.String())
+	}
+	return report, code, errw.String()
+}
+
+// THE DEFAULT ENTRY POINT WAS THE ONE AN AGENT HAD TO PARSE WITH A
+// REGULAR EXPRESSION: every verb but this one could answer as an
+// object, and this is the one an agent reaches for first.
+func TestRunBareFormatJSON(t *testing.T) {
+	dir := t.TempDir()
+	good := filepath.Join(dir, "good.aon")
+	if err := os.WriteFile(good, []byte("a:1 b:$.a"), 0o644); nil != err {
+		t.Fatal(err)
+	}
+
+	report, code, errs := evalReportOf(t, "--format", "json", good)
+	if 0 != code || "" != errs {
+		t.Fatalf("good: %d %q", code, errs)
+	}
+	if "eval" != report.Aontu.Verb || aontu.VERSION != report.Aontu.Version {
+		t.Errorf("producer: %+v", report.Aontu)
+	}
+	if !report.OK || 0 != len(report.Findings) {
+		t.Errorf("good: ok=%v findings=%d", report.OK, len(report.Findings))
+	}
+	// The `out` string is exactly what the text form prints.
+	var text, errw bytes.Buffer
+	if 0 != run([]string{good}, strings.NewReader(""), &text, &errw, false) {
+		t.Fatalf("text form: %q", errw.String())
+	}
+	if strings.TrimSuffix(text.String(), "\n") != report.Out {
+		t.Errorf("out differs from the text form:\n%q\n%q",
+			report.Out, text.String())
+	}
+
+	// The canon answer travels the same way: `--canon` chooses what the
+	// answer IS, `--format` how it is wrapped.
+	canon, _, _ := evalReportOf(t, "-c", "--format", "json", good)
+	if `{"a":1,"b":1}` != canon.Out {
+		t.Errorf("canon out: %q", canon.Out)
+	}
+}
+
+// THE FAILURE IS THE POINT. A finding with a code an agent can hand
+// straight to `aontu explain`, and the class from the registry both
+// ports hold set-equal.
+func TestRunBareFormatJSONFailure(t *testing.T) {
+	dir := t.TempDir()
+	bad := filepath.Join(dir, "bad.aon")
+	if err := os.WriteFile(bad, []byte("a: 1 & 2\n"), 0o644); nil != err {
+		t.Fatal(err)
+	}
+
+	report, code, errs := evalReportOf(t, "--format", "json", bad)
+	if 1 != code {
+		t.Fatalf("exit %d, want 1", code)
+	}
+	if "" != errs {
+		t.Errorf("json mode wrote to stderr: %q", errs)
+	}
+	if report.OK || "" != report.Out {
+		t.Errorf("failure: ok=%v out=%q", report.OK, report.Out)
+	}
+	if 1 != len(report.Findings) {
+		t.Fatalf("findings: %+v", report.Findings)
+	}
+	f := report.Findings[0]
+	if "scalar_value" != f.Code || "conflict" != f.Class ||
+		"$" != f.Path || "error" != f.Severity {
+		t.Errorf("finding: %+v", f)
+	}
+	// THE HEADLINE ONLY: the frames under it are drawn for a person,
+	// and only the first line is held to parity between the ports.
+	if "[aontu/scalar_value]: Cannot unify values at path $.a" != f.Message {
+		t.Errorf("message: %q", f.Message)
+	}
+	if 0 != len(f.Sites) {
+		t.Errorf("sites: %+v", f.Sites)
+	}
+	if nil != f.Hint {
+		t.Errorf("the hint tables are not in cross-port parity: %q", *f.Hint)
+	}
+}
+
+// The stdin entry answers the same way, and the flag itself is checked.
+func TestRunBareFormatJSONOverStdin(t *testing.T) {
+	var out, errw bytes.Buffer
+	code := run([]string{"--format", "json"},
+		strings.NewReader("a: 1 & 2\n"), &out, &errw, false)
+	if 1 != code || !strings.Contains(out.String(), `"scalar_value"`) {
+		t.Fatalf("stdin: %d %q %q", code, out.String(), errw.String())
+	}
+
+	for _, args := range [][]string{
+		{"--format", "yaml"}, {"--format"},
+	} {
+		errw.Reset()
+		if code := run(args, strings.NewReader(""), &out, &errw, false); 2 != code ||
+			!strings.Contains(errw.String(), "--format needs text or json") {
+			t.Errorf("%v: %d %q", args, code, errw.String())
+		}
+	}
+}
+
+// A THROW THE ENGINE DID NOT COLLECT carries no code, and is reported
+// as the text alone rather than as an invented one. The path is
+// reachable only through the emitter, so it is driven there.
+func TestEmitJSONWithoutAFinding(t *testing.T) {
+	var out, errw bytes.Buffer
+	code := emit(aontu.New(), "a: 1 & 2\n", "json", "json", &out, &errw)
+	if 1 != code || !strings.Contains(out.String(), `"findings"`) {
+		t.Fatalf("emit: %d %q", code, out.String())
+	}
+	if 0 != len(evalFinding(errors.New("boom"))) {
+		t.Error("a foreign error should carry no finding")
+	}
+}
+
+// --- G11 phase 4: the vacuity signals ---
+
+// A VERB THAT DID NOTHING AND A VERB THAT SUCCEEDED ANSWERED THE SAME.
+// The signal is on STDERR, so no `--format json` stdout contract
+// changes and no exit code moves: what changes is that the caller is
+// told. The repository already ruled this for `trim` in G8 phase 6 --
+// doing something else silently is worse than refusing. The Go twin of
+// vacuity-signals-on-view-render-relations in ts/test/cli.test.ts.
+func TestVacuitySignals(t *testing.T) {
+	dir := t.TempDir()
+	plain := filepath.Join(dir, "plain.aon")
+	if err := os.WriteFile(plain, []byte("a: { b: 1 }\n"), 0o644); nil != err {
+		t.Fatal(err)
+	}
+
+	say := func(args ...string) (string, string, int) {
+		t.Helper()
+		var out, errw bytes.Buffer
+		code := run(args, strings.NewReader(""), &out, &errw, false)
+		return out.String(), errw.String(), code
+	}
+
+	// `pass` over NO declarations: the graph is not sound, it is
+	// unexamined.
+	out, errs, code := say("relations", plain)
+	if 0 != code || !strings.Contains(out, "verdict: pass") ||
+		!strings.Contains(errs, "declares no relations") {
+		t.Errorf("relations: %d %q %q", code, out, errs)
+	}
+
+	// A figure identical to what the same kind draws for `{}`.
+	out, errs, code = say("view", "graph", plain)
+	if 0 != code || !strings.Contains(out, "flowchart LR") ||
+		!strings.Contains(errs, "nothing to draw") {
+		t.Errorf("view: %d %q %q", code, out, errs)
+	}
+
+	// No profile, so no unit: the exit code is the one --stdout already
+	// had, and the reason is now said.
+	_, errs, _ = say("render", "--stdout", plain)
+	if !strings.Contains(errs, "nothing was rendered") ||
+		!strings.Contains(errs, "no profile was given") {
+		t.Errorf("render: %q", errs)
+	}
+
+	// AND THE NEGATIVE: a document that DOES declare says nothing.
+	graph := filepath.Join(dir, "graph.aon")
+	if err := os.WriteFile(graph,
+		[]byte("a: {dependsOn: rel() & acyclic() & [path($.b)]}\nb: {}\n"),
+		0o644); nil != err {
+		t.Fatal(err)
+	}
+	if _, errs, _ = say("relations", graph); strings.Contains(
+		errs, "declares no relations") {
+		t.Errorf("a declaring document was called vacuous: %q", errs)
+	}
+}

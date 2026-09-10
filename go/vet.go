@@ -152,6 +152,11 @@ type VetFinding struct {
 // VetReport is the whole answer: one verdict, and the findings behind
 // it (capped, with truncation declared rather than silent).
 type VetReport struct {
+	// Coverage is what the check actually EXAMINED (G11 phase 5).
+	// Absent unless the run asked for it, so no existing report
+	// changes shape. Declared first: the field order is LEXICOGRAPHIC
+	// by JSON name, the canonical emitter's order.
+	Coverage  *VetCoverage `json:"coverage,omitempty"`
 	Findings  []VetFinding `json:"findings"`
 	Truncated bool         `json:"truncated"`
 	Verdict   string       `json:"verdict"`
@@ -171,6 +176,17 @@ type VetOptions struct {
 	// command line refuses it too (`--max-errors 0` is a usage error in
 	// both ports).
 	MaxErrors int
+
+	// Coverage accounts for what the check examined (G11 phase 5). Off
+	// by default: the report gains a Coverage object only when this is
+	// set, so no existing caller's report changes shape.
+	Coverage bool
+	// CoverageAt measures under this path of the DATA only, instead of
+	// the whole document -- `render --coverage`'s --coverage-at, for
+	// the same reason: a caller gating one subtree should not be
+	// answered about the rest. Ignored unless Coverage is set.
+	CoverageAt string
+
 	SchemaURL string // provenance label for schema sites
 	DataURL   string // provenance label for data sites
 
@@ -891,6 +907,36 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		dataPath:   options.DataPath,
 	}
 
+	// COVERAGE IS MEASURED BEFORE THE MEET (G11 phase 5), because the
+	// meet CONSUMES its operands: parsed trees are single-use, and
+	// under --at the anchor itself is the left operand. Measuring after
+	// would read a tree the fixpoint had already rewritten.
+	//
+	// The data side is its own evaluation rather than the parse above,
+	// so a document that reaches its values through `@"..."` or a
+	// reference is measured on the paths it actually has. It is one
+	// more evaluation of one document, and it happens only when asked
+	// for. Mirrors ts/src/vet.ts.
+	var coverage *VetCoverage
+	if options.Coverage {
+		measured := dataVal
+		coverA := aontuForPathTrust(
+			options.DataPath, options.Trust, options.TextExt)
+		if parsed, cerr := coverA.Parse(dataSrc); nil == cerr {
+			coverCtx := &Ctx{root: parsed, src: dataSrc, collect: true}
+			settled := unifyRoot(parsed, coverCtx)
+			// A data document that does not stand alone is already
+			// reported by the meet below; here it falls back to what was
+			// parsed, which is the same paths minus whatever an include
+			// would have added.
+			if 0 == len(coverCtx.err) && !settled.Nil() {
+				measured = settled
+			}
+		}
+		got := vetCoverageOf(anchor, measured, options.CoverageAt)
+		coverage = &got
+	}
+
 	// `--closed` sets the flag close() itself sets, rather than wrapping
 	// the anchor in a close() call: the anchor is an already-evaluated
 	// tree, and a func value would have to resolve again to have any
@@ -1158,5 +1204,8 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		verdict = VetIncomplete
 	}
 
-	return VetReport{Verdict: verdict, Truncated: truncated, Findings: kept}
+	return VetReport{
+		Coverage: coverage, Verdict: verdict,
+		Truncated: truncated, Findings: kept,
+	}
 }

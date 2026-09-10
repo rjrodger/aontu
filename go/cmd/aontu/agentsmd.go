@@ -9,6 +9,7 @@ package main
 import (
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	aontu "github.com/aontu-lang/aontu/go"
@@ -24,6 +25,10 @@ func runAgentsMd(argv []string, stdout, stderr io.Writer) int {
 	var files []string
 	write := ""
 	sawWrite := false
+	// The SHAPE's depth (G11 phase 7). Default 2, unchanged: the stanza
+	// is spliced into a file people read, and a deeper shape is a
+	// question the caller asks rather than one it is handed.
+	depth := 2
 
 	for i := 0; i < len(argv); i++ {
 		arg := argv[i]
@@ -39,6 +44,17 @@ func runAgentsMd(argv []string, stdout, stderr io.Writer) int {
 			}
 			write = argv[i]
 			sawWrite = true
+		case "--depth" == arg:
+			i++
+			n := 0
+			if len(argv) > i {
+				n, _ = strconv.Atoi(argv[i])
+			}
+			if n < 1 {
+				io.WriteString(stderr, "aontu: --depth needs a positive integer\n")
+				return 2
+			}
+			depth = n
 		case strings.HasPrefix(arg, "-"):
 			io.WriteString(stderr,
 				"aontu: unknown agentsmd option "+arg+" (try --help)\n")
@@ -61,7 +77,7 @@ func runAgentsMd(argv []string, stdout, stderr io.Writer) int {
 	}
 
 	report := aontuForFileTrust(files[0], trust).AgentsMd(
-		string(src), &aontu.AgentsMdOptions{Name: files[0]})
+		string(src), &aontu.AgentsMdOptions{Depth: depth, Name: files[0]})
 	if !report.OK {
 		lines := make([]string, 0, len(report.Findings))
 		for _, f := range report.Findings {
