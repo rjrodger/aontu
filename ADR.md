@@ -3207,15 +3207,18 @@ and `.githooks/pre-push` (installed by `make hooks`) refuses the push
 locally before CI is spent on it. One implementation, three callers, so
 the local gate and the CI gate cannot disagree.
 
-Scope is first-party source: `ts/src`, `ts/test`, `ts/scripts`, `go`,
-`web/build` and `editors`. Generated sources (`ts/src/sigdecl.ts`,
+Scope is source in the implementation languages: every `.ts`, `.go` and
+`.rs` file in the repository — `ts/src`, `ts/test`, `go` and the editor
+extension today, and a Rust tree from the day one appears. Build and
+release tooling written in `.cjs`, `.mjs` or `.js` is not source in this
+sense and is out. Generated sources (`ts/src/sigdecl.ts`,
 `ts/src/helpdoc.ts`) and the committed build output (`ts/dist`,
-`ts/dist-test`) are out — their comments belong to their generators —
-as are the worked-example corpora (`use-cases/`, `test/system/`),
-which are fixtures written to be read as models rather than as code.
-License headers and tool directives (`//go:build`, `//go:embed`,
-`/* node:coverage ignore */`, `@ts-`, `eslint`) are not prose and are
-exempt.
+`ts/dist-test`) are out — their comments belong to their generators — as
+are the worked-example corpora (`use-cases/`, `test/system/`), whose
+`.ts` and `.go` files are fixtures compared byte for byte against what a
+generator writes. License headers and tool directives (`//go:build`,
+`//go:embed`, `/* node:coverage ignore */`, `@ts-`, `eslint`) are not
+prose and are exempt.
 
 | rule | fails when |
 |------|-----------|
@@ -3229,3 +3232,15 @@ exempt.
 | `stale-path` | a path that does not resolve |
 | `stale-symbol` | a backticked symbol the code does not define |
 | `stale-adr` | a decision number this register does not carry |
+
+### Amendment, 2026-09-10: the gate reads `.ts`, `.go` and `.rs`
+
+As first written the gate also read the repository's own tooling —
+`ts/scripts`, `web/build`, the editor plugin's build script — in `.cjs`,
+`.mjs` and `.js`. It no longer does. The rule is enforced on source in
+the implementation languages, wherever that source lives, which is how a
+Rust tree comes under it on the day it appears rather than by an edit
+here.
+
+The tooling files keep the prune they were given under the first scope.
+Nothing re-adds their prose, and nothing now checks it.

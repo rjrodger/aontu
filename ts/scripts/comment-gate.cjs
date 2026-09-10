@@ -6,19 +6,22 @@ const Path = require('node:path')
 
 const REPO = Path.join(__dirname, '..', '..')
 
-const SOURCE_ROOTS = [
-  { dir: 'ts/src', exts: ['.ts'] },
-  { dir: 'ts/test', exts: ['.ts'] },
-  { dir: 'ts/scripts', exts: ['.cjs', '.js'] },
-  { dir: 'go', exts: ['.go'] },
-  { dir: 'web/build', exts: ['.mjs', '.cjs', '.js'] },
-  { dir: 'editors', exts: ['.ts', '.js'] },
-]
+// The implementation languages, wherever their source lives. A Rust
+// tree is covered from the day it appears; build and release tooling
+// written in .cjs, .mjs or .js is not source in this sense.
+const SOURCE_EXTS = ['.ts', '.go', '.rs']
 
 // Written by a generator, checked byte-for-byte by its own suite.
 const GENERATED = new Set([
   'ts/src/sigdecl.ts',
   'ts/src/helpdoc.ts',
+])
+
+// Worked-example corpora: fixtures, and the generated ones are compared
+// byte for byte against what a generator writes.
+const FIXTURE_TREES = new Set([
+  'use-cases',
+  'test/system',
 ])
 
 const SKIP_DIRS = new Set([
@@ -73,15 +76,14 @@ const CODE_SHAPED_RE =
 const WORD_RE = /[A-Za-z_$][\w$]*/g
 
 
-function walk(dir, exts, out) {
-  const abs = Path.join(REPO, dir)
-  if (!Fs.existsSync(abs)) return out
+function walk(dir, out) {
+  const abs = '' === dir ? REPO : Path.join(REPO, dir)
   for (const entry of Fs.readdirSync(abs, { withFileTypes: true })) {
-    const rel = `${dir}/${entry.name}`
+    const rel = '' === dir ? entry.name : `${dir}/${entry.name}`
     if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) walk(rel, exts, out)
+      if (!SKIP_DIRS.has(entry.name) && !FIXTURE_TREES.has(rel)) walk(rel, out)
     }
-    else if (exts.some((e) => entry.name.endsWith(e)) && !GENERATED.has(rel)) {
+    else if (SOURCE_EXTS.some((e) => entry.name.endsWith(e)) && !GENERATED.has(rel)) {
       out.push(rel)
     }
   }
@@ -90,9 +92,7 @@ function walk(dir, exts, out) {
 
 
 function sourceFiles() {
-  const files = []
-  for (const root of SOURCE_ROOTS) walk(root.dir, root.exts, files)
-  return files.sort()
+  return walk('', []).sort()
 }
 
 
