@@ -1,7 +1,7 @@
 .PHONY: all build test clean build-ts build-go test-ts test-go clean-ts clean-go \
         install install-ts install-go \
         publish publish-go check-go-major tags-go reset cov cov-ts cov-go sig \
-        helpdoc prose
+        helpdoc prose comments hooks
 
 all: build test
 
@@ -36,6 +36,20 @@ install-go:
 	cd go && go install ./cmd/aontu ./cmd/aontu-lsp
 	@bin=$$(cd go && go env GOBIN); [ -n "$$bin" ] || bin=$$(cd go && go env GOPATH)/bin; \
 	  echo "install-go: aontu and aontu-lsp built into $$bin"
+
+# The code-comment gate (ADR-032). Reads ts/src, ts/test, ts/scripts,
+# go, web/build and editors; refuses narrative, requirements, stale
+# references and unverifiable claims. The same checker runs in
+# ts/test/comments.test.ts (so CI runs it on every push) and in
+# .githooks/pre-push.
+comments:
+	node ts/scripts/comment-gate.cjs
+
+# Point git at the hooks this repository ships: pre-push runs the
+# comment gate before the push leaves the machine.
+hooks:
+	git config core.hooksPath .githooks
+	@echo "hooks: core.hooksPath -> .githooks (undo: git config --unset core.hooksPath)"
 
 # The prose gate (see docs/STYLE-GUIDE.md). Vale over the reader-facing
 # pages, at the levels set in .vale.ini, on the same file list

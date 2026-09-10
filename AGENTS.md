@@ -121,6 +121,8 @@ make test       # test-ts  + test-go
 make            # build then test
 make install    # install-ts + install-go: this clone on PATH (npm link, go install)
 make prose      # the Vale prose gate (needs `vale` on PATH)
+make comments   # the code-comment gate (ADR-032)
+make hooks      # install .githooks: the comment gate runs before each push
 ```
 
 Per language:
@@ -143,9 +145,33 @@ config file for it, so the setting cannot be made from a pull request.
 `ts/src/tsconfig.json` carries `noUnusedLocals`, `noUnusedParameters`,
 `noImplicitReturns` and `noFallthroughCasesInSwitch`: an unused import
 or a routine that answers on only some paths fails the build rather
-than reaching an analyser. The test project is not gated the same way
-(`ts/test/val-pref.test.ts` holds a long commented-out region whose
-helper reads as dead).
+than reaching an analyser. The test project is not gated the same way.
+
+### Before you push
+
+Nothing in git refuses a push on its own, so the gates are these, in the
+order that fails fastest:
+
+```sh
+make comments   # ADR-032: the code-comment gate, about a second
+make build      # rebuilds ts/dist + ts/dist-test, sigdecl, helpdoc
+make test       # both suites
+make cov        # the ADR-002 floor, and what CI grades
+make prose      # only if docs/ or a README changed
+(cd use-cases && ./run-all.sh)
+```
+
+`make hooks` points git at [`.githooks/`](.githooks), whose `pre-push`
+runs the comment gate before the push leaves the machine. It is a
+convenience, not the enforcement: the gate that decides is
+`ts/test/comments.test.ts`, which runs inside `npm test` and therefore
+inside the TypeScript CI job on every push and pull request. A hook is
+skippable (`--no-verify`); CI is not.
+
+Two failures are worth naming because they are found in CI rather than
+locally: a `ts/dist`/`ts/dist-test` that was not rebuilt (the coverage
+job diffs the committed build against a fresh one), and a use case
+broken by a language change (`use-cases/run-all.sh`).
 
 ## The shared test suite
 
@@ -501,6 +527,27 @@ user-facing rules are in
 [`docs/reference-language.md`](docs/reference-language.md#the-four-numeric-leaves).
 
 ## Conventions
+
+### Comments are for the surprising code, and nothing else
+
+[ADR-032](ADR.md#adr-032--code-comments-are-sparse-and-terse-intent-lives-in-names-requirements-live-in-documents)
+is the rule and `make comments` is the gate. A comment exists only
+where the code is intricate or its correct form is surprising; it runs
+to a line or two rather than a paragraph; semantic intent is carried by
+the identifier name instead; and business logic and requirements are
+carried by a document instead. When a comment fails one of those
+tests, deletion is the default move, not rewriting.
+
+The gate is not only about form. Its accuracy rules refuse a comment
+naming a path, a symbol or a decision number that does not resolve, and
+refuse the claims a reader cannot check from the tree — issue numbers,
+dates, versions and counts. A comment that has gone stale fails the
+build, which is what keeps the surviving prose true.
+
+What a comment used to carry has homes: `docs/design/` for the why
+behind a settled decision, [`ADR.md`](ADR.md) for a fundamental, the
+commit message for how the work went, and `git log -L` / `git blame`
+for reading any of it back.
 
 ### A document describes the thing, not the session that built it
 
