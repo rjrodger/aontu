@@ -12,17 +12,13 @@ const TOP = (0, top_1.top)();
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
-// const V = (x: any) => console.dir(x, { depth: null })
 (0, node_test_1.describe)('val-conjunct', function () {
     (0, node_test_1.test)('basic', () => {
         let g0 = G('1&number');
-        // console.log(g0)
         (0, expect_1.expect)(g0).equal(1);
         let g1 = G('{a:1}&{b:2}&{c:3}');
-        // console.log(g0)
         (0, expect_1.expect)(g1).equal({ a: 1, b: 2, c: 3 });
     });
     (0, node_test_1.test)('ref', () => {
@@ -45,9 +41,6 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
             .equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}|{"q":4,"x":1}|{"q":4,"y":2}}');
         let u2 = UC('a:*1|number,a:*2|number');
         (0, expect_1.expect)(u2).equal('{"a":*2|*1|number}');
-        // TODO: fix syntax (*)
-        // let u3 = UC('(*1|number) & (*2|number)')
-        // expect(u3).equal('2|1|number')
         let u4 = UC('(number|*1) & (number|*2)');
         (0, expect_1.expect)(u4).equal('number|*1|*2');
     });
@@ -79,7 +72,6 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
     });
     (0, node_test_1.test)('clone', () => {
         let v0 = P('{x:1}&{y:2}&{z:3}');
-        // console.log(v0.canon)
         (0, expect_1.expect)(v0.canon).equal('({"x":1}&{"y":2})&{"z":3}');
         let ctx = makeCtx(v0);
         let v0c = v0.clone(ctx);

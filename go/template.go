@@ -4,41 +4,7 @@ package aontu
 
 import "strings"
 
-// THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md; RENDER.0.md P8),
-// the Go twin of ts/src/template.ts. A generator written in the
-// TARGET's own syntax: a marked line is aontu source, and every other
-// line is a line of output.
-//
-//	//- code: units: [{ path: "hi.ts", lang: "typescript", decls: [{
-//	//-   k: "frag", of: emit($.svc, { match: { n: string }, body: [
-//	export const NAME = "world"
-//	//- ]}) }] }]
-//
-// That is the whole desugaring, and it is LINE-ORIENTED: nothing here
-// parses aontu, and nothing here reads the target's syntax beyond its
-// comment token. A marker line contributes its text to the document;
-// an unmarked line contributes one quoted string, which is a body
-// element where the marker lines left a list open.
-//
-// A MARKER IS RECOGNISED AFTER LEADING WHITESPACE, AND THE INDENTATION
-// THE RESUGARING WRITES IS THE AONTU'S (D2, amended 2026-09-07). An
-// output line is verbatim, which is what lets a template be written
-// exactly where its output appears (D7); the marker stands at the left
-// margin with the aontu indented AFTER it, so the tree the marker lines
-// carry has a shape on the page. Reading is unchanged: a marker after
-// leading whitespace is a marker, and its own indentation counts toward
-// the aontu it carries.
-//
-// THE SUGAR IS THE FIXPOINT OF THE TWO TRANSFORMS (D6): a canonical
-// line that looks like a body element is rebuilt as a target line, the
-// rebuild is desugared, and the rebuild is taken ONLY if that
-// reproduces the canonical line. A line no target line can carry --
-// one that would itself read as a marker -- fails that test and stays
-// where it is, so there is no table of escapes to get wrong.
 
-// templateMarkers is a marker per file extension: a comment token plus
-// a dash. Any other language passes its own, which is why the surface
-// needs no table of languages.
 var templateMarkers = map[string]string{
 	"c":     "//-",
 	"cc":    "//-",
@@ -98,12 +64,6 @@ func templateIsBlock(marker string) bool {
 	return strings.HasPrefix(marker, "/*")
 }
 
-// INDENTATION IS SPACES AND TABS, and nothing else. A host trim is not
-// the same set in the two ports -- JavaScript's trims every Unicode
-// space, Go's TrimSpace trims a different list -- and a line of a
-// template file that began with one of the characters they disagree
-// about would be a marker line in one engine and a line of output in
-// the other. Twin of indentOf in ts/src/template.ts.
 func templateIndent(line string) int {
 	i := 0
 	for i < len(line) && (' ' == line[i] || '\t' == line[i]) {
@@ -143,12 +103,6 @@ func templateRead(line string, marker string) templateLine {
 		return templateLine{marker: false, indent: "", text: line}
 	}
 	body := rest[len(marker):]
-	// The block form's closer is part of the marker, not of the aontu.
-	// A block marker line that never closes is not a marker line: the
-	// language's own parser would not read it as a comment either.
-	// Only the TRAILING space goes: what stands between the opener and
-	// the aontu is the aontu's indentation, exactly as it is for a line
-	// marker, and the one-space rule below takes the marker's own.
 	if templateIsBlock(marker) {
 		end := strings.LastIndex(body, templateBlockClose)
 		if 0 > end {
@@ -156,23 +110,10 @@ func templateRead(line string, marker string) templateLine {
 		}
 		body = templateTrimEnd(body[:end])
 	}
-	// ONE SPACE AFTER THE MARKER IS THE MARKER'S, so `//- x: 1` carries
-	// `x: 1` and the resugaring writes the space back. A marker written
-	// without it carries the same aontu and is normalised on the round
-	// trip, which --check reports as the drift it is.
 	body = strings.TrimPrefix(body, " ")
 	return templateLine{marker: true, indent: indent, text: body}
 }
 
-// templateQuote is THE CANONICAL QUOTE, CHOSEN PER LINE (D6). A
-// backtick string carries `"` and `'` unescaped, which is most of what
-// target code holds, so a line takes one unless it holds a backtick
-// itself.
-//
-// A BACKSLASH IS ESCAPED IN EITHER QUOTE, and that is not what the
-// design note assumed: this engine reads the escapes of a backtick
-// string exactly as it reads a quoted one, and an unknown escape drops
-// its backslash (`\p` is `p`). Only the delimiter differs.
 func templateQuote(text string) string {
 	escaped := strings.ReplaceAll(text, "\\", "\\\\")
 	if strings.Contains(text, "`") {
@@ -181,11 +122,6 @@ func templateQuote(text string) string {
 	return "`" + escaped + "`"
 }
 
-// templateUnquote is the line a quoted body element carries, and false
-// when the line is not one: anything but a lone string literal, and any
-// escape the quoting above does not write. The fixpoint test is what
-// makes being conservative here safe -- a line this refuses stays
-// aontu.
 func templateUnquote(text string) (string, bool) {
 	t := templateTrim(text)
 	if 2 > len(t) {
@@ -220,10 +156,6 @@ func templateUnquote(text string) (string, bool) {
 	return out.String(), true
 }
 
-// templateSplit answers a file's lines and whether it ended with a
-// newline. A trailing newline is the file's, not a line of output: a
-// text file ends with one, and the round trip must not grow an empty
-// output line each pass.
 func templateSplit(src string) ([]string, bool) {
 	lines := strings.Split(src, "\n")
 	tail := 1 < len(lines) && "" == lines[len(lines)-1]
@@ -241,10 +173,6 @@ func templateJoin(lines []string, tail bool) string {
 	return out
 }
 
-// DesugarTemplate turns a template file into the canonical aontu
-// document. A marker line is its own text, at its own indentation;
-// every other line is one quoted string, which lands wherever the
-// marker lines left a list open.
 func DesugarTemplate(src string, marker string) string {
 	if "" == marker {
 		marker = DefaultMarker
@@ -273,12 +201,6 @@ func ResugarTemplate(src string, marker string) string {
 	lines, tail := templateSplit(src)
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {
-		// THE ELEMENT'S OWN INDENTATION IS NOT PART OF IT: the target
-		// line is the string's content, and where the canonical form
-		// puts the element on the page is the formatter's business.
-		// Comparing the whole line instead would refuse every body
-		// element of a document `aontu fmt` had indented, which is
-		// every document it has seen.
 		if target, ok := templateUnquote(line); ok &&
 			DesugarTemplate(target, marker) == templateTrim(line) {
 			out = append(out, target)
@@ -302,17 +224,6 @@ func ResugarTemplate(src string, marker string) string {
 	return templateJoin(out, tail)
 }
 
-// TemplateOutputs is WHICH LINES OF THE DESUGARED DOCUMENT ARE THE
-// TARGET'S. The desugaring is line for line, so this is one flag per
-// line of what DesugarTemplate returns: true where the template's line
-// was not a marker, and so where the document's line is one quoted line
-// of the generated file.
-//
-// `aontu fmt` reads it (FMT.0.md §3.14) to hold those lines on lines of
-// their own. A body element is a string like any other, and the packing
-// budget would put three of them on one line -- which is aontu where
-// three lines of output were, and a generator that writes them as one.
-// Twin of templateOutputs in ts/src/template.ts.
 func TemplateOutputs(src string, marker string) []bool {
 	lines, _ := templateSplit(src)
 	out := make([]bool, len(lines))

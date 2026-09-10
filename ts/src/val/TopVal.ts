@@ -38,7 +38,6 @@ class TopVal extends Val {
   }
 
   same(peer: Val): boolean {
-    // return this === peer
     return peer.isTop
   }
 

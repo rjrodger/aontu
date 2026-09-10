@@ -1,9 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Coverage round 3: direct unit tests for internal paths no source
-// input reaches (see docs/test-coverage.md for the spec-first method
-// and the ruling on which paths get per-port tests). Round 1–2 tests
-// live in coverage_test.go.
 
 package aontu
 
@@ -70,11 +66,6 @@ func TestCheckWalkersDirect(t *testing.T) {
 	if valKind(cj) != "conjunct" {
 		t.Fatalf("conjunct kind")
 	}
-	// A junction that survives evaluation is always a FOLD's mint, and a
-	// mint carries no position (disjunct.go), so collectSpans never
-	// reaches this label through a real document — the hover path it
-	// serves would still use it for a constructed tree, and TS's
-	// valKind keeps the same arm.
 	if valKind(newDisjunct(nil)) != "disjunct" {
 		t.Fatalf("disjunct kind")
 	}
@@ -112,15 +103,6 @@ func TestRefInternalsDirect(t *testing.T) {
 		t.Fatalf("ref superior")
 	}
 
-	// append: A SCALAR SEGMENT IS ITS SOURCE TEXT AND NOTHING ELSE, so
-	// one with no literal behind it is the EMPTY segment -- matching no
-	// key and no index, which is a miss rather than a wrong location.
-	// These four used to render computed (7, 2/5, 9, 1/5); the integer
-	// arm is how `$.a.-0` addressed element 0, the negation having
-	// consumed the spelling (#67). TS pushes `part.src` with no
-	// fallback (RefVal.append), and the float and bigdecimal arms split
-	// that text on its point, so an empty one splits to one empty
-	// segment.
 	rv := &RefVal{}
 	rv.append(&ScalarVal{kind: KindInteger, peg: int64(7)})
 	rv.append(&ScalarVal{kind: KindFloat, peg: 2.5})
@@ -244,13 +226,6 @@ func TestRefInternalsDirect(t *testing.T) {
 	}
 }
 
-// FuncVal: silent Gen, nil peers while key() residuates and the
-// pending-args defer, and the walkPref conjunct arm.
-// G8 phase 3 — the hole's own contracts, at the arms no document
-// reaches. Gen is silent (the enclosing bag decides that an unfilled
-// hole is an error, exactly as it does for TOP), and superior answers
-// itself because nothing sits above a value that admits everything.
-// The TypeScript twin is coverage3.test.ts, `a-hole-has-nothing-above-it`.
 func TestPlaceArmsDirect(t *testing.T) {
 	p := newPlace()
 	if g, err := p.Gen(&Ctx{}); nil != g || nil != err {
@@ -264,10 +239,6 @@ func TestPlaceArmsDirect(t *testing.T) {
 func TestFuncArmsDirect(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	f := newFunc("key", nil)
-	// AN UNRESOLVED CALL REFUSES AT GENERATION (#61), as TS's
-	// FeatureVal.gen does for every FuncBaseVal: this arm used to
-	// return a silent nil, which at the document root generated
-	// `null` — a value nobody wrote.
 	g, err := f.Gen(nil)
 	if g != nil || err == nil {
 		t.Fatalf("func Gen must refuse an unresolved call: %v %v", g, err)
@@ -398,7 +369,6 @@ func TestValPlumbingLeftovers(t *testing.T) {
 	}
 }
 
-// An empty conjunct unifies to TOP.
 func TestConjunctEmptyDirect(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	if out := newConjunct([]Val{}).Unify(top(), ctx); !isTop(out) {
@@ -406,8 +376,6 @@ func TestConjunctEmptyDirect(t *testing.T) {
 	}
 }
 
-// Decimal: the scale half of the exactness budget, and cmp's
-// scale-alignment branch.
 func TestDecimalBudgetAndCmp(t *testing.T) {
 	if !(&Decimal{coeff: big.NewInt(1), scale: decimalMaxScale + 1}).overBudget() {
 		t.Fatalf("over-scale must be over budget")
@@ -415,8 +383,8 @@ func TestDecimalBudgetAndCmp(t *testing.T) {
 	if !(&Decimal{coeff: big.NewInt(1), scale: -decimalMaxScale - 1}).overBudget() {
 		t.Fatalf("under-scale must be over budget")
 	}
-	a := newDecimal(big.NewInt(15), 1)  // 1.5
-	b := newDecimal(big.NewInt(125), 2) // 1.25
+	a := newDecimal(big.NewInt(15), 1)
+	b := newDecimal(big.NewInt(125), 2)
 	if a.cmp(b) <= 0 {
 		t.Fatalf("1.5 must compare above 1.25")
 	}
@@ -438,18 +406,13 @@ func TestPrefRankArms(t *testing.T) {
 	if p.Unify(nil, ctx) != Val(p) {
 		t.Fatalf("pref against nil peer")
 	}
-	lo := newPref(newInteger(3))          // rank 0
-	hi := newPref(newPref(newInteger(2))) // rank 1
+	lo := newPref(newInteger(3))
+	hi := newPref(newPref(newInteger(2)))
 	if lo.Unify(hi, ctx) != Val(lo) {
 		t.Fatalf("lower rank must supersede")
 	}
 }
 
-// PrefVal.superior answers top for the Val interface. Nothing reaches
-// it through a document any more: resuper (the rank-uniform meet,
-// ADR-004) unwraps nested prefs to the innermost non-pref peg instead
-// of asking the pref itself, so the interface contract is pinned here
-// (ADR-002).
 func TestPrefSuperiorIsTop(t *testing.T) {
 	p := newPref(newInteger(1))
 	if !isTop(p.superior()) {
@@ -457,12 +420,6 @@ func TestPrefSuperiorIsTop(t *testing.T) {
 	}
 }
 
-// The admission gate's defensive pref-sibling skip (ADR-004): a pref
-// member cannot admit another pref's override. rankPrefs leaves a
-// settled disjunct at most one pref, so a document cannot reach a
-// two-pref gate -- the arm is pinned here (ADR-002) with prefsRanked
-// forced, and the meet is the `empty` refusal because neither
-// preferred value admits the peer.
 func TestDisjunctGateSkipsPrefSibling(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	d := newDisjunct([]Val{newPref(newString("z")), newPref(newString("x"))})
@@ -474,13 +431,6 @@ func TestDisjunctGateSkipsPrefSibling(t *testing.T) {
 	}
 }
 
-// A SINGLE-MEMBER DISJUNCTION GENERATES THAT MEMBER (ADR-007). Unify
-// returns the sole survivor directly rather than re-wrapping it, so a
-// document cannot reach Gen holding a one-member disjunct -- but the
-// type allows one, a library caller can build one, and the alternative
-// to answering its member is refusing a disjunction that is not
-// ambiguous at all. Pinned here (ADR-002) because no source spells it.
-// Twin: the same arm of DisjunctVal.gen in ts/src/val/DisjunctVal.ts.
 func TestDisjunctSingleMemberGenerates(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	d := newDisjunct([]Val{newInteger(7)})
@@ -516,7 +466,6 @@ func TestCtxAdderrDedup(t *testing.T) {
 	}
 }
 
-// An empty code classifies as its eventual gen-time code, nil_gen.
 func TestCodeClassEmpty(t *testing.T) {
 	if codeClass("") != codeClass("nil_gen") {
 		t.Fatalf("empty code must classify as nil_gen")
@@ -762,14 +711,6 @@ func TestGrammarActionsDirect(t *testing.T) {
 		t.Fatalf("bool leaf")
 	}
 
-	// trackOrder: the own-node map fallback, the elided spread value,
-	// and the no-map bail.
-	//
-	// An elided spread MARKS the map rather than storing nothing (issue
-	// #48): a spread is not a child, so there is no slot a refusal could
-	// occupy, and the map itself becomes the refusal when it is
-	// converted. Storing nothing is what used to let `x:&:` generate as
-	// `{}` with the mistake gone.
 	m2 := map[string]any{}
 	r6 := &jsonic.Rule{Node: m2, Child: &jsonic.Rule{}}
 	r6.EnsureU()["spread"] = true
@@ -810,8 +751,6 @@ func TestSnipAndEvaluateDirect(t *testing.T) {
 	}
 }
 
-// Round-3 stragglers: the based-literal arm of the lossy-literal rule,
-// and the path-func walk through a non-path func's arguments.
 func TestRound3Stragglers(t *testing.T) {
 	if isLossyIntegerLiteral("0b101") {
 		t.Fatalf("0b101 is exact")
@@ -857,11 +796,6 @@ func TestLexMatcherGuards(t *testing.T) {
 	}
 }
 
-// listIndex is the canonical-decimal grammar a path segment must match
-// to be a list index — the rule references and `vet --at` share, and
-// the rule the canonical port gets for free from JavaScript array
-// indexing. `strconv.Atoi` had been standing in for it, and accepted a
-// sign and leading zeros.
 func TestListIndexIsCanonicalDecimal(t *testing.T) {
 	for _, ok := range []struct {
 		part string

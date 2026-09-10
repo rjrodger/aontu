@@ -1,20 +1,6 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-// EVERY NODE BUILTIN IS IMPORTED AS `node:<name>`, never bare.
-//
-// The two spellings are the same module to Node and NOT the same
-// specifier to a bundler. `src/view.ts` imported bare `'path'` — the
-// only file in the tree that did — and the engine went on working
-// everywhere Node resolves it, so nothing here noticed. What noticed
-// was aontu-lang/web: its playground bundles the engine for the
-// browser with esbuild, aliasing `node:path`, `node:fs`, `node:crypto`
-// and `node:util` to shims, and a bare `'path'` misses every alias.
-// The site's build failed with `Could not resolve "path"` on the first
-// release that shipped the view verb.
-//
-// A downstream build failure is a poor detector for a one-word typo,
-// so the rule is asserted here instead: the tree has one spelling.
 const node_test_1 = require("node:test");
 const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");

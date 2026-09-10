@@ -2,11 +2,6 @@
 
 package aontu
 
-// What the two ports must AGREE on about the tree view -- the rendered
-// text and the refusals -- is test/spec/view.tsv. This file holds the
-// arms that are this port's own: the parse-failure path `parseEntry`
-// gives Go, which collect mode gives TypeScript on the context instead,
-// and the nil-root-with-no-error fallback.
 
 import (
 	"os"
@@ -52,10 +47,6 @@ func TestViewTreeOfNoEdgesIsAnEmptyFigure(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------
-// The kinds beyond the tree: what the shared rows cannot reach from an
-// inline source -- files, includes, and a verdict matrix the checker
-// cannot be made to produce.
 
 func viewTempDoc(t *testing.T, dir, name, src string) string {
 	t.Helper()
@@ -119,9 +110,6 @@ func TestViewOverIncludedFiles(t *testing.T) {
 	if "rendered" != ladder.Verdict {
 		t.Fatalf("ladder = %+v", ladder)
 	}
-	// The rank-1 rung first; then the rank-0 rungs by file -- the FULL
-	// path, so `<dir>/entry.aon` before `<dir>/lib/base.aon` -- and,
-	// within entry.aon's one row, by column.
 	want := "c0[\"**1<br/>pref | base.aon:1:8\"]\n  c1[\"*2<br/>pref | entry.aon:2:8\"]\n" +
 		"  c2[\"integer<br/>literal | entry.aon:2:13\"]\n  c3[\"integer<br/>literal | base.aon:1:14\"]"
 	if !strings.Contains(*ladder.Text, want) {
@@ -139,10 +127,6 @@ func TestViewOverIncludedFiles(t *testing.T) {
 	}
 }
 
-// THE PROVENANCE RECORD CAN NAME A PATH THE DOCUMENT DOES NOT HAVE
-// (use-cases/BUGS.md 70): a spread template's own child is met under
-// each key it is spread over. The panel shows the document's paths
-// only.
 func TestViewLayersSkipsPathsTheDocumentLacks(t *testing.T) {
 	src := "a: {b: 1}\n"
 	a := New()
@@ -163,10 +147,6 @@ func TestViewLayersSkipsPathsTheDocumentLacks(t *testing.T) {
 	}
 }
 
-// A VERDICT MATRIX THE CHECKER CANNOT BE MADE TO PRODUCE: a chain the
-// closure implies but the checker measured as does_not_subsume is
-// reported as order_intransitive rather than absorbed, and a class
-// label with a line terminator is refused.
 func TestViewPosetInjectedVerdicts(t *testing.T) {
 	docs := []viewPosetDoc{{src: "a", label: "a"}, {src: "b", label: "b"}, {src: "c", label: "c"}}
 	compare := func(g, s viewPosetDoc) (string, string) {
@@ -210,10 +190,6 @@ func TestViewDefaultProfile(t *testing.T) {
 	}
 }
 
-// A LIST IS WALKED BY INDEX, and its elements are children of the
-// shape exactly as a map's values are. The shared rows draw a list at
-// the depth bound (where it is counted, not descended); this descends
-// into one, which is the arm that reads the elements themselves.
 func TestViewDocWalksAList(t *testing.T) {
 	a := New()
 	root, _, errs0 := a.viewLoad(`a: [1, {b: "x"}]`, nil)

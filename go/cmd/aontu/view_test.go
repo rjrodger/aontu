@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the view cases in ts/test/cli.test.ts. What the two
-// ports must AGREE on (the rendered text and the refusals) is pinned by
-// test/spec/view.tsv and by use-case 16's goldens; what each port owns
-// (argument handling, exit codes, rendering) is here.
 
 import (
 	"bytes"
@@ -173,9 +169,6 @@ func TestViewUsageErrors(t *testing.T) {
 	}
 }
 
-// EVERY KIND THROUGH THE VERB, and the flags around the figure: --out,
-// --check, --strict, the loss report on stderr. What each figure LOOKS
-// like is test/spec/view.tsv's business; this is the plumbing.
 func TestViewKindsAndTheFlagsAroundTheFigure(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "doc.aon")
@@ -268,11 +261,6 @@ func TestViewKindsAndTheFlagsAroundTheFigure(t *testing.T) {
 	}
 }
 
-// THE VIEW DOCUMENT: N figures of one document, declared as data. What
-// the declarations MEAN, and every refusal, is test/spec/views.tsv;
-// this is the CLI around them -- where the files land, the gate, and
-// the all-or-nothing rule. The TypeScript twin is
-// `view-document-draws-every-figure-it-declares` in ts/test/cli.test.ts.
 func TestViewDocumentDrawsEveryFigureItDeclares(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, src string) string {
@@ -474,14 +462,6 @@ func TestViewStyleAutoReadsStdout(t *testing.T) {
 		t.Fatalf("an explicit style = %q", got)
 	}
 
-	// /dev/null IS NOT A TERMINAL, though it is a character device --
-	// and that distinction is the whole of this test. `auto` here must
-	// resolve to plain text, because the bytes are going somewhere no
-	// escape can reach a reader: `aontu view ... --out golden.txt
-	// --check model.aon >/dev/null` is a CI script, and comparing a
-	// plain golden against coloured bytes made it exit 1 in this port
-	// only. This assertion used to require "ansi", which pinned the
-	// defect rather than the rule.
 	dev, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if nil != err {
 		t.Fatal(err)

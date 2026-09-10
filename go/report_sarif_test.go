@@ -2,12 +2,6 @@
 
 package aontu
 
-// The SARIF renderer (G2 phase 5, report_sarif.go): the Go twin of
-// ts/test/sarif.test.ts. The shape contract is the shared golden in
-// test/spec/files/vet-sarif/, held to byte parity with the canonical
-// port after the two redactions the golden's README specifies; the
-// severity mapping and the no-position branch are pinned on synthetic
-// reports, because no engine path emits them yet.
 
 import (
 	"bytes"
@@ -18,9 +12,6 @@ import (
 	"testing"
 )
 
-// sarifRedact applies the golden's redactions to rendered output:
-// message text and producer version are the two things deliberately
-// not in cross-port parity.
 func sarifRedact(t *testing.T, sarif string) string {
 	t.Helper()
 	var log map[string]any
@@ -71,11 +62,6 @@ func TestSarifGolden(t *testing.T) {
 	report := Vet(string(schema), string(data),
 		&VetOptions{SchemaURL: "schema.aon", DataURL: "data.aon"})
 	got := sarifRedact(t, SarifReport(report, "x"))
-	// Normalised on read: the golden is compared BYTE FOR BYTE against a
-	// generated string that always uses \n, so a CRLF checkout could
-	// never match. .gitattributes pins test/spec/files/** to LF, and
-	// this is the half that holds when the file did not come from a
-	// checkout. The twin is sarif.test.ts in the canonical port.
 	want := strings.ReplaceAll(
 		strings.ReplaceAll(string(expect), "\r\n", "\n"), "\r", "\n")
 	if want != got {

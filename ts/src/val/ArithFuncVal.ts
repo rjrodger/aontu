@@ -15,17 +15,6 @@ import { arith } from './arith'
 import type { ArithOp } from './arith'
 
 
-// ONE CLASS FOR SIX FUNCTIONS, because every rule they obey is a rule
-// about arithmetic rather than about any one operation (see arith.ts).
-// Six near-identical classes would be six places for the exact ladder,
-// the zero divisor and the storage contract to drift apart, and the
-// number tower's whole point is that they cannot.
-//
-// The op is carried on the instance and answered by `funcname()`, which
-// is what canon renders and what an error names. The six one-line
-// subclasses below exist only because the parser's registry constructs
-// with `new funcval({peg: args})` and has nowhere to put a name; every
-// line of behaviour is here.
 class ArithFuncVal extends FuncBaseVal {
   isArithFunc = true
 
@@ -60,18 +49,9 @@ class ArithFuncVal extends FuncBaseVal {
   }
 
 
-  // NO superior() OVERRIDE, deliberately. An arithmetic call could only
-  // advertise a kind once both its operands were concrete scalars -- and
-  // at that point it has RESOLVED, so what `super()` sees is the result,
-  // whose own superior is already the right answer:
-  // `super(mul(2,3))` is `integer` and `super(mul(2,1.5))` is `float`,
-  // through the value rather than through a promise about it. The
-  // override was written and then removed as unreachable; the same is
-  // true of FuncVal.superior in the Go port.
 }
 
 
-// The six the registry names. Each is its operation and nothing else.
 class AddFuncVal extends ArithFuncVal {
   constructor(spec: ValSpec, ctx?: AontuContext) { super(spec, ctx, 'add') }
 }

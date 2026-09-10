@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE QUERY SURFACE (G7 phase 2, the Go side of ts/src/cli.ts): one
-// node of an evaluated document, selected by path and rendered.
-// Evaluation is still GLOBAL — what `get` buys is the size of the
-// ANSWER, not the cost of producing it — and the projections are
-// lattice abstractions, each a valid Aontu document that subsumes the
-// truth it summarises.
 
 package main
 

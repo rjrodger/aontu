@@ -4,11 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// The extension table of the template surface. The two TRANSFORMS are
-// pinned by test/spec/template.tsv, which both runners execute; this is
-// the one piece of the surface a spec row cannot reach, because the
-// mode is handed a marker rather than a file name. Twin of
-// TestMarkerFor in go/template_test.go.
 const node_test_1 = require("node:test");
 const node_assert_1 = __importDefault(require("node:assert"));
 const template_1 = require("../dist/template");
@@ -25,14 +20,8 @@ const template_1 = require("../dist/template");
             // THE EXTENSION IS CASE-INSENSITIVE: a file from a case-folding
             // filesystem is the same generator.
             ['GEN.TS', '//-'],
-            // NO EXTENSION AT ALL takes the default rather than no marker:
-            // `Makefile` and `Dockerfile` are ordinary generators, and the
-            // table is a convenience over a default rather than the thing
-            // that decides a file is a template.
             ['Makefile', '//-'],
             ['gen', '//-'],
-            // A DOT IN A DIRECTORY IS NOT AN EXTENSION, or `v1.2/gen` would
-            // be read as a `2/gen` file.
             ['v1.2/gen', '//-'],
             ['win\\v1.2\\gen', '//-'],
             // An extension the table does not know: the caller passes its own

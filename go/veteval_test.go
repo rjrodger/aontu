@@ -2,14 +2,6 @@
 
 package aontu
 
-// THE vet ≡ eval INVARIANT (ADR-007, use-cases/REVIEW.md finding C).
-// The Go twin of ts/test/veteval.test.ts, reading the same rows; the
-// full rationale is there. The short of it: for every schema S and
-// data D, vet(S, D) and eval(S u D) must AGREE ON ACCEPT/REJECT. Their
-// reports legitimately differ, but a document the gate accepts must
-// evaluate and one it refuses must not. The review found five ways
-// they disagreed, every one of which passed a green suite, because
-// nothing anywhere asserted the pair.
 
 import (
 	"encoding/json"
@@ -23,13 +15,6 @@ type vetEvalRow struct {
 	file, name, schema, data string
 }
 
-// loadVetEvalRows reads the shared spec's `vet` rows, keeping the ones
-// with a single-document analogue. `at` anchors a SUBTREE and `closed`
-// seals the anchor, and neither is anything one document spells --
-// they are options that change the TRUTH, so a union of the two texts
-// is a different question. `partial` deliberately calls residue
-// acceptable, which eval never does, and `maxErrors` changes the
-// report rather than the verdict's meaning.
 func loadVetEvalRows(t *testing.T) []vetEvalRow {
 	t.Helper()
 	specDir := filepath.Join("..", "test", "spec")
@@ -87,21 +72,6 @@ func loadVetEvalRows(t *testing.T) []vetEvalRow {
 	return rows
 }
 
-// vetEvalUnion is S u D as ONE document, or "" when the pair has no
-// single-document spelling.
-//
-// The usual case is two documents written as KEY STATEMENTS, and there
-// concatenating the texts IS the union: a key stated twice is the
-// meet, which is exactly what vet computes across the pair. It also
-// keeps absolute references ($.a) pointing where they point, which
-// matters -- those are the rows that catch a schema settling before
-// the data arrives.
-//
-// A rootless value -- a braced/bracketed literal, a bare scalar -- has
-// no keys to merge, and pasting {"a":1} after a statement is a syntax
-// error rather than a meet. Those are met under a shared key instead.
-// That reparents everything, so a source carrying an absolute
-// reference has no honest wrapped form and the row is skipped.
 func vetEvalUnion(schema, data string) string {
 	if vetEvalStatements(schema) && vetEvalStatements(data) {
 		return schema + "\n" + data + "\n"

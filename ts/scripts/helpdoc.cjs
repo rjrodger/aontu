@@ -1,26 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Regenerate the build-time-inlined TEACHING PACK — the corpus
-// `aontu help <topic>` serves (G11 phase 1): ts/src/helpdoc.ts and
-// go/cmd/aontu/helpdoc/*.md, both byte-derived from docs/skill/*.md
-// and grammar/aontu.abnf. Run via `make helpdoc`, which `make
-// build-ts` runs for you; both suites assert the copies are identical
-// with the sources, so a stale copy fails loudly.
-//
-// WHY A COMMITTED COPY RATHER THAN A READ AT RUN TIME. The whole
-// point of the phase is an agent holding a binary and nothing else:
-// a path lookup into a repository that is not there serves nobody.
-// `ts/scripts/prepack.js` already stages docs/skill/ into the npm
-// tarball, but a tarball is not the Go story and `node_modules/aontu/
-// skill/` is not a place anything looks. Embedding is the delivery.
-//
-// AND WHY GENERATED RATHER THAN WRITTEN TWICE. `//go:embed` cannot
-// read above its own package directory, so the Go half MUST be a
-// copy inside go/cmd/aontu/ — there is no other mechanism. Given one
-// copy is forced, the choice is between one generated copy asserted
-// byte-identical and two hand-maintained ones that drift. This is
-// the sigdecl precedent (test/spec/signature.tsv -> go/sigdecl.txt +
-// ts/src/sigdecl.ts), applied to prose.
 
 const fs = require('fs')
 const path = require('path')
@@ -59,15 +38,6 @@ const TOPICS = [
 ]
 
 
-// THE INIT TRIO (G11 phase 6): the known-good starting document
-// `aontu init` writes. Staged the same way and for the same reason --
-// both ports must write the same bytes, and the files are real,
-// runnable, and tested where they live (ts/test/helpdoc.test.ts runs
-// docs/skill/init/check.sh over them).
-//
-// `mode` is the file mode `init` creates each with: check.sh is a
-// script and a scaffold that has to be chmod'ed before it runs is a
-// scaffold with a step missing.
 const INIT = [
   { file: 'docs/skill/init/model.aon', name: 'model.aon', mode: 0o644 },
   { file: 'docs/skill/init/data.aon', name: 'data.aon', mode: 0o644 },
@@ -75,10 +45,6 @@ const INIT = [
 ]
 
 
-// LINE ENDINGS ARE THE CHECKOUT'S BUSINESS, the rule every other gate
-// in this repository states: .gitattributes pins .md to LF, and this
-// normalises what did not come from a checkout so the byte-identity
-// assertions compare content rather than a Windows clone.
 function read(rel) {
   return fs.readFileSync(path.join(root, rel), 'utf8')
     .replaceAll('\r\n', '\n').replaceAll('\r', '\n')
@@ -117,16 +83,9 @@ const ts =
 
 fs.writeFileSync(path.join(root, 'ts', 'src', 'helpdoc.ts'), ts)
 
-// The Go half: one file per topic under go/cmd/aontu/helpdoc/, which
-// is what //go:embed can reach, plus an index naming the order and
-// the summaries so the two ports list topics identically.
 const goDir = path.join(root, 'go', 'cmd', 'aontu', 'helpdoc')
 fs.rmSync(goDir, { recursive: true, force: true })
 fs.mkdirSync(goDir, { recursive: true })
-// Each staged file KEEPS ITS SOURCE BASENAME, so a reader who opens
-// go/cmd/aontu/helpdoc/ can see at a glance which repository file
-// each one came from, and `grammar/aontu.abnf` does not arrive
-// wearing a `.md` extension it has never had.
 for (const t of corpus) {
   fs.writeFileSync(path.join(goDir, path.basename(t.source)), t.text)
 }

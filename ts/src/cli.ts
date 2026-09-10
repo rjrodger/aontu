@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Command-line interface for Aontu.
-//
-//   aontu [options] [file]
-//
-// With a file argument, the file is evaluated and the result printed.
-// With no file on an interactive terminal, a REPL is started. With no
-// file and piped input, the source is read from stdin. See HELP below.
 
 // Named imports, not `import * as`: the namespace form makes tsc emit the
 import { evalFailure } from './query'
@@ -512,32 +505,9 @@ function version(): string {
 }
 
 
-// The terminal colour escapes the parser puts in its message text. A
-// machine-readable report is no place for them, which is the rule
-// findingOf states in ts/src/vet.ts; the twin here rather than an
-// import because go/cmd/aontu carries its own for the same reason (the
-// engine's is not exported to its command).
 const EVAL_ANSI = new RegExp('\u001b\\[[0-9;]*m', 'g')
 
 
-// THE ENGINE'S DIAGNOSIS AS A FINDING (G11 phase 7). The bare command
-// was the one verb whose failure had no machine-readable form, so the
-// default entry point was the one an agent had to parse with a regular
-// expression.
-//
-// THE HEADLINE ONLY, and no `hint`. Both are parity decisions rather
-// than economies: the frames under the headline are drawn for a person
-// reading a terminal and only the first line is held to byte parity
-// between the ports (the rule findingOf states), and the hint TABLES
-// are deliberately not in parity while the code registry is -- so a
-// hint here would make the two ports answer differently for a code
-// only one of them explains. `aontu explain <code>` is where the hint
-// lives, which is what phase 3 built it for.
-//
-// The CLASS comes from the registry rather than from the nil, because
-// the registry is what both ports hold set-equal
-// (test/spec/errcodes.tsv). Mirrors evalFinding in
-// go/cmd/aontu/main.go.
 function evalFinding(code: string, text: string): VetFinding {
   return {
     class: codeClass(code),
@@ -545,10 +515,6 @@ function evalFinding(code: string, text: string): VetFinding {
     message: text.split('\n')[0].replace(EVAL_ANSI, ''),
     path: '$',
     severity: 'error',
-    // NO SITE. The bare command's failure is the whole document not
-    // standing up, and the two sites a conflict names are in the
-    // frames the text form prints; naming one of them here would be a
-    // choice the engine has not made.
     sites: [],
   }
 }
@@ -562,12 +528,6 @@ function evalSource(
   mode: Mode,
 ): { ok: boolean; text: string; findings: VetFinding[] } {
   try {
-    // exactJSON, not JSON.stringify: a document using the `0d` exact
-    // leaves generates bigints and Decimals, which JSON.stringify cannot
-    // write (D9). The CLI prints INDENTED JSON and the shared suite's
-    // `gens` mode prints COMPACT JSON, but both go through this one
-    // emitter -- an indent argument rather than a second implementation,
-    // so the two cannot drift from each other or from the Go port.
     const text = 'canon' === mode
       ? aontu.unify(src).canon
       : exactJSON(aontu.generate(src), 2)
@@ -577,13 +537,6 @@ function evalSource(
     const msg = (err instanceof AontuError || true === err?.aontu)
       ? err.message
       : String(err?.message ?? err)
-    // WHAT THE ENGINE COLLECTED, when it collected anything: an
-    // AontuError carries the NilVals the run failed on, already
-    // materialised (handleErrors in ts/src/aontu.ts), and their first
-    // is the diagnosis every other verb reports. An error raised
-    // outside the engine's own collection -- exactJSON's circular
-    // refusal, a foreign object claiming to be one -- carries none,
-    // and answers with the text alone rather than an invented code.
     const errs: any[] = 'function' === typeof err?.errs ? err.errs() : []
     const first: any = errs[0]
     return {
@@ -619,23 +572,11 @@ function emitEval(
 }
 
 
-// The include capability the main verb runs with (G5, docs/trust.md).
-// `--trust` and `--include-root` set it explicitly; the default is
-// 'system' WITH the warning window: every resolution that escapes the
-// entry root or goes through package resolution prints a one-line
-// stderr warning naming the flag a future default will require
-// (phase 6, the staged flip).
 type TrustArg = (
   | { kind: 'system-warn' }
   | { kind: 'system' }
   | { kind: 'none' }
   | { kind: 'root', dir?: string }
-  // EXTENSIONS READ AS TEXT ride with the capability rather than
-  // beside it: both answer "what may an include read", both are
-  // stripped by takeTrust before a verb parses its own tail, and a
-  // verb that threads one and not the other is the G5 defect again --
-  // `aontu vet` running under a flag the bare command honoured and it
-  // did not.
 ) & { textExt: string[] }
 
 
@@ -679,16 +620,6 @@ function trustOpts(trust: TrustArg, entryRoot: string): any {
 }
 
 
-// EVERY VERB honours the include capability, not just the bare
-// command. G5 wired `--trust`/`--include-root` to `aontu <file>` alone,
-// so `aontu vet schema.aon data.json` -- the surface an agent actually
-// scripts -- ran the full system resolver with no flag to confine it
-// and no warning (use-cases/REVIEW.md finding G). The flags are
-// stripped here, before each verb parses its own tail, so a verb only
-// has to pass the profile on to its engine.
-//
-// Returns undefined when the spelling is wrong, with the message
-// already printed: the caller answers the usage class.
 function takeTrust(argv: string[]):
   { argv: string[], trust: TrustArg } | undefined {
   const rest: string[] = []
@@ -799,17 +730,6 @@ function runFile(
     src = readFileSync(file, 'utf8')
   }
   catch (err: any) {
-    // A MISTYPED VERB READS AS A FILE NAME, and until G11 phase 2 that
-    // was only said when there were TWO of them. The one-argument case
-    // is the one an agent actually produces -- `aontu help`, `aontu
-    // init`, `aontu ontology` -- and it answered `cannot read help:
-    // ...`, which describes the symptom and hides the cause.
-    //
-    // The test is SHAPE, not existence: a bare word (no separator, no
-    // extension) that cannot be read was meant as a verb, while
-    // `./help`, `help.aon` and `/tmp/help` were meant as paths and keep
-    // the file diagnosis and its exit 1. That is the same escape hatch
-    // the subcommand dispatch documents. Mirrors go/cmd/aontu/main.go.
     if (looksLikeVerb(file)) {
       process.stderr.write(
         `aontu: \`${file}\` is not a file, and not a verb this port knows\n`)
@@ -826,12 +746,6 @@ function runFile(
   }
 
   const path = resolve(file)
-  // `fs` IS WHAT MAKES A FRAME EXCERPT THE FILE IT NAMES. Without it,
-  // err.ts's resolveSrc falls back to the ENTRY text, so a frame whose
-  // arrow says `lib/types.aon:2:6` printed the entry's line 2 under it
-  // -- a real file name over another file's line, which
-  // docs/reference-api.md forbids in the same words it uses to require
-  // the name.
   const aontu = new Aontu({
     path,
     errfs: { existsSync, readFileSync },
@@ -856,15 +770,6 @@ function runStdin(
 }
 
 
-// THE REPL AS AN INSPECTION TOOL (G7 phase 7): `:load` holds a
-// document, and `:get`, `:keys` and `:why` ask the query and
-// provenance surfaces about it, so the session is a place to
-// INTERROGATE a definition rather than only to evaluate snippets.
-//
-// The command handler is a PURE FUNCTION of (state, line): a readline
-// loop is untestable, and every answer this REPL gives has to be as
-// checkable as the CLI's. File reading is injected for the same
-// reason.
 export type ReplState = {
   // How a value renders: the `:canon` / `:json` toggle.
   mode: Mode
@@ -873,11 +778,6 @@ export type ReplState = {
   jsonl: boolean
   name?: string
   src?: string
-  // The include capability the session evaluates under. `--trust` and
-  // `--include-root` were parsed and then DROPPED on the way to the
-  // REPL, so `--jsonl` -- the surface built to be driven by a harness
-  // -- ran unconfined however it was invoked (use-cases/REVIEW.md
-  // finding G). The state carries it, so every line honours it.
   trust?: TrustArg
 }
 
@@ -1032,14 +932,6 @@ function runRepl(initialMode: Mode, jsonl: boolean, trust: TrustArg): void {
   })
 
   rl.on('close', () => {
-    // The closing newline is for a HUMAN, so it is written only for
-    // one: it moves the terminal off the prompt line that `rl` left
-    // hanging. In `--jsonl` there is no prompt, every answer already
-    // ends in its own newline, and this one appended a bare empty line
-    // to the stream -- a record that is not JSON, at the end of a
-    // protocol whose whole contract is one JSON object per line. A
-    // harness parsing every line it receives failed on it, after the
-    // commands had all succeeded. Mirrors go/cmd/aontu/repl.go.
     if (!jsonl) {
       process.stdout.write('\n')
     }
@@ -1051,16 +943,6 @@ function runRepl(initialMode: Mode, jsonl: boolean, trust: TrustArg): void {
 }
 
 
-
-// THE VET VERB (G2 phase 3).
-//
-// Exit codes are VERDICT CLASSES, not a pass/fail bit: an agent loop
-// branches on "the data contradicts the truth" (1) differently from
-// "the data has not supplied everything the truth requires" (3), and
-// differently again from "the schema itself is broken" (4), which is
-// never the data's fault. 2 stays what it already was for this CLI --
-// the caller got the invocation wrong -- which is why an unreadable
-// file is a 2 rather than a 4.
 const VET_EXIT: Record<VetVerdict, number> = {
   valid: 0,
   invalid: 1,
@@ -1130,14 +1012,6 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
       format = f
     }
     else if ('--max-errors' === arg) {
-      // ONE GRAMMAR, spelled the same way in both ports: decimal
-      // digits, one to nine of them, at least 1. `Number()` alone
-      // accepted `1.0`, `1e2`, `0x10` and ` 3`, which Go's parser
-      // refuses -- so the same documented invocation meant different
-      // things in the two shipped commands. The nine-digit ceiling is
-      // where the ports would part company again: beyond it Go's
-      // integer conversion saturates, and a cap nobody can reach is
-      // not worth a divergence.
       const raw = argv[++i]
       if (!/^[0-9]{1,9}$/.test(raw ?? '') || 1 > Number(raw)) {
         return { err: 'aontu: --max-errors needs a positive whole number' }
@@ -1220,10 +1094,6 @@ function renderFinding(f: VetFinding): string {
     out.push(`  actual:   ${f.actual}`)
   }
   for (const s of f.sites) {
-    // Every site carries the canon of the value it stands for: that is
-    // what makes the two sides of a conflict readable side by side. A
-    // site's file is always a string -- empty when the value belongs to
-    // neither document -- so there is nothing to coalesce here.
     out.push(`  ${s.role}: ${s.file}:${s.row}:${s.col} (${s.value})`)
   }
 
@@ -1333,18 +1203,9 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
     return 2
   }
 
-  // Each data file is vetted on its own, because a parsed tree is
-  // single-use (docs/reference-api.md) -- and because two data files
-  // are two candidates for the same truth, not one merged candidate.
   let verdict: VetVerdict = 'valid'
   let truncated = false
   const findings: VetFinding[] = []
-  // COVERAGE ACROSS SEVERAL DATA FILES (G11 phase 5). Two data files
-  // are two candidates for one truth, so the schema side is the SAME
-  // for each: `declared` is taken once, and a declaration is unused
-  // only when NO file met it -- the intersection, because a
-  // declaration one file exercised is exercised. The data side adds
-  // up: leaves and checked leaves sum, and `unchecked` is the union.
   let cov: VetCoverage | undefined
   // Initialised rather than left undefined: it is filled in the same
   // block that sets `cov`, so a fallback at the read below would be an
@@ -1363,12 +1224,6 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
       maxErrors: args.maxErrors,
       schemaUrl: args.schema,
       dataUrl: source.file,
-      // The paths as well as the labels: a relative `@"file"` load
-      // inside either document resolves from ITS OWN directory, the
-      // way `aontu <file>` already resolves one (runFile above). The
-      // path is passed AS TYPED, not resolved: it doubles as the
-      // label above, and a report that mixed the typed path with an
-      // absolute one would name the same file two ways.
       schemaPath: args.schema,
       dataPath: source.file,
       coverage: args.coverage,
@@ -1400,27 +1255,11 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
       unusedSeen = true
     }
 
-    // A SCHEMA-SIDE FAULT IS THE SAME FAULT FOR EVERY DATA FILE, so it
-    // is reported ONCE. `error` means exactly that -- the run could not
-    // be set up from the truth's side, never the data's (the exit table
-    // in docs/reference-api.md) -- so the report the first file
-    // produced is the report every later file would produce, character
-    // for character. Concatenating them repeated one broken schema N
-    // times and, past the cap, marked the report `truncated` over a
-    // single underlying fault. It only became visible once the `error`
-    // verdict started carrying findings at all: while the list was
-    // empty there was nothing to duplicate.
     if ('error' === report.verdict) {
       break
     }
   }
 
-  // The cap is on the REPORT, not on each file. Capping every file's
-  // list and then concatenating them let `--max-errors 1` emit one
-  // finding PER FILE -- and leave `truncated` false while doing it,
-  // because no single file had been cut. The engine still caps each
-  // run, so a pathological file cannot flood the aggregate before it
-  // gets here; this is the second, honest cut.
   const cap = args.maxErrors ?? VET_MAX_ERRORS
   const kept = cap < findings.length ? findings.slice(0, cap) : findings
 
@@ -1442,12 +1281,6 @@ function vetOnce(args: VetArgs, trust: TrustArg): number {
 
   process.stdout.write(text + '\n')
 
-  // A VACUOUS CHECK IS A FAILED GATE UNDER `--strict-coverage`, and
-  // only under it: the verdict WORD is unchanged, so nothing that
-  // passes today starts failing, and a caller who wants the stronger
-  // gate asks for it. The reason goes to stderr, because stdout is a
-  // report contract -- a JSON consumer reads `coverage.vacuous` and a
-  // person reads this.
   if (true === args.strictCoverage && true === report.coverage?.vacuous) {
     process.stderr.write(
       'aontu: no data leaf was constrained by the schema:' +
@@ -1483,19 +1316,6 @@ function sleep(ms: number): Promise<void> {
 }
 
 
-// Resolve true when any watched file's signature moves off `before`.
-// This is the real waiter: it never resolves false, so a real watch
-// runs until the process is interrupted; tests inject their own waiter
-// to bound the loop, and pass a short pollMs when they drive this one
-// directly. The interval is a required argument (the command passes
-// WATCH_POLL_MS) so there is no defaulting branch a test could never
-// take.
-//
-// The BASELINE is an argument, not a snapshot taken here: the loop
-// records it BEFORE each vet run, so a save landing between the run's
-// reads and the wait still compares as a change. A waiter that
-// snapshotted on entry would adopt that unvetted save as its baseline
-// and wait indefinitely on a stale report.
 async function watchChange(
   files: string[], before: string, pollMs: number): Promise<boolean> {
   for (;;) {
@@ -1535,9 +1355,6 @@ async function watchVet(
 }
 
 
-// The vet verb. Non-watch runs are synchronous and return the exit
-// class directly; `--watch` returns a promise that resolves only when
-// the waiter says stop (never, for the real one).
 function runVet(argv: string[], wait?: VetWaiter): number | Promise<number> {
   const trusted = takeTrust(argv)
   if (null == trusted) {
@@ -1715,14 +1532,6 @@ type BreakingArgs = {
   file: string
   against: string[]
   mode?: BreakingMode
-  // `--at`: compare a SUBTREE of both versions. The gate's own
-  // sub-question, and the one a real repository needs -- a document's
-  // top level carries the module's version string and its policy
-  // block, which are supposed to change between releases and which
-  // make the whole-document comparison answer about them rather than
-  // about the contract (use-cases/REVIEW.md finding D). `subsume` has
-  // taken it since G3; `breaking` did not, so the only way to gate a
-  // subtree was to split the file.
   at?: string
   allowUndecided: boolean
   allowDeprecatedRemoval: boolean
@@ -1806,36 +1615,10 @@ function parseBreakingArgs(
   }
 }
 
-// One resolved `--against` spelling: the old document's text, the path
-// its own relative includes must resolve from, and (for a git spelling)
-// the temporary tree to remove when the run is done.
 type OldVersion = { src: string, path: string, temp?: string }
 
-// A source file the include resolver can actually load. `git#<rev>`
-// materialises these and nothing else: an include names an Aontu
-// document (`.aon`/`.aontu`, the two extensions `@"foo"` tries) or a
-// JSON one, so the rest of a revision's tree cannot be part of any
-// include closure and copying it would be pure cost.
 const INCLUDABLE = /\.(aon|aontu|jsonic|json)$/
 
-// Resolve one --against spelling to an old version.
-//
-// A `git#<rev>` spelling is the old version of the WHOLE TREE, not of
-// the entry file alone. It used to be `git show <rev>:./<file>`, whose
-// text was then evaluated with `generalPath`/`specificPath` pointing at
-// the WORKING file -- so every `@"..."` include in the old document
-// resolved against the working tree, and the "old" side was old entry
-// text meeting new includes. A breaking change inside an included file
-// therefore compared against itself and answered `compatible`: the
-// documented CI gate silently un-gated every non-entry file of the
-// multi-file layout real models use (use-cases/BUGS.md §26). The old
-// tree's includable sources are copied into a temporary directory and
-// the old document is evaluated from THERE.
-//
-// Sources outside the revision -- package includes under node_modules,
-// the bundled `std/system` -- still resolve as they do today: they are
-// not in the tree, and their versions travel with the lockfile rather
-// than with this comparison.
 function oldVersion(spec: string, file: string): OldVersion | undefined {
   if (!spec.startsWith('git#')) {
     try {
@@ -1867,24 +1650,10 @@ function oldVersion(spec: string, file: string): OldVersion | undefined {
   // that only some failures take.
   const temp = mkdtempSync(join(tmpdir(), 'aontu-against-'))
   try {
-    // THE REPO-RELATIVE PATH COMES FROM GIT, not from path arithmetic.
-    // Relativising `rev-parse --show-toplevel` against `resolve(file)`
-    // puts two DIFFERENT COORDINATE SYSTEMS on either side of the
-    // subtraction: git prints the real path, while the caller's is
-    // whatever they typed. On macOS a temp file under /var is
-    // /private/var to git, and on Windows a TMP short name
-    // (RUNNER~1) is the long form to git -- so the subtraction gave a
-    // `../..` climb, the entry was "not in that revision", and the
-    // documented CI spelling failed on both platforms while passing on
-    // Linux (this PR's own CI). `--show-prefix` is the same question
-    // asked in git's coordinates: the repo-relative directory of the
-    // cwd, already slash-separated and already normalised.
     const prefix = git(['rev-parse', '--show-prefix'], dir).trim()
     const entryRel = prefix + basename(file)
     const top = git(['rev-parse', '--show-toplevel'], dir).trim()
 
-    // `-z` so a path with a newline or a quote cannot be mistaken for
-    // two paths (git otherwise quotes such names).
     const listed = git(['ls-tree', '-r', '-z', '--name-only', rev], top)
       .split('\0').filter((p) => '' !== p)
     if (!listed.includes(entryRel)) {
@@ -1919,13 +1688,6 @@ function policyCompat(
 ): BreakingMode | undefined {
   const aontu = new Aontu()
   const ctx = aontu.ctx({ collect: true })
-  // The declaration is read by EVALUATING the document, so this leg
-  // runs the include resolver too and has to run it under BOTH of the
-  // verb's include options -- a `breaking --trust none` that read its
-  // own mode through an unconfined resolver would confine the
-  // comparison and not the question (use-cases/REVIEW.md finding G),
-  // and one that took the capability alone read no mode at all when
-  // the declaration arrived through a `--text-ext` include.
   const v: any = aontu.unify(newSrc, { path, ...includeOpts(include) }, ctx)
   if (0 < ctx.err.length || true === v?.isNil) {
     return undefined
@@ -1945,11 +1707,6 @@ function policyCompat(
     ? m : undefined
 }
 
-// Is the evaluated old version's value at the finding path deprecated?
-// The --allow-deprecated-removal downgrade (G3 phase 4): removing (or
-// otherwise changing) a value the old version already deprecated warns
-// instead of breaking. The Go port exports the same reader as
-// aontu.DeprecatedAt.
 function deprecatedAt(oldSrc: string, path: string, filePath: string): boolean {
   const aontu = new Aontu()
   const ctx = aontu.ctx({ collect: true })
@@ -2024,9 +1781,6 @@ function runBreaking(argv: string[]): number {
     return 2
   }
 
-  // The declared mode: --mode overrides the document's own policy;
-  // neither means backward, the index's framing (v1-valid documents
-  // stay valid).
   const mode: BreakingMode =
     args.mode ??
     policyCompat(newSrc, args.file,
@@ -2066,8 +1820,6 @@ function runBreaking(argv: string[]): number {
       temps.push(old.temp)
     }
 
-    // backward: the NEW document is the general side — every old
-    // instance must still be admitted. forward: the old one is.
     const checks: Array<{ general: [string, string], specific: [string, string] }> = []
     if ('backward' === mode || 'full' === mode) {
       checks.push({ general: [newSrc, args.file], specific: [oldSrc, spec] })
@@ -2084,18 +1836,10 @@ function runBreaking(argv: string[]): number {
         at: args.at,
         generalUrl: check.general[1],
         specificUrl: check.specific[1],
-        // The old side's relative loads resolve from ITS own tree --
-        // the materialised revision for a git spelling, the named
-        // file's directory otherwise -- so an included file's change
-        // is part of the comparison rather than invisible to it.
         generalPath: check.general[1] === spec ? oldPath : args.file,
         specificPath: check.specific[1] === spec ? oldPath : args.file,
       })
 
-      // The deprecated-removal downgrade: a finding about a value the
-      // OLD version already deprecated becomes a warning, and warnings
-      // do not move the verdict. Deprecate-then-remove is the
-      // supported rename path (the design's own sequencing).
       let verdict = report.verdict
       if (args.allowDeprecatedRemoval) {
         let liveFindings = 0
@@ -2152,13 +1896,6 @@ function renderBreakingJson(report: SubsumeReport, mode: string): string {
   }, 2)
 }
 
-
-// ---------------------------------------------------------------------
-// The trim reporter (G3 phase 6): report redundant entries as paths.
-// Report-only — REWRITING needs G7's format-preserving patch surface —
-// which is why --check is REQUIRED rather than defaulted: `aontu trim
-// f.aon` reads as "trim this file", and doing something else silently
-// is worse than saying so.
 
 const TRIM_HELP = 'aontu trim --check <file> (try --help)'
 
@@ -2237,8 +1974,6 @@ function runTrim(argv: string[]): number {
 
 function renderTrimText(report: TrimReport): string {
   const head = `verdict: ${report.verdict}`
-  // WHY, when the document could not be evaluated at all: rendered as
-  // vet renders a finding, because it IS one (the review's finding F).
   const errors = report.errors ?? []
   if (0 < errors.length) {
     return [head, ''].concat(errors.map(renderFinding)).join('\n')
@@ -2303,29 +2038,12 @@ const VIEW_EDGES: ViewEdges[] = ['upward', 'all', 'none']
 // the same division err.ts already draws for the error frames.
 const VIEW_STYLES = ['auto', 'none', 'ansi', 'css']
 
-// `--style auto` resolved, which only the CLI can do. The mechanism is
-// the PROFILE's and the library knows it -- an SVG carries its
-// stylesheet unless told not to, which is what makes a figure stand
-// alone. What the library cannot know is whether the DESTINATION is a
-// terminal, so that is the only thing decided here: escapes on the
-// text profile when stdout is a terminal and NO_COLOR is unset, the
-// same two conditions the error frames use. `undefined` leaves the
-// profile's own default in place.
 function viewStyleOf(
   asked: string | undefined, as: ViewProfile | undefined
 ): ViewStyle | undefined {
   if (undefined !== asked && 'auto' !== asked) {
     return asked as ViewStyle
   }
-  // STDOUT'S OWN TERMINAL-NESS, and NO_COLOR read here rather than
-  // through colorActive(). The figure goes to STDOUT and the error
-  // frames go to STDERR, and they are not the same destination: main()
-  // has already called setColor for stderr, so asking colorActive()
-  // would answer the wrong question twice --- no escapes for
-  // `aontu view tree m.aon 2>/dev/null` at a terminal, and escapes
-  // into the pipe for `aontu view tree m.aon | less`. The NO_COLOR
-  // rule is the one no-color.org states and err.ts implements:
-  // set, to anything but empty, means no colour.
   const no = process.env.NO_COLOR
   return 'text' === as && true === process.stdout.isTTY
     && (null == no || '' === no) ? 'ansi' : undefined
@@ -2351,24 +2069,6 @@ const VIEW_USAGE_CODES = [
 
 const MOD_HELP = 'aontu mod tidy|verify|vendor|manifest [dir] (try --help)'
 
-// The module tooling (G6 phase 3, ts/src/mod-tool.ts). All LOCAL:
-// `tidy` resolves the closure from what is in the stores and rewrites
-// the lockfile, `verify` asks whether the stores still mean what the
-// lockfile pins and changes nothing, `vendor` materialises the locked
-// closure into the project, `manifest` prints what a publish would
-// push.
-//
-// TIDY AND VERIFY ARE DIFFERENT QUESTIONS, and that is why both exist.
-// Tidy recomputes and rewrites by design -- a pin is what a module
-// means NOW -- so it makes the lockfile agree with whatever the store
-// holds, tampering included. Verify is the gate: a CI job runs it
-// BEFORE tidy, or instead of it.
-//
-// `get` and `publish` are the NETWORK half of the design and are not in
-// this build. They are named here rather than left to fall out as an
-// unknown subcommand, because a reader of the design will type them and
-// deserves to be told which half is missing rather than that the word
-// is wrong.
 function runMod(argv: string[]): number {
   const rest: string[] = []
   let format: SubsumeFormat = 'text'
@@ -2422,10 +2122,6 @@ function runMod(argv: string[]): number {
     return 2
   }
 
-  // THE OLD LAYOUT IS NAMED, NOT READ. The lockfile and the vendored
-  // closure moved under aontu_meta/; a project that still carries them
-  // at its root would otherwise look untouched by any of these verbs,
-  // which is the one silence worth breaking.
   if (existsSync(join(dir, 'aon_vendor')) || existsSync(join(dir, 'mod-lock.aon'))) {
     process.stderr.write(
       'aontu: aon_vendor/ and mod-lock.aon now live under aontu_meta/: ' +
@@ -2469,9 +2165,6 @@ type ModVerdict =
 const MOD_EXIT: Record<ModVerdict, number> = {
   ok: 0,
   missing: 1,
-  // A REFUSED GATE, with `breaking`: a store that no longer means what
-  // the lockfile pins is the integrity check saying no, and a CI job
-  // reading exit codes should not have to learn a third class for it.
   mismatch: 1,
   // Likewise a lockfile that does not cover the project: the gate has
   // nothing to check, which is a refusal and not a pass.
@@ -2522,11 +2215,6 @@ function modText(sub: string, report: any): string {
     for (const f of report.findings) {
       lines.push(f.path + ': ' + f.message)
     }
-    // What a manifest lacks is a declaration the module does not make
-    // or an entry file that is not there, and neither is something a
-    // fetch would supply -- so this is not the tail the other two
-    // subcommands share. The name says which kind it is: `mod.version`
-    // is a declaration, `service.aon` is a file.
     for (const miss of report.missing) {
       lines.push(miss + ': missing')
     }
@@ -2537,8 +2225,6 @@ function modText(sub: string, report: any): string {
     for (const mod of report.verified) {
       lines.push(mod + ': verified')
     }
-    // BOTH HASHES, because the useful question is which way it moved:
-    // an empty `got` is a module that no longer stands up at all.
     for (const m of report.mismatched) {
       lines.push(m.mod + ': pinned ' + m.want + ' but the store means ' +
         ('' === m.got ? 'nothing (it does not evaluate)' : m.got))
@@ -2574,26 +2260,6 @@ function modText(sub: string, report: any): string {
 }
 
 
-// VACUITY SIGNALS (G11 phase 4,
-// docs/capability-review/g11-agent-onramp.md).
-//
-// The same principle phase 5 applied to `vet`: a verb that did NOTHING
-// and a verb that did its job answer the same. `aontu view tree` over a
-// document declaring no relations printed one newline and exited 0;
-// `aontu render` with no profile printed nothing and exited 0; `aontu
-// relations` over a document declaring none answered `verdict: pass`.
-// For a person at a terminal that is a shrug. For an unattended agent
-// it is a green check mark on an empty box.
-//
-// ON STDERR, ALWAYS. stdout is a report contract -- a `--format json`
-// consumer parses it -- and the exit code is a verdict class that
-// callers already branch on. Neither changes here: what changes is
-// that the caller is TOLD. A caller who wants it to be fatal has
-// `vet --strict-coverage`, and the same argument would give the other
-// verbs a flag of their own if one is ever asked for.
-//
-// The repository already ruled this for one verb, in G8 phase 6 on
-// `trim`: "doing something else silently is worse than refusing".
 function vacuous(what: string, why: string): void {
   process.stderr.write(`aontu: ${what}: ${why}\n`)
 }
@@ -2881,12 +2547,6 @@ function runView(argv: string[]): number {
     }
   }
 
-  // ESCAPES NEVER GO INTO A FILE. A pinned golden holding terminal
-  // control codes is not a golden anybody can read, and a byte
-  // comparison against one would fail on the reader's terminal
-  // settings. `auto` resolves to `none` there on its own; asking for
-  // `ansi` explicitly is a usage error rather than a silent downgrade,
-  // so a script that wanted colour is told where it went.
   if ('ansi' === style && (undefined !== out || undefined !== opts.views)) {
     process.stderr.write(
       'aontu: --style ansi writes to a terminal, not to a file\n')
@@ -2896,10 +2556,6 @@ function runView(argv: string[]): number {
   // THE VIEW DOCUMENT draws every figure a document declares, so it
   // names no kind: the declarations do, one each.
   if (undefined !== opts.views) {
-    // A declaration names its own profile, so the style is left to
-    // each figure's own default; `--style none` still reaches every
-    // one of them, which is how a host page that binds the CSS
-    // variables asks for eight figures without eight stylesheets.
     opts.style = viewStyleOf(style, undefined)
     return runViewSet(rest, opts, trust, { format, check, strict, out })
   }
@@ -2975,17 +2631,6 @@ function runView(argv: string[]): number {
   }
   const report = view(srcs[0], viewOpts)
 
-  // AN EMPTY FIGURE IS THE SAME BYTES AS A DRAWN ONE MINUS ITS
-  // CONTENT, and every profile spells "empty" differently: text draws
-  // nothing at all, mermaid still draws its `flowchart LR` header, the
-  // matrix still prints its count line. Rather than teach this one
-  // place each of those spellings -- a list that goes stale the first
-  // time a profile gains a header -- ASK THE SAME KIND TO DRAW AN
-  // EMPTY DOCUMENT and compare. Equal texts mean this document
-  // contributed nothing to the figure, whatever the profile.
-  //
-  // It costs one drawing of `{}`, which is the cheapest document
-  // there is, and only on a run that produced a figure at all.
   if ('error' !== report.verdict && null != report.text) {
     const bare = view('{}', viewOpts)
     if ('error' !== bare.verdict && bare.text === report.text) {
@@ -3039,13 +2684,6 @@ function runView(argv: string[]): number {
   return strict && 'lossy' === report.verdict ? 1 : VIEW_EXIT[report.verdict]
 }
 
-// `aontu view --views <path> <file>`: every figure the document
-// declares, from one evaluation, all or nothing.
-//
-// A declared `out` is resolved against the DOCUMENT's own directory,
-// not the caller's: a view document is committed beside the figures it
-// gates, and a gate that only passes from one working directory is not
-// a gate.
 function runViewSet(
   rest: string[], opts: ViewOptions, trust: TrustArg,
   how: { format: SubsumeFormat, check: boolean, strict: boolean, out?: string }
@@ -3186,8 +2824,6 @@ function renderViewJson(report: ViewReport): string {
 
 function renderRelationsText(report: RelationReport): string {
   const head = `verdict: ${report.verdict}`
-  // WHY, when the document could not be evaluated at all: rendered as
-  // vet renders a finding, because it IS one (the review's finding F).
   const errors = report.errors ?? []
   if (0 < errors.length) {
     return [head, ''].concat(errors.map(renderFinding)).join('\n')
@@ -3212,21 +2848,6 @@ function renderRelationsJson(report: RelationReport): string {
   }, 2)
 }
 
-
-
-// ---------------------------------------------------------------------
-// JSON SCHEMA EXPORT (SUPPORT.md act 2, the review's finding I): the
-// bridge to every structured-output API, which constrains generation to
-// JSON Schema and nothing else. Export the model, let the provider
-// generate under it, then `vet` the result against the model itself --
-// the hybrid an enterprise actually deploys, and impossible without
-// this verb.
-//
-// THE SCHEMA GOES TO STDOUT AND THE LOSSES TO STDERR, so `aontu
-// jsonschema x.aon > schema.json` writes a schema and still tells the
-// reader what it could not carry. `--strict` makes a loss a refusal,
-// for the CI job that would rather fail than ship a schema weaker than
-// its model.
 
 const JSONSCHEMA_HELP =
   'aontu jsonschema [--at <path>] [--strict] <file> (try --help)'
@@ -3323,14 +2944,6 @@ function runJsonSchema(argv: string[]): number {
     strict && 'lossy' === report.verdict ? 1 : 0
 }
 
-// ---------------------------------------------------------------------
-// THE RENDER VERB (docs/design/RENDER.0.md D8): evaluate a document,
-// vet the value at --at against aontu:code, fold code.units into bytes,
-// and put them where the flag says -- one unit on stdout, every unit
-// below --out (all or nothing), or compared against --check. Exit codes
-// mirror jsonschema's: 0 ok; 1 lossy under --strict or drift under
-// --check; 2 usage or I/O, a refused unit path included; 4 the
-// document does not stand up or the instance is not aontu:code.
 
 const RENDER_HELP =
   'aontu render [--at <path>] [--profile <file>]... [--unit <path>] ' +
@@ -3468,21 +3081,10 @@ function runRender(argv: string[]): number {
     return 2
   }
 
-  // THE ENTRY MAY BE A TEMPLATE (TEMPLATE.0.md; P8), and its EXTENSION
-  // decides, as an include's extension decides what the include is
-  // (ADR-012): a generator is a file in the target's own syntax, so it
-  // carries the target's extension and never `.aon`. Desugared here
-  // rather than anywhere deeper, because a template is an entry
-  // spelling and not a value: an include is still aontu.
   if (!files[0].endsWith('.aon')) {
     src = desugarTemplate(src, marker ?? markerFor(files[0]))
   }
 
-  // THE PROFILES (D5): each --profile file is a document whose root is
-  // `profile: {lang, ...}`, evaluated under the verb's trust and vetted
-  // against aontu:profile as a settled value before the fold reads it
-  // (renderProfile, which also fills the defaults). Two files claiming
-  // one lang is a usage error: the fold could not choose.
   const profiles: any[] = []
   const langs = new Map<string, string>()
   for (const pf of profileFiles) {
@@ -3660,13 +3262,6 @@ function renderExit(report: RenderReport, drift: number): number {
 }
 
 
-// ---------------------------------------------------------------------
-// THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md; RENDER.0.md P8): the
-// two transforms and the round trip between them. `render` reads a
-// template directly, by its extension; this verb is for seeing the
-// canonical form, for writing one by hand and sugaring it, and for the
-// check that keeps a committed template and its meaning in agreement.
-
 const TEMPLATE_HELP =
   'aontu template [--resugar] [--check] [--marker <token>] <file> (try --help)'
 
@@ -3709,10 +3304,6 @@ function runTemplate(argv: string[]): number {
     process.stderr.write(`aontu: template needs one file\n${TEMPLATE_HELP}\n`)
     return 2
   }
-  // THE TWO ARE DIRECTIONS, NOT MODES THAT COMPOSE: `--check` reads a
-  // template and asks whether the round trip answers it back, and
-  // `--resugar` reads the canonical form instead. A run cannot be both
-  // at once, because the file is one thing or the other.
   if (resugar && check) {
     process.stderr.write(
       'aontu: template takes one of --resugar or --check\n')
@@ -3731,16 +3322,6 @@ function runTemplate(argv: string[]): number {
   const mark = marker ?? markerFor(files[0])
 
   if (check) {
-    // THE ROUND TRIP IS THE CHECK (D6): the file held to the spelling
-    // the two transforms answer. What that names is a marker line the
-    // transform would not have written -- one without its space, or one
-    // whose aontu is indented after the marker rather than before it,
-    // since the marker keeps its own indentation. It does NOT name a
-    // changed body line: a template's whitespace is output, so a
-    // trimmed trailing space is still a valid template and it is
-    // `render --check` against the committed files that catches it.
-    // The first line that differs is the report, since a whole diff of
-    // a generator is the file again.
     const back = resugarTemplate(desugarTemplate(src, mark), mark)
     if (back === src) {
       return 0
@@ -3751,12 +3332,6 @@ function runTemplate(argv: string[]): number {
     while (n < want.length && n < have.length && want[n] === have[n]) {
       n++
     }
-    // THE TWO ARE THE SAME LENGTH, always: each transform maps one
-    // line to one line and applies the same trailing-newline rule, so
-    // `back` has as many lines as `src`. The loop above therefore stops
-    // at a real difference rather than by running out of either -- an
-    // equal prefix all the way to the end IS `back === src`, which
-    // returned above. So both indexes are in range here.
     process.stderr.write(
       `aontu: ${files[0]}:${n + 1} is not what the round trip answers\n` +
       `  have: ${JSON.stringify(have[n])}\n` +
@@ -3769,14 +3344,6 @@ function runTemplate(argv: string[]): number {
   return 0
 }
 
-
-// ---------------------------------------------------------------------
-// The canon-hash (G6 phase 1): the pin an agent, a lockfile or a
-// registry stores for "this module, this meaning". The hash covers the
-// module evaluated STANDALONE -- its own include closure resolved and
-// unified at its own root, before any consumer context -- which is what
-// makes the pin transitive: an edit two includes deep changes the
-// unified root, hence the hash.
 
 const HASH_HELP = 'aontu hash <file> (try --help)'
 
@@ -3837,14 +3404,6 @@ function runHash(argv: string[]): number {
   const ctx = aontu.ctx({ collect: true })
   const v: any = aontu.unify(src, { path: files[0] }, ctx)
   if (0 < ctx.err.length || true === v?.isNil) {
-    // A document that does not stand up on its own has no meaning to
-    // pin, and a hash of a broken evaluation would be a pin that
-    // silently agrees with every other broken evaluation.
-    // WHY it does not stand up, not just that it does not: the same
-    // diagnosis `aontu <file>` prints (the review's finding F).
-    // evalFailure unconditionally, as every other call site does: it
-    // owns the "ctx.err is never empty here" contract, and a guard
-    // that pretends otherwise is a dead arm asserting nothing.
     process.stderr.write(
       `aontu: ${files[0]} does not evaluate on its own; nothing to hash\n` +
       renderFinding(evalFailure(ctx)) + '\n')
@@ -3862,13 +3421,6 @@ function runHash(argv: string[]): number {
   return 0
 }
 
-
-// ---------------------------------------------------------------------
-// The query surface (G7 phase 1): one node of an evaluated document,
-// selected by path and rendered. Evaluation is still GLOBAL -- what
-// `get` buys is the size of the ANSWER, not the cost of producing it --
-// and the projections are lattice abstractions, each a valid Aontu
-// document that subsumes the truth it summarises.
 
 const GET_HELP = 'aontu get <path> <file> (try --help)'
 
@@ -4057,11 +3609,6 @@ function runWhy(argv: string[]): number {
 }
 
 
-// One contribution per line, numbered in source order, each with what
-// was written, where, and how it got here. A siteless contribution
-// prints no location rather than a `-1:-1` that means nothing —
-// exported for the direct test, because the site SHAPE allows one
-// while no document has yet produced one (ADR-002).
 function renderWhyText(record: WhyRecord): string {
   const head = `${record.path} = ${record.value}`
   if (0 === record.conjuncts.length) {
@@ -4078,13 +3625,6 @@ function renderWhyText(record: WhyRecord): string {
   })).join('\n')
 }
 
-
-// ---------------------------------------------------------------------
-// The overlay patch verb (G7 phase 5): change a document by APPENDING
-// to an overlay, not by rewriting it. An overlay entry is just another
-// conjunct and unification is order-independent, so this needs no
-// rewriter — the format-preserving in-place edit is stage 2, and needs
-// a comment-preserving CST the parser stack does not have.
 
 const SET_HELP =
   'aontu set <path>=<value> --entry <file> --overlay <file> (try --help)'
@@ -4202,29 +3742,12 @@ function runSet(argv: string[]): number {
     }, 2) + '\n')
   }
   else {
-    // A replacement is REPORTED as the edit it is, not left for the
-    // reader to infer from a changed file: `where: what -> what`, in
-    // source spelling, because the spelling is what changed.
-    //
-    // PAST TENSE ONLY WHERE IT HAPPENED. A refused write leaves the
-    // file exactly as it was, and one assignment can be replaceable
-    // while another makes the whole run invalid — so `replaced:` there
-    // tells an operator the pin was changed when it was not, and unlike
-    // `--dry-run` there is nothing else on the line to say otherwise.
     const verb = wrote ? 'replaced' : 'would replace'
     const edits = report.replaced.map((r) =>
       `${verb}: ${r.file}:${r.row}:${r.col} ${r.from} -> ${r.to}`)
     const head = [`verdict: ${report.verdict}`].concat(edits).join('\n') +
       (wrote ? `\nwrote: ${overlayFile}` : dryRun ? '\n(dry run)' : '')
 
-    // A SUCCESSFUL COMMAND WRITES ITS STATUS TO STDOUT, findings or
-    // not. Routing on `findings.length` was right while every finding
-    // this verb could produce was an ERROR; `--in-place` made a WARNING
-    // possible, and a run that held, wrote the file and exited 0 then
-    // sent its whole report to stderr — leaving stdout empty, so
-    // `$(aontu set ...)` captured nothing and only the JSON form
-    // behaved like a success. The verdict decides the stream; warnings
-    // are diagnostics and go to stderr beside it.
     const failed = 'invalid' === report.verdict || 'error' === report.verdict
     const findingText = report.findings.map(renderFinding)
     if (failed) {
@@ -4245,15 +3768,6 @@ function runSet(argv: string[]): number {
   return VET_EXIT[report.verdict]
 }
 
-
-// ---------------------------------------------------------------------
-// The role gate (docs/design/ALLOW.0.md): may the role the caller is
-// operating under modify these subtrees? Asked before `set`, by an
-// agent whose skill names its role, and answered from a role model
-// that is itself an aontu document. The verdict is the exit code, as
-// it is for every gate here: 0 is yes, 1 is no, 4 is "the model that
-// was to decide does not stand up", and an agent branches on nothing
-// else.
 
 const ALLOW_HELP =
   'aontu allow --role <role> <roles-file> <path> [more-paths...] (try --help)'
@@ -4372,14 +3886,6 @@ function runAllow(argv: string[]): number {
     return 2
   }
 
-  // A path may arrive in `set`'s spelling, `$.a.b=1`, so a skill can
-  // hand the gate the very arguments the write will get. The text up
-  // to the first `=` is the path, and it starts with `$`: an empty
-  // argument, or a second file name, would otherwise read as a path
-  // and be answered. The VALUE is checked to be one value. `set`
-  // appends it as source after the flattened path, so a value carrying
-  // a second pair -- `3 secrets: key: "x"` -- writes a sibling of the
-  // overlay root, a subtree the gate was never asked about.
   const paths: string[] = []
   for (const arg of asked) {
     const eq = arg.indexOf('=')
@@ -4535,26 +4041,6 @@ function runAgentsMd(argv: string[]): number {
 }
 
 
-// Exit without truncating output.
-//
-// process.exit() terminates immediately, discarding anything still
-// queued on stdout. A write to a PIPE is asynchronous once it exceeds
-// the pipe buffer, so `write(big); exit(0)` silently truncated output at
-// 65536 bytes — while a write to a TTY or a file, being synchronous,
-// looked fine. Setting exitCode instead lets the process end naturally,
-// after the queue drains.
-//
-// This predates the exact leaves but they make it trivially reachable
-// (one long biginteger canon exceeds the buffer), and it lands squarely
-// on the parity-probe discipline in AGENTS.md, which derives expected
-// spec values by piping BOTH CLIs and comparing. A truncated pipe there
-// reads as a port divergence.
-// ---------------------------------------------------------------------
-// The source formatter (docs/design/FMT.0.md): one agreed form, in the
-// tradition of gofmt. The verb prints, lists, checks, diffs or rewrites;
-// the form itself is the library's (ts/src/format.ts), and the two
-// ports agree on it row by row in test/spec/fmt.tsv.
-
 const FMT_HELP =
   'aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>... (try --help)'
 
@@ -4663,20 +4149,6 @@ function runFmt(argv: string[]): number | Promise<number> {
   return worst
 }
 
-// WHAT A FILE IS, BY ITS EXTENSION (ADR-012's rule, and the one
-// `render` reads an entry by): `.aon` and `.aontu` are aontu source,
-// and anything else is a GENERATOR written in the target's own syntax
-// (docs/design/TEMPLATE.0.md), whose marker lines carry the document
-// this formats and whose other lines are output. `undefined` is aontu,
-// a string is the generator's marker, and `false` is neither.
-//
-// A FILE WITH NO MARKER LINE IN IT IS NEITHER, and that is what keeps
-// FMT.0.md §9's boundary where it stood: a `.json`, `.yaml` or `.toml`
-// include is another language's file, and reading one as a generator
-// would answer it back unchanged having understood none of it. The
-// marker is the evidence that a file was written to carry aontu at
-// all. `--marker` says so outright, and then the file is a generator
-// whatever it is called.
 function fmtMarker(
   file: string, src: string, marker: string | undefined): string | undefined | false {
   if (undefined !== marker) {
@@ -4738,26 +4210,13 @@ function fmtOne(
 }
 
 
-// ---------------------------------------------------------------------
-// The servers as verbs: `aontu lsp` runs the language server and
-// `aontu mcp` the MCP server over the CLI's own streams, so the one
-// command on PATH is the editor's and the agent's server too, and a
-// version manager (docs/design/ENV.0.md) has one thing to resolve. The
-// standalone bins (aontu-lsp, aontu-mcp) run the same functions. Each
-// server owns its exit; the CLI only dispatches. The pair is a
-// parameter of main so that a test can see the dispatch without a
-// server taking the test's own stdin.
-
 type Servers = {
   lsp: () => void
   mcp: (argv: string[]) => void
 }
 
-// The real pair takes the process's own stdin and stdout, which no
-// in-process test can lend it; the executable-entry tests in
-// cli.test.ts run each through a child process instead, so these two
-// lines are excluded from the in-process count, as the stdio wiring
-// of lsp-server.ts is.
+// Excluded: the real pair takes the process stdio, so ts/test/cli.test.ts
+// drives each server through a child process instead.
 /* node:coverage ignore next 4 */
 const SERVERS: Servers = {
   lsp: () => void lspMain(),
@@ -4803,20 +4262,6 @@ function parseTrustArg(value: string): TrustArg | undefined {
   return undefined
 }
 
-
-// THE TEACHING PACK, SERVED FROM THE COMMAND (G11 phase 1,
-// docs/capability-review/g11-agent-onramp.md; mirrors
-// go/cmd/aontu/help.go).
-//
-// HELP documents the TOOLCHAIN and says nothing about the LANGUAGE:
-// `&`, the map template and the one construct an ontology cannot be
-// written without, occurs zero times in it, while `template` occurs
-// fourteen times and names an unrelated verb every time. docs/skill/
-// was already the right content and already gated; the gap was
-// DELIVERY, since it reached an installation as
-// node_modules/aontu/skill/ where nothing looks. ts/src/helpdoc.ts is
-// generated from those sources by ts/scripts/helpdoc.cjs and asserted
-// byte-identical with them by ts/test/helpdoc.test.ts.
 
 const HELP_VERB_HELP = 'aontu help [topic] (try `aontu help` for the topics)'
 const EXPLAIN_HELP = 'aontu explain <code> (try `aontu explain --list`)'
@@ -4902,23 +4347,6 @@ function runHelp(argv: string[]): number {
   return 2
 }
 
-
-// `aontu explain <code>` (G11 phase 3; mirrors
-// go/cmd/aontu/explain.go).
-//
-// THE REGISTRY IS THE LIST, NOT THE HINT TABLE. test/spec/errcodes.tsv
-// registers 157 codes and the spec suite asserts set equality between
-// the file and codeClasses IN BOTH PORTS, so listing from codeClasses
-// is listing the shared contract. The hint tables are smaller and are
-// NOT in parity -- 130 entries here against 131 in Go, the extra being
-// decimal_syntax, which this port never raises -- so listing from them
-// would make `aontu explain --list` differ between ports over a
-// difference that is not about what either port can report.
-//
-// A REGISTERED CODE WITH NO HINT ANSWERS WITH ITS CLASS AND SAYS SO.
-// Twenty-seven registered codes carry no explanation text here; before
-// this verb their absence was invisible, because a hint is only ever
-// seen beside the error that raises it.
 
 // The dynamic prefixes a generated code extends (`func:upper`,
 // `op[+]`). Mirrors CODE_PREFIXES in ts/src/hints.ts, which is not
@@ -5062,21 +4490,6 @@ function runExplain(argv: string[]): number {
 }
 
 
-// `aontu init` (G11 phase 6,
-// docs/capability-review/g11-agent-onramp.md).
-//
-// NOT SCAFFOLDING CONVENIENCE. The agent's most expensive failure is
-// writing a FIRST document at all: the measurement that opened G11
-// found one reaching for the wildcard its neighbours use and getting
-// `verdict: valid` over data that violates it. A known-good starting
-// document turns generation into editing, which is the operation a
-// model is reliably good at.
-//
-// The trio is real, runnable and tested where it lives
-// (docs/skill/init/, run by ts/test/helpdoc.test.ts), and staged into
-// both ports by the same generator that stages the teaching pack, so
-// the two write the same bytes.
-
 const INIT_HELP = 'aontu init [dir] (try --help)'
 
 
@@ -5101,10 +4514,6 @@ function runInit(argv: string[]): number {
   }
   const dir = dirs[0] ?? '.'
 
-  // REFUSES TO OVERWRITE, and checks every member BEFORE writing any of
-  // them: a scaffold that wrote two files and then refused the third
-  // would leave a directory in a state neither the caller nor a re-run
-  // can reason about.
   const standing = INITDOC.filter((f) => existsSync(join(dir, f.name)))
   if (0 < standing.length) {
     process.stderr.write(
@@ -5134,12 +4543,6 @@ function runInit(argv: string[]): number {
 }
 
 
-// EVERY VERB THIS PORT DISPATCHES, for the nearest-verb suggestion
-// G11 phase 2 prints. A separate list from the if-chain in main()
-// because the chain's arms have three different shapes and cannot be
-// a table; ts/test/cli-help.test.ts keeps the two from drifting by
-// running each name and requiring it not to fall through to the bare
-// command.
 const KNOWN_VERBS = [
   'agentsmd', 'allow', 'breaking', 'explain', 'fmt', 'get', 'hash',
   'help', 'init', 'jsonschema', 'lsp', 'mcp', 'mod', 'reaches',
@@ -5159,13 +4562,6 @@ function looksLikeVerb(arg: string): boolean {
 }
 
 
-// NEAREST-VERB SUGGESTION (G11 phase 2). Restricted
-// Damerau-Levenshtein with a cap that grows with the word and stops at
-// three: one edit is a convincing suggestion on any length, three is
-// the most that can be believed on a long one, and an UNCAPPED
-// nearest match on a three-letter typo names something unrelated with
-// confidence. Mirrors go/cmd/aontu/help.go, including the sort, so
-// the two ports suggest the same verb on a tie.
 function nearestVerb(word: string, verbs: string[]): string {
   let best = ''
   let bestDist = Infinity
@@ -5181,8 +4577,6 @@ function nearestVerb(word: string, verbs: string[]): string {
 }
 
 
-// Levenshtein with a transposition, iterative over two rows. Mirrors
-// editDistance in go/cmd/aontu/help.go exactly.
 function editDistance(a: string, b: string): number {
   const ar = [...a]
   const br = [...b]
@@ -5209,12 +4603,6 @@ function editDistance(a: string, b: string): number {
 
 
 function main(argv: string[], servers: Servers = SERVERS): void {
-  // COLOUR OFF WHEN THE DESTINATION IS NOT A TERMINAL. Error frames
-  // hardcoded their ANSI escapes, so a piped report and a `--jsonl`
-  // answer carried terminal control codes into whatever read them (the
-  // review's finding F). `NO_COLOR` is honoured by the library itself;
-  // only the CLI can see whether its stderr is a terminal, so only the
-  // CLI can make this call. `undefined` means "leave it to NO_COLOR".
   setColor(true === process.stderr.isTTY ? undefined : false)
 
   let mode: Mode = 'json'
@@ -5222,13 +4610,6 @@ function main(argv: string[], servers: Servers = SERVERS): void {
   // reads exactly what it always read, and a caller that asks for json
   // gets the failure in the finding shape every other verb reports.
   let format: EvalFormat = 'text'
-  // A LIST, though the bare command evaluates exactly one document.
-  // It used to be one variable and the last argument won, which made a
-  // MISTYPED VERB a silent success: `aontu vet2 schema.aon good.json`
-  // printed good.json and exited 0, because `vet2` matched no
-  // subcommand, fell through to this loop as a file name, and was
-  // overwritten twice. In a tool loop that reads as a passing
-  // validation. Counting them is what lets the refusal below happen.
   const files: string[] = []
   let trust: TrustArg = { kind: 'system-warn', textExt: [] }
   let textExt: string[] = []
@@ -5238,15 +4619,6 @@ function main(argv: string[], servers: Servers = SERVERS): void {
   // mode the REPL already has.
   let jsonl = false
 
-  // Subcommand dispatch, and deliberately only for a FIRST argument:
-  // `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
-  // what it always did. A file named `vet` is still reachable as
-  // `aontu ./vet`.
-  //
-  // Promise.resolve either way: a non-watch run returns its exit class
-  // synchronously (and has already written its report), while `--watch`
-  // resolves only when the watch ends — so one await-shaped line serves
-  // both without a branch to keep covered.
   if ('vet' === argv[2]) {
     return void Promise.resolve(runVet(argv.slice(3))).then(finish)
   }
@@ -5403,14 +4775,6 @@ function main(argv: string[], servers: Servers = SERVERS): void {
     }
   }
 
-  // ONE DOCUMENT. The bare form has always been `aontu [options]
-  // [file]`, singular, and anything past the first was silently
-  // discarded rather than refused -- so every way of getting the verb
-  // wrong (a typo, a verb this port does not have, a verb spelled for
-  // another tool) ended in a plausible answer about the wrong file.
-  // Exit 2, the usage class, and the message names the cause rather
-  // than the symptom: nothing here can tell a mistyped verb from a
-  // second file, but the reader can.
   if (1 < files.length) {
     process.stderr.write(
       `aontu: the bare command evaluates one document, and ${files.length}` +
@@ -5419,9 +4783,6 @@ function main(argv: string[], servers: Servers = SERVERS): void {
     return finish(2)
   }
 
-  // The extensions ride with the capability from here on, so the three
-  // entry shapes below (file, REPL, stdin) each get them by threading
-  // the one value they already thread.
   trust = { ...trust, textExt }
 
   const file = files[0]

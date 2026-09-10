@@ -17,10 +17,6 @@ const DEFAULT_SPECIFIC_URL = 'specific';
 function pathText(path) {
     return '$' + (0 < path.length ? '.' + path.join('.') : '');
 }
-// Every recorded operand is a real evaluated Val or the sited topLike
-// stand-in, so no null guards: a Val's site is always an object, and a
-// value parsed without a usable frame (a disjunct, say) already carries
-// the -1 coordinates in it.
 function siteOf(v, role, url) {
     return {
         file: url,
@@ -49,46 +45,13 @@ function record(state, code, path, g, s, message) {
         actual: s.canon,
     });
 }
-// The admission view of a value under a profile: a BARE preference
-// admits what its superior admits (the engine's own PrefVal.superpeg
-// semantics, and the docs' "a bare preference is gated by kind"); the
-// default itself is compared separately, by the `defaults` and `gen`
-// profiles.
 function admission(v) {
     return true === v?.isPref ? v.superpeg : v;
 }
-// A PREFERRED BRANCH CONTRIBUTES EXACTLY ITS OWN VALUE (ADR-004). The
-// admission gate made that the engine's rule -- `*'auto'|'literal'|'data'`
-// admits those three strings and nothing else -- and the subsumption
-// walk kept comparing a pref MEMBER by its kind superior, the
-// pre-ADR-004 reading. So a disjunction with a default did not subsume
-// ITSELF: every member of the specific side widened to `string`, which
-// no general member admits, and the walk answered the distribution
-// case. `aontu_policy: hide({compat: *backward|forward|full|none})` --
-// the verbatim idiom from reference-api.md -- failed self-subsumption
-// under --profile gen (use-cases/BUGS.md §29).
-//
-// Only for a member of a disjunction: a bare `*x` standing alone is
-// still gated by kind, which is the rule above and the documented one.
 function memberAdmission(v) {
     return true === v?.isPref ? (0, PrefVal_1.prefInnerPeg)(v) : v;
 }
-// The effective default of a value, or undefined when it has none, or
-// 'indeterminate' when equal-rank preferences disagree (which the
-// engine itself refuses only at generation).
-// Exported (with subsumeNode) for the default-validity lint in
-// ts/src/vet.ts (G3 phase 5): the lint asks exactly this walk's two
-// questions — what is the effective default, and does a member admit
-// it.
 function effectiveDefault(v) {
-    // EVERY pref layer is unwrapped (prefInnerPeg), not just one: a
-    // ranked default's effective value is the innermost peg — `**member`
-    // generates "member" exactly as `*member` does (the rank-uniform
-    // meet, ADR-004). The one-layer unwrap left a rank-2 default wearing
-    // a `*`-wrapper no plain alternative subsumes, which is the
-    // pref_not_instance lint's ranked false positive of
-    // use-cases/BUGS.md §4 (`**member|member|admin|owner` warned while
-    // generating a value its own branch admits).
     if (true === v?.isPref) {
         return (0, PrefVal_1.prefInnerPeg)(v);
     }
@@ -131,10 +94,6 @@ function unresolved(v) {
         true === v?.isConjunct || true === v?.isExpect ||
         (true === v?.isFunc && true !== v?.isConstraint);
 }
-// Exported for the defensive-arm unit test (ADR-002,
-// ts/test/coverage3.test.ts): the no-rule fold at the walk's tail is
-// unreachable through subsume() today — the ladder is total for every
-// evaluated former — and the walk is otherwise private.
 function subsumeNode(state, path, g0, s0) {
     const g = admission(g0);
     const s = admission(s0);
@@ -148,41 +107,16 @@ function subsumeNode(state, path, g0, s0) {
             ', specific ' + JSON.stringify(s?.mark));
         return 'no';
     }
-    // TOP admits everything. There is no nil rule: an error-free
-    // evaluated document carries no nil (failing disjunct members are
-    // discarded, every other nil collects an error, and subsume() answers
-    // `error` for a source that does not stand alone), so a nil handed to
-    // the walk by a future caller falls to the no-rule fold below —
-    // `undecided`, the safe direction.
     if (true === g?.isTop) {
         return 'yes';
     }
     if (unresolved(g) || unresolved(s)) {
-        // REFLEXIVITY IS A LAW, not a rule the ladder gets to skip. Every
-        // value admits itself, residue included: the set admitted by
-        // `integer & min(0)` is exactly the set admitted by
-        // `integer & min(0)`. Without this, a constraint inside a spread
-        // template made a contract non-SELF-subsumable -- expected and
-        // actual byte-identical, verdict `undecided` -- so `breaking` on
-        // the documented close-per-entry idiom hard-failed reflexivity and
-        // had to run --allow-undecided, which then masks the genuine
-        // undecideds it exists to surface (use-cases/BUGS.md §28).
-        //
-        // Identity is the HASH FORM, not the canon: canon drops closedness
-        // and the marks, so `close({a:1})` and `{a:1}` share a canon while
-        // admitting different sets. Computed only on this branch, where
-        // the answer would otherwise be undecided, so the hot path is
-        // untouched.
         if ((0, hcanon_1.hcanon)(g) === (0, hcanon_1.hcanon)(s)) {
             return 'yes';
         }
         record(state, 'sub_unresolved', path, g, s, 'unresolved residue: the admitted set is not comparable');
         return 'undecided';
     }
-    // Disjunctions. General side first: a specific member must be
-    // subsumed by SOME general member; member-wise failure is not proof
-    // (the distribution case), so a concrete failing member becomes the
-    // witness and anything else is honestly undecided.
     if (true === s?.isDisjunct) {
         let out = 'yes';
         for (const raw of s.peg) {
@@ -234,11 +168,6 @@ function subsumeNode(state, path, g0, s0) {
             return 'no';
         }
         if (true === s?.isConstraint) {
-            // A kind covers a residual of its own domain: `number` admits any
-            // numeric residual (the supertype admits every leaf a bound can
-            // pin), a numeric LEAF kind admits only a residual pinned to that
-            // leaf, and `string` admits any pattern residual. A residual with
-            // no domain (sizing-only) admits containers no kind covers.
             const dom = s.domain;
             const skind = s.kind;
             if ('number' === dom &&
@@ -269,7 +198,6 @@ function subsumeNode(state, path, g0, s0) {
         record(state, 'compat_narrowed', path, g, s, 'the general container kind admits no such value');
         return 'no';
     }
-    // Constraint residuals.
     if (true === g?.isConstraint) {
         if (true === s?.isConstraint) {
             const r = (0, ConstraintVal_1.constraintSubsumesConstraint)(g, s);
@@ -332,26 +260,6 @@ function subsumeNode(state, path, g0, s0) {
         const sk = s.peg.map((_, i) => '' + i);
         return subsumeBag(state, path, g, s, gk, sk, (v, k) => v.peg[Number(k)]);
     }
-    // THE LADDER IS NOT TOTAL, and the formers that fall past it are the
-    // ones the evaluator MEANS to leave standing: a recursion, a
-    // relation and its graph atom, a `refer()` target constraint. None
-    // of them describes a set of values a structural walk can compare,
-    // so `undecided` is the honest answer for two DIFFERENT ones.
-    //
-    // For two IDENTICAL ones it is not. REFLEXIVITY IS A LAW -- every
-    // value admits itself -- and identity is the HASH FORM, the same
-    // rule the unresolved branch above applies and for the same reason:
-    // it costs nothing, because it runs only where the answer would
-    // otherwise be `undecided`. Without it a document that declares a
-    // relation, shares a template by reference or alias, or recurses did
-    // not subsume ITSELF, so `breaking` on the idiom the language exists
-    // for hard-failed and had to run --allow-undecided, which masks the
-    // genuine undecideds it exists to surface (use-cases/BUGS.md 64,
-    // and 28 before it).
-    //
-    // A NIL is the exception, and the reason the law is spelled here
-    // rather than in `unresolved`: a nil is not a value, so it admits
-    // nothing, itself included.
     if (true !== g?.isNil && true !== s?.isNil && (0, hcanon_1.hcanon)(g) === (0, hcanon_1.hcanon)(s)) {
         return 'yes';
     }
@@ -410,16 +318,6 @@ function subsumeBag(state, path, g, s, gKeys, sKeys, child) {
             }
         }
     }
-    // Spread templates: a path-dependent template's meaning depends on
-    // where it lands, which no structural comparison can decide -- UNLESS
-    // the two templates are the same template. REFLEXIVITY IS A LAW and
-    // identity is the HASH FORM (the same rule the unresolved branch of
-    // subsumeNode applies): two byte-identical templates admit the same
-    // set wherever they land, so a document with a reference- or
-    // alias-valued template subsumes itself, and the comparison either
-    // side of the template is decided on its own merits rather than
-    // dragged to `undecided` (use-cases/BUGS.md 64). Where they are NOT
-    // identical, nothing structural can decide them and the fold stands.
     const gcj = g.spread?.cj;
     const scj = s.spread?.cj;
     if (null != gcj || null != scj) {
@@ -448,12 +346,6 @@ function subsumeBag(state, path, g, s, gKeys, sKeys, child) {
 let topVal;
 function topLike() {
     if (null == topVal) {
-        // A full site, not a partial one: `len` and `src` are as much part
-        // of the shape as row and col, and leaving them undefined dropped
-        // both keys from the emitted report — so this stand-in was the one
-        // site in either port with no `len` at all, and the Go twin (which
-        // has no undefined) disagreed. It occupies no source, so the values
-        // are the "unknown" ones.
         topVal = {
             isTop: true, canon: 'top',
             site: { row: -1, col: -1, len: -1, src: '' },
@@ -461,29 +353,10 @@ function topLike() {
     }
     return topVal;
 }
-// A trial comparison whose findings are DISCARDED: disjunct
-// member-matching asks many "would this member do?" questions, and only
-// the aggregated outcome is a finding.
-// A DISTRIBUTION TRIAL IS NOT A NODE CORRESPONDENCE. It asks whether
-// one ALTERNATIVE of one side admits one alternative of the other,
-// which is a question about admitted sets; the two values it compares
-// are not the same node of the two documents. The `gen` profile's mark
-// rule is a correspondence question -- did a field that used to be
-// generated become hidden -- and firing it here compared a whole
-// disjunction (carrying its enclosing bag's mark) against a member
-// extracted out of one (which does not), so `hide({c: *a|b})` stopped
-// subsuming ITSELF under --profile gen (use-cases/BUGS.md §29). The
-// enclosing node's marks are compared where they correspond: at that
-// node, by the ordinary walk.
 function trialSubsume(state, path, g, s) {
     const trial = { ...state, findings: [], distributing: true };
     return subsumeNode(trial, path, g, s);
 }
-// The defaults comparison (the `defaults` and `gen` profiles): the
-// specific side's effective default must survive into the general side
-// unchanged. Adding a default where none existed is compatible;
-// changing or removing one is not (removal turns previously generable
-// documents incomplete).
 function subsumeDefaults(state, path, g, s) {
     const sd = effectiveDefault(s);
     if (undefined === sd) {
@@ -520,16 +393,6 @@ function subsumeDefaultsWalk(state, path, g, s) {
     }
     return out;
 }
-/**
- * Does `generalSrc` subsume `specificSrc` — is every instance the
- * specific admits admitted by the general too?
- *
- * Both sources are evaluated fresh (single-use trees make this
- * mandatory), and the recursion runs on the finished values. The
- * verdict is three-valued plus `error` (a source that does not stand up
- * on its own, mirroring vet's schema-error verdict); findings reuse
- * G2's object with class `compat`.
- */
 function subsume(generalSrc, specificSrc, opts) {
     const options = opts ?? {};
     const profile = options.profile ?? 'defaults';

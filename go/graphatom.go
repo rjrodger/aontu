@@ -2,30 +2,11 @@
 
 package aontu
 
-// THE GRAPH ATOMS (RELATIONS.0.md §3.3): `acyclic()` and
-// `inverse(name)`, conjoined at the same field as the `rel()` they
-// govern. Their model is the sizing atoms -- a property that cannot be
-// decided while information can still arrive is HELD during
-// unification and DECIDED at generation, where no more can.
-//
-// During unification they are lattice-inert: both properties are
-// global and non-monotone (one more edge can make an acyclic graph
-// cyclic), and the lattice guarantee -- more information never
-// falsifies what has been observed -- forbids a constraint that could
-// answer true and then false. So the atoms only REGISTER the
-// declaration on the context and CARRY the field's value (the
-// sizing-constraint shape: the atom absorbs its fold neighbours, so
-// the pairwise fold still merges the value across it). The verdict
-// lands at generation (relationFindings, relation.go) and is reported
-// identically by the `relations` verb -- one decision, two surfaces.
-// Mirrors GraphAtomVal in ts/src/val/GraphAtomVal.ts.
 
 import (
 	"strconv"
 )
 
-// relDecl is what one predicate's atoms declared: additive, exactly as
-// two statements of one map are.
 type relDecl struct {
 	acyclic  bool
 	inverses map[string]bool
@@ -39,13 +20,6 @@ type GraphAtomVal struct {
 	held Val
 }
 
-// predicateNameOK is the D-1 relation-predicate grammar
-// (docs/design/RELATIONS.0.md §3.2): a letter or `_`, then letters,
-// digits, `_` or `-`. Entity names are gone with ADR-014; PREDICATE
-// names are not -- a relation is a vocabulary term, not an address.
-// Written as an explicit loop rather than a regexp so the two ports
-// cannot drift on a character class. Mirrors PREDICATE_NAME in
-// ts/src/val/ReferFuncVal.ts.
 func predicateNameOK(s string) bool {
 	if "" == s {
 		return false
@@ -70,9 +44,6 @@ func predicateNameOK(s string) bool {
 	return true
 }
 
-// predicateName is the predicate name an argument spells, or ok=false
-// when it does not spell one. A bare `dependedOnBy` parses as a string,
-// as does `"dep-on"`; anything else is not a name.
 func predicateName(v Val) (string, bool) {
 	sv, ok := v.(*ScalarVal)
 	if !ok || KindString != sv.kind {
@@ -104,11 +75,6 @@ func newGraphAtom(akind, invname string, held Val) *GraphAtomVal {
 func (g *GraphAtomVal) cjo() int      { return 46000 }
 func (g *GraphAtomVal) superior() Val { return top() }
 
-// register records the declaration for the predicate the atom sits on
-// -- the last segment of its path, when that segment is a D-1 NAME (an
-// atom landed anywhere else declares nothing). Idempotent, at every
-// drive, so whichever pass first sees the atom at its landed position
-// records it. The registry is lazily made on the shared *Ctx.
 func (g *GraphAtomVal) register(ctx *Ctx) {
 	if nil == ctx || 0 == len(g.path) {
 		return
@@ -132,7 +98,6 @@ func (g *GraphAtomVal) register(ctx *Ctx) {
 	}
 }
 
-// carry is a rebuilt atom around a new held, at this atom's position.
 func (g *GraphAtomVal) carry(held Val) *GraphAtomVal {
 	out := newGraphAtom(g.akind, g.invname, held)
 	copyMarks(out, g)
@@ -158,11 +123,6 @@ func (g *GraphAtomVal) Unify(peer Val, ctx *Ctx) Val {
 			g.dc = DONE
 			return g
 		}
-		// The self-drive refines IN PLACE (the MapVal top-peer
-		// pattern): a fresh atom per pass changes object identity, so
-		// spread apply-once stamps and the entity merge's fast paths
-		// stop holding, and the enclosing bags re-open every pass --
-		// the service catalog never converged.
 		held := unite(ctx, g.held, nil)
 		if held.Nil() {
 			return held

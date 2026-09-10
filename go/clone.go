@@ -18,12 +18,6 @@ func setPaths(v Val, path []string) {
 	case *MapVal:
 		if n.spread != nil {
 			setPaths(n.spread, path)
-			// The spread constraint's ROOT is pathed under a literal
-			// "&" segment (TS parses spreads at `x.&`): a relative ref
-			// used as a spread (`&:.y`) then resolves one level deeper
-			// than the map — through the map's own pending value — and
-			// correctly stays unresolved instead of finding the
-			// enclosing node itself.
 			n.spread.setvpath(append(cp(path), "&"))
 		}
 		for _, k := range n.keys {
@@ -71,13 +65,6 @@ func setPaths(v Val, path []string) {
 	}
 }
 
-// overlayPath rebases a cloned node's path: the destination walk path
-// overwrites the leading segments of the node's original path, and the
-// original TAIL beyond the destination's length is kept (the TS
-// Val.clone path behaviour). A transplant to a SHALLOWER destination
-// therefore keeps trailing source segments — `x:a:{k:key()} y:$.x.a`
-// gives y's key() the path [y,k,k] (dest [y,k] + orig tail [k]), so
-// key(1) resolves to "k", exactly as in TS.
 func overlayPath(dest, orig []string) []string {
 	if len(orig) <= len(dest) {
 		return cp(dest)
@@ -88,20 +75,6 @@ func overlayPath(dest, orig []string) []string {
 	return out
 }
 
-// repathArg re-paths a (possibly shared) func-arg tree to the driving
-// location, mirroring the effective paths a TS ctx re-descent would
-// assign: the node's own path is OVERLAID on the base (tails beyond the
-// base survive, as in Val.clone's ctx-cut), while bag children descend
-// with a clean base+key (ctx.descend). The stored paths of a shared
-// tree therefore always reflect the LAST driver, which is exactly the
-// TS behaviour for shared clones.
-//
-// Exception: a key() func that has stopped residuating (the settle pass,
-// THE STAGING RULE — see Ctx.settle) keeps its stored path. In TS paths
-// are only ever written by clones, and key()'s ctx-repathing clone
-// happens exclusively while it residuates — on the settle pass it
-// resolves with the LAST residuation clone's path, no matter which
-// driver reaches it first.
 func repathArg(v Val, base []string, settle bool) {
 	if fv, ok := v.(*FuncVal); ok && fv.name == "key" && settle {
 		return
@@ -143,25 +116,10 @@ func repathArg(v Val, base []string, settle bool) {
 	}
 }
 
-// clonePath deep-clones a Val, rebasing the subtree at the given path
-// (mirrors Val.clone in ts/src/val/Val.ts, used by residuation and by
-// a reference resolving to a target that still holds a staged call).
-// Done-state is preserved. The TOP of the clone is marked clone-minted (posu; TS Val.clone's `url ?? ”`), which
-// gates the error-operand position flip in makeNilErr; children keep
-// their source marks, as TS's shallow clone shares the originals.
 func clonePath(v Val, path []string) Val {
 	return cloneAt(v, path, false)
 }
 
-// instanceClone is THE PER-DESTINATION INSTANTIATION clone (ADR-005;
-// TS `clone(ctx, {dup: true})`): a template cloned per destination —
-// pack/each templates, filter conditions, applied spread constraints,
-// and a REFERENCE's copy of a target holding no staged call (ADR-025)
-// — must own its FULL inner structure, so a FuncVal's args and a
-// PrefVal's peg are cloned too instead of shared. The residuation
-// clone, which stays at one position, keeps clonePath's sharing, and
-// so does the copy of something still being settled at its own site,
-// which is what the ghost rows in test/spec/func.tsv pin.
 func instanceClone(v Val, path []string) Val {
 	return cloneAt(v, path, true)
 }
@@ -177,41 +135,10 @@ func clonePathRec(v Val, path []string, deep bool) Val {
 		return nil
 	}
 	out := clonePathKind(v, path, deep)
-	// The SOURCE NAME travels with every clone, whatever its kind: TS's
-	// Val.clone copies the whole site, url included, so a value carried
-	// into another document by a ref still says which document wrote it
-	// (val.go, base.surl). Done here rather than in each arm below
-	// because a kind that forgot it would mislabel a report site --
-	// silently, and only in the two-document vet run.
 	out.setSrcurl(v.srcurl())
-	// AND THE SOURCE SPAN, for the same reason and in the same place:
-	// TS's Val.clone copies the whole site, so a clone keeps the extent
-	// along with the row and column it already keeps. Only the CLONE
-	// carries it -- a wrapper that returns a new value built around
-	// another (close, type, deprecate) must not push its own text onto
-	// what it wraps, which would claim source the value never occupied.
 	out.setSrctext(v.srctext())
-	// AND THE POSITION, completing the site. The arms below that copy
-	// the struct keep it for free; the ones that BUILD a fresh value
-	// (top, disjunct, conjunct) lost it, so a disjunction reached
-	// through a `$ref` -- the ordinary way a schema names an enum --
-	// arrived unsited, and the `empty` finding for data that matches
-	// no alternative pointed at row -1 while the canonical port pointed
-	// at the enum. That is the "junction values at -1:-1" half of the
-	// review's finding F, and it is one line here rather than one per
-	// kind for the reason the two above are.
 	out.setPos(v.pos())
 	out.setPosu(v.posu())
-	// PROVENANCE TRAVELS WITH THE CLONE, exactly as the site does, and
-	// for the same reason: a clone of a value the author wrote IS that
-	// written value somewhere else, carrying the author's site, so it
-	// can be pointed at. Without it a default reaching a generated
-	// child, or a shape carried by a $ref, was invisible to `why` --
-	// which answered "nothing met at this path" over a value it had
-	// just printed (the review's finding E). And a clone of a member is
-	// still a member of the written container, so the whole statement
-	// is what gets shown. Both marks are set only by an instrumented
-	// run. See base.fwrt and base.finner.
 	if v.written() {
 		out.setWritten()
 	}
@@ -243,11 +170,6 @@ func clonePathKind(v Val, path []string, deep bool) Val {
 		c.path = cp(path)
 		return &c
 	case *ReferVal:
-		// The residual's own state — the type to flow, the address it has
-		// met, the constraints it holds — travels with the clone, and the
-		// clone is an INDEPENDENT value: without this arm the fall-through
-		// shared one residual between a reference and its target, so two
-		// positions that later constrained it differently would interfere.
 		c := *n
 		c.path = cp(path)
 		return &c
@@ -265,11 +187,6 @@ func clonePathKind(v Val, path []string, deep bool) Val {
 		c.path = cp(path)
 		return &c
 	case *ExpectVal:
-		// TS Val.clone rebuilds an ExpectVal from the generic spec (peg,
-		// marks, path) alone — the expectation-only state (accumulated
-		// peer, creating parent, key) is NOT part of the spec and starts
-		// unset in the clone, so an independent destination accumulates
-		// its own peers and places its own error.
 		out := &ExpectVal{peg: n.peg}
 		out.dc = n.dc
 		out.sp = n.sp
@@ -327,30 +244,6 @@ func clonePathKind(v Val, path []string, deep bool) Val {
 		}
 		return out
 	case *PrefVal:
-		// The peg is SHARED, not cloned (TS PrefVal.clone inherits
-		// Val.clone's `peg: this.peg`): a cloned pref spread template
-		// resolves its inner value at the TEMPLATE's own paths — e.g. a
-		// `.K` ref inside `&:*[$obj,.K,0]` resolves (and errors) against
-		// the template location, exactly as in TS.
-		//
-		// superpeg IS CARRIED. It is the override GATE (see pref.go): a
-		// concrete peer replaces a preference only where it is the same
-		// KIND, so `*1 & 2` is 2 while `*1 & {}` is an error. Dropping it
-		// here did not weaken the gate, it REMOVED it -- unite(ctx, nil,
-		// peer) returns the peer verbatim, so every peer overrode, and a
-		// cloned `*1` silently accepted a map, a string, a boolean or a
-		// list.
-		//
-		// Uncloned prefs were unaffected, which is why the suite stayed
-		// green: only values reaching a PrefVal through a spread
-		// template, a $ref or a copy() lost the gate.
-		//
-		// A template INSTANCE owns its peg (deep, ADR-005): with the
-		// peg shared, a rank-2 default (`**key(1)|string`) in a pack
-		// template resolved its one shared inner key() at the first
-		// destination and every child got the first child's key
-		// (use-cases/BUGS.md §9). Mirrors PrefVal.clone under `dup` in
-		// ts/src/val/PrefVal.ts.
 		peg := n.peg
 		if deep {
 			peg = cloneAt(n.peg, path, true)
@@ -413,20 +306,6 @@ func clonePathKind(v Val, path []string, deep bool) Val {
 		out.path = overlayPath(path, n.path)
 		out.spr = n.spr
 		copyMarks(out, n)
-		// The args are SHARED, not cloned (TS Val.clone passes
-		// `peg: this.peg` by reference): a moved/copied pending func and
-		// its source display the same arg objects, so the destination's
-		// resolution of a shared arg map shows through in the frozen
-		// source's canon (the ghost-innard sharing artifacts). The args
-		// are re-pathed to the clone's location when the clone resolves
-		// them (see FuncVal.Unify), mirroring the ctx-path-driven
-		// re-descent in TS.
-		//
-		// A template INSTANCE owns them (deep, ADR-005): with the args
-		// shared, `pack($.names, close({name: key()}))` resolved key()
-		// once inside the one shared inner map and stamped the FIRST
-		// child's key on every child (use-cases/BUGS.md §8). Mirrors
-		// FuncBaseVal.clone under `dup` in ts/src/val/FuncBaseVal.ts.
 		if deep {
 			args := make([]Val, 0, len(n.peg))
 			for _, a := range n.peg {

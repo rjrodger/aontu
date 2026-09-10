@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The SARIF renderer (G2 phase 5, ts/src/report-sarif.ts). The shape
-// contract is the shared golden in test/spec/files/vet-sarif/, which
-// go/report_sarif_test.go holds the Go twin to byte for byte; the
-// severity mapping and the no-position branch are pinned here on
-// synthetic reports, because no engine path emits them yet (warnings
-// are reserved for G3's deprecation mark, info for --surplus).
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -20,10 +14,6 @@ const GOLDEN_DIR = Path.join(
   __dirname, '..', '..', 'test', 'spec', 'files', 'vet-sarif')
 
 
-// The redaction the golden's README specifies: message text and
-// producer version are the two things deliberately not in cross-port
-// parity, so the comparing test removes them from its own output the
-// same way test/spec/vet.tsv carves the message out of its goldens.
 function redact(sarif: string): string {
   const log = JSON.parse(sarif)
   log.runs[0].tool.driver.version = '<VERSION>'
@@ -46,11 +36,6 @@ describe('sarif', () => {
   test('sarif-golden', () => {
     const schema = Fs.readFileSync(Path.join(GOLDEN_DIR, 'schema.aon'), 'utf8')
     const data = Fs.readFileSync(Path.join(GOLDEN_DIR, 'data.aon'), 'utf8')
-    // Normalised on read: the golden is compared BYTE FOR BYTE against
-    // a generated string that always uses \n, so a CRLF checkout could
-    // never match. .gitattributes pins test/spec/files/** to LF, and
-    // this is the half that holds when the file did not come from a
-    // checkout. The Go twin does the same (go/report_sarif_test.go).
     const expect = Fs.readFileSync(Path.join(GOLDEN_DIR, 'expect.sarif'), 'utf8')
       .replaceAll('\r\n', '\n').replaceAll('\r', '\n')
 
@@ -108,12 +93,6 @@ describe('sarif', () => {
   })
 
 
-  // A clean run is still a report: one run, empty results, the tool
-  // named — what a CI upload of a passing check looks like. A FAILED
-  // run (verdict error: the schema was unusable) also has empty
-  // results, and the difference is carried in SARIF's own invocation
-  // metadata so a consumer never mistakes "could not check" for
-  // "checked and clean".
   test('sarif-empty', () => {
     const report: VetReport = { verdict: 'valid', truncated: false, findings: [] }
     const log = JSON.parse(sarifReport(report, '1.2.3'))
@@ -130,10 +109,6 @@ describe('sarif', () => {
   })
 
 
-  // A site's file is a filesystem path; the SARIF uri percent-encodes
-  // every URI-significant byte (by UTF-8 byte, so the Go twin's loop
-  // produces identical text) — otherwise text after `#` reads as a
-  // fragment and the consumer loses the file association.
   test('sarif-uri-encoding', () => {
     const report: VetReport = {
       verdict: 'invalid',

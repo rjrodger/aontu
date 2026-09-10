@@ -8,25 +8,6 @@ import (
 	"strings"
 )
 
-// THE GENERATION COMBINATORS (G8 phase 1, the Go side of
-// ts/src/val/PackFuncVal.ts and ts/src/val/EachFuncVal.ts,
-// docs/capability-review/g8-generation.md).
-//
-//	pack(data, tmpl)  one KEYED child per child of data
-//	each(data, tmpl)  one LIST ELEMENT per child of data
-//
-// Both clone their template per destination -- an independent copy for
-// each generated child, because a generator's template IS the child and
-// a child is a position -- and both wait for the model to settle before
-// they fire (the staging rule, G8 phase 0): a data
-// argument that is merely `done` once can still be merged into by a
-// sibling, an include or a spread, and children generated from a
-// half-merged bag would be missing.
-//
-// TOTALITY. Both iterate a finite, settled bag and neither can call
-// itself: the number of children either can produce is fixed by data
-// that already exists. Nothing here recurses, which is the guarantee
-// the combinators exist to keep.
 
 // packKeys is the keys a data bag names, or the code naming what is
 // wrong with it. For a list the strings themselves are the keys: keys
@@ -58,12 +39,6 @@ func packKeys(data Val, ctx *Ctx) ([]string, string) {
 	return nil, "pack_data"
 }
 
-// bagValues is the members a data bag holds -- what generation would
-// emit (members.go, BUGS.md §79) -- in the order the result
-// must carry them: source order for a list, sorted-key order for a map.
-// A generated list whose order depended on insertion history would
-// differ between two runs of one document, and between the two ports.
-// The caller names the refusal, there being one list generator (form).
 func bagValues(data Val, ctx *Ctx) ([]Val, bool) {
 	if !isBag(data) {
 		return nil, false
@@ -89,25 +64,12 @@ func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	out := newMap()
 	for ki, key := range keys {
 		kslot := append(cp(base), key)
-		// THE PLACEHOLDER BINDS THE SOURCE CHILD (G8 phase 3): inside a
-		// generator's template `_` is the datum this child is being
-		// made FROM. For a map that is the child's value; for a list of
-		// names it is the name, which is also the key -- so `_` and
-		// key() agree there, and differ the moment the data is a map.
 		var source Val
 		if m, ok := data.(*MapVal); ok {
 			source = m.peg[key]
 		} else if l, ok := data.(*ListVal); ok {
 			source = l.peg[ki]
 		}
-		// CLONED, never shared. A spread may share a template that
-		// holds nothing path-dependent; a generator's template IS the
-		// child, and a child is a position (see the TS
-		// PackFuncVal.resolve comment).
-		// A FULL INSTANCE, to the leaves (instanceClone, ADR-005): a
-		// bare clone shares the inner structure of any call, preference
-		// or operation in the template, so the first child's resolution
-		// of a shared key()/ref answered for every child (BUGS.md §8, §9).
 		child := fillPlace(instanceClone(tmpl, kslot), source)
 		if prev, seen := out.peg[key]; seen {
 			// Duplicate generated keys are not an error: the colliding
@@ -123,15 +85,6 @@ func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	return out
 }
 
-// SELECTION (G8 phase 2, the Go side of ts/src/val/FilterFuncVal.ts and
-// ts/src/val/MatchFuncVal.ts).
-//
-//	filter(data, cond)                the children that ALREADY satisfy cond
-//	match(v, p1, r1, …, d?)           the result of the first pattern v matches
-//
-// Both select by trying a meet and reading the outcome, never by a
-// predicate language: a condition and a pattern are ordinary Aontu
-// values, so the constraint atoms compose with them for free.
 
 // trialUnify is a TRIAL meet: does a unify with b, and if so as what?
 // Failure is an ANSWER rather than an error, so the error list is
@@ -139,17 +92,6 @@ func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 // (disjunct.go). Mirrors trialUnify in ts/src/val/FuncBaseVal.ts.
 func trialUnify(ctx *Ctx, a, b Val) Val {
 	saved := ctx.err
-	// AND ctx.trial, which this used to leave alone. The list-length
-	// gate in listval.go is guarded by it -- a trial peer of a
-	// different length cannot narrow a positional structure, so the
-	// trial must fail rather than merge -- and TypeScript's trialUnify
-	// (ts/src/val/FuncBaseVal.ts) has always set the flag. Go set it
-	// only on the disjunct-member path, so the gate could never fire
-	// from a combinator or from the preference distribution: `match`
-	// selected the other arm, `filter` made the OPPOSITE selection, and
-	// `a: *[] a: [1]` answered `*[1]` at exit 0 where the canonical
-	// port refused (BUGS.md §61). Saved and restored, because a trial
-	// nested inside a trial must not clear the outer one.
 	savedTrial := ctx.trial
 	ctx.err = []*NilVal{}
 	ctx.trial = true
@@ -173,21 +115,8 @@ func filterFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 		cond = args[1]
 	}
 
-	// A child is kept when the condition CHANGES NOTHING: the meet
-	// succeeds AND its answer is the child itself, which is to say the
-	// child already satisfies the condition. Mere unifiability is not
-	// the test and cannot be -- a map is open, so `{p:2}` unifies with
-	// `{debug:true}` by GAINING the key, and a filter that keeps
-	// everything that could be made to match keeps everything. Canon is
-	// the comparison because canon is what "the same value" means here.
 	keeps := func(child Val, slot []string) bool {
 		ctx.slot = slot
-		// `_` inside the condition binds the child being tested (G8
-		// phase 3), so a condition can be about the child as a whole
-		// rather than only about its shape.
-		// The condition is cloned as a FULL instance per trial
-		// (instanceClone, ADR-005) — a bare clone shares call/pref
-		// innards across trials.
 		test := fillPlace(instanceClone(cond, slot), child)
 		met := trialUnify(ctx, clonePath(child, slot), test)
 		return nil != met && met.Canon() == child.Canon()
@@ -211,9 +140,6 @@ func filterFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	case *ListVal:
 		elems := []Val{}
 		for _, m := range bagMembers(data, ctx) {
-			// The element context is the position it will END UP at,
-			// which is its index in the RESULT: dropping the third of
-			// five moves the fourth up.
 			islot := append(cp(base), itoa(len(elems)))
 			if keeps(m.val, islot) {
 				elems = append(elems, clonePath(m.val, islot))
@@ -233,16 +159,6 @@ func matchHasDefault(peg []Val) bool {
 	return 0 == len(peg)%2
 }
 
-// effectiveScrutinee is THE DEFAULTED-SCRUTINEE RULE (ADR-004,
-// use-cases/BUGS.md §5): the generation-effective view of a settled
-// scrutinee. A preference -- or a disjunction carrying one -- means
-// "this value unless something overrides it", and by resolve time the
-// model has SETTLED (staging rule), so nothing will: the value
-// generation is about to emit is the value the patterns must be tested
-// against. Testing against the still-open preference instead let a
-// pattern SELECT an arm by overriding the default. A pref-free
-// scrutinee (open disjunction included) is untouched. Mirrors
-// effectiveScrutinee in ts/src/val/MatchFuncVal.ts.
 func effectiveScrutinee(v Val) Val {
 	out := v
 	if d, ok := out.(*DisjunctVal); ok {
@@ -330,19 +246,8 @@ func stagedArgIdx(f *FuncVal) []int {
 	return nil
 }
 
-// stagedDrive advances a staged func's decision arguments IN PLACE,
-// every pass rather than only on the settle pass: they are part of the
-// model that has to settle. Answers whether they are all done, which is
-// the other half of "ready to fire". Mirrors driveStagedArgs in
-// ts/src/val/FuncBaseVal.ts.
 func stagedDrive(ctx *Ctx, f *FuncVal, base []string) bool {
 	ready := true
-	// THE SNAPSHOT WAITS FOR THE SOURCE (see Ctx.argsnap): every ref
-	// resolution inside this drive defers its copy until the target has
-	// settled in the tree. Saved/restored rather than simply cleared:
-	// a staged func nested inside another's data argument drives its
-	// own argument with the flag already up, exactly as TS's
-	// prototype-inherited ctx flag behaves.
 	saved := ctx.argsnap
 	ctx.argsnap = true
 	defer func() { ctx.argsnap = saved }()
@@ -353,15 +258,6 @@ func stagedDrive(ctx *Ctx, f *FuncVal, base []string) bool {
 			ctx.slot = base
 			driven := unite(ctx, f.peg[i], top())
 			if driven != f.peg[i] {
-				// COPY ON WRITE. A clone shares its arguments with the
-				// value it was cloned from (clonePath, for the sharing
-				// artifacts the ghost cases depend on), so writing a
-				// driven argument straight back would write it into
-				// every sibling clone too — and a generator's template,
-				// cloned once per destination, is exactly a set of
-				// siblings that must answer differently. Each staged
-				// func takes ownership of its arguments the first time
-				// it advances one.
 				peg := append([]Val{}, f.peg...)
 				peg[i] = driven
 				f.peg = peg
@@ -372,37 +268,6 @@ func stagedDrive(ctx *Ctx, f *FuncVal, base []string) bool {
 	return ready
 }
 
-// TRANSFORMATION: emit(select, table) (G9 phase 6, the Go side of
-// ts/src/val/EmitFuncVal.ts, docs/design/EMIT.0.md). Apply-templates,
-// with the dispatch in the engine and none of it in user space.
-//
-//	emit($.services, [
-//	  {match: {kind: sqs},  body: [`listen(` + .pin + `)`]}
-//	  {match: {kind: http}, body: [`serve(` + .path + `)`]}
-//	])
-//
-// For every node of select, in order, the first template whose match
-// the node unifies with is taken and its body instantiated AGAINST
-// THAT NODE. The result is one flat list; a body element that is
-// itself a list SPLICES, which is what makes a nested emit compose.
-//
-// A NAMED TABLE IS A PLACEHELD emit (`%wire = emit(_, T)`). A table
-// written at a document position is DRIVEN there, so its bodies'
-// relative references resolve against wherever it sits and miss;
-// nothing in the language holds a value unevaluated at such a position,
-// and what does hold one is a CALL's template argument.
-// `emit(.listen, %wire)` follows the reference and reads the table out
-// of the placeheld call; `.listen & %wire` fills the hole. Both are the
-// same dispatch, and it is what lets a rule set name ITSELF.
-//
-// TERMINATION IS THE SELECTION's. Unlike pack and each, this one
-// recurses -- a nested model walked into nested output is the
-// capability the rule layer exists to add -- so the bound is not "it
-// cannot call itself" but "each dispatch descends into a finite bag
-// that already exists, and a selection that empties emits nothing". A
-// rule set that walks into itself WITHOUT descending is charged to the
-// depth budget and refused as unify_cycle, like any other runaway
-// descent.
 
 // emitTemplate is one entry of the rule table: the pattern to try, the
 // body to instantiate, and -- docs/design/TEMPLATE.0.md D3 and D4 --
@@ -484,13 +349,6 @@ func emitTemplates(table Val) ([]emitTemplate, *emitRefusal) {
 	return nil, &emitRefusal{code: "emit_table"}
 }
 
-// oneEmitTemplate reads one rule. Both keys are required: a template
-// with no pattern would match everything by accident, and one with no
-// body would emit nothing while claiming a node. The two optional keys
-// -- a `replace` map and an `esc` naming the convention its values are
-// escaped by, `none` the one opt-out -- are the template's shape too,
-// and D3's two static checks run here, on the template alone, before
-// any node.
 func oneEmitTemplate(m *MapVal, idx int) (emitTemplate, *emitRefusal) {
 	match, hasMatch := m.peg["match"]
 	body, hasBody := m.peg["body"]
@@ -525,13 +383,6 @@ func oneEmitTemplate(m *MapVal, idx int) (emitTemplate, *emitRefusal) {
 	return tmpl, nil
 }
 
-// emitLiterals is the literal strings of a body -- a string element,
-// and the strings written directly in a map element's `of` list or
-// `text` -- which are the text the template wrote. A string an
-// expression or a nested dispatch computes is not one: D3's third rule
-// (a spliced result is finished) and its second (a substituted value
-// is never re-scanned) both follow from substituting at these spots
-// and nowhere else.
 func emitLiterals(body *ListVal) []emitLit {
 	out := []emitLit{}
 	for i, el := range body.peg {
@@ -557,11 +408,6 @@ func emitLiterals(body *ListVal) []emitLit {
 	return out
 }
 
-// emitCheckReplace is D3's two static checks, on the template alone and
-// before any node: a key inside another is ambiguous whatever the order
-// (replace_overlap), and a key no literal holds means the template
-// drifted from its map (replace_unused). Keys are visited in code point
-// order, so both ports name the same pair.
 func emitCheckReplace(replace *MapVal, lits []emitLit) *emitRefusal {
 	keys := cp(replace.keys)
 	sort.Strings(keys)
@@ -603,12 +449,6 @@ func emitRefuse(ctx *Ctx, f *FuncVal, r *emitRefusal) Val {
 	return makeNilErrFull(ctx, r.code, f, nil, "resolve", r.details)
 }
 
-// nodeField is the field of node a reference names, or nil when it
-// names none. Only a chain of plain NAMES is a field: a parent step has
-// no answer at a node that is an origin rather than a position, and a
-// variable segment is not a name until something resolves it -- both
-// are refused here rather than left to resolve somewhere else, which is
-// the failure mode the binding exists to remove.
 func nodeField(rv *RefVal, node Val) Val {
 	cur := node
 	for _, seg := range rv.peg {
@@ -636,11 +476,6 @@ func nodeField(rv *RefVal, node Val) Val {
 	return cur
 }
 
-// hasNodeRef reports whether v holds a relative reference for the node
-// binding to replace. Asked first so a body with no substitutions is
-// never needlessly rebuilt -- the identity behaviour fillPlace has.
-// Stops at a nested generator's binding arguments for the reason
-// bindNode does.
 func hasNodeRef(v Val) bool {
 	switch n := v.(type) {
 	case *RefVal:
@@ -691,19 +526,6 @@ func hasNodeRef(v Val) bool {
 	return false
 }
 
-// bindNode is v with every relative reference replaced by the field of
-// node it names. The binding is done HERE rather than left to path
-// resolution: a relative path is a COUNT taken wherever the value comes
-// to rest, and the nodes of a computed selection (filter(...)) come to
-// rest nowhere -- there is no position for a count to be taken from. An
-// ABSOLUTE reference is untouched and still reads the document root.
-//
-// The walk stops at a nested generator's own binding argument
-// (boundArgStart): a rule table nested in a body is the INNER emit's to
-// bind, so .x inside it is the inner node. What crosses the boundary is
-// the nested call's SELECTOR, which is argument 0 -- the selector is
-// the channel. `fail` keeps the first reference the node could not
-// answer, for the located error.
 func bindNode(v Val, node Val, fail *string) Val {
 	if rv, ok := v.(*RefVal); ok && !rv.absolute {
 		found := nodeField(rv, node)
@@ -714,14 +536,6 @@ func bindNode(v Val, node Val, fail *string) Val {
 			return v
 		}
 		out := clonePath(found, cp(rv.path))
-		// A RELATIVE REFERENCE IS A READ TOO (RENDER.0.md P7), and the
-		// one read no reference resolution sees: the binding answers it
-		// here, from the matched node, rather than letting a path
-		// resolve at a position the body never occupies. Without this a
-		// nested rule set whose selection is `.handlers` reported its
-		// nodes at the address they came to rest, which is in the
-		// OUTPUT. A node carries an address only under an instrumented
-		// run, which is what makes the second test the whole guard.
 		if "" == out.readAddr() && "" != node.readAddr() {
 			addr := node.readAddr()
 			for _, seg := range rv.peg {
@@ -820,12 +634,6 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	if 0 < len(args) {
 		sel = args[0]
 	}
-	// THE MEMBERS WITH THEIR KEYS, read through the one helper every
-	// fold reads a bag by (members.go): source order for a list,
-	// sorted-key order for a map, a hidden child and an unfilled
-	// optional left out. The KEY is what the trace addresses a node by
-	// -- it is the node's key IN THE SELECTION, which is the only thing
-	// a walk of a computed bag knows about where a node sits.
 	if !isBag(sel) {
 		return makeNilErr(ctx, "emit_data", f, nil)
 	}
@@ -835,11 +643,6 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	if 1 < len(args) {
 		table = args[1]
 	}
-	// A NAMED TABLE IS REACHED BY REFERENCE, and the reference -- not
-	// the table -- is what is followed. Followed HERE rather than in
-	// the staged drive, which waits for a SETTLED target: a table is a
-	// template, a template holding a hole never settles, and waiting
-	// for one would mean the dispatch never fires.
 	if rv, ok := table.(*RefVal); ok {
 		ctx.slot = base
 		table = unite(ctx, rv, top())
@@ -850,10 +653,6 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 		return emitRefuse(ctx, f, refused)
 	}
 
-	// THE TRACE'S TWO ADDRESSES (RENDER.0.md D11, P7), computed once
-	// per dispatch and only when the run is instrumented: the table's
-	// own, which every rule of it is numbered under, and the
-	// selection's, which every node of it is keyed under.
 	rec := nil != ctx.reads
 	tableAddr := ""
 	selAddr := ""
@@ -876,11 +675,6 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 
 		var mark *emitOrigin
 		if rec {
-			// THE NODE KEEPS ITS ADDRESS (P7). A body passes the node on
-			// through `_`, and a nested rule set dispatching over it can
-			// then say where it came from -- otherwise the node arrives
-			// as an element of a list the body wrote, and the only
-			// address left is where that list came to rest.
 			naddr := emitNodeAddr(selAddr, member.key, node)
 			if "" != naddr && "" == node.readAddr() {
 				node.setReadAddr(naddr)
@@ -910,10 +704,6 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	// was written in: the body is a template, and a template's parse
 	// position is the one place it is never used.
 	for i, p := range pieces {
-		// setPaths, not clonePath: the piece is already this
-		// instantiation's own clone, and cloning it again would overlay
-		// its stored tail on the new location -- the TS twin is
-		// repathInstance, which rewrites in place.
 		setPaths(p, append(cp(base), itoa(i)))
 	}
 
@@ -943,13 +733,6 @@ func emitDispatch(ctx *Ctx, base []string, node Val,
 	return nil, tried
 }
 
-// emitInstantiate instantiates one body at the node and SPLICES its
-// pieces into the output. A full instance to the leaves (instanceClone,
-// ADR-005), because a bare clone shares the inner structure of any call
-// in the body and the first node's resolution would answer for every
-// node; the template's replacements written into the instance's literal
-// text (TEMPLATE.0.md D3); then the two bindings, relative references
-// and the hole, both to the node.
 func emitInstantiate(ctx *Ctx, base []string, node Val, tmpl emitTemplate,
 	out []Val, fail *string, mark *emitOrigin) ([]Val, *emitRefusal) {
 	pairs, refused := emitReplacements(ctx, base, node, tmpl, fail)
@@ -964,25 +747,11 @@ func emitInstantiate(ctx *Ctx, base []string, node Val, tmpl emitTemplate,
 		}
 		piece := fillPlace(bindNode(inst, node, fail), node)
 
-		// A NESTED DISPATCH IS DRIVEN HERE, not left for the next pass.
-		// Its selection is bound and the model has settled, so it has
-		// everything it needs -- and it must answer NOW, because what
-		// makes the result flat is splicing its pieces into this one.
-		// Left standing, a nested emit resolved a pass later, as a list
-		// INSIDE the list, and the fragment algebra is flat. Through
-		// unite rather than by hand: a rule set that walks into itself
-		// for ever is charged to the depth budget and refused as
-		// unify_cycle, like any other runaway descent.
 		if piece.Dc() != DONE {
 			ctx.slot = islot
 			piece = unite(ctx, piece, top())
 		}
 
-		// THE INNERMOST DISPATCH OWNS THE PIECE (P7). A body element
-		// that is a nested rule set has already stamped what it
-		// emitted, and those pieces are spliced into this result here:
-		// the rule that WROTE a line is the one the trace names, so a
-		// stamp is written only where there is none.
 		at := len(out)
 		out = emitSplice(piece, out)
 		if nil != mark {
@@ -996,21 +765,6 @@ func emitInstantiate(ctx *Ctx, base []string, node Val, tmpl emitTemplate,
 	return out, nil
 }
 
-// emitNodeAddr is the address of one matched node: its own read address
-// when it has one, else the SELECTION's read address and the node's key
-// under it -- a selection is read once and walked, so its members carry
-// no read of their own.
-//
-// A COMPUTED SELECTION HAS NO ADDRESS, AND THE TRACE SAYS SO: an empty
-// node. filter(...) builds a bag no path in the document names, and the
-// only other thing to report is where the bag came to REST -- a
-// position inside a template instance, which is not in the document,
-// and which the two ports number differently. Publishing that would
-// have made the trace a parity break as well as a fiction. The rule
-// address answers the same way: `<table>#<index>` for a table a
-// reference reached, and `#<index>` alone for one written inline at the
-// call site, which has no address of its own. `#` is in no path, so a
-// rule's address can never be read as one.
 func emitNodeAddr(sel string, key string, node Val) string {
 	if addr := node.readAddr(); "" != addr {
 		return addr
@@ -1021,14 +775,6 @@ func emitNodeAddr(sel string, key string, node Val) string {
 	return sel + "." + key
 }
 
-// emitReplacements is the replacement pairs for one node: the
-// template's `replace` map instantiated at the node -- bound, filled
-// and driven as a body is -- each value as text by the one
-// number-to-text rule (joinTextOf, the rule `+` and join share),
-// escaped by the template's convention unless that is `none`, and
-// sorted longest key first so the scan takes the longest match at
-// every position (D3's first rule). A value that is not text, or has
-// not settled, is replace_value.
 func emitReplacements(ctx *Ctx, base []string, node Val, tmpl emitTemplate,
 	fail *string) ([]emitPair, *emitRefusal) {
 	if nil == tmpl.replace {
@@ -1062,11 +808,6 @@ func emitReplacements(ctx *Ctx, base []string, node Val, tmpl emitTemplate,
 	return pairs, nil
 }
 
-// emitSubstituted is the instance with the template's literal text at
-// element i rewritten through the pairs -- on the fresh instance, where
-// the structure is exactly the template's, and before any binding, so
-// a value written in is never scanned again (D3's second rule) and a
-// spliced result is never touched (its third).
 func emitSubstituted(inst Val, i int, lits []emitLit, pairs []emitPair,
 	slot []string) Val {
 	for _, l := range lits {
@@ -1089,10 +830,6 @@ func emitSubstituted(inst Val, i int, lits []emitLit, pairs []emitPair,
 	return inst
 }
 
-// emitSubstitute is D3's first two rules as one scan: at each position
-// the longest key that matches is taken and its value written out
-// whole, and the scan moves past the KEY -- the value is never looked
-// at again, so no value can introduce a key.
 func emitSubstitute(text string, pairs []emitPair) string {
 	var b strings.Builder
 	i := 0
@@ -1115,14 +852,6 @@ func emitSubstitute(text string, pairs []emitPair) string {
 	return b.String()
 }
 
-// eachFunc is each(data, tmpl) (G9 §4 as form; docs/design/RENDER.0.md
-// D11 and P6; renamed by ADR-027): one list element per child of data,
-// being tmpl instantiated at that position with `_` bound to the source
-// child. It REPLACES; it does not meet -- and each(d, _ & t) is how a
-// meet is spelled, which is what the retired meet-only each(d, t) meant
-// (ADR-026; see the TS EachFuncVal comment). The members come through
-// bagValues, so every bag reader agrees about order, and a hidden child
-// or an unfilled optional is skipped as generation would skip it.
 func eachFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	var data Val = top()
 	if 0 < len(args) {

@@ -4,17 +4,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RemFuncVal = exports.ModFuncVal = exports.DivFuncVal = exports.MulFuncVal = exports.SubFuncVal = exports.AddFuncVal = exports.ArithFuncVal = void 0;
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const arith_1 = require("./arith");
-// ONE CLASS FOR SIX FUNCTIONS, because every rule they obey is a rule
-// about arithmetic rather than about any one operation (see arith.ts).
-// Six near-identical classes would be six places for the exact ladder,
-// the zero divisor and the storage contract to drift apart, and the
-// number tower's whole point is that they cannot.
-//
-// The op is carried on the instance and answered by `funcname()`, which
-// is what canon renders and what an error names. The six one-line
-// subclasses below exist only because the parser's registry constructs
-// with `new funcval({peg: args})` and has nowhere to put a name; every
-// line of behaviour is here.
 class ArithFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx, op) {
         super(spec, ctx);
@@ -34,7 +23,6 @@ class ArithFuncVal extends FuncBaseVal_1.FuncBaseVal {
     }
 }
 exports.ArithFuncVal = ArithFuncVal;
-// The six the registry names. Each is its operation and nothing else.
 class AddFuncVal extends ArithFuncVal {
     constructor(spec, ctx) { super(spec, ctx, 'add'); }
 }

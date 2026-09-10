@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE RELATION REPORTER (G4 phase 5, the Go side of ts/src/cli.ts):
-// acyclicity and inverse consistency over the edge set. A verb of its
-// own rather than a leg of `vet`, for the reason `trim` is one: vet
-// answers "does this DOCUMENT satisfy that SCHEMA", and these are facts
-// about one finished model, with no schema on the other side of the
-// question.
 
 package main
 
@@ -89,8 +83,6 @@ func runRelations(argv []string, stdout, stderr io.Writer) int {
 
 func renderRelationsText(report aontu.RelationReport) string {
 	head := "verdict: " + report.Verdict
-	// WHY, when the document could not be evaluated at all: rendered as
-	// vet renders a finding, because it IS one (the review's finding F).
 	if 0 < len(report.Errors) {
 		out := []string{head, ""}
 		for _, f := range report.Errors {

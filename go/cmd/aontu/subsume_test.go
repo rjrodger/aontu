@@ -2,11 +2,6 @@
 
 package main
 
-// The Go twin of the cli-subsume suite in ts/test/cli.test.ts: the
-// same cases, asserting the same output. What the two ports must AGREE
-// on (the report itself) is pinned by test/spec/subsume.tsv; what each
-// port owns (argument handling, exit codes, the text rendering, git
-// resolution) is here.
 
 import (
 	"bytes"
@@ -184,15 +179,6 @@ func TestBreakingModesChooseTheDirections(t *testing.T) {
 	}
 }
 
-// `--at` GATES A SUBTREE. A module's top level carries the version
-// string and the policy block, which are SUPPOSED to change between
-// releases -- so the whole-document comparison answered about them
-// rather than about the contract, and a release that bumped only its
-// version self-broke the gate. `subsume` has taken `--at` since G3;
-// `breaking` did not, so the only way to gate a subtree was to split
-// the file (use-cases/REVIEW.md finding D). The first leg is the
-// control: without it, the version bump alone is breaking. Twin:
-// breaking-at-gates-a-subtree in ts/test/cli.test.ts.
 func TestBreakingAtGatesASubtree(t *testing.T) {
 	_, g, s := subFiles(t,
 		"version: \"2.0.0\"\nsvc: {port: integer}",
@@ -288,14 +274,6 @@ func TestBreakingResolvesGitRevisions(t *testing.T) {
 	}
 }
 
-// THE OLD SIDE IS THE OLD TREE, not old entry text meeting new
-// includes. The git spelling used to resolve the old document's
-// @"..." loads against the WORKING tree, so a breaking change made
-// inside an included file compared against itself and answered
-// compatible -- the CI gate silently un-gated every non-entry file
-// (use-cases/BUGS.md §26). Both directions are asserted: the narrowing
-// is caught, and an unchanged tree stays compatible, so a fix that
-// simply reported breaking would fail too.
 func TestBreakingGitComparesTheOldTree(t *testing.T) {
 	dir := t.TempDir()
 	model := filepath.Join(dir, "model")
@@ -346,22 +324,6 @@ func TestBreakingGitComparesTheOldTree(t *testing.T) {
 	vetMatch(t, out, `verdict: breaking`)
 	vetMatch(t, out, `\$\.svc\.port`)
 
-	// THE PATH TO THE ENTRY NEED NOT BE THE PATH GIT PRINTS. Reaching
-	// the same file through a SYMLINK is the shape macOS and Windows
-	// hand every run of this verb: on macOS a temp file under /var is
-	// /private/var to git, and on Windows a TMP short name is the long
-	// form -- so relativising git's toplevel against the caller's
-	// resolved path subtracted two different coordinate systems, gave a
-	// `../..` climb, and the entry was "not in that revision". Exit 2 on
-	// both platforms, green on Linux, for the documented CI spelling.
-	// The repo-relative path now comes from git itself (`rev-parse
-	// --show-prefix`), so the caller's spelling cannot matter -- and
-	// this case runs on every platform.
-	//
-	// Best-effort: Windows refuses a symlink without Developer Mode,
-	// which is a privilege question rather than a defect in anything
-	// being tested. Twin: the linked leg of
-	// breaking-git-compares-the-old-tree in ts/test/cli.test.ts.
 	linked := filepath.Join(dir, "linked")
 	if err := os.Symlink(model, linked); nil == err {
 		out, _, code = brkRun(
@@ -374,8 +336,6 @@ func TestBreakingGitComparesTheOldTree(t *testing.T) {
 }
 
 func TestBreakingReadsTheDocumentsOwnPolicy(t *testing.T) {
-	// The policy declares no compatibility promise: nothing to check,
-	// whatever --against says.
 	_, g, s := subFiles(t,
 		"aontu_policy: hide({compat: *none|backward|forward|full})\na:1",
 		"a:hello")
@@ -478,10 +438,6 @@ func TestBreakingUsageErrorsExit2(t *testing.T) {
 	}
 }
 
-// Deprecate-then-remove is the supported rename path: a finding about
-// a value the old version already deprecated becomes a warning under
-// --allow-deprecated-removal, and warnings do not move the verdict.
-// TS twin: breaking-allow-deprecated-removal in ts/test/cli.test.ts.
 func TestBreakingAllowDeprecatedRemoval(t *testing.T) {
 	_, g, s := subFiles(t,
 		"service: close({name:string, listen:integer})",
@@ -497,7 +453,6 @@ func TestBreakingAllowDeprecatedRemoval(t *testing.T) {
 	vetMatch(t, out, `verdict: compatible`)
 	vetMatch(t, out, `\$\.service\.port: compat_narrowed`)
 
-	// A removal the old version did NOT deprecate stays breaking.
 	_, g2, s2 := subFiles(t,
 		"service: close({name:string})",
 		"service: close({name:string, port:integer})")

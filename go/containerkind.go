@@ -2,19 +2,6 @@
 
 package aontu
 
-// CONTAINER KINDS (docs/design/PATHS.0.md): `map()` and `list()`.
-//
-// `{}` and `[]` are the container UNITS: they admit any map (or list)
-// AND generate empty when nothing arrives. The kinds admit exactly the
-// same values and default to NOTHING, as `string` does -- the spelling
-// of "this must be a map, and it must be supplied", which the unit
-// cannot say because an unmet unit silently manufactures its empty
-// value. The vacuous call is the kind; the literal is the unit.
-//
-// Neither function takes arguments: element constraints already belong
-// to the spreads (`{&: V}`, `[&: V]`). A kind mismatch reuses the
-// unit's own refusal codes (`map`, `list`) -- same fact, same code.
-// Mirrors MapKindVal/ListKindVal in ts/src/val/ContainerKindVal.ts.
 
 type MapKindVal struct {
 	base

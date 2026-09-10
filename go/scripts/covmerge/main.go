@@ -1,16 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Command covmerge unions two or more Go text coverage profiles
-// (mode: set) into one, so the unit-test profile and the GOCOVERDIR
-// integration-run profile of the command binaries can be reported as a
-// single figure. Naive concatenation double-counts overlapping blocks;
-// this keys each block and ORs the counts.
-//
-// It also drops blocks marked unreachable in the source, so ADR-002's
-// 100 % floor measures code a test could actually run. See the
-// coverage-ignore markers section below.
-//
-//	go run ./scripts/covmerge a.out b.out > merged.out
 package main
 
 import (
@@ -76,21 +65,6 @@ func main() {
 	defer out.Flush()
 	fmt.Fprintln(out, "mode: set")
 	for _, key := range order {
-		// EVERY block is offered to the markers, covered or not, but
-		// only an UNCOVERED one is dropped. The two halves are separate
-		// on purpose:
-		//
-		// Dropping is for uncovered code alone -- markers are coarse (a
-		// whole guard body), and dropping executed statements would
-		// shrink the denominator on real, tested code and quietly
-		// overstate the figure.
-		//
-		// Offering is for the stale-marker report below. Ask only about
-		// uncovered blocks and every marker over code that turned out
-		// to be COVERED looks unmatched -- `main()` is exactly that: it
-		// carries a marker because `go test` cannot execute it, and the
-		// GOCOVERDIR leg then executes it for real. Reporting that as
-		// stale would cry wolf on the one marker doing its job.
 		n, ok := ig.skip(key)
 		if ok && 0 == counts[key] {
 			dropped++
@@ -104,14 +78,6 @@ func main() {
 			"covmerge: dropped %d marked block(s), %d statement(s)\n",
 			dropped, stmts)
 	}
-	// A MARKER THAT NAMED NOTHING IS REPORTED, because the alternative
-	// is what happened once: a toolchain moved where it opens a
-	// coverage block, every marker on an `if` line quietly stopped
-	// matching, and the only symptom was forty-two coverage failures
-	// somewhere else with nothing to connect them. This is not an
-	// error -- a marker can legitimately outlive the branch it
-	// excused, and the gate below will simply pass -- but it is never
-	// what the author meant, and it should not have to be deduced.
 	if stale := ig.unmatched(); 0 < len(stale) {
 		fmt.Fprintf(os.Stderr,
 			"covmerge: %d marker(s) matched no block -- stale, or the "+
@@ -122,54 +88,11 @@ func main() {
 	}
 }
 
-// --------------------------------------------------------------------
-// coverage-ignore markers
-// --------------------------------------------------------------------
-//
-// Some statements cannot be executed by any test: a defensive `return
-// nil` under an exhaustive switch, the error arm of a library call that
-// only fails on a programming mistake this package cannot make, a
-// literal main(). ADR-002 keeps them (deleting a guard on an external
-// contract is worse than excluding it) but requires each to carry a
-// written justification, so they are excluded from the denominator
-// rather than quietly tolerated. Two markers do it:
-//
-//	n, ok := new(big.Int).SetString(s, 10)
-//	if !ok { //coverage:ignore the regexp already vetted the digits
-//		return false
-//	}
-//
-// marks the STATEMENT that starts on the line the comment sits on --
-// here the whole `if`, from its first line to its closing brace -- so
-// the body is dropped wherever the toolchain chooses to open the
-// block. It deliberately does NOT mark the line alone: go1.24 opened
-// an if-body block at the `{`, on the `if` line, and a later release
-// moved it to the body's first line, which silently unmarked every
-// guard in the tree. A reason may follow the marker and is ignored by
-// the matcher, but not by review: a marker without one is a defect.
-//
-//	//coverage:ignore-block plugin registration cannot fail here
-//	if err := j.Use(path.Path, nil); err != nil {
-//		return nil, err
-//	}
-//
-// marks the WHOLE statement that starts on the next line of code, from
-// its first line to its last. Use it when the marker cannot sit on the
-// line itself, or when a multi-line statement must go as a unit.
-//
-// A profile block is dropped when its start line falls inside a marked
-// region, or when its whole line span does.
 const (
 	markBlock = "coverage:ignore-block"
 	markLine  = "coverage:ignore"
 )
 
-// A marked region, as POSITIONS rather than lines. Lines are not fine
-// enough: a closing brace shares its line with the `else if` that
-// follows it, so a line-wide region reaching the end of an if-body also
-// swallowed the sibling arm beginning further along the SAME line --
-// excusing code the author never marked, which is the one thing this
-// tool must not do. Columns separate them.
 type pos struct{ line, col int }
 
 func (a pos) before(b pos) bool {
@@ -186,12 +109,6 @@ type ignorer struct {
 	modPath string // module path from the nearest go.mod
 	modDir  string // directory that go.mod lives in
 	cache   map[string][]span
-	// matched records which regions actually named a block. A marker
-	// that stops matching is INVISIBLE otherwise -- it simply stops
-	// excusing, and the gate then fails somewhere else entirely, which
-	// is exactly how a toolchain moving its block boundaries surfaced
-	// as forty-two unrelated-looking coverage failures rather than as
-	// "your markers stopped working". Reported at the end of a run.
 	matched map[string]bool
 	// where remembers each region's source position, for that report.
 	where map[string]string
@@ -254,15 +171,6 @@ func (ig *ignorer) unmatched() []string {
 	return out
 }
 
-// skip reports whether a profile key ("FILE:sl.sc,el.ec NUMSTMTS")
-// names a marked block, and how many statements it carries.
-//
-// A block belongs to a region when it BEGINS inside it. One rule, not
-// two: a block never ends before it starts, so "the whole span is
-// inside" can never hold without "the start is inside" holding too --
-// the second clause this once carried was unreachable, and reading as
-// though it were a separate case only made the reach harder to reason
-// about.
 func (ig *ignorer) skip(key string) (int, bool) {
 	name, start, stmts, ok := parseKey(key)
 	if !ok {
@@ -277,9 +185,6 @@ func (ig *ignorer) skip(key string) (int, bool) {
 	return 0, false
 }
 
-// parseKey splits "path/to/file.go:12.34,56.7 2" into its parts. Only
-// the START position is returned: a block belongs to the region it
-// begins in (see skip).
 func parseKey(key string) (name string, start pos, stmts int, ok bool) {
 	sp := strings.LastIndexByte(key, ' ')
 	if sp < 0 {
@@ -333,22 +238,6 @@ func (ig *ignorer) spans(name string) []span {
 		return pos{q.Line, q.Column}
 	}
 	if err == nil {
-		// What a marker on a line REACHES. Not the statement's whole
-		// extent: an `if` ends after its `else` chain, and an else arm
-		// is a SIBLING the author did not mark -- widening to it
-		// excused genuinely untested code, which is the one failure
-		// this tool must never have. So a statement that owns exactly
-		// one body reaches THAT body, brace to brace, and nothing that
-		// begins after its closing brace on the same line.
-		//
-		// Brace to brace covers the block under either toolchain: go1.24
-		// opened an if-body block AT the `{`, and a later release opens
-		// it at the body's first statement. Both are inside.
-		//
-		// A statement with SIBLING arms -- switch, type switch, select --
-		// reaches nothing but its own line: a marker on the header
-		// guards none of the cases, and pretending otherwise would
-		// excuse the whole construct.
 		reach := map[int]span{}
 		note := map[int]string{}
 		record := func(n ast.Node, sp span) {
@@ -374,12 +263,6 @@ func (ig *ignorer) spans(name string) []span {
 				p := at(n.Pos())
 				record(n, span{p, pos{p.line, 1 << 30}})
 			default:
-				// Everything else reaches its own extent, which for a
-				// simple statement is the statement. Declarations are
-				// here too, as they were before the kinds above were
-				// named: a marker on one reaches nothing in practice
-				// (no coverage block opens on a package-level `var`),
-				// and the stale-marker report says so if one ever does.
 				switch n.(type) {
 				case ast.Stmt, ast.Decl:
 					record(n, span{at(n.Pos()), at(n.End())})

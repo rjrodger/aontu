@@ -2,12 +2,6 @@
 
 package aontu
 
-// MODULES (G6 phase 2, mod.go). The shared contract rows are
-// test/spec/mod.tsv (both runners, root-confined to the fixtures
-// directory, which is also why they never reach the user cache); what
-// is per-port — the cache location, the verification depth bound, the
-// module file's own shape — is here, with ts/test/mod.test.ts as the
-// twin.
 
 import (
 	"os"
@@ -18,10 +12,6 @@ import (
 
 const modSource = "name: string\nport: *8080 | integer\n"
 
-// modWorld builds a project whose main.aon imports one module, and the
-// module itself, in the named store. Answers the project directory, the
-// entry file, the module's canon-hash — which is what a pin IS — and
-// the cache directory.
 func modWorld(t *testing.T, store string) (dir, main, hash, cache string) {
 	t.Helper()
 	dir = t.TempDir()
@@ -61,16 +51,10 @@ func write(t *testing.T, file, src string) {
 
 func modGen(t *testing.T, a *Aontu, main string) (any, error) {
 	t.Helper()
-	// srcPath, not filepath.ToSlash: one spelling of the rule in this
-	// package, and one that is exercised off Windows too (trust_test.go).
 	return a.Generate("x: @\"" + srcPath(main) + "\"\n")
 }
 
 func TestModCacheIsContentAddressed(t *testing.T) {
-	// No vendor copy at all: the module is in the user cache, under its
-	// OWN HASH. That is what content-addressed means — a cache hit is
-	// already the right meaning before anything is read from it, which
-	// is also why the cache is consulted only when a pin is known.
 	_, main, _, cache := modWorld(t, "cache")
 	a := New()
 	a.ModCache = cache
@@ -131,11 +115,6 @@ func TestModCacheDefaults(t *testing.T) {
 	}
 }
 
-// THE PLATFORM RULE, WITH THE PLATFORM PASSED IN. A Windows arm cannot
-// be reached from a suite that never runs on Windows, so it is
-// exercised here rather than trusted -- which is the whole reason
-// ModCacheDir splits into modCacheDirFor. Twin: cache-dir-rule in
-// ts/test/mod.test.ts.
 func TestModCacheDirRule(t *testing.T) {
 	env := func(vars map[string]string) func(string) string {
 		return func(key string) string { return vars[key] }
@@ -153,10 +132,6 @@ func TestModCacheDirRule(t *testing.T) {
 			map[string]string{"XDG_CACHE_HOME": "/x", "LOCALAPPDATA": "C:/L"},
 			filepath.Join("/x", "aontu", "mod")},
 
-		// HOME is next, and is honoured ON WINDOWS TOO. This is the
-		// case CI caught: LOCALAPPDATA above HOME made an explicitly
-		// set HOME unreachable there, and the platform default silently
-		// won over what the environment was told.
 		{"windows honours HOME over LOCALAPPDATA", "windows",
 			map[string]string{"LOCALAPPDATA": "C:/L", "HOME": "/h"},
 			filepath.Join("/h", ".cache", "aontu", "mod")},
@@ -216,12 +191,6 @@ func TestModVendorOutsideRootIsDenied(t *testing.T) {
 }
 
 func TestModDepthIsBounded(t *testing.T) {
-	// A pinned module is verified by EVALUATING it, and that evaluation
-	// resolves the module's own imports — so a vendor tree that led back
-	// to itself would recurse until the host's stack gave out. The bound
-	// makes it a stated refusal instead, exactly as unify_cycle does.
-	// Entered at the bound directly: building a sixteen-deep vendor tree
-	// would prove the same thing and nothing more.
 	_, main, _, _ := modWorld(t, "vendor")
 	a := New()
 	a.modDepth = moduleMaxDepth
@@ -232,18 +201,12 @@ func TestModDepthIsBounded(t *testing.T) {
 }
 
 func TestModuleMainShapes(t *testing.T) {
-	// The module file is ordinary Aontu, so it can be any shape at all
-	// — and every shape that is not a string `mod.main` means the same
-	// thing: there is no entry name here, so the default one stands.
-	// Direct, because a fixture per shape would prove one rule five
-	// times. The TypeScript twin reaches these through optional
-	// chaining, which is why it needs no equivalent test.
 	dir := t.TempDir()
 	for _, src := range []string{
-		"1\n",                   // not a map at all
-		"other: 1\n",            // no `mod` key
-		"mod: 1\n",              // `mod` is not a map
-		"mod: {main: 1}\n",      // `main` is not a string
+		"1\n",
+		"other: 1\n",
+		"mod: 1\n",
+		"mod: {main: 1}\n",
 		"mod: {main: string}\n", // ... nor is a kind
 		"mod: {main: \"\"}\n",   // ... and an empty name is no name
 	} {
@@ -260,13 +223,6 @@ func TestModuleMainShapes(t *testing.T) {
 	}
 }
 
-// TestValidateModulePathEmptyElement pins the arm no document can
-// reach: moduleRe's element class is `[A-Za-z0-9._-]+`, one character
-// minimum, so a routed path never carries an empty element and the
-// shared rows cannot drive this branch. The rule is still the right one
-// to state -- the next caller of validateModulePath may not come
-// through the regex -- so it is pinned here instead (ADR-002 rule 2b).
-// Twin of `an-empty-path-element-is-refused` in ts/test/mod.test.ts.
 func TestValidateModulePathEmptyElement(t *testing.T) {
 	if got := validateModulePath("corp.example//x"); "an element is empty" != got {
 		t.Fatalf("empty element: %q", got)

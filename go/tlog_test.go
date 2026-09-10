@@ -2,31 +2,6 @@
 
 package aontu
 
-// THE GO SIDE OF THE DIFFERENTIAL SUITE (G10 phase 2). The vectors in
-// ../test/vectors/tlog.json were produced by the PINNED upstream
-// golang.org/x/mod/sumdb/tlog, and aontu-lang/mod's TypeScript port is
-// held to them. This file holds THIS port to the same bytes.
-//
-// A fair question: go/tlog.go imports the very package that generated
-// the vectors, so what does running them here prove? Three things the
-// TypeScript side cannot prove on its own.
-//
-//  1. THE BOUNDARY. Everything reaching aontu is base64 text, and the
-//     glue decodes it. A vector that passes in TypeScript and fails
-//     here is a conversion bug, and conversion is where this file's
-//     code actually lives.
-//  2. THE PIN HOLDS IN THIS MODULE. aontu/go declares go 1.24.7 and CI
-//     runs a 1.24 job; x/mod raised its own floor to 1.25.0 at v0.34.0.
-//     These tests failing to COMPILE is how a careless dependency bump
-//     announces itself.
-//  3. THE TWO PORTS READ THE SAME FILE. The vectors are one artifact
-//     copied into two repositories. Checking the copy here is what
-//     stops it drifting into a second, agreeable set of numbers.
-//
-// And one part is not upstream at all: TlogParseTree is implemented
-// rather than wrapped, because upstream's hardcodes go.sum's origin
-// line. That function has no upstream to agree with, so its rows are
-// the only ones here testing aontu's own code end to end.
 
 import (
 	"encoding/base64"
@@ -175,8 +150,6 @@ func TestTlogHashing(t *testing.T) {
 		}
 	}
 
-	// A hash that is not 32 bytes is refused at the boundary, where it
-	// arrives, rather than deeper where the refusal is harder to place.
 	for _, bad := range []string{"", "AAAA", base64.StdEncoding.EncodeToString(
 		make([]byte, 33))} {
 		if _, err := TlogNodeHash(bad, v.NodeHash[0].Right); nil == err {
@@ -238,10 +211,6 @@ func TestTlogTreeHash(t *testing.T) {
 	}
 }
 
-// TestTlogCheckRecord and TestTlogCheckTree are the ones that matter.
-// 214 of the 268 inclusion cases and 160 of the 200 consistency cases
-// expect REJECTION -- a verifier that returned true unconditionally
-// would pass every positive case and fail 374 others.
 func TestTlogCheckRecord(t *testing.T) {
 	v := loadTlogVectors(t)
 	accepted, rejected := 0, 0
@@ -415,9 +384,6 @@ func TestTlogNotes(t *testing.T) {
 			}
 			continue
 		}
-		// A BAD signature by a KNOWN key is an error, not an empty
-		// verified list: the difference between "nobody I know signed
-		// this" and "someone I know signed something else".
 		if nil == err {
 			t.Fatalf("openNote accepted %s", c.Name)
 		}
@@ -429,22 +395,6 @@ func TestTlogNotes(t *testing.T) {
 		}
 	}
 
-	// A note NOBODY KNOWN SIGNED IS AN ERROR, not an empty verified
-	// list. Upstream draws this line and aontu follows it, against the
-	// first draft of the TypeScript port, which opened such a note with
-	// `verified: []` and left the caller to notice.
-	//
-	// Three reasons the error is right. It forces handling, where a
-	// doc comment saying "check the list" does not. It keeps this file
-	// a thin wrapper, which is its entire premise. And it costs the
-	// witness story nothing: a checkpoint always carries the LOG's own
-	// signature, which the client knows by construction, so a usable
-	// note always has at least one verified signer -- the zero case
-	// only arises for a note the client cannot act on anyway.
-	//
-	// Unknown signers ALONGSIDE a known one are still skipped, which is
-	// what actually makes cosignatures additive; that is the case
-	// above, not this one.
 	if _, _, err := TlogOpenNote(v.Note.Signed[0].Msg, nil); nil == err {
 		t.Fatal("a note no known key signed must be refused, not opened empty")
 	}
@@ -477,9 +427,6 @@ func TestTlogParseTree(t *testing.T) {
 		}
 	}
 
-	// Extra lines are IGNORED for forwards compatibility: that rule is
-	// what lets a later version add lines without invalidating today's
-	// clients.
 	ok := v.Note.Trees[0]
 	n, hash, err := TlogParseTree(ok.Text+"extra\nmore\n", ok.Origin)
 	if nil != err || ok.N != n || ok.Hash != hash {

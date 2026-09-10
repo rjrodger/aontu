@@ -37,11 +37,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// The fold alone (docs/design/RENDER.0.md D9): the arms a spec row
-// cannot reach, because `render` hands the fold an instance the
-// vocabulary has shaped -- every default filled, every unit a map.
-// A caller of `renderValue` may hand it less, and the fold answers
-// for what it is given.
 const node_test_1 = require("node:test");
 const node_assert_1 = __importDefault(require("node:assert"));
 const Fs = __importStar(require("node:fs"));

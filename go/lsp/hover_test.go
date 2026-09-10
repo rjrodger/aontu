@@ -23,15 +23,6 @@ func TestHoverScalar(t *testing.T) {
 	}
 }
 
-// A LITERAL WHOSE CANON IS NOT ITS SOURCE TEXT. `0x1F` renders as
-// canon `31`, and sizing the hover by canon underlined two characters
-// of a four-character literal: hovering the `0x` answered 6..8 and
-// hovering the `1F` answered NOTHING, because the span stopped before
-// the cursor. Every column of the literal now answers the whole of it.
-//
-// The twin is hover-over-a-literal-whose-canon-is-shorter in
-// ts/test/lsp.test.ts, and the defect is status report §5's
-// "Site is a point with no extent".
 func TestHoverSpansTheWholeLiteral(t *testing.T) {
 	const src = "port: 0x1F"
 	for col := 6; col <= 9; col++ {
@@ -69,7 +60,6 @@ func TestHoverMiss(t *testing.T) {
 
 func TestCompletionsList(t *testing.T) {
 	c := Completions()
-	// 48 functions + 7 kinds + 5 literals.
 	if len(c) != 62 {
 		t.Fatalf("expected 62 completions, got %d", len(c))
 	}
@@ -235,8 +225,6 @@ func TestHoverProvenance(t *testing.T) {
 	}
 }
 
-// The two shapes the record allows and no hover produces: a
-// contribution with no site, and one whose site names a file.
 func TestContributionsMarkdown(t *testing.T) {
 	if "" != contributionsMarkdown(nil) {
 		t.Fatal("empty should render nothing")

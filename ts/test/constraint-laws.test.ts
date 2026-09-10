@@ -1,27 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// PROPERTY-BASED DIFFERENTIAL TESTING OF THE CONSTRAINT ALGEBRA
-// (docs/capability-review/g1-constraint-algebra.md, "Ongoing": property
-// -based differential testing of the algebra laws -- commutativity,
-// idempotence, normalisation convergence -- across TS and Go, seeded
-// from the atom vocabulary).
-//
-// The corpus is ENUMERATED, not random: the atom vocabulary is read
-// from test/spec/files/constraint-atoms.txt, shared with
-// go/constraint_laws_test.go, so both ports cross identical terms and
-// the two lists cannot drift apart.
-//
-// These tests check each engine against ITSELF -- a law that breaks in
-// one port breaks visibly in that port's suite. That is deliberately
-// only half the guarantee: two ports could normalise the same meet
-// differently and each still be internally lawful. The cross-port half
-// is test/spec/constraint-product.tsv, which pins the observable for
-// every cell of the same corpus and is run by both runners.
-//
-// The observable is canon, or the error CODE when the meet is empty --
-// both are order-independent by construction, unlike error message text
-// (whose primary site is deliberately later-in-source, so it is NOT
-// expected to be commutative).
 
 import { describe, test } from 'node:test'
 import Assert from 'node:assert'
@@ -31,12 +9,6 @@ import Path from 'node:path'
 import { Aontu } from '../dist/aontu'
 
 
-// The implemented Band A vocabulary (G1 phase 1: bounds and neq), plus
-// the kinds and concrete scalars they meet against. Read from the
-// SHARED file so this list and the Go twin's cannot drift apart, and so
-// the probed cross-product in test/spec/constraint-product.tsv is over
-// the same corpus. Extend that file as `re`, `len`, `unique` and `must`
-// land -- the laws below then cover them with no new test code.
 const ATOMS = Fs
   .readFileSync(
     Path.join(__dirname, '..', '..', 'test', 'spec', 'files',
@@ -49,14 +21,6 @@ const ATOMS = Fs
 const TRIPLE_ATOMS = ATOMS.slice(0, 8)
 
 
-// Evaluate to an order-independent observable: the canonical form, or
-// the error code when the meet is empty.
-//
-// The code comes from the collected error, NOT from a regex over the
-// message: codes are not all `\w+` (`scalar-type` carries a hyphen), so
-// pattern-matching the headline silently truncates them and would make
-// two distinct codes compare equal. The Go twin reads `AontuError.Code`
-// for the same reason.
 function obs(src: string): string {
   try {
     return new Aontu().unify(src).canon

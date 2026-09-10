@@ -9,38 +9,8 @@ const err_1 = require("./err");
 class AontuContext {
     constructor(cfg) {
         this.cc = -1;
-        // THE STAGING RULE (G8 phase 0,
-        // docs/capability-review/g8-generation.md). A value whose answer
-        // depends on WHERE IT IS -- `key()` today, the generation
-        // combinators next -- must not answer while anything is still
-        // moving it: resolved early it reports the position it was WRITTEN
-        // at rather than the one it ends up at. Such a value RESIDUATES
-        // while this is false, and fires exactly once on the pass where it
-        // is true.
-        //
-        // The pass loop (ts/src/unify.ts) sets it on the first pass whose
-        // input tree is IDENTICAL to the previous pass's: everything that
-        // was going to move has moved, and what is left is the staged
-        // values themselves, which is precisely the moment they may answer.
-        // It replaces a `ctx.cc < 3` pass count in KeyFuncVal -- a magic
-        // number, right for the documents it was tuned on and silently
-        // wrong for anything that took a fourth pass to place a value. The
-        // comment it replaces said as much: "this delay makes keys in
-        // spreads and refs work, but it is a hack - find a better way".
         this.settle = false;
         this.vars = {};
-        // THE COMPLETENESS PROBE (the review's finding C). vet detects
-        // residue by GENERATING the anchored meet and keeping the
-        // incomplete-class failures. Generation honours the OUTPUT marks --
-        // `type()` and `hide()` say "do not emit this" -- so a `--at` anchor
-        // sitting under a mark generated nothing at all, reported nothing,
-        // and vetted VALID for data missing a required field, while the same
-        // anchor without the mark answered incomplete (use-cases/BUGS.md
-        // §14). A mark is a decision about OUTPUT; it is not a statement
-        // about what the data must satisfy, and `--at` names the truth to
-        // validate against explicitly. Under this flag the generation walk
-        // descends through marked values; nothing else changes, and no
-        // output is produced from a probe run -- only its findings are read.
         this.probe = false;
         this.root = cfg.root;
         this.path = [...(cfg.path ?? [])];
@@ -88,23 +58,12 @@ class AontuContext {
         ctx.err = cfg.err ?? ctx.err;
         ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain;
         ctx._pathstr = undefined;
-        // Path didn't move unless cfg.path was supplied, so pathidx stays
-        // valid in the common case. For cfg.path-override (4 calls per
-        // run, fixpoint advances) fall back to the join-based lookup.
         if (cfg.path !== undefined) {
             ctx._pathidx = undefined;
         }
         return ctx;
     }
     descend(key) {
-        // C3: reuse the child ctx from a previous descend with the same
-        // (parent, key). Saves one Object.create + several property
-        // writes per hit; ~48% hit rate on foo-sdk.
-        //
-        // NB: must use hasOwnProperty here — plain `this._childCache`
-        // would walk the prototype chain and read the *parent's* cache
-        // (ctxs are created via Object.create(parent)), so keys would
-        // cross-contaminate between sibling branches.
         let childCache;
         if (Object.prototype.hasOwnProperty.call(this, '_childCache')) {
             childCache = this._childCache;
@@ -118,11 +77,6 @@ class AontuContext {
         }
         const ctx = Object.create(this);
         ctx._pathstr = undefined;
-        // Trie doubles as both pathidx assignment and path-array cache.
-        // (parent_pathidx, key) uniquely identifies a descended path,
-        // and is visited many times across fixpoint passes. Caching the
-        // materialised array lets descend share references instead of
-        // allocating a fresh concat every time.
         const parentIdx = this._pathidx;
         let childMap = this._pathTrie.get(parentIdx);
         if (childMap === undefined) {
@@ -150,7 +104,6 @@ class AontuContext {
         this.errfs = this.opts.errfs ?? this.errfs;
         this.explain = this.opts.explain ?? this.explain;
         this.src = ('string' === typeof this.opts.src ? this.opts.src : undefined) ?? this.src;
-        // TODO: rename srcpath to file
         this.srcpath = this.opts.path ?? this.srcpath;
     }
     adderr(err) {
@@ -167,7 +120,6 @@ class AontuContext {
         }
     }
     errmsg() {
-        // return this.errlist
         return this.err
             .map((err) => (err && (null == err.msg || '' === err.msg)
             ? ((0, err_1.descErr)(err, this), err.msg)

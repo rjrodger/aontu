@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-/**
- * Error code hints for Aontu unification errors.
- *
- * Each key is an error code that can be passed to makeNilErr.
- * Each value is a human-readable explanation of what the error means.
- */
 
 const hints: Record<string, string> = {
 
@@ -40,7 +34,6 @@ const hints: Record<string, string> = {
     'when nothing else does.',
 
 
-  // TODO: extend errors to have details so we can name the key
   mapval_required: 'This map value is required.',
 
   mapval_no_gen:
@@ -201,8 +194,6 @@ const hints: Record<string, string> = {
   bare_punct: 'A bare string holds letters, digits, `-` and `_`, and nothing else.\nThis one holds `{char}`, in `{text}`. Every other punctuation\ncharacter is either syntax or an error, never silently part of a\nstring: a value that needs one is written quoted, and a `>` or `<`\nthat was meant as a bound is written as min(x), max(x), above(x) or\nbelow(x).\n \nExamples:\n  a: team-payments  -> "team-payments"  # `-` and `_` are text;\n  a: 2026-09-05     -> "2026-09-05"     # ... digits included;\n  a: x=y            -> nil              # `=` is not;\n  a: "x=y"          -> "x=y"            # ... so quote it;\n  a: >10            -> nil              # Not an operator: write above(10).',
 
 
-
-
   recursion_unexpanded: 'A schema refers to itself here, and no data reached this position\nto expand it against. Guard the recursion -- an optional key\n(next?:) drops when nothing arrives, and a preferred alternative\n(*null | $.Node) generates -- or supply the data.\n \nExamples:\n  Node: {v: integer, next?: $.Node}\n  t: $.Node & {v: 1}            -> {..}  # next? drops;\n  Node: {v: integer, next: $.Node}\n  t: $.Node & {v: 1}            -> nil   # ... required refuses.',
   recursion_budget: 'A recursive schema expanded past the evaluation depth budget\nwithout meeting concrete data. Expansion is driven by the data --\nfinite data always terminates -- so a chain this deep means two\ndefinitions feeding each other, or data deeper than the budget\n(docs/trust.md raises it deliberately).',
   list_length: 'A literal list alternative in a disjunction admits only a list of\nits own length -- a spread (&:) makes it variadic. Outside a\ndisjunction two statements of one list still merge elementwise.\n \nExamples:\n  x: [] | [&: integer]\n  x: [1, 2]      -> [1,2]  # The variadic arm;\n  x: []          -> []     # ... or exactly empty;\n  y: [a] | [b]\n  y: [a, extra]  -> nil    # ... a literal arm is its length.',
@@ -229,15 +220,6 @@ const hints: Record<string, string> = {
 
   format_check: 'The formatted text is not the same document, so nothing was written.\nThis is a formatter defect: please report it, with the source.',
 
-  // THIS PORT NEVER RAISES decimal_syntax -- Go's construct.go does,
-  // and go/hints.go's header records that the CODE is Go-only. The
-  // TEXT is here anyway, verbatim, because since G11 phase 3 this
-  // table is a LOOKUP surface as well as a message source: the code is
-  // in the shared registry (test/spec/errcodes.tsv), so
-  // `aontu explain decimal_syntax` must answer the same in both ports
-  // or the agent that met the error under one binary learns nothing
-  // from the other. An entry for a code this port cannot raise is
-  // never read on an error path, only on that lookup.
   decimal_syntax: 'This 0d literal is not a valid exact number.',
   view_style_profile: 'Each profile has ONE way to carry the meaning of a figure\'s marks:\nSGR escapes for text, CSS classes for svg. Asking for the other one is\na usage error rather than a silent no-op. `none` works everywhere.',
   view_style_unknown: 'The styles are none, ansi and css, plus `auto` at the command line,\nwhich the command resolves before the library runs: whether the\ndestination is a terminal is not something a library can see.',
@@ -504,8 +486,6 @@ const hints: Record<string, string> = {
   'empty': 'Empty disjunction. The disjunction has no valid alternatives.',
   'empty-dist': 'Empty disjunction distribution. All alternatives in the disjunction are invalid.',
 
-  // ADR-011 R2: two DEFAULTS of equal rank that cannot agree. The
-  // fix is a rank, so the hint names it.
   'pref_rank_clash': 'Two defaults of the same rank disagree.' +
     ' Rank one of them (`**x`) to say which is the weaker layer,' +
     ' or give them the same value.',
@@ -533,15 +513,6 @@ const hints: Record<string, string> = {
 }
 
 
-// codeClasses assigns every error code a CLASS: conflict | incomplete |
-// reference | parse | budget | internal. The contract lives in
-// test/spec/errcodes.tsv (mode `errcode`): the spec suite executes one
-// row per code against this table and asserts SET EQUALITY between the
-// file and these keys, in both implementations (go/hints.go mirrors
-// this map exactly). Codes are append-only and never renamed; a class
-// change is a breaking change. Class rulings (why decimal_budget and
-// lossy_integer_literal are conflict, not budget; why unknown_function
-// is reference) are documented in the tsv header.
 const codeClasses: Record<string, string> = {
   // parse -- the source text is malformed or unusable
   parse: 'parse',
@@ -576,10 +547,6 @@ const codeClasses: Record<string, string> = {
   patch_ambiguous: 'reference',
   patch_span_mismatch: 'internal',
 
-  // G4 phase 2 -- the checked link: a string that is not a tree
-  // address (class `parse`, the text is wrong), and an address that
-  // names nothing in this evaluation (class `reference`, the same
-  // class as `no_path`, because it is the same kind of miss).
   refer_address: 'parse',
   rel_address: 'parse',
   refer_unresolved: 'reference',
@@ -620,10 +587,6 @@ const codeClasses: Record<string, string> = {
   // class as refer_address, because it is the same mistake.
   path_address: 'parse',
 
-  // G8 phase 1 -- the generation combinators. All three are class
-  // `parse`: what is wrong is the CALL as written (data that is not a
-  // bag, a list element that is not a name), not any pair of values a
-  // meet brought together.
   pack_data: 'parse',
   pack_key: 'parse',
   each_data: 'parse',
@@ -636,24 +599,12 @@ const codeClasses: Record<string, string> = {
   filter_data: 'parse',
   match_none: 'conflict',
 
-  // G9 phase 6 -- the string builtins. All five are class `parse`:
-  // what is wrong is the CALL as written -- a variant that names no
-  // convention, a pattern outside the subset, a substitution naming a
-  // group that does not exist, a separator that is neither string nor
-  // pattern. `usc_malformed` is the odd one and still `parse`: the
-  // TEXT the call was given has no inverse, which is a fact about the
-  // argument rather than about any meet.
   esc_variant: 'parse',
   usc_malformed: 'parse',
   rep_pattern: 'parse',
   rep_sub: 'parse',
   split_sep: 'parse',
 
-  // G9 phase 6 -- apply-templates. The four shape codes are class
-  // `parse`: what is wrong is the CALL as written -- a selection with
-  // no children, a table that is not one, a rule missing a half.
-  // `emit_none` is class `conflict` for `match_none`'s reason: the
-  // node and every pattern written for it disagreed.
   emit_data: 'parse',
   emit_table: 'parse',
   emit_template: 'parse',
@@ -661,19 +612,11 @@ const codeClasses: Record<string, string> = {
   emit_none: 'conflict',
   emit_ref: 'conflict',
 
-  // RENDER P6 -- `replace` on a template, and `form`. The two
-  // template checks are class `parse`: what is wrong is the TEMPLATE
-  // as written, before any node. `replace_value` is class `conflict`:
-  // the node's value and the body that wanted text disagreed.
-  // `form_data` is `each_data`'s retired twin (ADR-027).
   replace_overlap: 'parse',
   replace_unused: 'parse',
   replace_value: 'conflict',
   form_data: 'parse',
 
-  // G8 phase 3 -- the placeholder. Class `conflict`: two values met
-  // and neither could answer for the other, which is what every
-  // conflict is.
   place_pair: 'conflict',
 
   // G6 phase 2 -- modules. Both are class `parse`: a module import is
@@ -714,9 +657,6 @@ const codeClasses: Record<string, string> = {
   constraint: 'conflict',
   must: 'conflict',
   constraint_pattern: 'conflict',
-  // G9 grammar pair: a grammar that does not compile is the author's
-  // mistake in the CALL (parse), where a text that does not parse is a
-  // disagreement between two values (conflict).
   abnf_grammar: 'parse',
   parse_arg: 'parse',
   parse_failed: 'conflict',

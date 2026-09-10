@@ -1,19 +1,6 @@
-// Copyright (c) 2021-2026 Richard Rodger, MIT License
 
 package aontu
 
-// THE SIGNATURE REGISTRY (docs/design/SIGNATURES.0.md). The call
-// surface of the built-in functions is DECLARED, in the signature
-// syntax itself, in test/spec/signature.tsv; this file is the Go half
-// of the pair that reads it. The declaration text is embedded at
-// build time (go/sigdecl.txt, `make sig`) and parsed at
-// initialisation by the signature grammar -- a custom tabnas grammar,
-// the same engine the aontu grammar itself is built on -- into the
-// registry the runtime signature checker, the error-message builder
-// and the LSP consume. Neither port authors a table: ts/src/sig.ts
-// parses the same text with the same grammar, and the shared suite
-// round-trips every line (render(parse(line)) is the line) so the two
-// parsers cannot drift. Mirrors ts/src/sig.ts throughout.
 
 import (
 	_ "embed"
@@ -26,9 +13,6 @@ import (
 //go:embed sigdecl.txt
 var sigDeclText string
 
-// ArgMode is an argument's reading: value (driven and read as a
-// value, the unmarked default), or one of the five marked modes plain
-// pseudo-TypeScript cannot say.
 type ArgMode string
 
 const (
@@ -76,13 +60,6 @@ const (
 	sigUwords = "words"
 )
 
-// makeSigParser builds the signature-grammar parser. Rules: sig (the
-// line) -> args -> arg -> argtype -> type | group -> gmember. Alts
-// match at most two tokens, the engine's shape; lists loop the
-// json-grammar way (the element rule replaces itself on ',' and
-// backtracks the closer for its parent to consume). The errs sink
-// collects word-choice errors (a mode that is not a mode) that token
-// shape cannot catch.
 func makeSigParser(errs *[]string) *tabnas.Tabnas {
 	j := tabnas.Make(tabnas.Options{Rule: &tabnas.RuleOptions{Start: "sig"}})
 

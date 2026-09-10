@@ -1,20 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE PUBLISHED GRAMMAR, HELD TO THE SUITE (G7 phase 6).
-//
-// grammar/aontu.gbnf is the emission surface a constrained decoder is
-// pointed at. A grammar file that nobody executes drifts from the
-// language the day after it is written, so this test READS THE FILE
-// and interprets it: every canonical-form output in the shared spec
-// suite must parse under the published rules, not under a copy of
-// them kept here.
-//
-// The interpreter is a packrat PEG over the GBNF subset the file uses
-// — ordered alternation, sequence, repetition, literals, character
-// classes, rule references — which is the subset a constrained decoder
-// needs and the only one the file is allowed to use. Ordered choice,
-// not ambiguous BNF: it is what llama.cpp's sampler does with the same
-// text, so what this accepts is what a decoder would emit.
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -24,15 +9,6 @@ import * as Path from 'node:path'
 import { BUILTIN_FUNCS } from '../dist/lsp'
 
 
-// LINE ENDINGS ARE THE CHECKOUT'S BUSINESS, not this file's. git on
-// Windows checks out with CRLF by default, and every reader below
-// anchors on "\n": the rule slice below terminates on a blank line
-// spelled "\n\n", which under CRLF is "\r\n\r\n" and never found, so
-// indexOf returned -1, slice(start, -1) ran to the end of the file, and
-// the builtin set silently absorbed every later rule -- reporting
-// `biginteger`, a KIND, as a function the engine does not have.
-// (.gitattributes now pins .gbnf and .lark to LF as well; this is the
-// half that still holds for a file that did not come from a checkout.)
 function readText(...parts: string[]): string {
   return Fs.readFileSync(Path.join(...parts), 'utf8')
     .replaceAll('\r\n', '\n').replaceAll('\r', '\n')
@@ -245,8 +221,6 @@ class Matcher {
         }
         const rule = this.rules.get(e.v)
         Assert.ok(null != rule, `no such grammar rule: ${e.v}`)
-        // Left recursion would spin; the published grammar has none,
-        // and a -1 seed makes that a clean refusal rather than a hang.
         this.memo.set(key, -1)
         const end = this.match(rule as Expr, at)
         this.memo.set(key, end)
@@ -344,12 +318,6 @@ function canonCorpus(): { file: string, name: string, canon: string }[] {
 }
 
 
-// THE ABNF FORM, READ BY THE SHARED READER. ts/scripts/abnf.cjs turns
-// grammar/aontu.abnf into the SAME expression tree the GBNF parser
-// above produces, so every check in this file -- the reachability walk,
-// the Matcher, the corpus -- applies to it without a second
-// interpreter. The figure generator reads it too, which is why it lives
-// in scripts/ rather than here.
 function abnfRules(text?: string): Map<string, Expr> {
   const { AbnfReader } = require('../scripts/abnf.cjs')
   return new AbnfReader(
@@ -488,11 +456,6 @@ describe('grammar', () => {
   })
 
 
-  // Every GBNF rule by the same name, so the two files cannot drift in
-  // shape without drifting in names first -- the guard the lark file
-  // has, applied to the third notation. The ABNF has rules of its own
-  // (`unescaped`, and RFC 5234's core rules written out), which is why
-  // this runs one way.
   test('the-abnf-grammar-names-the-same-rules', () => {
     for (const name of rules.keys()) {
       Assert.ok(abnf.has(name), `rule missing from aontu.abnf: ${name}`)
@@ -559,11 +522,6 @@ describe('grammar', () => {
   })
 
 
-  // A BARE LITERAL IS CASE-INSENSITIVE IN RFC 5234, and Aontu is not:
-  // `TRUE` is a bare word where `true` is a boolean. The reader refuses
-  // rather than guess, and this is the refusal -- written against an
-  // inline grammar, since the published file is (and must stay) free of
-  // the spelling.
   test('the-abnf-reader-refuses-a-case-insensitive-literal', () => {
     Assert.throws(() => abnfRules('root = "true"'), /RFC 7405/)
     Assert.deepEqual(
@@ -571,39 +529,14 @@ describe('grammar', () => {
   })
 
 
-  // The lark file is the same grammar for a different consumer, and
-  // the two drift the moment one is edited alone. Rule NAMES are the
-  // drift guard a test can check without a second interpreter.
-  // The grammar's function-name list is a HAND-WRITTEN copy of the
-  // engine's registry, and a copy drifts: it carried `same`, which is
-  // not a builtin and never has been, so a constrained decoder was
-  // free to emit a call the engine refuses (status-2026-08-21.md
-  // item 8). Asserting the two sets against each other is what stops
-  // the next divergence -- in EITHER direction, since a builtin added
-  // without its grammar entry is the same defect reversed.
   test('the-grammar-names-exactly-the-engine-builtins', () => {
     const gbnf = readText(GRAMMAR_DIR, 'aontu.gbnf')
     const start = gbnf.indexOf('\nname ::=')
     Assert.ok(-1 < start, 'no name rule in aontu.gbnf')
-    // The rule ends at the next blank line, or at the end of the file
-    // if it is the last one. NOT `indexOf(...)` used raw: a miss is -1,
-    // and `slice(start, -1)` is not "to the end" but "everything bar
-    // the last character" -- so a terminator that stopped matching
-    // silently widened the set to the whole rest of the grammar instead
-    // of failing. That is exactly how a CRLF checkout reported
-    // `biginteger` as a missing builtin.
     const blank = gbnf.indexOf('\n\n', start)
     const end = -1 === blank ? gbnf.length : blank
     const named = new Set(
       [...gbnf.slice(start, end).matchAll(/"([a-z]+)"/g)].map((m) => m[1]))
-    // A guard on what was sliced, so a terminator that moves cannot
-    // quietly hand this assertion the whole file again. It asserts the
-    // INVARIANT rather than a threshold: the slice is ONE rule, so it
-    // holds exactly one `::=`. A size guard was the first attempt and
-    // was far too close to run -- the real slice carries 28 names and
-    // the runaway slice 41, so `< 40` separated them by a single name,
-    // and two literals leaving any later rule would have restored the
-    // silence it was added to end. By rule count the margin is 14.
     const rules = (gbnf.slice(start, end).match(/::=/g) ?? []).length
     Assert.equal(rules, 1,
       `the name rule slice spans ${rules} rules (${named.size} names) -- ` +
@@ -632,18 +565,6 @@ describe('grammar', () => {
   })
 
 
-  // THE SAME CHECK THE GBNF GETS, WHICH THE LARK FILE NEVER HAD.
-  //
-  // The test above compares RULE names, so a rule present in both files
-  // passed however wrong its alternation was -- and `name` was wrong:
-  // it was missing `acyclic`, `inverse` and `rel`, three builtins that
-  // landed with G4 and G8 and were added to the gbnf alone. A consumer
-  // parsing with the lark grammar rejected three valid documents, and
-  // every test in this file was green.
-  //
-  // Added with the first new builtin after the gap was noticed (G9
-  // phase 2, `join`), because the cheapest moment to close a hole a
-  // copy drifts through is the next time somebody copies into it.
   test('the-lark-grammar-names-exactly-the-engine-builtins', () => {
     const lark = readText(GRAMMAR_DIR, 'aontu.lark')
     const start = lark.indexOf('\nname:')
@@ -676,26 +597,11 @@ describe('grammar', () => {
     }
   })
 
-  // THE THIRD COPY OF THE BUILTIN SET, HELD THE SAME WAY.
-  //
-  // grammar/aontu.tmLanguage.json colours a reader rather than
-  // constraining a decoder, but its function list is the same
-  // hand-written copy of the same registry, and the copy in the lark
-  // file is exactly the one that drifted -- it carried `same`, and was
-  // missing `acyclic`, `inverse` and `rel` for two releases with every
-  // test in this file green. The failure mode here is the gentler one
-  // and still a lie: a highlighter that colours `same(x)` as a builtin
-  // tells the reader the engine accepts a call it refuses.
   test('the-textmate-grammar-names-exactly-the-engine-builtins', () => {
     const tm = JSON.parse(readText(GRAMMAR_DIR, 'aontu.tmLanguage.json'))
     const match: string = tm.repository?.builtin?.match ?? ''
     Assert.ok('' !== match, 'no builtin rule in aontu.tmLanguage.json')
 
-    // The alternation, and nothing around it. Anchored on the group the
-    // rule is BUILT from rather than on "every lowercase word in the
-    // regex", so the `\b`s and the `(?=\s*\()` lookahead cannot arrive
-    // here as builtin names -- the reason the other two slices in this
-    // file are guarded, reached by construction instead.
     const group = /\\b\(([a-z|]+)\)\\b/.exec(match)
     Assert.ok(null !== group,
       'the builtin rule is no longer one \\b(a|b|c)\\b alternation -- ' +
@@ -715,12 +621,6 @@ describe('grammar', () => {
   })
 
 
-  // The extension ships a COPY, because a VS Code grammar path cannot
-  // leave the extension root (editors/vscode/scripts/sync-grammar.js).
-  // `npm run compile` regenerates it, but nothing forces that script to
-  // have been run before a commit, and a stale copy is invisible: the
-  // extension keeps working, just with the grammar of a month ago. So
-  // the two are compared here rather than the script trusted.
   test('the-extension-copy-of-the-textmate-grammar-is-the-published-one', () => {
     const published = readText(GRAMMAR_DIR, 'aontu.tmLanguage.json')
     const shipped = readText(

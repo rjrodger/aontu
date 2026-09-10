@@ -1,25 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE PLACEHOLDER `_` (G8 phase 3,
-// docs/capability-review/g8-generation.md): a HOLE in a call, filled
-// by whatever the call is unified with.
-//
-//   x: {&: {m: _ + 2}}   x: a: m: 1     ->  a: m: 3
-//   greeting: upper(_) & hello          ->  "HELLO"
-//
-// WHY A HOLE AND NOT A FUNCTION PARAMETER. Aontu has no user-defined
-// functions and will not get them (G8's Boundary): a function value
-// crossing into the data plane is the step that makes a configuration
-// language a programming language. A hole is not a parameter -- it
-// cannot be named, passed, or partially applied. It says only "the
-// value that arrives here", which is what a template needs to compute
-// from the value it lands on.
-//
-// ALONE, `_` IS TOP WITH A MARK: it admits everything and is filled by
-// its peer, exactly as TOP is dropped by one. What makes it different
-// is that a CALL can see it, and a call that holds one waits for a
-// peer to fill it instead of resolving around it. Unfilled at
-// generation it is an error, as TOP is -- a hole is not a value.
 
 import type {
   Val,
@@ -72,17 +52,6 @@ class PlaceVal extends ValBase {
 }
 
 
-// A HOLE BELONGS TO ITS NEAREST ENCLOSING GENERATOR. A `_` inside a
-// generator's template (pack/each, arg 1), condition (filter, arg 1)
-// or rule table (emit, arg 1) is that generator's to bind — "_ is the
-// source child" — so neither the hole test nor the fill walk may cross
-// into those arguments from outside. Before this boundary, `close(pack(d, _ & t))` reported a
-// hole to the OUTER call, so an ordinary overlay statement was
-// absorbed into the template instead of merging with the generated
-// child (use-cases/BUGS.md §10), and an outer pack's fill pass
-// captured a NESTED pack's hole lexically, binding it to the outer
-// source (§34). The data argument (arg 0) is not a binding position,
-// so it stays visible: a hole there is an outer hole as before.
 function boundArgStart(v: any): number {
   return true === v.isPackFunc || true === v.isEachFunc ||
     true === v.isFilterFunc || true === v.isEmitFunc ||
@@ -90,10 +59,6 @@ function boundArgStart(v: any): number {
 }
 
 
-// Does this value CONTAIN a hole? Asked of a call before it resolves:
-// a call holding one must wait for a peer to fill it. Holes inside a
-// generator's own binding arguments are NOT this value's holes — see
-// boundArgStart above.
 function hasPlace(v: Val): boolean {
   if (true === (v as any).isPlace) {
     return true
@@ -125,18 +90,8 @@ function hasPlace(v: Val): boolean {
 }
 
 
-// The same tree with every hole filled by `fill`. Answers the value
-// UNCHANGED when it holds no hole, so a caller can test identity to
-// know whether anything was filled -- and so a tree with no hole is
-// never needlessly cloned. A nested generator's binding arguments are
-// left untouched (boundArgStart): those holes are the inner
-// generator's to fill with its OWN source children when it fires.
 function fillPlace(v: Val, fill: Val, ctx: AontuContext): Val {
   if (true === (v as any).isPlace) {
-    // A FILL IS A POSITION. The hole knows where it sits in the
-    // instance; the datum arriving in it does not, and inserted as it
-    // stands it keeps the paths it had at its SOURCE, so every finding
-    // under it names a path that does not exist.
     return fill.clone(ctx, { path: [...(v as any).path] })
   }
 

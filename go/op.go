@@ -8,10 +8,6 @@ import (
 	"strconv"
 )
 
-// PlusOpVal is the `+` operator: string concatenation, numeric addition
-// or boolean or. Ported from ts/src/val/PlusOpVal.ts and OpBaseVal.ts.
-// Operands are resolved to done before the operation runs; an operation
-// that cannot yet run defers across fixpoint passes.
 type PlusOpVal struct {
 	base
 	peg []Val
@@ -30,12 +26,6 @@ func (o *PlusOpVal) Canon() string {
 }
 
 func (o *PlusOpVal) Gen(ctx *Ctx) (any, error) {
-	// `op`, not `no_gen`, and rendered as a full located message: TS's
-	// OpBaseVal.gen raises makeNilErr(ctx, 'op', this) and descErr renders
-	// it. Only the ROOT position reaches here -- inside a map the bag
-	// reports the residue first, and `a:{b:1+true}` already agreed on
-	// mapval_no_gen -- so the divergence was invisible until a residual
-	// op was the whole document (issue #38).
 	return nil, residueErr(ctx, o, "op")
 }
 
@@ -51,9 +41,6 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 	// the same undescended ctx; the slot hint is single-use per unite).
 	slot := ctx.slot
 
-	// THE PLACEHOLDER (G8 phase 3, see place.go), on the operator side:
-	// `x: {&: {m: _ + 2}}` meeting `1` is `3`. Same rule as FuncVal's --
-	// the peer fills the hole and the operation is what answers.
 	if !isTop(peer) && !peer.Nil() && hasPlace(o) {
 		if hasPlace(peer) {
 			return makeNilErr(ctx, "place_pair", o, peer)
@@ -62,10 +49,6 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 		return unite(ctx, fillPlace(o, peer), top())
 	}
 
-	// Resolve operands into a scratch slice WITHOUT writing them back:
-	// a stuck op keeps its original operands (`$flag+[...]` renders the
-	// unresolved $flag), matching TS OpBaseVal.unify, which also only
-	// passes the resolved args to operate().
 	var out Val = o
 	pegdone := true
 	newpeg := make([]Val, len(o.peg))
@@ -97,25 +80,8 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 			out = unite(ctx, result, peer)
 		}
 	} else if isTop(peer) {
-		// Rebuild with the resolved-so-far operands (mirrors the
-		// `out = this.make(ctx, { peg: newpeg })` not-pegdone branch in
-		// TS OpBaseVal.unify) so canon shows partial arg resolution.
 		np := newPlusOp(newpeg[0], newpeg[1])
 		np.path = cp(o.path)
-		// THE DOCUMENT TRAVELS WITH THE POSITION. The rebuild kept
-		// `sp` and dropped the url, so a residual operator came out of
-		// the fixpoint belonging to no file -- and a report that asks
-		// WHICH document a site is in (the validation verb's role)
-		// then called a data value part of the schema, at row and
-		// column -1 because it had no text to resolve the offset
-		// against. TS rebuilds through `this.make(ctx, {peg: newpeg})`
-		// and its clone carries the url.
-		//
-		// NOT the source text: the operands have been driven, so this
-		// value no longer occupies the span that was written -- which
-		// is the same reason a wrapper does not push its text onto
-		// what it wraps (see clonePathRec). TS reports no span for a
-		// rebuilt op either.
 		np.sp, np.spu, np.surl = o.sp, o.spu, o.surl
 		out = np
 	} else if peer.Nil() {
@@ -130,25 +96,12 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 	return out
 }
 
-// operate computes the result once both operands are concrete. Only
-// concrete scalar operands are valid (mirrors PlusOpVal.operate in TS):
-// kinds, maps, lists, null, top and funcs do not coerce — the op stays
-// unresolved and generate() reports it.
-//
-// It dispatches on the operand KINDS, not on their native values: that
-// is what R5 kind contagion needs (the result kind follows the operands,
-// so 1.5+1.5 is not an integer) and what D6's exact ladder needs (an
-// exact operand must never reach a float64).
 func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 	// A pref operand contributes its preferred value, and therefore that
 	// value's kind too.
 	av := unpref(args[0])
 	bv := unpref(args[1])
 
-	// The tower's exact leaves take their own path (D6): the exact
-	// ladder, the refusal to mix with a binary float, and marker-free
-	// string concatenation are all decided by kind, and none of them may
-	// pass through binary64.
 	if isExactScalar(av) || isExactScalar(bv) {
 		return exactPlus(ctx, o, av, bv)
 	}
@@ -186,19 +139,6 @@ func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 	case bool:
 		return newBoolean(p)
 	case float64:
-		// Kind contagion: `+` must not introduce a kind narrower than
-		// its operands, and deriving the kind from the result value
-		// alone would make 1.5+1.5 an integer. The integer+integer case
-		// is the one that can yield an integer, and it left above, so
-		// every sum arriving here has a float operand and is a FLOAT —
-		// never the `number` supertype, which no concrete value carries.
-		//
-		// A sum that leaves binary64's finite range is NOT a value.
-		// Aontu is a JSON superset with no notation for an infinity, so
-		// one here used to escape as Go's raw `json: unsupported value:
-		// +Inf` with no code at all, and as `[aontu/internal]` in
-		// TypeScript (use-cases/BUGS.md 39). The same check governs the
-		// arithmetic family (float_overflow, go/arith.go).
 		if math.IsInf(p, 0) || math.IsNaN(p) {
 			return makeNilErrFull(ctx, "float_overflow", o, nil, "add", nil)
 		}
@@ -207,20 +147,6 @@ func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 	return nil //coverage:ignore peg is always string, bool or float64
 }
 
-// integerPlus is integer + integer, computed EXACTLY (D6).
-//
-// Both ports used to add through binary64 and re-tag the result, which
-// silently ROUNDS sums of exact operands: 4503599627370496 +
-// 4503599627370497 came out as …992 rather than …993. The sum is
-// computed with a checked int64 add here (a bigint in TypeScript) and
-// must then satisfy the SAME storage contract R1 puts on a literal —
-// integral, inside the int64 window, AND exactly representable in
-// binary64.
-//
-// That last clause is what keeps the two ports together: Go's int64
-// holds sums TypeScript's double cannot, so without a shared storage
-// test a document would resolve here and round (or error) there. Both
-// refuse, and the hint names the `0d` spelling that computes it exactly.
 func integerPlus(ctx *Ctx, o Val, av, bv Val) Val {
 	x := av.(*ScalarVal).peg.(int64)
 	y := bv.(*ScalarVal).peg.(int64)
@@ -236,28 +162,16 @@ func integerPlus(ctx *Ctx, o Val, av, bv Val) Val {
 			map[string]string{"sum": exact.String()})
 	}
 
-	// Checked add: Go's int64 addition WRAPS, and a wrap is exactly a
-	// sum whose sign disagrees with two same-signed operands.
 	if (0 < x && 0 < y && sum < 0) || (x < 0 && y < 0 && 0 <= sum) {
 		return inexact()
 	}
 
-	// R1's storage test, applied to the result — reaching the SAME
-	// exactness predicate D7's lossy-literal refusal asks of a literal
-	// (isExactInBinary64, inside isIntegerStorable), so a literal and a
-	// computed sum cannot disagree about what "exact" means.
 	if !isIntegerStorable(big.NewInt(sum)) {
 		return inexact()
 	}
 	return newInteger(sum)
 }
 
-// exactPlus is `+` where at least one operand is an exact leaf (D6).
-//
-// Nothing here goes through float64. The exact ladder is
-// integer < biginteger < bigdecimal: a mixed exact operation promotes to
-// the WIDEST operand and is computed exactly, and the result never
-// demotes — `0d5 + -0d2` stays a biginteger though 3 fits an int64.
 func exactPlus(ctx *Ctx, o Val, av, bv Val) Val {
 	asv, aok := av.(*ScalarVal)
 	bsv, bok := bv.(*ScalarVal)
@@ -267,17 +181,10 @@ func exactPlus(ctx *Ctx, o Val, av, bv Val) Val {
 		return nil
 	}
 
-	// String concatenation renders the DIGITS, never the `0d` marker:
-	// concatenation is about digits and not kind decoration, exactly as
-	// R4's canon `.0` suffix never leaks into a string either.
 	if asv.kind == KindString || bsv.kind == KindString {
 		return newString(primStr(asv.peg) + primStr(bsv.peg))
 	}
 
-	// A Big leaf never silently becomes a binary float, in EITHER
-	// operand order (boru's rule, mirrored). Promotion would have to
-	// round — most exact decimals have no binary64 image — and this
-	// language does not round, so the mix is a hard error.
 	if asv.kind == KindFloat || bsv.kind == KindFloat {
 		// Mirrors TS: the OP is the single operand of an `add` attempt,
 		// and the hint names both leaves in operand order ({left}/{right}).
@@ -303,19 +210,12 @@ func exactPlus(ctx *Ctx, o Val, av, bv Val) Val {
 	return newBigInteger(new(big.Int).Add(scalarBigInt(asv), scalarBigInt(bsv)))
 }
 
-// exactLadderKinds is D6's EXACT LADDER: integer < biginteger <
-// bigdecimal, the kinds a `+` may promote between and compute exactly.
-// KindFloat is deliberately absent — it is off the ladder, and mixing it
-// with a Big leaf is the exact_float_mix error rather than a promotion.
 var exactLadderKinds = map[Kind]bool{
 	KindInteger:    true,
 	KindBigInteger: true,
 	KindBigDecimal: true,
 }
 
-// scalarBigInt reads an integer- or biginteger-kind operand as an exact
-// integer. A biginteger's peg is returned as-is: pegs are immutable, and
-// every caller here only reads it.
 func scalarBigInt(sv *ScalarVal) *big.Int {
 	if sv.kind == KindInteger {
 		return big.NewInt(sv.peg.(int64))
@@ -323,10 +223,6 @@ func scalarBigInt(sv *ScalarVal) *big.Int {
 	return sv.peg.(*big.Int)
 }
 
-// scalarDecimal promotes any operand on the exact ladder to a Decimal.
-// The promotion is exact by construction — every kind on the ladder is
-// an exact base-10 value, which is why there is no ladder rung for
-// float.
 func scalarDecimal(sv *ScalarVal) *Decimal {
 	if sv.kind == KindBigDecimal {
 		return sv.peg.(*Decimal)
@@ -362,14 +258,6 @@ func isExactScalar(v Val) bool {
 	return ok && (sv.kind == KindBigInteger || sv.kind == KindBigDecimal)
 }
 
-// primatize extracts the native value of a scalar operand, for the
-// binary64/string/boolean path.
-//
-// An exact leaf never arrives here: operate() sends any operand pair
-// containing one to exactPlus first. That routing is load-bearing — a
-// *big.Int reaching primFloat would read as 0, and reaching plusAdd's
-// float addition would round — so the exact leaves are handled by kind
-// before any native value is extracted at all.
 func primatize(v Val) any {
 	if sv, ok := unpref(v).(*ScalarVal); ok {
 		return sv.peg
@@ -377,11 +265,6 @@ func primatize(v Val) any {
 	return nil
 }
 
-// plusAdd is the binary64 addition, and it is now reached ONLY when a
-// float operand is involved: the exact ladder (biginteger, bigdecimal
-// and integer+integer) is dispatched by kind in operate before any peg
-// gets here, because rounding a sum of exact operands is precisely what
-// D6 abolished.
 func plusAdd(a, b any) any {
 	if _, ok := a.(string); ok {
 		return primStr(a) + primStr(b)
@@ -392,10 +275,6 @@ func plusAdd(a, b any) any {
 	return primFloat(a) + primFloat(b)
 }
 
-// primStr renders a scalar peg for string concatenation: the DIGITS of a
-// number, with no kind decoration. Neither canon's `0d` marker nor R4's
-// `.0` suffix appears here — `"q" + 0d5` is `"q5"` and `"a" + 1.0` is
-// `"a1"` — because concatenation is about digits and not kind.
 func primStr(v any) string {
 	switch n := v.(type) {
 	case string:

@@ -1,20 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-/*
- * Exact cross-leaf numeric comparison for the constraint algebra
- * (docs/reference-language.md, "The constraint algebra"): order is a
- * property of the number line, not the leaf, so a bound must compare an
- * integer, a float, a biginteger and a bigdecimal EXACTLY, with no
- * rounding anywhere. Every finite binary64 is exactly a rational —
- * mant * 2^exp — and 2^-k = 5^k * 10^-k, so every leaf converts
- * losslessly to a signed scaled-decimal (unscaled / 10^scale) and
- * comparison is bigint arithmetic. The Go mirror is numcmp.go.
- *
- * The scaled forms built here are comparison-internal: they are never
- * stored, never rendered, and deliberately NOT subject to the exact
- * leaves' 4096-digit budget (a float's exact expansion can need ~770
- * digits and that is fine for a compare).
- */
 
 import { Decimal } from './Decimal'
 
@@ -26,7 +11,7 @@ import { Decimal } from './Decimal'
 type Scaled = {
   inf?: 1 | -1
   unscaled: bigint     // signed
-  scale: number        // value = unscaled / 10^scale, scale >= 0
+  scale: number
 }
 
 
@@ -54,8 +39,6 @@ function scaledOfFloat(f: number): Scaled {
   const expBits = Number((bits >> 52n) & 0x7ffn)
   const frac = bits & 0xfffffffffffffn
 
-  // Normal: implicit leading bit, exponent bias 1023 plus the 52
-  // fraction bits. Subnormal: no implicit bit, fixed exponent -1074.
   let mant: bigint
   let exp: number
   if (0 === expBits) {
@@ -94,7 +77,6 @@ function pow10(n: number): bigint {
 }
 
 
-// Exact three-way comparison of two scaled decimals.
 function cmpScaled(a: Scaled, b: Scaled): number {
   const ai = a.inf ?? 0
   const bi = b.inf ?? 0
@@ -113,16 +95,11 @@ function cmpScaled(a: Scaled, b: Scaled): number {
 }
 
 
-// Exact three-way comparison of two numeric leaf Vals, any leaves.
 function cmpNumeric(a: any, b: any): number {
   return cmpScaled(scaledOfNumeric(a), scaledOfNumeric(b))
 }
 
 
-// Lexical comparison by Unicode CODE POINTS — not UTF-16 code units,
-// which order astral-plane text differently. Go compares strings
-// byte-wise in UTF-8, which IS code-point order, so this is the side
-// that must adapt (a Phase 0 decision, docs/reference-language.md).
 function cmpCodePoints(a: string, b: string): number {
   let ai = 0
   let bi = 0
@@ -141,9 +118,6 @@ function cmpCodePoints(a: string, b: string): number {
 }
 
 
-// The tower order integer < float < biginteger < bigdecimal, used when
-// two endpoints at the SAME point meet: the survivor is the
-// tower-lowest spelling (docs/reference-language.md, bounds ruling 2).
 function towerRank(v: any): number {
   return v.isBigDecimal ? 3 : v.isBigInteger ? 2 :
     v.isInteger ? 0 : 1

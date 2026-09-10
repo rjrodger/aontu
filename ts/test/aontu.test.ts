@@ -99,25 +99,9 @@ w1: b: {y:2,z:3} & $.q.a
       w1: { b: { x: 1, y: 2, z: 3 } },
     })
 
-    // TODO: fix in jsonic
     expect((a0.unify('{a:b:1\na:c:2}') as any).canon).equal('{"a":{"b":1,"c":2}}')
   })
 
-
-  // TODO: create ctx.test.ts
-  /*
-  test('util', async () => {
-    expect(util.options('x')).include({ src: 'x', print: 0 })
-    expect(util.options('x', { print: 1 })).include({ src: 'x', print: 1 })
-    expect(util.options({ src: 'x' }, { print: 1 })).include({
-      src: 'x',
-      print: 1,
-    })
-    expect(
-      util.options({ src: 'x', print: 1 }, { src: 'y', print: 2 })
-    ).include({ src: 'y', print: 2 })
-  })
-  */
 
   test('file', async () => {
     let ctx = makeCtx()
@@ -291,12 +275,6 @@ def: garage: {
     const fs = mfs.fs as unknown as FST
       ; (fs as any).aaa = 1
 
-    /*
-    let v0 = a0.unify(`a:@"/foo.aon"`, { fs })
-    expect(v0.canon).equal(
-      '{"a":{"f":11}}'
-    )
-    */
 
     let v1 = a0.unify(`a:@"foo.aon"`, { fs, path: '/' })
     expect(v1.canon).equal(
@@ -534,7 +512,6 @@ def: garage: {
       }
     })
 
-    // Refs through 4 levels of nesting
     expect(a0.generate(`
       a: b: c: d: v: 7
       x: $.a.b.c.d.v
@@ -576,7 +553,6 @@ def: garage: {
       c: { pv: 10, qv: 20, rv: 30 },
     })
 
-    // Diamond: two paths merge at a common ref target
     expect(a0.generate(`
       base: { k: 1 }
       left: $.base

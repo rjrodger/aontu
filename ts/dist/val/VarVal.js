@@ -14,7 +14,6 @@ const numkind_1 = require("./numkind");
 const utility_1 = require("../utility");
 const unify_1 = require("../unify");
 const top_1 = require("./top");
-// TODO: KEY, SELF, PARENT are reserved names - error
 class VarVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -25,8 +24,6 @@ class VarVal extends FeatureVal_1.FeatureVal {
         let out;
         let nameVal;
         if (this.peg.isVal) {
-            // $.a.b.c - convert path to absolute
-            // if (this.peg instanceof RefVal) {
             if (this.peg.isRef) {
                 this.peg.absolute = true;
                 nameVal = this.peg;
@@ -41,14 +38,11 @@ class VarVal extends FeatureVal_1.FeatureVal {
             }
         }
         else {
-            // TODO: how to pass row+col?
             nameVal = new StringVal_1.StringVal({ peg: '' + this.peg }, ctx);
         }
-        // if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
         if (!(nameVal.isRef) && type_1.DONE === nameVal.dc) {
             if (nameVal instanceof StringVal_1.StringVal) {
                 let found = ctx.vars[nameVal.peg];
-                // TODO: support complex values
                 const ft = typeof found;
                 // Single ladder: a missing var must report `unknown_var` and not
                 // fall through to the `invalid_var_kind` default below.
@@ -80,10 +74,6 @@ class VarVal extends FeatureVal_1.FeatureVal {
                 else {
                     out = (0, err_1.makeNilErr)(ctx, 'invalid_var_kind', this, peer);
                 }
-                // A non-TOP peer (e.g. a spread constraint unified against the
-                // var) applies to the RESOLVED value rather than being silently
-                // dropped (mirrors VarVal.Unify in go/varval — the resolved
-                // value unites with the peer).
                 if (!out.isNil && null != peer && !peer.isTop) {
                     out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'VAL') }) : ctx, out, peer, 'var-val');
                 }
@@ -111,14 +101,12 @@ class VarVal extends FeatureVal_1.FeatureVal {
     gen(ctx) {
         // Unresolved var cannot be generated, so always an error.
         let nil = (0, err_1.makeNilErr)(ctx, 'var', this, undefined);
-        // TODO: refactor to use Site
         nil.path = this.path;
         nil.site.url = this.site.url;
         nil.site.row = this.site.row;
         nil.site.col = this.site.col;
         (0, err_1.descErr)(nil, ctx);
         if (ctx) {
-            // ctx.err.push(nil)
             ctx.adderr(nil);
         }
         else {

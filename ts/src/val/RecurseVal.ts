@@ -1,31 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE RECURSIVE RESIDUAL (docs/design/RECURSION.0.md): where RefVal's
-// prefix test used to answer `path_cycle` for a self-reference --
-// `$.Node` written anywhere inside `Node` -- it now answers this
-// value: a deferred reference carrying the target path, exactly as a
-// constraint atom carries its bound. No new syntax: the reference the
-// author wrote simply MEANS the fixpoint.
-//
-// The three moments of every residual:
-//
-// - At unification, EXPAND ONE LEVEL PER MEET WITH STRUCTURE: met by
-//   a map, list, or scalar, the residual clones the schema body one
-//   level -- per destination, under ADR-005's clone discipline -- and
-//   unifies the clone with the peer. The clone's own self-reference
-//   is again this residual, so each expansion consumes one level of
-//   concrete data; data is finite, so expansion terminates
-//   (structural descent), with the depth budget as the backstop
-//   (recursion_budget).
-// - In canon and the aon1- hash, SYMBOLIC: the residual prints as the
-//   reference the author wrote, so a recursive schema's canon is
-//   finite and round-trips, and the hash pins the mu-form rather than
-//   any unrolling.
-// - At generation, an unexpanded residual REFUSES with
-//   recursion_unexpanded. Guardedness is therefore EMERGENT: under
-//   `next?:` the refusal is isolated and the optional key drops;
-//   under `*null | $.Node` the preference generates; a REQUIRED
-//   recursive field with no data refuses at the instance.
 
 import type {
   Val,
@@ -78,12 +52,6 @@ class RecurseVal extends FeatureVal {
     return out
   }
 
-  // The schema body the target names, from the ROOT: the fixpoint is
-  // over the finished definition, and the definition's own residual
-  // keeps it finite. When the root does not contain the target -- the
-  // residual was LIFTED out of its defining tree, as vet's anchored
-  // meet does -- fall back to ctx._fixroot, the settled tree the
-  // lifter kept for exactly this walk.
   private body(ctx: AontuContext): Val | undefined {
     return walkTarget(ctx.root, this.target)
       ?? walkTarget((ctx as any)._fixroot, this.target)
@@ -92,9 +60,6 @@ class RecurseVal extends FeatureVal {
   unify(peer: Val, ctx: AontuContext): Val {
     const p: any = peer
 
-    // The self-drive: nothing to advance -- the residual waits for
-    // structure. (A null/nil peer never arrives; unite's ladder
-    // absorbs both.)
     if (null == peer || true === p.isTop) {
       return this
     }
@@ -105,9 +70,6 @@ class RecurseVal extends FeatureVal {
         && this.target.every((s, i) => s === p.target[i])) {
         return this
       }
-      // Different targets -- mutual recursion meeting -- are BOTH
-      // held: each expands as data arrives, through the fold that
-      // keeps a conjunct's members separate.
       const out = new ConjunctVal({ peg: [this, peer] }, ctx)
       propagateMarks(this, out)
       out.path = this.path
@@ -129,25 +91,6 @@ class RecurseVal extends FeatureVal {
         out.path = this.path
         return out
       }
-      // ADR-005's clone discipline: the expansion is a per-destination
-      // instantiation, so the definition itself is never written
-      // into. The clone's type/hide marks are CLEARED at every depth,
-      // exactly as a plain reference copy clears them (concreteFlow's
-      // rule): the schema is hidden, the instances it expands into
-      // are the output.
-      // The clone is REBASED to the DRIVE path explicitly (spec.path;
-      // the Go twin passes cp(r.path), whose stored paths its clone
-      // arms keep clean): the default rebase slices the definition's
-      // path by the destination's length, which leaks definition
-      // segments into instance paths whenever the destination is
-      // shallower -- a residual carried inside a copied definition
-      // body (`chain: $.spec.Step` inside Policy, copied to a slot
-      // shallower than the definition) reported
-      // `$.payments_policy.Policy.chain.then.approver` for the
-      // finding Go placed at `$.payments_policy.chain.then.approver`.
-      // The drive path is also right under vet's anchored meet, which
-      // drives AT the anchor's own path (see vet.ts), so anchored
-      // findings land in the schema's namespace in both ports.
       const level: any = body.clone(ctx, {
         dup: true, path: [...ctx.path],
       } as any)
@@ -173,9 +116,6 @@ class RecurseVal extends FeatureVal {
   }
 
   gen(ctx: AontuContext) {
-    // An unexpanded residual in a demanded position refuses;
-    // guardedness is emergent -- under an optional key the bag's
-    // isolated context swallows this and drops the key.
     makeNilErr(ctx, 'recursion_unexpanded', this, undefined, 'recurse',
       { target: '$.' + this.target.join('.') })
     return undefined
@@ -204,13 +144,6 @@ function bumpRecurse(v: any, xc: number): void {
     v.xc = Math.max(v.xc, xc)
     return
   }
-  // A RAW REFERENCE TO A RECURSIVE TARGET IS THE RECURSION, minted or
-  // not -- the same reading containsRecurseOf already takes, and the
-  // reason bound 2 was inert. A freshly cloned level holds the
-  // definition's references UNRESOLVED, so this walk found no
-  // residual to stamp and `xc` read 0 at every expansion, in the
-  // healthy form too. The seed rides on the reference and the
-  // residual minted from it starts there (ts/src/val/RefVal.ts).
   if (true === v.isRef) {
     v.rxc = Math.max(v.rxc ?? 0, xc)
     return
@@ -237,12 +170,6 @@ function bumpRecurse(v: any, xc: number): void {
 }
 
 
-// containsRecurseOf answers whether a definition holds a residual of
-// the given target -- i.e. the definition is (transitively) the
-// fixpoint that target names. A reference RESOLVING to such a
-// definition must itself answer the residual: cloned instead, every
-// reparse of a canon unrolled the schema one more level and canon
-// never converged.
 function containsRecurseOf(v: any, target: string[], depth?: number): boolean {
   const d = depth ?? 0
   if (null == v || true !== v.isVal || 8 < d) {
@@ -252,14 +179,6 @@ function containsRecurseOf(v: any, target: string[], depth?: number): boolean {
     return v.target.length === target.length
       && v.target.every((s: string, i: number) => s === target[i])
   }
-  // A RAW REFERENCE to the target IS the recursion, minted or not:
-  // the answer must not depend on whether the definition's own
-  // prefix position has been visited yet. Without this arm the
-  // answer was ORDER-DEPENDENT -- reparsing a generated canon puts
-  // the instance before the definition, its trailing `$.spec.Step`
-  // leaves resolved before `Step.then` had minted, and each resolve
-  // cloned one more unrolled level until the unify depth guard
-  // (unify_cycle) killed the document.
   if (true === v.isRef && Array.isArray(v.peg)) {
     if (v.peg.length === target.length
       && v.peg.every((s: any, i: number) => s === target[i])) {

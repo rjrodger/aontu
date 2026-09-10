@@ -29,7 +29,6 @@ const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 const PA = (x, ctx) => x.map(s => PL(s, ctx));
-// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r))?.canon;
 const GC = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen(ctx);
 const N = (x, _ctx) => new unify_1.Unify(x, lang).res.canon;
@@ -60,13 +59,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
     });
     (0, node_test_1.it)('gen', () => {
         let ctx = makeCtx();
-        // expect(P('1').gen(ctx)).equal(1)
-        // expect(P('"a"').gen(ctx)).equal('a')
-        // expect(P('b').gen(ctx)).equal('b')
-        // expect(P('true').gen(ctx)).equal(true)
-        // expect(P('top').gen(ctx)).equal(undefined)
-        // expect(P('a:1').gen(ctx)).equal({ a: 1 })
-        // expect(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } })
         // expect(() => P('nil').gen(ctx)).throw(/literal_nil/)
         // expect(() => A.generate('a:1,b:nil')).throw(/literal_nil/)
         (0, expect_1.expect)(() => P('a:1,b:nil').gen(ctx)).throw(/literal_nil/);
@@ -255,9 +247,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         // Integer Kind can't unify with Number Scalar
         (0, expect_1.expect)(x0.unify(ti0, ctx).isNil).equal(true);
         (0, expect_1.expect)(ti0.unify(x0, ctx).isNil).equal(true);
-        // Integer and Number are distinct kinds: 11 (integer) & 11.0
-        // (number) no longer cross-unify (CUE-faithful number model; see
-        // AGENTS.md "Known TS/Go divergences").
         (0, expect_1.expect)(x0.unify(n0, ctx).isNil).equal(true);
         (0, expect_1.expect)(n0.unify(x0, ctx).isNil).equal(true);
         let x2 = makeNumberVal(2.2);
@@ -275,16 +264,9 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         // expect(P('2.2').canon).equal('2.2')
         // expect(P('-3').canon).equal('-3')
         // expect(P('+4').canon).equal('4')
-        // const ctx = makeCtx()
-        // expect(G('0', ctx)).equal(0)
-        // expect(G('1', ctx)).equal(1)
-        // expect(G('2.2', ctx)).equal(2.2)
-        // expect(G('-3', ctx)).equal(-3)
-        // expect(G('+4', ctx)).equal(4)
         const lang = new lang_1.Lang({
             // debug: true,
             // trace: true,
-            // TODO: make this work
             idcount: 0
         });
         const i11 = lang.parse('(11)');
@@ -341,7 +323,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         (0, expect_1.expect)(tu(ctx, t0, t1)).equal(t0);
         (0, expect_1.expect)(tu(ctx, t1, t0)).equal(t0);
         let x0 = makeNumberVal(0);
-        // Integer 0 and Number 0 are distinct kinds and do not unify.
         (0, expect_1.expect)(tu(ctx, n0, x0).isNil).exist();
         (0, expect_1.expect)(tu(ctx, x0, n0).isNil).exist();
         (0, expect_1.expect)(n0.same(n0)).equal(true);
@@ -368,7 +349,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         let ctx = makeCtx();
         let m0 = new MapVal_1.MapVal({ peg: {} });
         (0, expect_1.expect)(m0.canon).equal('{}');
-        // TODO: update
         (0, expect_1.expect)(tu(ctx, m0, m0).canon).equal('{}');
         (0, expect_1.expect)(tu(ctx, m0, TOP).canon).equal('{}');
         (0, expect_1.expect)(tu(ctx, TOP, m0).canon).equal('{}');
@@ -384,24 +364,16 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         let t0 = makeSK_String();
         (0, expect_1.expect)(tu(ctx, m0, t0).isNil).exist();
         (0, expect_1.expect)(tu(ctx, t0, m0).isNil).exist();
-        // NOTE: makeNumberVal builds a NUMBER-kind 1, and number-kind canon
-        // round-trips its kind, so it renders as `1.0` (an unsuffixed `1`
-        // would reparse as an integer). An integer-kind 1 still canons as
-        // `1` — see test/spec/number-model.tsv.
         let m1 = new MapVal_1.MapVal({ peg: { a: makeNumberVal(1) } });
-        // print(m1, 'm1')
         (0, expect_1.expect)(m1.canon).equal('{"a":1.0}');
         let m1u = m1.unify(TOP, ctx);
-        // print(m1u, 'm1u')
         (0, expect_1.expect)(m1u.canon).equal('{"a":1.0}');
         let u01 = m0.unify(m1, ctx);
-        // print(u01, 'u01')
         (0, expect_1.expect)(u01.canon).equal('{"a":1.0}');
         (0, expect_1.expect)(m1u.canon).equal('{"a":1.0}');
         (0, expect_1.expect)(m0.canon).equal('{}');
         (0, expect_1.expect)(m1.canon).equal('{"a":1.0}');
         let u02 = m1.unify(m0, ctx);
-        // print(u02, 'u02')
         (0, expect_1.expect)(u02.canon).equal('{"a":1.0}');
         (0, expect_1.expect)(m0.canon).equal('{}');
         (0, expect_1.expect)(m1.canon).equal('{"a":1.0}');
@@ -435,13 +407,11 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         ];
         vals[type_1.SPREAD] = { o: '&', v: P('{x:1}') };
         let l0 = new ListVal_1.ListVal({ peg: vals });
-        // console.log(l0)
         (0, expect_1.expect)(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]');
         let u0 = l0.unify(TOP, ctx);
         (0, expect_1.expect)(u0.canon).equal('[&:{"x":1},{"x":1,"y":1},{"x":1,"y":2}]');
     });
     (0, node_test_1.it)('var', () => {
-        // TODO: make Aontu.generate support this
         let q0 = new VarVal_1.VarVal({ peg: 'a' });
         (0, expect_1.expect)(q0.canon).equal('$a');
         let ctx = makeCtx();
@@ -463,7 +433,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         let d4 = new ConjunctVal_1.ConjunctVal({ peg: PA(['1', 'number', 'integer']) });
         let d5 = new ConjunctVal_1.ConjunctVal({ peg: PA(['{a:1}']) });
         let d6 = new ConjunctVal_1.ConjunctVal({ peg: PA(['{a:1}', '{b:2}']) });
-        // let d100 = new ConjunctVal([makeIntegerVal(1), new RefVal({peg:'/x')])
         let d100 = new ConjunctVal_1.ConjunctVal({
             peg: [
                 makeIntegerVal(1),
@@ -493,10 +462,8 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
             .equal('nil');
         (0, expect_1.expect)(tu(ctx, d3, TOP).canon).equal('1');
         (0, expect_1.expect)(tu(ctx, TOP, d3).canon).equal('1');
-        // TODO: term order is swapped by ConjunctVal impl - should be preserved
         (0, expect_1.expect)(tu(ctx, d100, TOP).canon).equal('1');
         (0, expect_1.expect)(tu(ctx, TOP, d100).canon).equal('1');
-        // TODO: same for DisjunctVal
         (0, expect_1.expect)(tu(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), TOP).canon).equal('top');
         (0, expect_1.expect)(A.parse('1 & .a')?.canon).equal('1&.a');
         (0, expect_1.expect)(A.unify('1 & .a')?.canon).equal('.a&1'); // canonical sorting
@@ -522,10 +489,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         (0, expect_1.expect)(tu(ctx, P('1|number'), TOP).canon).equal('1|number');
         (0, expect_1.expect)(tu(ctx, P('1|top'), TOP).canon).equal('1|top');
         (0, expect_1.expect)(tu(ctx, P('1|number|top'), TOP).canon).equal('1|number|top');
-        // ADR-007: two alternatives still admitted is INCOMPLETE residue,
-        // not the first member. These used to answer 1 -- the old fold's
-        // `1 & number`, a value chosen by the fold rather than by the
-        // model.
         (0, expect_1.expect)(() => tu(ctx, P('1|number'), TOP).gen(ctx))
             .throws(/disjunct_no_gen/);
         (0, expect_1.expect)(() => tu(ctx, P('1|number|top'), TOP).gen(ctx))
@@ -557,29 +520,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
     });
     (0, node_test_1.it)('ref-conjunct', () => {
         return;
-        /*
-            let m0 = P(`
-        a: 1
-        b: /a
-        c: 1 & /a
-        d: 1
-        e: /d & /a
-        f: /b
-        `, { xlog: -1 })
-      
-            let g = []
-            g = []; console.log(m0.gen(ctx))
-      
-            let c0 = new AontuContext({ root: m0 })
-            let u0 = m0.unify(TOP, c0)
-      
-            g = []; console.log(u0.gen(ctx))
-      
-            let c0a = new AontuContext({ root: u0 })
-            let u0a = u0.unify(TOP, c0a)
-      
-            g = []; console.log(u0a.gen(ctx))
-        */
         let m1 = P(`
   u: { x: 1, y: number}
   q: a: .u
@@ -625,7 +565,6 @@ b: c2: {n:2}
         });
         let m2u = m2.unify(TOP, c2);
         (0, expect_1.expect)(m2u.canon)
-            // .equal('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
             .equal('{"a":{"x":1},"b":{&:$.a,"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}');
     });
     (0, node_test_1.it)('repeat-spread', () => {
@@ -678,75 +617,31 @@ b: c2: {n:2}
             col: -1,
             url: '',
         });
-        (0, expect_1.expect)(pu0).include({
-        // FIX: use jest toMatchObject
-        // peg: {
-        //   dc: -1,
-        //   row: -1,
-        //   col: -1,
-        //   url: '',
-        //   peg: 'p0',
-        //   path: [],
-        //   kind: String,
-        // },
-        // path: [],
-        // pref: {
-        //   dc: -1,
-        //   row: -1,
-        //   col: -1,
-        //   url: '',
-        //   peg: 'p0',
-        //   path: [],
-        //   kind: String,
-        // }
-        });
+        (0, expect_1.expect)(pu0).include({});
         p0.peg = makeSK_String();
         (0, expect_1.expect)(p0.canon).equal('*string');
         (0, expect_1.expect)(() => p0.gen(ctx)).throw(/no_gen/);
-        // p0.pref = new Nil([], 'test:pref')
-        // expect(p0.canon).equal('string')
-        // expect(p0.gen([])).equal(undefined)
-        // p0.peg = new Nil([], 'test:val')
-        // expect(p0.canon).equal('nil')
-        // expect(p0.gen([])).equal(undefined)
         let p1 = new PrefVal_1.PrefVal({ peg: new StringVal_1.StringVal({ peg: 'p1' }) });
         let p2 = new PrefVal_1.PrefVal({ peg: makeSK_String() });
         let up12 = p1.unify(p2, ctx);
         (0, expect_1.expect)(up12.canon).equal('*"p1"');
         let up21 = p2.unify(p1, ctx);
         (0, expect_1.expect)(up21.canon).equal('*"p1"');
-        // A KIND peg narrows to the value that satisfied it and STAYS a
-        // preference (ADR-011 R1): `*string & "s0"` is `*"s0"`, which is
-        // what the long form answers -- `(string&"s0") | (top&"s0")` keeps
-        // the star on the arm that survived. It used to answer a bare
-        // `"s0"`, because a kind peg gated nothing and the peer simply
-        // replaced the preference.
         let up2s0 = p2.unify(new StringVal_1.StringVal({ peg: 's0' }), ctx);
         (0, expect_1.expect)(up2s0.canon).equal('*"s0"');
-        // ... and it is FIXED by that narrowing, because the override
-        // space narrowed with it: `super(string)` is `top`, so the second
-        // arm was `top & "s0"`, which is `"s0"` and admits nothing else.
-        // A default whose type has been pinned to one value has no room
-        // left to be overridden in.
         (0, expect_1.expect)(up2s0.unify(new StringVal_1.StringVal({ peg: 's1' }), ctx).canon)
             .equal('nil');
-        // let u0 = P('1|number').unify(TOP, ctx)
-        // let u1 = P('*1|number').unify(TOP, ctx)
         (0, expect_1.expect)(UC('a:1')).equal('{"a":1}');
         (0, expect_1.expect)(UC('a:1,b:.a')).equal('{"a":1,"b":1}');
         (0, expect_1.expect)(UC('a:*1|number,b:2,c:.a&.b')).equal('{"a":*1|number,"b":2,"c":2}');
         (0, expect_1.expect)(UC('a:*1|number,b:top,c:.a&.b'))
             .equal('{"a":*1|number,"b":top,"c":*1|number}');
         (0, expect_1.expect)(UC('a:*1|number,a:*2|number'))
-            // .equal('{"a":*2|*1|number}')
             .equal('{"a":*2|*1|number}');
         (0, expect_1.expect)(UC('a:*1|number,b:*2|number,c:.a&.b'))
             .equal('{"a":*1|number,"b":*2|number,"c":*2|*1|number}');
         let d0 = P('1|number').unify(TOP, ctx);
         (0, expect_1.expect)(d0.canon).equal('1|number');
-        // No preference, two alternatives: incomplete, not the fold's 1
-        // (ADR-007). `*1|number` a few lines down is the spelling that
-        // decides it.
         (0, expect_1.expect)(() => d0.gen(ctx)).throws(/disjunct_no_gen/);
         (0, expect_1.expect)(G('number|*1')).equal(1);
         (0, expect_1.expect)(G('string|*1')).equal(1);

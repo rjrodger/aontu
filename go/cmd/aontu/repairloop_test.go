@@ -2,20 +2,6 @@
 
 package main
 
-// THE REPAIR LOOP, END TO END. Emit -> vet -> why -> set -> re-vet,
-// through the whole command, with the exit code asserted at every step.
-// The Go twin of the cli-repair-loop suite in ts/test/cli.test.ts.
-//
-// The capability review exists for this loop and until now nothing
-// executed it: the spec suite pins each verb in isolation, so the verbs
-// could each be right and the loop still not close. Walking it by hand
-// is what found the two defects the loop's own status report opens with
-// -- `Site` has no extent, and `set` cannot narrow a pinned literal --
-// and neither was visible from any single verb.
-//
-// The exit codes ARE the assertion. A harness driving this reads
-// nothing else between steps, so a step that returns the right text
-// under the wrong code is a step that misroutes the loop.
 
 import (
 	"bytes"
@@ -104,8 +90,6 @@ func TestRepairLoopEmitVetWhySetRevetCloses(t *testing.T) {
 		t.Fatalf("entry rewritten: %q", string(entry))
 	}
 
-	// 4. RE-VET the pair. The two files together are the repaired
-	//    document, so the loop closes through an include of both.
 	all := filepath.Join(dir, "all.aon")
 	if err := os.WriteFile(all,
 		[]byte("@\"./deploy.aon\"\n@\"./overlay.aon\"\n"), 0o600); err != nil {
@@ -118,11 +102,6 @@ func TestRepairLoopEmitVetWhySetRevetCloses(t *testing.T) {
 	vetMatch(t, out, `verdict: valid`)
 }
 
-// The other arm, and the one the status report calls the loop's missing
-// third step: unification only NARROWS, so a value the data already
-// pinned cannot be set to a different one. The overlay is not written,
-// the entry is not touched, and the finding names the site doing the
-// pinning -- which is where a human, not `set`, has to go.
 func TestRepairLoopPinnedValueRefusesAndWritesNothing(t *testing.T) {
 	dir, _, deploy := loopFiles(t)
 	overlay := filepath.Join(dir, "overlay.aon")
@@ -146,10 +125,6 @@ func TestRepairLoopPinnedValueRefusesAndWritesNothing(t *testing.T) {
 	}
 }
 
-// And the step before the loop can start at all: a truth that does not
-// stand up. Exit 4 says "stop, the schema is the problem" -- and now
-// says WHAT the problem is, so a harness can report it instead of
-// retrying against a schema that will never accept anything.
 func TestRepairLoopBrokenSchemaStopsTheLoopAndSaysWhy(t *testing.T) {
 	dir, _, deploy := loopFiles(t)
 	broken := filepath.Join(dir, "broken.aon")

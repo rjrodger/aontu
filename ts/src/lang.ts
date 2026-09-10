@@ -1,12 +1,6 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
-// import { performance } from 'node:perf_hooks'
-
-// Named imports, not `import * as`: the namespace form makes tsc emit
-// the __importStar downlevel helper, whose branches no supported Node
-// takes (the same rule cli.ts records). Aliased because `Path` is
-// already the @tabnas/path plugin below.
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import {
   basename as pathBasename,
@@ -27,10 +21,6 @@ import {
 } from '@tabnas/jsonic'
 
 
-// THE CONFIG-FORMAT READERS (ADR-012). Each is a jsonic plugin for one
-// format, so an included `.toml` or `.yaml` is parsed by a real parser
-// for that format rather than guessed at by this one. `@tabnas/json` is
-// the strict RFC 8259 reader, used for `.json` and `.jsonld`.
 import { funcSig } from './sig'
 import type { FuncSig } from './sig'
 
@@ -47,7 +37,6 @@ import {
   MultiSource
 } from '@tabnas/multisource'
 
-// TODO: @tabnas/multisource should support virtual fs
 
 import {
   makeFileResolver
@@ -61,12 +50,6 @@ import {
   makeMemResolver
 } from '@tabnas/multisource/resolver/mem'
 
-// The Aontu-source processor, TAKEN RATHER THAN ALIASED. The obvious
-// spelling is the alias `aon: 'jsonic'`, which multisource resolves
-// through its own processor map -- but `jsonic` is a FORMAT NAME in
-// the include table now, so that alias resolved to the plain-jsonic
-// DATA reader and every `.aon` include was suddenly parsed without the
-// language in it. Naming the function leaves nothing to collide with.
 import {
   makeJsonicProcessor,
 } from '@tabnas/multisource/processor/jsonic'
@@ -102,7 +85,6 @@ import {
 import {
   top
 } from './val/top'
-
 
 
 import {
@@ -183,34 +165,13 @@ import {
 const asPlugin = (p: unknown): Plugin => p as Plugin
 
 
-// Build the Val for a matched `0d` literal (see the `0d` value matcher
-// below). Leaf by source: digits only is a biginteger, a `.` or an
-// exponent makes it a bigdecimal.
-//
-// A literal over the D6 exactness budget becomes a LOCATED ERROR here
-// and not a rounded or expanded value: `0d1e1000000000` has a one-digit
-// coefficient, so only the scale bound catches it, and it is caught at
-// parse -- before plain-form rendering would try to materialise a
-// gigabyte of zeros.
-// The source text of a negated exact literal. `-` is a prefix OPERATOR,
-// not part of the literal, so the text has to be rebuilt here to keep
-// `src` meaning "how this value is spelled" (see bigVal).
 function negsrc(src: string): string {
-  // src is never empty here: it is a BIG_LITERAL_RE match (at minimum
-  // the two chars `0d`) or an already-negated spelling. Computed exact
-  // values do carry src '', but they are built at unify time, long
-  // after this parse-time opmap.
   return src.startsWith('-') ? src.slice(1) : '-' + src
 }
 
 
 function bigVal(res: RegExpExecArray): Val {
   const lit = readBigLiteral(res)
-  // `src` is the literal's own text, and it is not decoration: a path
-  // segment is spelled text, so `$.a.0d1` must address the key `0d1` --
-  // the same key `a:{0d1:7}` creates -- rather than the number 1. See
-  // RefVal.append. Without it the segment was empty and the reference
-  // silently resolved to its own container.
   const src = res[0]
   return 'biginteger' === lit.leaf ? new BigIntegerVal({ peg: lit.int, src }) :
     'bigdecimal' === lit.leaf ? new BigDecimalVal({ peg: lit.dec, src }) :
@@ -223,45 +184,13 @@ const CC_0 = 48
 const CC_d = 100
 const CC_D = 68
 
-// THE ALIAS SIGIL. `%` is part of an alias's name, so the name is one
-// lexeme wherever it appears and its meaning is decided by position:
-// a BINDING in key position (`%uint8 = …` declares), a USE in value
-// position (`listen: %uint8` refers). docs/design/ALIASES.0.md §4.
 const CC_PCT = 37
 const ALIAS_RE = /^%[A-Za-z_][A-Za-z0-9_]*/
 
-// THE DECLARATION OPERATOR. `%name = value` declares; the `=` is the
-// pair's separator, lexed as the colon token so the declaration then
-// parses as a pair whose key is the alias name (ALIASES.0.md X-1, as
-// settled 2026-09-05). `=` is syntax ONLY there: anywhere else it is
-// punctuation outside its syntax, and the bare-text scan below refuses
-// it (`foo = 1`, `a: x=y`).
 const CC_EQ = 61
 const CC_SP = 32
 const CC_TAB = 9
 
-// THE BARE-TEXT RULE. A bare string holds letters, digits, `-` and `_`,
-// and nothing else. Every other punctuation character is either SYNTAX,
-// where the grammar gives it a meaning, or an ERROR where it does not
-// -- never silently part of a string. `x=y`, `6/2`, `50%` and `>10`
-// were all bare strings once, each a well-formed wrong document, and
-// each is refused now, naming the character (bare_punct).
-//
-// scanBareRun classifies each character of a run three ways, in this
-// order: TEXT continues the run; an ENDER stops it; anything else is
-// BAD. The ender set is the lexer's own -- space, line, fixed tokens,
-// comment starters -- read from the config its text matcher was built
-// from, so it cannot drift from the grammar. A bad run is still scanned
-// to its ender, so the refusal claims the whole spelling and the lexer
-// never reads the tail of it as syntax.
-//
-// `-` is text wherever the scan sees it. A run never STARTS on one:
-// `-` is the sign of a number and the negation prefix, a fixed token
-// the fixed matcher claims before either scanning stage can run, so
-// `a:-1` is the negation of 1 and `a:6-2` the string. The `+` of an
-// exponent (`1e+2`) is admitted only by the NUMBER stage's scan, the
-// one stage that can make a number of it. Mirrors scanBareRun in
-// go/lang.go, decision for decision.
 const CC_9 = 57
 const CC_A = 65
 const CC_Z = 90
@@ -346,34 +275,10 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
 
   jsonic.use(asPlugin(Path))
 
-  // Only # line comments are valid Aontu syntax (see
-  // docs/reference-language.md; go/lang.go sets the same). Clear the
-  // underlying jsonic comment markers entirely, then define # directly,
-  // so the comment set is hash-only regardless of those defaults.
   let dotRef = (r: Rule, ctx: JsonicContext, terms: any, prefix: boolean) => {
     terms = dropUnfilled(terms)
     if (0 === terms.length) return incompleteNil(r, ctx)
 
-    // AN ALIAS IS NOT A PATH SEGMENT. `$.%foo` is refused: the alias
-    // namespace and the path namespace are disjoint, and an alias is
-    // reached by writing `%foo` and only that.
-    //
-    // The engine spells an alias reference AS a root reference to the
-    // declaration -- which is what gives it order independence and a
-    // cycle check shared with paths -- but that is an implementation of
-    // the name, not a second way to write it. Left writable, the two
-    // spellings would drift apart the moment aliases stop being
-    // file-shaped, and `$.%b` inside an included file would reach the
-    // INCLUDER's `%b` rather than its own, which is exactly the
-    // cross-file capture the sigil exists to prevent.
-    // `%foo` lexes to the reference itself, so in `$.%foo` it arrives
-    // as a TERM rather than as a string segment -- both shapes are
-    // checked, since a quoted `$."%foo"` would arrive as the string.
-    // Terms here are always Vals -- dropUnfilled has removed the
-    // nulls, and the dot rules never hand over a raw string -- so the
-    // shapes are exactly three: a RefVal (peg is the segment array), a
-    // StringVal (peg is the segment), and anything else (a numeric or
-    // exact segment, which cannot be an alias name).
     for (const t of terms) {
       const segs: any[] =
         Array.isArray(t.peg) ? t.peg :
@@ -398,49 +303,13 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
     },
   })
 
-  // Digit separators are legal only as a SINGLE separator BETWEEN
-  // digits (the rule test/spec/engine-parity.tsv records as the engine's
-  // adjudication; pinned by the sep-* rows in
-  // test/spec/number-model.tsv). The engine's number matcher
-  // enforces most of that already — `1_`, `_1`, `1_.5`, `1._5`, `1e_2`,
-  // `1e2_` all fall through to text — but two gaps remain: a REPEATED
-  // separator (`1__0` lexed as 10) and a separator at the edge of a
-  // base-prefixed digit run (`0x_ff`, `0xff_` lexed as 255). Both
-  // silently accept a typo as a different number, so aontu declines the
-  // whole run instead and it lexes as text ("1__0"), exactly as `1_`
-  // already does.
-  //
-  // `number.exclude` is tested against the matched number source and,
-  // when it matches, makes the matcher decline the entire span. Kept in
-  // lock-step with sepInvalid in go/lang.go, which is wired to the
-  // equivalent `Number.Exclude` hook (and to the Check hook, which
-  // constructs big base-prefixed tokens itself and so bypasses Exclude).
   jsonic.options({
     number: {
-      // `__` repeated separator; `0x_`/`0o_`/`0b_` separator opening a
-      // base-prefixed run; `_` closing any run. The prefix letter is
-      // matched case-insensitively so the rule does not depend on which
-      // prefix spellings the engine accepts.
       exclude: /__|^[-+]?0[xXoObB]_|_$/,
 
-      // THE NUMBER STAGE OF THE BARE-TEXT RULE. The matcher runs before
-      // the text matcher and reads a number up to the next ender -- and
-      // `-` is an ender, being the negation prefix's fixed token, so it
-      // would take the `2026` of `2026-09-05` and leave `-09-05` to the
-      // grammar. The hook scans the whole run first and declines for
-      // the matcher wherever the run is not its to lex: a run with a
-      // bad character (the text stage refuses it), a run that is not a
-      // number at all (`2026-09-05`, `6-2` are text). Twin of tsNumCheck
-      // in go/lang.go.
       check: (lex: any) => {
         const pnt = lex.pnt
         const src = lex.src
-        // The hook makes the matcher a candidate at every position, so
-        // the common case -- a run no number can open -- declines for it
-        // in one char read. A DIGIT opens a number here and nothing
-        // else: the sign and the dot open the matcher's own grammar, but
-        // they are fixed tokens (the prefix operators and member
-        // access), claimed before this hook can run.
         const c = src.charCodeAt(pnt.sI)
         if (!(CC_0 <= c && c <= CC_9)) {
           return NOT_A_NUMBER
@@ -454,69 +323,17 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
     },
   })
 
-  // D3 -- the `0d` literal, the only route to the exact leaves
-  // (biginteger and bigdecimal). See BIG_LITERAL_RE for the grammar and
-  // the leaf-by-source rule.
-  //
-  // The literal is claimed by the TEXT MATCHER'S CHECK HOOK (the sibling
-  // of the `Number.Check` hook the Go port already uses for big
-  // base-prefixed literals), not by a `value.def` entry, because a `0d`
-  // run may contain a `.` and the two claim source differently:
-  //
-  //   - A value def -- even a consuming one, matched against the full
-  //     forward source -- is applied INSIDE the text matcher, AFTER its
-  //     ender regexp has already carved the run at the `.`. The def
-  //     claims `0d1.5` whole, but the matcher then still emits the
-  //     ender's `.` as a fixed token, so `x:0d1.5` lexed as the
-  //     bigdecimal FOLLOWED BY a dangling member-access dot (a path
-  //     cycle). Verified, not theorised.
-  //   - The check hook runs BEFORE that ender regexp and returns the
-  //     token outright, so the run is claimed whole and nothing else is
-  //     emitted.
-  //
-  // A `match.value` matcher (which runs ahead of every other matcher)
-  // also claims it correctly, but it is a candidate at EVERY lex
-  // position and materializes the forward source there: ~8% on a
-  // text-heavy document, for a syntax almost none of them use. The check
-  // hook only runs where the text matcher already runs, and measures at
-  // parity with not having it.
-  //
-  // The number matcher never sees these runs at all: it declines `0d…`
-  // outright, since `d` is not an ender.
   jsonic.options({
     text: {
       check: (lex: any) => {
-        // Guard first, on char codes: this hook runs at every text
-        // position, and the common case (any run that cannot be a `0d`
-        // literal or an alias) must cost two char reads and no
-        // allocation.
         const pnt = lex.pnt
         const src = lex.src
 
-        // AN ALIAS NAME IS CLAIMED WHOLE, for the same reason the `0d`
-        // run below is: the text matcher's ender regexp would otherwise
-        // carve `%uint8` at the `%` and emit the sigil as its own token,
-        // leaving a bare `uint8` behind -- which is exactly the capture
-        // the sigil exists to prevent. Claiming it here, before that
-        // ender runs, keeps the name one lexeme.
-        //
-        // The token's SOURCE is the whole `%name`, which is what makes
-        // the same lexeme work in both positions: jsonic keys a pair by
-        // the token's source text (`0d1: 5` yields the key `0d1`), so a
-        // declaration reads as the key `%uint8`, while a value position
-        // calls the function below and gets the reference.
-        // A `%` that opens no name (`%`, `%1`, `50%`) falls through to
-        // the bare-text scan below, which refuses it.
         const ares = CC_PCT === src.charCodeAt(pnt.sI) ?
           ALIAS_RE.exec(lex.refwd()) : null
         if (null != ares) {
           const asrc = ares[0]
 
-          // A lone `=` after the name, across horizontal space only, is
-          // the declaration operator. Decided HERE, where the name is
-          // claimed, and only its position is kept: the very next text
-          // position is that `=`, since nothing but space sits between,
-          // so the mark cannot outlive its one use. `==` is not it.
           let j = pnt.sI + asrc.length
           while (j < src.length &&
             (CC_SP === src.charCodeAt(j) || CC_TAB === src.charCodeAt(j))) {
@@ -528,13 +345,6 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
 
           const atkn = lex.token(
             '#VL',
-            // AN ALIAS REFERENCE IS A PATH REFERENCE. `%uint8` is
-            // `$.%uint8`: root-absolute, one segment, spelled with the
-            // sigil the declaration is spelled with. Everything the
-            // design asks of it -- order independence, alias-of-alias,
-            // redeclaration unifying, cycle refusal spanning both
-            // namespaces -- is then the reference machinery already in
-            // the language, not a second resolver beside it.
             (r: Rule, ctx: JsonicContext) =>
               addsite(new RefVal({ peg: [asrc], absolute: true }), r, ctx),
             asrc,
@@ -544,11 +354,6 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
           return { done: true, token: atkn }
         }
 
-        // The `=` the alias arm above marked: the separator of a
-        // declaration, as a colon token whose source is `=`. The pair rule
-        // is then the pair rule, and the formatter writes the spelling it
-        // read. Marked in `use` so the pair rule can tell it from a colon,
-        // which no longer declares.
         if (CC_EQ === src.charCodeAt(pnt.sI) && lex.aontu_eq_at === pnt.sI) {
           delete lex.aontu_eq_at
           const eqtkn = lex.token('#CL', undefined, '=', pnt, { aontu_eq: true })
@@ -560,18 +365,9 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
         if (CC_0 === src.charCodeAt(pnt.sI)) {
           const c1 = src.charCodeAt(pnt.sI + 1)
           if (CC_d === c1 || CC_D === c1) {
-            // BIG_LITERAL_RE is `^`-anchored and read against the
-            // forward source (memoized per position by refwd), which is
-            // what lets it claim the `.` of `0d1.5`. A `0d` run it does
-            // not match falls through to the bare-text scan below.
             const res = BIG_LITERAL_RE.exec(lex.refwd())
             if (null != res) {
               const msrc = res[0]
-              // The token value is a FUNCTION so Val construction
-              // happens at parse time, where the rule and context needed
-              // for the site exist (jsonic calls a #VL token's function
-              // value with them). A `0d` literal never spans a line, so
-              // only the source and column positions advance.
               const tkn = lex.token(
                 '#VL',
                 (r: Rule, ctx: JsonicContext) => addsite(bigVal(res), r, ctx),
@@ -584,22 +380,10 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
           }
         }
 
-        // THE BARE-TEXT RULE (scanBareRun). Last, so that a name, a
-        // declaration operator and an exact literal are read before a
-        // run is judged as text.
-        // The run is never empty: every ender is a token an earlier
-        // matcher claims, so the text stage only opens on a character
-        // the scan classifies as text or as bad.
         const run = scanBareRun(lex.cfg, src, pnt.sI, false)
         const msrc = src.slice(pnt.sI, run.end)
 
         if (-1 !== run.bad) {
-          // BAD: the run is refused whole, sited at the character (the
-          // mark in `use` is what tokenSite reads). As a VALUE the
-          // token's function builds the refusal at the parse, where the
-          // rule carries the position. As a KEY the token is read for
-          // its source alone, so the mark is what the pair and elem
-          // rules read to write the refusal where the map is built.
           const ch = run.ch
           const tkn = lex.token(
             '#VL',
@@ -616,11 +400,6 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
           return { done: true, token: tkn }
         }
 
-        // CLEAN, with a `-` past its start (`team-payments`,
-        // `2026-09-05`): claimed here as one text token, because the
-        // default matcher's ender set would carve the run at the `-`.
-        // Any other clean run is the default matcher's, which also reads
-        // the value keywords and the `_` hole.
         if (-1 !== msrc.indexOf('-')) {
           const tkn = lex.token('#TX', msrc, msrc, pnt)
           pnt.sI += msrc.length
@@ -633,20 +412,6 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
     },
   })
 
-  // TODO: refactor Val constructor
-  // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
-  // WHERE A TOKEN SITES A VALUE: the token's own position and text --
-  // except for a token the bare-text rule marked (`aontu_bad`), which
-  // sites at the offending CHARACTER. Its column is the character's
-  // first occurrence in the run (every character before it is text,
-  // and it is not), and its text is the character alone. Read here and
-  // nowhere else, so a value sited from such a token lands on the
-  // character however many times the parse re-sites it.
-  //
-  // A TOKEN WITH NO TEXT IS NO SPAN, in both ports, and the extent is
-  // DERIVED from the text rather than read from the token's own `len`
-  // — so the Go twin, whose token has no len field, computes the
-  // identical number with utf16Len and nothing has to be kept in step.
   type TokenSite = { row: number, col: number, src: string, len: number }
   const NO_SITE: TokenSite = { row: -1, col: -1, src: '', len: -1 }
   const tokenSite = (tkn: any): TokenSite => {
@@ -678,14 +443,6 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
     return v
   }
 
-  // THE KEY REFUSALS a pair may carry, decided from its key TOKEN --
-  // never from the key text alone, since a quoted `"%a"` or `"x=y"` is
-  // an ordinary key: a declaration spelled with a colon (alias_colon),
-  // and a key the bare-text rule refuses (bare_punct). Undefined for an
-  // ordinary key, and for a declaration (`%a = 1`), which is a binding
-  // (isAliasDecl), not a refusal. Asked FIRST by the pair rule and by
-  // the elem rule, before the declaration is, so a pair in list
-  // position is held to the map's rules.
   const isAliasDecl = (ktkn: any, sep: any): boolean =>
     null != ktkn && VL === ktkn.tin && ALIAS_RE.test('' + ktkn.src) &&
     true === sep?.use?.aontu_eq
@@ -730,10 +487,6 @@ help isolate the syntax error.`,
     },
     value: {
       def: {
-        // NOTE: specify with functions as jsonic/deep will
-        // remove class prototype as options are assumed plain
-        // (except for functions).
-        // TODO: jsonic should be able to pass context into these
         'string': {
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: String }), r, ctx)
@@ -753,8 +506,6 @@ help isolate the syntax error.`,
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: Float }), r, ctx)
         },
-        // The two exact leaves. Their keywords are the marker class
-        // names lowercased, which is also how ScalarKindVal canons them.
         'biginteger': {
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: BigInteger }), r, ctx)
@@ -773,7 +524,6 @@ help isolate the syntax error.`,
             addsite(new NilVal({ why: 'literal_nil' }), r, ctx)
         },
 
-        // TODO: FIX: need a TOP instance to hold path
         'top': { val: () => top() },
 
         // G8 phase 3: the placeholder. A BARE `_` is the hole; `"_"`
@@ -793,7 +543,6 @@ help isolate the syntax error.`,
 
         if (pval?.isVal && cval?.isVal) {
 
-          // TODO: test multi element conjuncts work
           if (pval.isConjunct && cval.isConjunct) {
             (pval as ConjunctVal).append(cval)
             return pval
@@ -810,14 +559,6 @@ help isolate the syntax error.`,
         // Handle defered conjuncts, where MapVal does not yet
         // exist, by creating ConjunctVal later.
         else {
-          // AN INCLUDE UNIFIES IN PLACE. multisource calls this hook at
-          // the `@`'s own source position, so `prev` holds exactly the
-          // pairs written BEFORE it. Folding the loaded map's keys in
-          // here -- host-so-far first, arriving value second -- is what
-          // inlining the loaded bytes at the `@` does, and mirrors
-          // go/lang.go's Map.Merge, which multisource-go drives one key
-          // at a time. A non-map load has no keys to fold and stays a
-          // deferred conjunct arm.
           if (true === (cval as any)?.isMap) {
             const lm: any = cval
             for (const k of Object.keys(lm.peg)) {
@@ -827,10 +568,6 @@ help isolate the syntax error.`,
                   ? new ConjunctVal({ peg: [own, lm.peg[k]] })
                   : lm.peg[k])
             }
-            // The loaded map's spread joins THIS map's spread list at
-            // the `@`'s position: the parse pushes each `&:` onto the
-            // node as it is read, so `prev[SPREAD].v` already holds the
-            // spreads written before the `@` and nothing after it.
             if (null != lm.spread?.cj) {
               ;(prev as any)[SPREAD] =
                 ((prev as any)[SPREAD] || { o: '&', v: [] })
@@ -862,21 +599,12 @@ help isolate the syntax error.`,
     path: PathFuncVal,
     pref: PrefFuncVal,
 
-    // First-class paths and the container kinds
-    // (docs/design/PATHS.0.md). `path(p)` CAPTURES a path as a value;
-    // `path()`, `map()` and `list()` are kinds -- the vacuous
-    // constructor call admits its values and defaults to nothing,
-    // where the container LITERALS `{}`/`[]` default to empty.
     map: MapFuncVal,
     list: ListFuncVal,
     close: CloseFuncVal,
     open: OpenFuncVal,
     super: SuperFuncVal,
 
-    // The constraint algebra's Band A atoms (G1 phase 1;
-    // docs/reference-language.md, "The constraint algebra"): bounds
-    // and exclusion enter through the function registry — the
-    // established extension point — with zero grammar change.
     min: MinConstraintVal,
     max: MaxConstraintVal,
     above: AboveConstraintVal,
@@ -887,23 +615,11 @@ help isolate the syntax error.`,
     // host regex engines agree on (nonPortableRe in ConstraintVal.ts).
     re: ReConstraintVal,
 
-    // G1 phase 3: the sizing atoms. Both are properties of a CONTAINER
-    // (or, for length, of a string) rather than comparisons against a
-    // value, which is why `unique` is the one built-in taking no
-    // argument at all.
     length: LengthConstraintVal,
     unique: UniqueConstraintVal,
 
-    // G1 phase 5: Band B. `must` is the one atom the algebra does not
-    // reason about -- it is checked against the finished value and
-    // reported with the author's own message, never simplified and
-    // never consulted for emptiness or subsumption.
     must: MustConstraintVal,
 
-    // G9: the grammar pair. `abnf` compiles an RFC 5234 grammar and
-    // answers its source, so a parser is an ordinary string; `parse`
-    // applies one and answers the tabnas AST as ordinary maps and
-    // lists, or a located nil when the input does not parse.
     abnf: AbnfFuncVal,
     parse: ParseFuncVal,
 
@@ -912,10 +628,6 @@ help isolate the syntax error.`,
     // call back (canonRiders).
     deprecate: DeprecateFuncVal,
 
-    // G4 phase 2: the checked, typed, LINK-shaped reference. A
-    // constraint on a string field: the string must be a TREE ADDRESS
-    // (`$.a.b` or `.b`), the address must resolve, and the optional
-    // argument flows INTO the target. The field keeps the string.
     refer: ReferFuncVal,
     rel: RelFuncVal,
 
@@ -925,39 +637,13 @@ help isolate the syntax error.`,
     acyclic: AcyclicFuncVal,
     inverse: InverseFuncVal,
 
-    // G8 phase 1: generation to KEYED CHILDREN. `pack` makes one keyed
-    // child per child of its data, cloning its template per
-    // destination exactly as a spread does, and waits for the model to
-    // settle before it fires (the staging rule, G8 phase 0).
     pack: PackFuncVal,
 
-    // RENDER P6: the order-preserving map, and generation to a LIST.
-    // `each` makes one list element per child of its data, being the
-    // template with `_` bound to the source child. It exists because
-    // `pick(pack(...))` re-sorts to code-point order, and a struct's
-    // fields or a file's imports are the model's order or they are
-    // wrong.
-    //
-    // Mentioning the hole makes it a BOUND instead: `each(d, _ & t)`
-    // meets each child with `t`, and `each(d, _)` is a bag's members
-    // as a list. That is what the retired meet-only `each` spelled
-    // (ADR-026), and why this one could take the name (ADR-027).
     each: EachFuncVal,
 
-    // G8 phase 2: selection. `filter` keeps the children of a bag that
-    // unify with a condition; `match` picks the first arm whose
-    // pattern the scrutinee unifies with. Both select by
-    // UNIFIABILITY, tried in trial mode, so neither adds a predicate
-    // language to the one the lattice already is.
     filter: FilterFuncVal,
     match: MatchFuncVal,
 
-    // The arithmetic family (the review's finding I). Maths beyond `+`
-    // arrives as FUNCTIONS — `-` `*` `/` `%` stay reserved — and the
-    // family is numeric where the operator is polymorphic, which is
-    // what makes `add` more than a second spelling of `+`: it refuses
-    // the string concatenation that silently answers `"500m" + "500m"`.
-    // Every rule they obey is in ts/src/val/arith.ts.
     add: AddFuncVal,
     sub: SubFuncVal,
     mul: MulFuncVal,
@@ -965,85 +651,29 @@ help isolate the syntax error.`,
     mod: ModFuncVal,
     rem: RemFuncVal,
 
-    // Aggregation over a finite, settled bag (the review's finding I).
-    // `least` and `greatest` rather than min and max, which are already
-    // the atoms for a lower and an upper BOUND -- an aggregate over a
-    // set and a bound on a value must not share a spelling.
     sum: SumFuncVal,
     least: LeastFuncVal,
     greatest: GreatestFuncVal,
 
-    // Projection, which is what lets the aggregates reach a bag of
-    // RECORDS: `sum(pick($.lines, amountCents))`. Not a clever `each`
-    // template -- `each(d, _ & t)` MEETS each child, and a meet cannot
-    // select.
     pick: PickFuncVal,
 
-    // G9 phase 2: the fold to a STRING. `sum` folds with `add`; this
-    // folds with `+`, so it inherits the one number-to-text rule and
-    // the language does not grow a second. It is the primitive that
-    // turns a bag of computed lines into a file.
     join: JoinFuncVal,
 
-    // G9 phase 6: apply-templates. One flat list of pieces from a
-    // selection and a RULE TABLE -- for each node, the first template
-    // whose `match` it unifies with, its `body` instantiated at that
-    // node. The dispatch is the engine's because a body referenced by
-    // path resolves its references at the definition site, and the
-    // relative resolution that does exist is a dot count that does not
-    // survive a second dispatch (docs/design/EMIT.0.md).
     emit: EmitFuncVal,
 
-    // G9 phase 6: the string builtins the rule layer needs. `esc`
-    // makes a value safe inside a literal and `usc` reads it back;
-    // `rep` and `split` derive names from model data. All four are
-    // ordinary string functions -- they know nothing about generation,
-    // which is why they can land before the renderer does.
     esc: EscFuncVal,
     usc: UscFuncVal,
     rep: RepFuncVal,
     split: SplitFuncVal,
 
-    // THE COMPONENT PRIMITIVES -- SPIKE (ts/src/val/CmpFuncVal.ts,
-    // docs/design/JOSTRACA.0.md). jostraca's component set, spelled
-    // as functions -- LOWER CASE, like every other builtin in this
-    // language, while the node each one builds names the jostraca
-    // component it drives (`file(...)` is aontu, `"File"` is
-    // jostraca's). A document then says what FILES it produces
-    // instead of filling in the `aontu:code` vocabulary as data.
-    // Eight of jostraca's ten: `copy` and `list` are already builtins
-    // here with unrelated meanings, so those two have no lower-case
-    // spelling to take (see ts/src/val/CmpFuncVal.ts).
-    //
-    // TypeScript only, and so deliberately NOT in
-    // test/spec/signature.tsv, BUILTIN_FUNCS (ts/src/lsp.ts) or the
-    // grammar/ files -- each is asserted in cross-port parity and a
-    // TS-only entry turns the Go suite red. Arity and argument shape
-    // are refused in CmpFuncVal.resolve for the same reason.
     ...CMP_FUNCS,
 
-    // NAME TRANSFORMATION -- SPIKE (ts/src/val/NamerFuncVal.ts).
-    // Generated code is mostly names, and no two targets spell them
-    // the same way. Splits a name into words whatever format it is
-    // written in, then renders it in the target's. TypeScript only,
-    // and out of the parity-pinned registries for the reason the
-    // component primitives are.
     nom: NomFuncVal,
 
-    // PER-CHARACTER SUBSTITUTION AND DELETION -- SPIKE
-    // (ts/src/val/TranslateFuncVal.ts), after `tr`. Reads the source
-    // once and consults a table, which is what `rep` cannot do: a
-    // per-character map spelled as N `rep` calls composes wrongly,
-    // since each pass sees the previous one's output.
     translate: TranslateFuncVal,
   }
 
 
-  // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
-  // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
-  // and `a:1|` are just 1); ops missing a required operand become an
-  // incomplete_expression nil, surfaced by generate() as a "Cannot
-  // resolve value" error (the Go port mirrors this in lang.go).
   const dropUnfilled = (terms: any) => terms.filter((t: any) => null != t)
 
   const incompleteNil = (r: Rule, ctx: JsonicContext) =>
@@ -1056,27 +686,10 @@ help isolate the syntax error.`,
     fname: string, argterms: any[]): any => {
     const funcval = funcMap[fname]
 
-    // Arity is known for every built-in, so a surplus or missing
-    // argument is a mistake in the SOURCE, refused here where the
-    // author can see it (issue #51). It was previously left to each
-    // function to notice or not: the two ports disagreed on `upper()`
-    // and on `close()`, and `min(1,2)` noticed nothing at all -- it
-    // built a constraint that merely refused to generate later, with a
-    // message about the map rather than about the call.
-    //
-    // Counted BEFORE the rawToVal pass below, which is what makes the
-    // count possible: a comma group arrives as a RAW array and a
-    // written list literal as a ListVal, and rawToVal turns the first
-    // into the second.
     const arity = funcArity[fname]
     if (null != arity) {
       const got = writtenArgCount(argterms)
       if (got < arity[0] || (-1 !== arity[1] && got > arity[1])) {
-        // details is assigned AFTER construction: the NilVal
-        // constructor does not read it from its spec (only NilVal.make
-        // does), so passing it in the spec left the hint's
-        // {func}/{want}/{got} placeholders un-injected and printed
-        // literally.
         const nil: any = new NilVal({ why: 'func_arity' })
         nil.details = {
           func: fname,
@@ -1087,22 +700,6 @@ help isolate the syntax error.`,
       }
     }
 
-    // rawToVal EVERY argument. A degenerate expression can hand this
-    // handler raw parse values rather than Vals -- `pref(1-3)` arrives
-    // as the plain numbers 1 and -3 -- and a func's peg is unified
-    // element by element, so a raw one reached `arg.unify(...)` and
-    // threw. The unifier's catch-all turned that into an `internal`
-    // verdict: a crash reported as a unification result (issue #49).
-    // The Go port has always converted here (asVal in evaluate).
-    // A comma group is ONE raw-array term (see writtenArgCount).
-    // For a function whose arguments are distinct POSITIONS —
-    // deprecate's value and record, pack's and each's data and template
-    // — the group is expanded back into them here, while a written list
-    // literal, already a ListVal, stays one argument. The constraint
-    // atoms make the same move in their own constructor (atomArgs,
-    // ConstraintVal.ts), which is why they are not in this set:
-    // `neq(1,2)` is one argument LIST, not two positions, and expanding
-    // it here would take the list away from the code that reads it.
     let terms = argterms
     if (true === POSITIONAL_ARG_FUNCS[fname] && 1 === terms.length &&
       Array.isArray(terms[0])) {
@@ -1136,24 +733,6 @@ help isolate the syntax error.`,
     'star-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       if (null == terms[0]) return incompleteNil(r, ctx)
 
-      // A PREFERENCE MARKS A VALUE, AND A BARE KEY IS NOT ONE.
-      // `*a: 1` has no braces, so the prefix took the whole IMPLICIT
-      // map as its operand and the document silently became
-      // `*{"a":1}` -- `*a: 1, b: 2` became a one-element LIST, losing
-      // `b` outright. Neither is anything the author wrote.
-      //
-      // The accident is confined to the first position of the implicit
-      // top-level map, which is the only place no brace has yet
-      // committed the rule to a map: `{*a: 1}` and `a: 1, *b: 2` are
-      // ALREADY parse errors. This makes the third spelling agree with
-      // them rather than inventing a meaning for it.
-      //
-      // A BRACED operand is untouched, and that is the whole of the
-      // distinction: `*{x:1}` and `*[1]` are the real spelling, they
-      // are what `*{x:1} | *{y:2}` needs, and the shared spec pins them
-      // (11 rows). The open token's own source text is what separates
-      // the two -- `{` or `[` for a braced bag, the first key or
-      // element for an implicit one.
       const bag: any = terms[0]
       if ((bag.isMap && '{' !== bag.site.src) ||
         (bag.isList && '[' !== bag.site.src)) {
@@ -1179,7 +758,6 @@ help isolate the syntax error.`,
           'string' === typeof seg && ALIAS_RE.test(seg))) {
         return addsite(new NilVal({ why: 'alias_in_path' }), r, ctx)
       }
-      // $.a.b absolute path
       if (terms[0] instanceof RefVal) {
         terms[0].absolute = true
         return terms[0]
@@ -1195,10 +773,6 @@ help isolate the syntax error.`,
     'negative-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[0]
       if (null == val) return incompleteNil(r, ctx)
-      // The exact leaves negate exactly and never change kind. R2/D5
-      // holds here too: bigint has a single zero, and Decimal's
-      // normalising constructor sends every zero to the same form, so
-      // `-0d0` is `0d0` and `-0d0.0` is `0d0.0`.
       if (val instanceof BigIntegerVal) {
         return addsite(new BigIntegerVal(
           { peg: -val.peg, src: negsrc(val.src) }), r, ctx)
@@ -1212,17 +786,9 @@ help isolate the syntax error.`,
       if (!(val instanceof IntegerVal) && !(val instanceof NumberVal)) {
         return addsite(new NilVal({ why: 'negative' }), r, ctx)
       }
-      // Build a fresh Val rather than mutating in place: the expr plugin
-      // can evaluate the same node twice (e.g. inside `*-1` or a
-      // disjunct member), and an in-place `peg = -peg` applied twice
-      // silently un-negates the number.
       let peg = -1 * val.peg
       // Normalize -0 to 0 (keeps the AST and canon free of negative zero).
       if (0 === peg) peg = 0
-      // Negation never narrows the kind: a number stays a number. An
-      // integer stays an integer unless the negation leaves the int64
-      // range (only -(-2^63), which no literal can express), in which
-      // case it widens to a number rather than failing.
       const out = val instanceof IntegerVal && isIntegerKind(peg)
         ? new IntegerVal({ peg })
         : new NumberVal({ peg })
@@ -1257,7 +823,6 @@ help isolate the syntax error.`,
   jsonic
     .use(asPlugin(Expr), {
       op: {
-        // disjunct < conjunct: c & b | a -> (c & b) | a
         'conjunct': {
           infix: true, src: '&', left: 16_000_000, right: 17_000_000
         },
@@ -1273,16 +838,6 @@ help isolate the syntax error.`,
           right: 21_000_000,
         },
 
-        // Re-base the unary prefixes for the same reason. Every aontu
-        // operator sits far above the @tabnas/expr defaults, so the
-        // default prefix binding power of 4_000_000 left unary `-`/`+`
-        // LOOSER than every infix operator: `-1 & integer` parsed as
-        // `-(1 & integer)`, and negative-prefix (below) then rejected
-        // the composite operand as a `negative` error nil (likewise
-        // `-2+3`, `-1|2`). Unary minus must bind tighter than `+`, `&`
-        // and `|` — but still looser than `.` (dot-infix left is
-        // 25_000_000), so `-0xFF.5` stays `-(0xFF.5)` and `$`.
-        // Kept in lock-step with the op table in go/lang.go.
         'negative': {
           src: '-',
           prefix: true,
@@ -1338,21 +893,17 @@ help isolate the syntax error.`,
         remainder: null,
       },
       evaluate: (r: Rule, ctx: JsonicContext, op: Op, terms: any) => {
-        // // console.log('EVAL-START', r.u)
 
         if (
           'func-paren' === op.name
-          // && !r.parent.prev?.u?.paren_preval
           && !r.u?.paren_preval
         ) {
-          // terms = [new StringVal({ peg: '' }), ...terms]
           terms = ['', ...terms]
         }
 
 
         let val: Val = opmap[op.name](r, ctx, op, terms)
 
-        // // console.log('EVAL', terms, '->', val)
 
         return val
       }
@@ -1374,16 +925,6 @@ help isolate the syntax error.`,
 
   jsonic.rule('expr', (rs: RuleSpec) => {
     rs.close([
-      // A `&` followed by `:` after an expression value belongs to the
-      // enclosing map as a spread, not to the expression as a conjunct
-      // — backtrack both tokens so the expression completes (and
-      // evaluates to a Val) and the map's spread alts take over. This
-      // is what makes `k1:$flag &:boolean` parse: without it the expr
-      // plugin consumes the `&` as an infix conjunct, chokes on the
-      // `:`, and leaves the raw unevaluated expr node in the map
-      // (mirrors the expr-rule PrependClose in go/lang.go). The
-      // `n: { expr: 0 }` reset matches the plugin's own expr-end alts —
-      // the evaluation after-close only fires when the counter is 0.
       { s: [CJ, CL], b: 2, n: { expr: 0 }, g: 'expr,expr-end,spread' },
     ])
     return rs
@@ -1439,18 +980,6 @@ help isolate the syntax error.`,
           if (!Number.isFinite(r.node)) {
             valnode = addsite(new NilVal({ why: 'not_number' }), r, ctx)
           }
-          // D7 -- A LOSSY INTEGER LITERAL IS REFUSED, NOT ROUNDED. The
-          // token above is already a double, so a literal the double
-          // cannot hold exactly (2^53+1, 0x7fffffffffffffff,
-          // 0xffffffffffffffff) has ALREADY become a different number by
-          // the time it gets here. Storing it would mean the document
-          // silently means something other than what it says, so the
-          // literal becomes a located error whose hint names the escape:
-          // write it `0d…` and get the exact value.
-          //
-          // The rule is EXACTNESS, not magnitude -- 10^20 and 2^124 are
-          // both far outside the int64 window and both land exactly on a
-          // binary64, so both stay values (see isLossyIntegerLiteral).
           else if (isLossyIntegerLiteral(r.node, r.o0.src)) {
             const nil = new NilVal({ why: 'lossy_integer_literal' })
             nil.details = { src: r.o0.src }
@@ -1505,15 +1034,6 @@ help isolate the syntax error.`,
 
         let mo = r.node
 
-        // An elided value (`a:`) leaves a raw null/undefined that never
-        // passed through the val rule. It is REFUSED rather than made a
-        // null (issue #48): a key with nothing after the colon is a
-        // mistake in the source, and turning it into a value made that
-        // mistake indistinguishable from a deliberate `a:null`.
-        //
-        // A colon chain (`a: b:1`) is not an elision -- the value is the
-        // nested pair, which the val rule does produce -- and neither is
-        // a trailing comma.
         for (const k in mo) {
           if (null == mo[k] && '___merge' !== k &&
             '___optional' !== k && '___alias' !== k) {
@@ -1525,12 +1045,6 @@ help isolate the syntax error.`,
             en.path = [...(r.k?.path ?? []), k]
             mo[k] = en
 
-            // An elided value under an OPTIONAL key stops being optional.
-            // Optionality is about a value that may be absent at
-            // GENERATE; it does not excuse a source that stops after the
-            // colon. Left optional, the refusal was dropped with the key
-            // and `a?:` generated `{}` -- a silent nothing, which is
-            // worse than either the old null or the error.
             const oi = optionalKeys.indexOf(k)
             if (-1 !== oi) {
               optionalKeys.splice(oi, 1)
@@ -1538,35 +1052,18 @@ help isolate the syntax error.`,
           }
         }
 
-        // ... and the OPTIONAL spelling, `a?:`, which does not leave a
-        // null behind to be found: its value never reaches the node at
-        // all, so the key is simply absent and the map generated without
-        // it. A key recorded as optional but missing from the node was
-        // written with nothing after its colon.
         for (const k of optionalKeys) {
           if (!(k in mo)) {
             mo[k] = addsite(new NilVal({ why: 'elided_value' }), r, ctx)
           }
         }
 
-        // An elided SPREAD (`x:$obj&:` with nothing after the colon)
-        // refuses the whole map, not a key (issue #48). A spread is not a
-        // child, so a refusal stored in its place has nothing to attach
-        // to: `x:&:` has no children for the spread to apply to, and the
-        // map would generate as `{}` with the mistake silently gone.
-        // Refusing the container is what makes it visible at all.
         const sp: any = (mo as any)[SPREAD]
         if (sp && sp.v.some((sv: any) => null == sv)) {
           r.node = addsite(new NilVal({ why: 'elided_value' }), r, ctx)
           return undefined
         }
 
-        // A KEY REFUSAL (the pair rule records them: a declaration
-        // spelled with a colon, a key the bare-text rule refuses) becomes
-        // the refusal, in place of whatever followed the colon and sited
-        // at the KEY rather than at the map -- at the offending character
-        // of it, where there is one -- so the frame points at the
-        // spelling to change.
         for (const { key, tkn, why, details } of
           (r.u.aontu_key_refusals ?? []) as any[]) {
           const en: any = siteAt(addsite(new NilVal({ why }), r, ctx), tokenSite(tkn))
@@ -1595,7 +1092,6 @@ help isolate the syntax error.`,
           let mop = { ...mo }
           delete mop.___merge
 
-          // TODO: needs addpath?
           let mopv = new MapVal({ peg: mop })
           mopv.optionalKeys = optionalKeys
           mopv.aliasKeys = aliasKeys
@@ -1618,19 +1114,14 @@ help isolate the syntax error.`,
   })
 
 
-
   jsonic.rule('list', (rs: RuleSpec) => {
     rs
-      // .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
 
       .bc((r: Rule, ctx: JsonicContext) => {
         const optionalKeys = r.u.aontu_optional_keys ?? []
 
         let ao = r.node
 
-        // An elided ELEMENT (`[,]`, `[1,,2]`) is refused for the same
-        // reason as an elided map value (issue #48). A trailing comma
-        // (`[1,]`) is not an elision and never reaches here.
         for (let i = 0; i < ao.length; i++) {
           if (null == ao[i]) {
             // Pathed at the INDEX, for the same reason as the map case.
@@ -1651,43 +1142,23 @@ help isolate the syntax error.`,
         return undefined
       })
 
-    // .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }])
 
     return rs
   })
 
 
-  // TODO: copied from jsonic grammar
-  // jsonic should provide a way to export this
   const pairkey = (r: Rule) => {
     // Get key string value from first matching token of `Open` state.
     const key_token = r.o0
     const key =
       ST === key_token.tin || TX === key_token.tin
-        ? key_token.val // Was text
+        ? key_token.val
         : key_token.src // Was number, use original text
 
     r.u.key = key
   }
 
 
-  // A pair in LIST position writes its value at `node[key]` like any
-  // other pair, and the enclosing list's node is an ARRAY -- so a numeric
-  // key lands on an index and becomes an element, and may land on an
-  // index a real element already holds (`[5,0:1]`). Since the pair must
-  // contribute nothing (issue #40), the slot is photographed before the
-  // value is parsed and put back afterwards. Restoring beats deleting for
-  // exactly the overwrite case: deleting `[5,0:1]`'s index 0 would take
-  // the 5 with it, where restoring gives back the list the pair was
-  // never part of.
-  //
-  // `length` is saved too: writing past the end grows an array, and
-  // `[5,1?:9]` must be [5] again and not [5, <hole>].
-  // Typed as a string bag deliberately: the slot may be named by a
-  // non-numeric key (`[x:1]`), which the array type would refuse. Both
-  // helpers run only from the elem rule, whose node is the enclosing
-  // list, so neither guards against a non-array node — a guard there
-  // proved unreachable and dead code is worse than none.
   const asSlots = (r: Rule): Record<string, any> => r.node as any
 
   const snapshotPairSlot = (r: Rule, key: string) => {
@@ -1757,40 +1228,14 @@ help isolate the syntax error.`,
       .bc((rule: Rule) => {
         // TRAVERSE PARENTS TO GET PATH
 
-        // A DECLARATION IS A PAIR WHOSE KEY IS AN ALIAS NAME. The lexer
-        // claims `%name` whole and hands it over as a #VL token whose
-        // SOURCE is the name, so the key TEXT alone cannot be the test:
-        // a quoted `"%a": 1` is an ordinary key that merely starts with
-        // the sigil, and erasing that would be wrong. The token is what
-        // separates them.
-        //
-        // Recorded on the enclosing map, never on the value, and that is
-        // the point: a reference COPIES the value it resolves to, so a
-        // mark riding the value would erase the referring field too.
-        // Being a property of the map is also what carries it through a
-        // meet, the way optional keys are carried.
         const ktkn: any = rule.o0
         const holder: any = rule.parent
         const kr = keyRefusalOf(ktkn, rule.o1)
         if (null != kr) {
-          // A KEY REFUSAL (keyRefusalOf) is written where the map is
-          // built, in the value's place and sited at the key, so the
-          // frame points at the spelling to change. A declaration
-          // spelled with a colon is refused rather than read as the
-          // ordinary key `%foo` the text would otherwise become -- a
-          // document written for the old form would then generate a
-          // "%foo" field and every `%foo` use would resolve to nothing,
-          // and neither says why.
           holder.u.aontu_key_refusals = (holder.u.aontu_key_refusals || [])
           holder.u.aontu_key_refusals.push({ key: '' + ktkn.src, tkn: ktkn, ...kr })
         }
         else if (isAliasDecl(ktkn, rule.o1)) {
-          // Always recorded here; whether the map is ALLOWED to carry
-          // declarations is decided on the VALUE (MapVal.unify), not at
-          // the parse. The parse cannot see it: an INCLUDED file's
-          // declarations are at the root of their own text, and only
-          // once the loaded map is placed does it become apparent that
-          // root is not the document's.
           holder.u.aontu_alias_keys = (holder.u.aontu_alias_keys || [])
           holder.u.aontu_alias_keys.push('' + ktkn.src)
         }
@@ -1806,11 +1251,6 @@ help isolate the syntax error.`,
       })
 
       .close([
-        // A following `&:` starts a sibling spread pair in the current
-        // map: directly inside a braced map (pk<=0) at any depth, or in
-        // the implicit top-level map (dmap<=1). Inside an implicit
-        // colon-chain map (pk>0) it bubbles up instead (second alt), so
-        // `a:b:1 &:2` attaches the spread to a's map, not b's.
         { s: [CJ, CL], c: (r) => r.lte('pk', 0) || r.lte('dmap', 1), r: 'pair', b: 2, g: 'spread,json,pair' },
         { s: [CJ, CL], b: 2, g: 'spread,json,more' }
       ])
@@ -1852,17 +1292,6 @@ help isolate the syntax error.`,
           g: 'aontu-optional-elem'
         },
 
-        // A PLAIN pair in list position IS A SINGLE-KEY MAP ELEMENT:
-        // `[a:1, b:2]` is `[{a:1}, {b:2}]` (the rule @tabnas/jsonic
-        // spells as `list.pair`). This REVERSES issue #40's "a pair is
-        // not an element": that rule was chosen because jsonic wrote
-        // the pair at `node[key]` -- an array PROPERTY that never
-        // showed up for a text key and an INDEX for a numeric one --
-        // and inert beat that incoherence. But inert was itself a
-        // silent drop: `x: [a:1, b:2]` evaluated to `x: []`, the
-        // author's data gone at exit 0. The element is built in the
-        // bc below, where the value is already a Val; the snapshot
-        // still neutralises jsonic's raw slot write first.
         {
           s: [OPTKEY, CL], p: 'val',
           u: { spread: true, done: true, list: true, pair: true },
@@ -1875,36 +1304,7 @@ help isolate the syntax error.`,
       ])
 
 
-      // NOTE: manually adjust path - the twin of the `pair` rule's hook
-      // above, and for the same reason, one layer down.
-      //
-      // Every alt above contributes NO element: a `&:` spread is a
-      // constraint on the elements, and a `k:v` pair in list position is
-      // simply not one (the `aontu-plain-pair-elem` note above). The array
-      // slot they briefly occupy is already given back by
-      // restorePairSlot. The PATH index was not: @tabnas/path's
-      // `@elem-ao` increments `r.k.index` for every elem rule it sees, so
-      // each of these stole an index and every later element's path was
-      // one too high — `[&: integer, 10, 20, "bad"]` reported the bad
-      // value at `$.l.3` while `aontu get $.l.2` returned it, and on a
-      // one-element list the path pointed off the end. Generation was
-      // never wrong, which is why nothing caught it: the array is right
-      // and only the labels on it were shifted (BUGS.md 44).
-      //
-      // Rewinding here rather than in the plugin keeps the plugin's rule
-      // ("in an array, the path property is the element index") true —
-      // these alts are the aontu-specific exceptions to what counts as an
-      // element, so the correction belongs with the grammar that
-      // introduces them. The child is re-pathed because the plugin has
-      // already stamped it with the index being given back: a spread
-      // takes the `'&'` segment its map twin takes, and a pair takes its
-      // key, as a map entry would.
       .ao((r) => {
-        // A pair IS an element now, so it keeps the index @tabnas/path
-        // gave it, and its VALUE is pathed through both the index and
-        // the key (`[a: $.nope]` fails at $.l.0.a). Only the `&:`
-        // spread still contributes no element and gives its index back
-        // (BUGS.md 44).
         if (0 < r.d && r.u.spread && !r.u.pair) {
           r.k.index = r.k.index - 1
 
@@ -1913,11 +1313,6 @@ help isolate the syntax error.`,
           r.child.k.key = seg
         }
         else if (0 < r.d && r.u.pair) {
-          // The element's index is the array length: everything before
-          // it is already pushed, and the pair's own map is pushed at
-          // close. `r.k.index` is not usable here -- the path plugin
-          // counts only the elements it pushes itself, and this one is
-          // aontu's.
           const seg = '' + r.u.key
           r.child.k.path =
             [...r.k.path, '' + (r.node?.length ?? 0), seg]
@@ -1928,41 +1323,16 @@ help isolate the syntax error.`,
       .bc((rule: Rule, ctx: JsonicContext) => {
         // TRAVERSE PARENTS TO GET PATH
 
-        // Only the `&:` alternative is a SPREAD. All four alts above set
-        // `spread: true` -- it is what marks them as contributing no
-        // element -- so this guard needs the narrower test, and `pair`
-        // is what distinguishes a `k:v` in list position from a spread.
-        //
-        // Without it a pair BUILT the spread record, with `o` taken from
-        // its own key rather than '&': `[x:1, &:integer, "bad"]` left
-        // `{o:'x', v:[1, integer]}`, and ListVal's `'&' === spread.o`
-        // then discarded the real constraint -- so the element spread
-        // was silently dropped and the bad value generated (BUGS.md 46).
-        // A pair alone did it too: `[x:1, 10]` produced a spread record
-        // out of nothing.
         if (rule.u.spread && !rule.u.pair) {
           rule.node[SPREAD] =
             (rule.node[SPREAD] || { o: rule.o0.src, v: [] })
           rule.node[SPREAD].v.push(rule.child.node)
         }
 
-        // The slot is given back BEFORE the element is added: the
-        // restore undoes jsonic's raw write (a property for a text
-        // key, an INDEX for a numeric one -- restoring length is what
-        // keeps `[1:2]` from padding with a null), and the push then
-        // appends cleanly after it.
         restorePairSlot(rule)
 
-        // THE SINGLE-KEY MAP ELEMENT, for both pair spellings. The
-        // value is a Val already (`p: 'val'`), so the map is built
-        // exactly as the map rule builds one -- and an elided value
-        // (`[a:]`) is refused exactly as the map rule refuses one
-        // (issue #48): a key with nothing after the colon is a
-        // mistake, not an empty value.
         if (true === rule.u.pair) {
           const key = '' + rule.u.key
-          // The key TOKEN: the optional spelling's sits on the elem rule
-          // before this one (`[x?: 1]` is two elem rules).
           const ktkn: any = true === rule.u.aontu_optional_elem ?
             rule.prev.o0 : rule.o0
           let v: any = rule.child.node
@@ -1991,9 +1361,6 @@ help isolate the syntax error.`,
           // "is this the top level" test reads the path, so an element
           // of a top-level list must not read as the root.
           mv.path = [...(rule.k?.path ?? []), '' + rule.node.length]
-          // `[a?: 1]` is `[{a?: 1}]`: the key is optional IN the
-          // element, so the two spellings stay one rule apart rather
-          // than two behaviours apart.
           if (true === rule.u.aontu_optional_elem) {
             mv.optionalKeys = [key]
           }
@@ -2017,45 +1384,11 @@ help isolate the syntax error.`,
 }
 
 
-
-// INCLUDE_KINDS IS THE RULE FOR WHAT AN INCLUDE MEANS (ADR-012,
-// use-cases/BUGS.md §49). An extension is on this list or it is not
-// read at all, and its entry says WHICH OF TWO THINGS the file is.
-//
-// `source` — Aontu, with everything the language has: types, defaults,
-// references, constraints, its own includes. Two extensions, and they
-// are the ones this project owns.
-//
-// `text` — the file's BYTES, as one string scalar. No parser is
-// chosen, so there is nothing for two ports to disagree about and
-// nothing in the file that can mean anything: `notes: @"notes.txt"`
-// is a document loading prose into a string. `.txt` is the only
-// extension here by default; `AontuOptions.textExt` (the CLI's
-// `--text-ext`) adds others, because which name a project keeps its
-// templates under is the project's business, not this table's.
-//
-// A FORMAT NAME — configuration DATA, parsed by that format's own
-// parser into the JSON value it denotes, which then becomes Aontu
-// values like any other data. Every one of these formats maps onto
-// JSON, which is why one word covers them: a `.toml` file is a map of
-// scalars, lists and maps, and so is the `.aon` file that unifies with
-// it. What the format does NOT get is the language — a `&` in a YAML
-// file is a YAML anchor, not a spread key, because the YAML parser
-// reads it, not this one.
-//
-// The parsers are @tabnas's, one per format, and the Go port uses the
-// same ones (ADR-001): the two implementations agree because they are
-// running the same grammar, not because two hand-written readers were
-// kept in step.
-//
-// This table and go/source.go's includeKinds are the same table.
 const INCLUDE_KINDS: { [kind: string]: string } = {
   aon: 'source',
   aontu: 'source',
 
   json: 'json',
-  // JSON-LD is JSON: a `@context` is a key like any other here, and
-  // what it MEANS is the vocabulary's business, not the reader's.
   jsonld: 'json',
   jsonc: 'jsonc',
   json5: 'json5',
@@ -2070,26 +1403,12 @@ const INCLUDE_KINDS: { [kind: string]: string } = {
 }
 
 
-// WHAT AN EXTENSION MEANS, for this parse. The table is the fixed
-// part; `textExt` is the per-parse widening, and it wins over nothing
-// -- a host cannot re-read `.toml` as text, because an extension the
-// table already names has a meaning documents rely on. Undefined is
-// the refusal, and it is the ONE place that decides it: the resolver's
-// gate and the processor map both ask here, so a widening cannot reach
-// one and not the other.
 function includeFormat(
   ext: string, textExt?: string[]): string | undefined {
   const known = INCLUDE_KINDS[ext]
   if (undefined !== known) {
     return known
   }
-  // NOT EVEN AS TEXT. `.js` is the extension ADR-012 singles out
-  // because multisource's own default EXECUTES it, and an extension
-  // this project refuses on purpose stays refused however a flag is
-  // spelled -- reading it is harmless, but a widening that can reach
-  // the one name the rule names is a widening whose limit nobody can
-  // state. Go's includeFormat holds the same list, and the two CLIs
-  // are diffed on `--text-ext js` because they once disagreed here.
   if (REFUSED_EXT.has(ext)) {
     return undefined
   }
@@ -2102,18 +1421,7 @@ function includeFormat(
 // file type at all.
 const REFUSED_EXT = new Set(['js', ''])
 
-// `.csv` IS DELIBERATELY ABSENT, and the reason is ADR-001 rather than
-// taste. The two ports' CSV parsers disagree about what a CSV file IS:
-// one answers header-keyed records with string fields, the other raw
-// rows including the header, with numbers parsed. Admitting it would
-// admit a divergence into the one thing this project refuses to have
-// one in. Recorded in ADR-012 and pinned by file.tsv's load-ext-csv.
 
-// The multisource kind of a path: the LAST segment's extension, without
-// its dot, lowercased -- `''` for a name that has none. The rule is
-// @tabnas/multisource's own extKind (and Go's filepath.Ext), copied
-// rather than imported because it decides what a source IS: a dot in a
-// parent folder (`/my.app/conf`) must not read as an extension.
 function extKindOf(full: string): string {
   const seg = (full.match(/[^\\/]*$/) as string[])[0]
   return (seg.match(/\.([^.]*)$/) || ['', ''])[1].toLowerCase()
@@ -2128,15 +1436,6 @@ function extensionMsg(path: string, ext: string): string {
   return 'include not readable: ' + path + ' (' + which + ')'
 }
 
-// THE RULE ALSO HOLDS FOR A RESOLVER THIS ENGINE DID NOT WRITE.
-// gateExtension refuses an unlisted extension inside makeModelResolver,
-// which is the default; a HOST may supply its own through
-// `AontuOptions.resolver`, and that one has never heard of
-// INCLUDE_KINDS. Without this the host's resolution would fall to
-// multisource's own default for an unnamed kind, which hands the file
-// back as TEXT — or, for `.js`, EXECUTES it. So the two roads end in
-// one place: whatever chose the source, an extension off the list is
-// refused with the same code and the same message.
 const refuseProcessor = (res: any) => {
   // `full` is the one part a host resolution may leave out -- it is the
   // path the resolver CHOSE, and a resolver that answers from something
@@ -2176,22 +1475,6 @@ const DATA_READERS: { [format: string]: (src: string, fileName: string) => any }
     }
   })()
 
-/**
- * A TOML document with its dates as the TEXT they were written as.
- *
- * TOML HAS DATES AND JSON DOES NOT, so the reader cannot hand one over
- * as itself: it answers with a marker object carrying the kind and the
- * source text. The value that reaches a document is that TEXT, which is
- * what a JSON document carries for a date anyway — and it is what the
- * Go port produces too, from a `*TomlTime` holding those same two
- * fields (`dataToValDepth`, go/source.go). Without this the same file
- * is a nested map in one port and a string in the other, which is the
- * class of divergence ADR-012 exists to stop.
- *
- * The guard is exact — one key, `__toml__`, holding a `kind` and a
- * `src` string — so a document whose own data happens to use the name
- * passes through untouched.
- */
 function tomlDates(node: any): any {
   if (Array.isArray(node)) {
     return node.map(tomlDates)
@@ -2212,33 +1495,14 @@ function tomlDates(node: any): any {
   return out
 }
 
-/**
- * Read one included file as DATA in the named format.
- *
- * The parser hands back the JSON value the file denotes — plain maps,
- * lists and scalars — and rawToVal turns that into Vals. THE
- * CONVERSION HAPPENS HERE, not at the top level, because an include is
- * usually not at the top level: `a: @"conf.toml"` puts the value under
- * a key, where a raw JavaScript object is something the tree cannot
- * unify with (the crash that was BUGS §49b).
- */
 const dataProcessor = (format: string) => (res: any) => {
   res.val = rawToVal(DATA_READERS[format](res.src, res.path))
 }
 
-// TEXT IS NOT PARSED. The bytes multisource read are the value, so
-// this is the one processor with no reader behind it -- which is why
-// a `.txt` include cannot fail on content, only on being unreadable.
 const textProcessor = (res: any) => {
   res.val = new StringVal({ peg: res.src })
 }
 
-/**
- * The multisource processor map, built FROM the include table so the
- * two cannot drift: every extension the table names gets the reader
- * the table names for it, and the two kinds that are not in the table
- * refuse.
- */
 function includeProcessors(textExt?: string[]): { [kind: string]: any } {
   const map: { [kind: string]: any } = {
     // multisource's fallback for an extension no entry names, so it is
@@ -2257,10 +1521,6 @@ function includeProcessors(textExt?: string[]): { [kind: string]: any } {
   for (const kind of Object.keys(INCLUDE_KINDS)) {
     map[kind] = forKind(kind)
   }
-  // A WIDENING NEVER OVERWRITES. `js` and the empty fallback refuse
-  // above and stay refusing: `--text-ext js` would otherwise turn the
-  // one extension ADR-012 singles out into a readable one, by a flag
-  // whose whole promise is that it chooses no parser.
   for (const ext of textExt ?? []) {
     if (undefined === map[ext]) {
       map[ext] = textProcessor
@@ -2270,17 +1530,8 @@ function includeProcessors(textExt?: string[]): { [kind: string]: any } {
 }
 
 
-// SECURITY: under the DEFAULT ('system') include capability this
-// resolver reads any file the process can reach — @"path" follows
-// relative paths (`@"../../etc/passwd.aon"`) and symlinks — so treat
-// opening an untrusted source as reading your disk. It no longer RUNS
-// one: @"pkg" could require() an arbitrary installed module until
-// ADR-012, which refuses a `.js` entry point by the same rule that
-// refuses `.txt`. The trust profile (G5, docs/trust.md) is the
-// confinement surface: `trust.include` of
-// 'none', `{ mem }` or `{ root }` restricts what `@"..."` may resolve,
-// and a denied resolution is a deterministic parse-stage
-// `include_denied` error.
+// What a resolved include may reach, and how it is confined:
+// docs/trust.md.
 function makeModelResolver(options: any) {
   const useRequire = options.require || require
   const capability = options.trust?.include ?? 'system'
@@ -2292,23 +1543,10 @@ function makeModelResolver(options: any) {
       'string' === typeof (capability as any).root
       ? pathResolve((capability as any).root) : undefined
 
-  // Under the mem capability the CAPABILITY's file set is the whole
-  // world; otherwise the host-injected `options.resolver.mem` entries
-  // remain available under every capability but 'none' — they are
-  // host-provided, not document-requested, so confining them would
-  // confine the host against itself.
-  // A LANGUAGE-SUPPLIED MODEL DOES NOT RIDE THIS LEG (ADR-028). Every
-  // bundled schema is named under `aontu:` and answered by the scheme
-  // leg above, which returns before the memory resolver is built, so
-  // neither a host entry nor a capability's own file set can stand in
-  // front of one: `aontu:system` is the engine's, always. That is what
-  // the prefix buys, and it is why the bare-name leg that once let a
-  // caller shadow `std/system` is gone.
   let memResolver = makeMemResolver(memCapability
     ? { ...(capability as any).mem }
     : { ...(options.resolver?.mem || {}) })
 
-  // TODO: make this consistent with other resolvers
   let fileResolver = makeFileResolver((spec: any) => {
     return 'string' === typeof spec ? spec : spec?.peg
   })
@@ -2318,23 +1556,6 @@ function makeModelResolver(options: any) {
     ...(options.resolver?.pkg || {})
   })
 
-  // Confinement is realpath-then-prefix-check (docs/trust.md): the
-  // RESOLVED file's real path must sit below the root's real path, so a
-  // symlink inside the root pointing outside it is an escape, not a
-  // loophole. A path realpath cannot resolve falls back to the lexical
-  // form — the comparison is then against what the resolver actually
-  // read.
-  // Real fs, deliberately: `options.fs` is not a sandbox (it feeds
-  // parse text; the file leg reads through its own channel), so the
-  // containment check must see the same filesystem that leg read from.
-  // A path that does not (fully) exist cannot be realpath'd whole, and
-  // falling back to the LEXICAL form compares apples to oranges when
-  // the root itself sits behind a symlink -- on macOS a root under
-  // /var realpaths to /private/var, so a merely-missing file inside it
-  // reads as an escape. Realpath the deepest EXISTING ancestor and
-  // re-attach the rest, so both sides of the check are in real
-  // coordinates. (The MCP server's own confinement carries the twin of
-  // this rule; its CI failure is what found the shape.)
   const realpath = (p: string): string => {
     try {
       return realpathSync(p)
@@ -2354,12 +1575,6 @@ function makeModelResolver(options: any) {
     return fullReal !== rootReal && !fullReal.startsWith(rootReal + pathSep)
   }
 
-  // A denial THROWS with the code; Lang.parse converts it to the
-  // parse-stage `include_denied` nil (the same shape a syntax failure
-  // takes). Raising beats injecting a nil value: a bare-member include
-  // (`@"denied.aon"` at the top of a file) MERGES into the enclosing
-  // map, and a nil contributes no keys, so an injected denial would
-  // vanish and leave a plausible, silently-partial document.
   const deny = (path: string): never => {
     // Only 'none' and 'root' can deny: the mem capability's misses are
     // not-found (its set is the whole world), so there is no third arm.
@@ -2370,12 +1585,6 @@ function makeModelResolver(options: any) {
     throw err
   }
 
-  // AN UNREADABLE EXTENSION THROWS, exactly as a denial does, and for
-  // the same reason: a bare-member include (`@"notes.txt"` at the top
-  // of a file) MERGES into the enclosing map, and a nil contributes no
-  // keys, so an injected refusal would vanish and leave a plausible,
-  // silently-partial document. Lang.parse turns the throw into the
-  // parse-stage `include_extension` nil.
   const refuseExtension = (path: string, full: string): never => {
     const err: any = new Error(extensionMsg(path, extKindOf(full)))
     err.code = 'include_extension'
@@ -2468,19 +1677,6 @@ function makeModelResolver(options: any) {
       deny(path)
     }
 
-    // THE LANGUAGE-SUPPLIED MODELS (docs/design/MODELS.0.md D1): an
-    // `aontu:` name resolves from the engine's own table and nowhere
-    // else -- the memory, module, file and package legs are never
-    // asked, so nothing on disk can shadow one and a typo is refused
-    // here, naming the set, rather than searched for. Available under
-    // every capability but `none`, checked just above. A path that is
-    // not a string (`a: @1`) is not a name at all: it falls through to
-    // the legs below and is not found there, as it always was.
-    //
-    // This is the ONLY leg that serves a bundled model (ADR-028). The
-    // vocabularies once had bare names (`std/system`) and a second leg
-    // below to match them; the prefix is now the whole spelling, so one
-    // leg answers for every language-supplied schema.
     if ('string' === typeof path && path.startsWith(AONTU_SCHEME)) {
       const model = STD_SOURCES[path]
       if (null == model) {
@@ -2503,11 +1699,6 @@ function makeModelResolver(options: any) {
       return res
     }
 
-    // THE MODULE LEG (G6 phase 2, ts/src/mod.ts): memory -> MODULE ->
-    // filesystem -> package. Memory stays FIRST so a sandbox and the
-    // spec suite can stub a module path without touching disk; a path
-    // that is not module-shaped falls straight through, so no existing
-    // include can be routed somewhere new by this.
     const modref = memCapability ? undefined : parseModuleRef(path)
     if (null != modref) {
       const msmeta = (ctx as any)?.meta?.multisource
@@ -2594,24 +1785,6 @@ function makeModelResolver(options: any) {
 }
 
 
-// THE SIGNATURE REGISTRY (docs/design/SIGNATURES.0.md). The call
-// surface is DECLARED in test/spec/signature.tsv and parsed by the
-// signature grammar (ts/src/sig.ts) from the build-time-inlined copy;
-// the arity table and the positional set below are DERIVED from the
-// parsed registry (funcSig, ts/src/sig.ts), so the declaration is the
-// one source. go/func.go derives the same two tables from the same
-// text.
-// The functions whose comma-separated arguments are distinct POSITIONS
-// rather than one argument list. See the func-paren handler above: this
-// is the set whose comma group is expanded back into separate `peg`
-// entries. Derived: two or more declared argument slots, excluding the
-// residual producers (`constraint` results) -- the constraint atoms
-// make the same expansion in their own constructor (`atomArgs`,
-// ConstraintVal.ts, deliberately before the settled check), which is
-// why they are not in this set; `must` is the load-bearing example.
-// Arithmetic is here because `sub` is not commutative: `sub(a, b)`
-// reaching the engine as one two-element list would lose which is
-// which.
 const POSITIONAL_ARG_FUNCS: Record<string, boolean> = {}
 for (const name in funcSig) {
   if (2 <= funcSig[name].args.length && 'constraint' !== funcSig[name].out) {
@@ -2619,14 +1792,6 @@ for (const name in funcSig) {
   }
 }
 
-// THE COMPONENT PRIMITIVES, listed by hand (the spike, see funcMap
-// above and ts/src/val/CmpFuncVal.ts). They carry no signature
-// declaration, so the derivation above cannot see them -- and
-// `file("main.ts", [...])` without an entry arrives as ONE raw array
-// term, which the call then reads as its spec. The leaves are here
-// too, so that a written second argument is COUNTED and refused as
-// the arity mistake it is rather than arriving as a one-element list
-// that is merely the wrong shape.
 for (const name of Object.keys(CMP_FUNCS)) {
   POSITIONAL_ARG_FUNCS[name] = true
 }
@@ -2634,16 +1799,6 @@ POSITIONAL_ARG_FUNCS['nom'] = true
 POSITIONAL_ARG_FUNCS['translate'] = true
 
 
-// [min, max]; a max of -1 is unbounded. Every DECLARED name has an
-// entry, and the arity is a property of the language rather than of
-// either port -- go/func.go derives the same table. The spike's
-// component primitives are the one exception: they carry no
-// declaration, so they have no entry here and refuse a bad count in
-// their own resolve (ts/src/val/CmpFuncVal.ts). A required slot
-// counts toward the minimum; a rest slot makes the maximum unbounded
-// and counts its group size (one, for a plain rest type) toward the
-// minimum, which is what gives `match` its floor of three and `neq`
-// its floor of one.
 function sigArity(sig: FuncSig): [number, number] {
   let min = 0
   let max = 0
@@ -2670,14 +1825,6 @@ for (const name in funcSig) {
 }
 
 
-// writtenArgCount counts the arguments as the AUTHOR wrote them.
-//
-// It cannot simply be terms.length: a comma group reaches the func-paren
-// handler as ONE term holding a raw array, so `upper("a","b")` and
-// `upper(["a","b"])` both arrive as a single argument. They are still
-// distinguishable, and that is what makes an arity check possible at
-// all -- the comma group is a RAW array, while a written list literal
-// has already been built into a ListVal by the list rule.
 function writtenArgCount(terms: any[]): number {
   if (1 === terms.length) {
     // `terms[0]` is re-read rather than reusing a narrowed local:
@@ -2704,12 +1851,6 @@ function arityText(lo: number, hi: number): string {
     if (0 === lo) {
       return 'no arguments or one'
     }
-    // The case range gave `upper` and `lower` a span rather than a
-    // pair, and a two-arm phrasing cannot say it: [1,3] read as "one
-    // argument or two", which is a wrong count rather than an
-    // imprecise one. Each arm here is a shape the table actually
-    // carries, and each is pinned by a row -- a phrasing for a count no
-    // entry has would be untested prose pretending to be tested.
     return 3 === hi ? 'one to three arguments' : 'one argument or two'
   }
   // The {0,0} arm returned with the container kinds and acyclic()
@@ -2724,17 +1865,6 @@ function arityText(lo: number, hi: number): string {
 }
 
 
-// rawToVal converts a raw parse node (or raw elements inside one) into
-// the matching Val. Used for implicit top-level lists, whose nodes skip
-// the aontu val rule conversions (mirrors asVal in go/lang.go; like
-// there, source text is unavailable, so an integral number is an
-// integer).
-// The targeted parse hint for CUE-trained authors and models: `>` and
-// `<` are not Aontu operators (the op-chars reservation stands), and an
-// agent that emits `number > 0` should be redirected to the bound
-// atoms, not left with a bare "unexpected character". Appended to a
-// parse error's message when the source carries an unquoted `<` or
-// `>`; the Go twin is opCharHint in go/lang.go, byte-identical text.
 function opCharHint(src: string): string {
   let q = ''
   for (let i = 0; i < src.length; i++) {
@@ -2765,12 +1895,6 @@ function rawToVal(n: any): Val {
     return new ListVal({ peg: n.map(rawToVal) })
   }
 
-  // THE SCALAR ARMS ARE WHERE A CONFIG FILE BECOMES VALUES. Every
-  // format on the include table is read by its own parser into plain
-  // JavaScript -- a string, a number, a map -- and this is the walk
-  // that turns that into Vals (dataProcessor, ADR-012). The two arms
-  // above are the other caller: a raw expression TERM, which the
-  // expression grammar hands over already built.
   if (null == n) {
     return new NullVal({ peg: null })
   }
@@ -2779,24 +1903,12 @@ function rawToVal(n: any): Val {
     return new StringVal({ peg: n })
   }
   if ('number' === t) {
-    // No source text here, so the "no '.'" condition is vacuous and the
-    // integral + int64-range conditions decide (same helper as the val
-    // rule, so the two paths cannot drift).
     return isIntegerKind(n) ?
       new IntegerVal({ peg: n }) : new NumberVal({ peg: n })
   }
   if ('boolean' === t) {
     return new BooleanVal({ peg: n })
   }
-  // AND EVERYTHING ELSE IS A MAP, with no arm after it because there is
-  // nothing after it. Every reader on the include table answers with
-  // the JSON kinds and no others -- probed, including the two that
-  // could plausibly escape them: a big integer comes back a `number`,
-  // and a TOML date is normalised to its text before it gets here. The
-  // one include that could hand over a function was `.js`, which
-  // ADR-012 refuses. `parse_unknown` lived here for that case and has
-  // no producer left in this port; the Go twin keeps its own, where the
-  // type switch really can be handed something unaccounted for.
   const peg: Record<string, Val> = {}
   for (const k in n) {
     peg[k] = rawToVal(n[k])
@@ -2812,7 +1924,6 @@ class Lang {
 
 
   constructor(options?: Partial<AontuOptions>) {
-    // const start = performance.now()
 
     this.opts = Object.assign(DEFAULT_OPTS(), options) as AontuOptions
 
@@ -2829,25 +1940,7 @@ class Lang {
     this.jsonic
       .use(asPlugin(MultiSource), {
         resolver: options?.resolver || modelResolver,
-        // `.aon` is the preferred Aontu source extension; `.aontu` also
-        // works. `.jsonic` is retired (no longer auto-resolved); the
-        // default `['jsonic','jsc','json','js']` is overridden here.
-        // (Upstream option name is the misspelled `implictExt`.)
-        //
-        // Only these two are SEARCHED for a bare `@"name"`; `.json` and
-        // `.jsonld` are read when NAMED, which is how a vendored
-        // vocabulary is always written.
         implictExt: ['aon', 'aontu'],
-        // ONE ENTRY PER EXTENSION THE TABLE NAMES, built from it (see
-        // includeProcessors) so the rule and its wiring cannot drift.
-        //
-        // The upstream defaults are REPLACED, not extended. Its `json`
-        // entry is what made that extension the one that crashed: it
-        // hands back a raw JS object where the aontu grammar produces
-        // Vals, and the tree then met a value it could not convert
-        // (BUGS §49b). Its `js` entry EXECUTES the file, which is not
-        // something an extension should be able to ask for. And its
-        // fallback hands any other file back as TEXT.
         processor: includeProcessors(this.opts.textExt)
       })
       .use(AontuJsonic)
@@ -2855,7 +1948,6 @@ class Lang {
 
 
   parse(src: string, opts?: Partial<AontuOptions>): Val {
-    // const start = performance.now()
 
     // JSONIC-UPDATE - check meta
     let jm: any = {
@@ -2882,7 +1974,6 @@ class Lang {
       jm.log = opts.log
     }
 
-    // jm.log = -1
 
     let val: Val
 
@@ -2900,14 +1991,6 @@ class Lang {
     catch (e: any) {
       if ('include_denied' === e?.code || 'include_extension' === e?.code ||
         'multisource_not_found' === e?.code || MODULE_REFUSAL_CODES.has(e?.code)) {
-        // A denied include (G5), an include whose extension is not read
-        // as Aontu source (ADR-012, INCLUDE_KINDS), an `aontu:` name the
-        // engine does not serve (MODELS.0.md D1), and a module that is
-        // missing, fails its pin, or names a path that escapes its store
-        // (G6 phase 2) are refused the same way, for the same reason: the
-        // resolver THROWS so a bare-member include cannot vanish in the
-        // merge, and the code survives here as the parse-stage nil the
-        // registry pins (errcodes.tsv).
         val = new NilVal({
           why: 'parse',
           err: new NilVal({
@@ -2923,14 +2006,6 @@ class Lang {
           msg: e.message + opCharHint(src),
           err: e,
         })
-        // THE POSITION TRAVELS WITH IT. The parser knows exactly where
-        // it stopped -- it draws a caret there -- and the rendered
-        // message carried the only copy, so `vet --format json`
-        // reported row -1, col -1 for a document whose fault the human
-        // renderer located to the character. A machine-readable report
-        // that says "somewhere in this file" is the one a repair loop
-        // can do nothing with. Both numbers are already 1-based here,
-        // which is the base a site uses (go/lang.go does the same).
         if ('number' === typeof e.lineNumber) {
           syntax.site.row = e.lineNumber
         }

@@ -1,19 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// PATH-ADDRESSED DIFF (G7 phase 6, the Go side of ts/src/diff.ts):
-// what changed, at which paths, between two documents — the dyff-style
-// answer, which deterministic canon makes possible without phantom
-// noise. Two documents that mean the same thing canon the same way, so
-// a diff of canons reports semantic change and not reformatting.
-//
-// The text compared is the HASH FORM (G6's Hcanon), not the plain
-// canon: canon drops closedness and the type/hide marks, so a canon
-// diff calls close({a:1}) and {a:1} identical. A false "changed" costs
-// a needless read; a false "unchanged" is a change nobody reviewed.
-//
-// WHETHER a change is BREAKING belongs to G3: Subsume and the
-// `breaking` verb answer it with the lattice's own rules. This answers
-// "what moved".
 
 package aontu
 
@@ -39,8 +25,6 @@ type DiffReport struct {
 	Changes  []DiffChange `json:"changes"`
 	Findings []VetFinding `json:"findings"`
 	OK       bool         `json:"ok"`
-	// Same is true when nothing moved: the two documents mean the same
-	// thing.
 	Same bool `json:"same"`
 }
 
@@ -52,12 +36,6 @@ type DiffOptions struct {
 	RightPath string
 }
 
-// diffWalk compares both sides of one node. Bags of the SAME kind
-// recurse — that is what makes the report path-addressed rather than
-// one line saying the whole document changed — and everything else
-// compares text. Never both absent: keys come from the union of the
-// two bags, and list indices run to the longer side, so every walk has
-// at least one value.
 func diffWalk(left, right Val, parts []string, out *[]DiffChange) {
 	if nil == left {
 		*out = append(*out, DiffChange{
@@ -144,9 +122,6 @@ func diffFlag(left, right bool, parts []string, name string, out *[]DiffChange) 
 	})
 }
 
-// diffSpread compares the templates of two bags: the spread is part of
-// what a bag MEANS, and two bags whose templates differ differ even
-// where every key agrees.
 func diffSpread(left, right Val, parts []string, out *[]DiffChange) {
 	lc, rc := "", ""
 	if nil != left {
@@ -198,10 +173,6 @@ func diffSide(src, path, at string) (Val, *VetFinding) {
 	return node, nil
 }
 
-// Diff compares two documents. Each is evaluated on its own — a
-// document that does not stand up has no meaning to compare, and the
-// report says so rather than diffing a wreck. Mirrors diff in
-// ts/src/diff.ts.
 func Diff(leftSrc, rightSrc string, opts *DiffOptions) DiffReport {
 	options := DiffOptions{}
 	if nil != opts {

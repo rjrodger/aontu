@@ -72,8 +72,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.deepEqual(d[0].range.start, { line: 0, character: 2 });
     });
     (0, node_test_1.test)('multibyte-column-utf16', () => {
-        // A multi-byte rune before the error must not shift the column:
-        // LSP characters are UTF-16 units, so "é" counts as 1.
         const d = (0, lsp_1.computeDiagnostics)('a:"é"\nb:1 b:2');
         Assert.equal(d.length, 1);
         Assert.deepEqual(d[0].range.start, { line: 1, character: 6 });
@@ -88,14 +86,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.deepEqual(h.range.start, { line: 0, character: 6 });
         Assert.deepEqual(h.range.end, { line: 0, character: 10 });
     });
-    // A LITERAL WHOSE CANON IS NOT ITS SOURCE TEXT. `0x1F` renders as
-    // canon `31`, and sizing the hover by canon underlined two characters
-    // of a four-character literal: hovering the `0x` answered 6..8 and
-    // hovering the `1F` answered NOTHING, because the span stopped before
-    // the cursor. Measured on the code this replaces, at every column.
-    //
-    // Twin: TestHoverSpansTheWholeLiteral in go/lsp/hover_test.go. The
-    // defect is status report §5's "Site is a point with no extent".
     (0, node_test_1.test)('hover-over-a-literal-whose-canon-is-shorter', () => {
         const src = 'port: 0x1F';
         for (const character of [6, 7, 8, 9]) {
@@ -144,7 +134,7 @@ const lsp_server_1 = require("../dist/lsp-server");
 (0, node_test_1.describe)('lsp-completion', () => {
     (0, node_test_1.test)('completion-list', () => {
         const c = (0, lsp_1.computeCompletions)();
-        Assert.equal(c.length, 62); // 50 funcs + 7 kinds + 5 literals
+        Assert.equal(c.length, 62);
         const byLabel = new Map(c.map(i => [i.label, i]));
         Assert.equal(byLabel.get('upper')?.kind, lsp_1.COMPLETION_FUNCTION);
         Assert.equal(byLabel.get('string')?.kind, lsp_1.COMPLETION_KEYWORD);
@@ -222,8 +212,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         r = help(0, 18);
         Assert.equal(r.signatures[0].label, 'add(a: number, b: number) : number');
         Assert.equal(r.activeParameter, 1);
-        // The scan stops at the line start: a paren on an earlier line is
-        // not this line's enclosing call.
         open('a: add(1, 2)\nb: 3');
         Assert.equal(help(1, 4), null);
     });
@@ -241,17 +229,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.equal(bogus.length, 1, 'bogus function should be unknown');
     });
 });
-// A REAL CLIENT'S URI, on both platforms. The three-slash form is what
-// every editor sends: `file://` then the absolute path, whose own
-// leading slash makes the third. On Windows that slash sits before the
-// drive letter and is uri syntax, not path — and stripping only
-// `file://` left `/C:/Users/…` for the workspace-root confinement to
-// compare real paths against, so the confinement an editor on Windows
-// relied on was never applied. Both ports carried it identically; both
-// ports' tests hid it by building `'file://' + path`, two slashes,
-// which no client sends and which happened to work. That two-slash
-// form is kept below so the accident stays covered.
-// The twin is TestUriToPathHandlesDriveLetters in go/lsp/lsp_test.go.
 (0, node_test_1.describe)('lsp-uri-to-path', () => {
     (0, node_test_1.test)('lsp-uri-to-path-handles-drive-letters', () => {
         const cases = [
@@ -271,17 +248,6 @@ const lsp_server_1 = require("../dist/lsp-server");
             // answers "" and its caller tests for it; here the caller chains
             // with `??`, which '' would survive.
             ['file://', undefined],
-            // AN ESCAPE THAT DOES NOT DECODE TO TEXT IS LEFT ALONE, and
-            // there are two ways to fail. `%ZZ` is malformed, and
-            // decodeURIComponent THREW a URIError on it — out of the
-            // initialize handler, on a uri the CLIENT chose — where the Go
-            // twin swallowed the failure and used the raw text. `%FF` is
-            // well-formed and decodes to a raw byte: a perfectly good Linux
-            // filename that a JavaScript string cannot hold, so this port
-            // refuses it while Go used to accept it, and the two derived
-            // DIFFERENT workspace roots for a uri a byte-oriented client
-            // really sends (neovim percent-encodes path bytes). They agree
-            // on both classes now, and both are pinned so neither drifts.
             ['file:///%ZZ/x', '/%ZZ/x'],
             ['file:///C:/%ZZ', 'C:/%ZZ'],
             ['file:///tmp/%FF', '/tmp/%FF'],
@@ -448,11 +414,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.equal(msgs[0].id, 1);
     });
 });
-// Context-recorded errors that never land in the tree — a
-// budget_passes exhaustion nil is about the whole evaluation, not any
-// node — must still surface as diagnostics (docs/trust.md clause 2:
-// exhaustion is never silent). The Go twin is TestCheckSurfacesCtxErrors
-// in go/hints_test.go.
 (0, node_test_1.describe)('lsp-diagnostics-ctx-errors', () => {
     (0, node_test_1.test)('budget-passes-surfaces', () => {
         const chain = 'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1';
@@ -516,8 +477,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.match(broken.contents.value, /1/);
         Assert.doesNotMatch(broken.contents.value, /Contributions/);
     });
-    // The two shapes the record allows and no hover produces: a
-    // contribution with no site, and one whose site names a file.
     (0, node_test_1.test)('contributions-markdown-renders-every-site-shape', () => {
         Assert.equal((0, lsp_1.contributionsMarkdown)([]), '');
         Assert.equal((0, lsp_1.contributionsMarkdown)([
@@ -526,7 +485,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         ]), '\n\n---\n\nContributions:\n' +
             '- `1` — literal\n- `integer` — spread (x.aon:2:3)');
     });
-    // The opt-in reaches the handler through initialize.
     (0, node_test_1.test)('the-handler-reads-the-opt-in', () => {
         const on = new lsp_1.LspHandler();
         on.handle({

@@ -1,28 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// FIRST-CLASS PATHS (docs/design/PATHS.0.md). A PathVal is the value
-// `path(p)` captures: a tree address as DATA -- the spelling, never
-// the resolution. It is a scalar whose peg is the address string in
-// exactly the grammar `refer` reads (`$.a.b` from the root, `.b` from
-// the sibling scope, one more leading dot per parent step), which is
-// what lets a captured path meet the checking machinery unchanged.
-//
-// Meets are SYNTACTIC, by the PREFIX rule (amended, ADR-016): two
-// path values meet when one spells a prefix of the other -- same
-// anchor, the shorter's segments opening the longer's -- and the
-// result is the LONGER: a path can always be told more precisely.
-// Incomparable spellings refuse as any two unequal scalars do.
-// Resolving during a meet would make the meet depend on the value's
-// position, which is the property the staging machinery exists to
-// quarantine -- resolution stays the business of `refer`, `rel` and
-// the graph.
-//
-// The kind sits UNDER string (ScalarKindVal.KIND_PARENT), so `string`
-// admits a path value and the string constraints keep working; a
-// plain string LITERAL and a path value refuse each other, exactly as
-// the number tower's leaves do. A bare string is NEVER a path
-// (ADR-016): `path("...")` -- the call's own string argument -- is
-// the one conversion the language has.
 
 import type {
   Val,
@@ -41,10 +18,6 @@ import { ScalarVal } from './ScalarVal'
 import { ScalarKindVal, Path } from './ScalarKindVal'
 
 
-
-// A segment of a tree path: a map key or a list index. The same
-// grammar the rest of the engine spells keys with, and a leading digit
-// is legitimate because a list index is one.
 const ADDR_SEGMENT = /^[A-Za-z0-9_-]+$/
 
 export type Address = {
@@ -58,12 +31,6 @@ export type Address = {
 }
 
 
-// The address a string spells, or undefined when it does not spell
-// one. An address is a TREE PATH, in exactly the two spellings a
-// reference uses: `$.services.auth` from the root, `.auth` from the
-// link's own sibling scope. The tree is the only namespace -- which is
-// what makes a model instantiable more than once, each instance
-// resolving its relative links inside itself (ADR-014).
 export function parseAddress(s: string): Address | undefined {
   if ('$' === s) {
     // The whole document is not a relation's target: an address must
@@ -104,29 +71,11 @@ export function parseAddress(s: string): Address | undefined {
 }
 
 
-// The spelling string TEXT converts by, inside a `path(...)` call:
-// text that carries no anchor is RELATIVE (`"a.b"` is the address
-// `.a.b`), matching the raw form (`path(a.b)` captures `.a.b`). Only
-// the anchor is supplied -- the result still has to parse, so
-// malformed text (`""`, `"a..b"`, a bad `$` spelling) refuses as
-// before. The prefix is not applied to text that claims an anchor:
-// `"$x"` is a broken absolute address, not a relative one.
 export function textAddress(s: string): string {
   return ('$' === s[0] || '.' === s[0]) ? s : '.' + s
 }
 
 
-// The LONGER of two addresses when one spells a prefix of the other
-// (docs/design/PATHS.0.md, amended): same anchor -- absolute or the
-// same number of parent steps -- and the shorter's segments open the
-// longer's. The meet of two path values, and of a refer's address
-// with a later path peer: a path can always be told more precisely,
-// and the more precise spelling is the result. Undefined when the two
-// are not comparable, which refuses as any two unequal scalars do.
-// Both arguments must already be valid addresses: every caller hands
-// over a PathVal peg or a refer addrsrc, and both are validated at
-// capture or conversion -- the same trust `unify`'s own address arm
-// extends (`parseAddress(p.peg) as Address`).
 export function prefixMeet(a: string, b: string): string | undefined {
   const pa = parseAddress(a) as Address
   const pb = parseAddress(b) as Address
@@ -144,7 +93,6 @@ export function prefixMeet(a: string, b: string): string | undefined {
 }
 
 
-
 class PathVal extends ScalarVal {
   isPath = true
 
@@ -155,11 +103,6 @@ class PathVal extends ScalarVal {
     super({ peg: spec.peg, kind: Path }, ctx)
   }
 
-  // Two path values meet by the PREFIX rule (ADR-016): the longer
-  // when one opens the other, refusal otherwise. Exactly equal pegs
-  // are absorbed by unite's fast path before this runs, so the arm
-  // sees the unequal pairs; the winner carries both sides' marks, as
-  // the equal-scalar arm has always ratcheted them.
   unify(peer: Val, ctx: AontuContext): Val {
     const p: any = peer
     if (true === p.isPath) {
@@ -182,10 +125,6 @@ class PathVal extends ScalarVal {
     return 'path(' + this.peg + ')'
   }
 
-  // The super() ladder lifts a path value to its own kind, and the
-  // kind must render as `path()` -- the bare word `path` is an
-  // ordinary string. ScalarVal.superior would mint the plain
-  // ScalarKindVal, whose canon is the bare word.
   superior() {
     return this.place(new PathKindVal({}))
   }
@@ -193,11 +132,6 @@ class PathVal extends ScalarVal {
 } /* node:coverage ignore next 4 */
 
 
-// The path KIND, `path()`: admits every path value and defaults to
-// nothing, as `string` does. It does NOT promote (ADR-016): a bare
-// string meeting the kind refuses through the generic kind ladder,
-// exactly as `integer & "x"` does -- `path("...")` is the one string
-// conversion, and it happens at the call.
 class PathKindVal extends ScalarKindVal {
   isPathKind = true
 

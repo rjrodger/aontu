@@ -1,12 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// THE SERVERS AS VERBS (the Go side of ts/src/cli.ts): `aontu lsp`
-// runs the language server over the CLI's own streams, so the one
-// binary on PATH is the editor's server too, and a version manager
-// (docs/design/ENV.0.md) has one thing to resolve. The standalone
-// aontu-lsp binary (cmd/aontu-lsp) runs the same function. `aontu mcp`
-// is the npm build's: the verb is in both builds so that the help text
-// is one text, and this build says where the server is.
 
 package main
 

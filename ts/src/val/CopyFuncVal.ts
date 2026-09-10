@@ -1,7 +1,6 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
-
 import type {
   Val,
   ValSpec,
@@ -12,7 +11,6 @@ import {
 } from '../ctx'
 
 import { makeNilErr } from '../err'
-
 
 
 import {
@@ -58,18 +56,15 @@ class CopyFuncVal extends FuncBaseVal {
       makeNilErr(ctx, 'invalid-arg', this) :
       val.clone(ctx)
 
-    // console.log('CR', out)
 
     if (!out.isRef) {
       walk(out, (_key: string | number | undefined, val: Val) => {
-        // console.log('WALK', val)
         val.mark.type = false
         val.mark.hide = false
         return val
       })
     }
 
-    // console.log('COPY-RESOLVE', ctx.cc, val, out)
 
     return out
   }

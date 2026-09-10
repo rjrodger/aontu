@@ -2,12 +2,6 @@
 
 package aontu
 
-// MODULE TOOLING (G6 phase 3, modtool.go). The two local commands are
-// FILE OPERATIONS, which the shared suite has no mode for, so their
-// behaviour is proved per port: this file against the package API, and
-// go/cmd/aontu/mod_test.go against the command. The twin is
-// ts/test/mod.test.ts's `mod-tool` block, and the two commands were
-// diffed byte-for-byte over the same worlds.
 
 import (
 	"fmt"
@@ -56,11 +50,6 @@ func lockLine(t *testing.T, root string) string {
 }
 
 func TestModVersionCompareBothDirections(t *testing.T) {
-	// Numeric order, not string order: `1.10.0` is above `1.9.0`. Both
-	// directions of every rule, because MVS reads the comparison from
-	// whichever side the frontier happens to hold, and a comparison
-	// that answered only one way round would still pass a one-sided
-	// test.
 	cases := []struct {
 		a, b string
 		want int
@@ -126,11 +115,6 @@ func TestModTidyWithNoModuleFileLocksNothing(t *testing.T) {
 }
 
 func TestModTidyMissingModule(t *testing.T) {
-	// Two ways a declaration names nothing a store can hold: a module
-	// path with nothing behind it, and a key the router would not call
-	// a module at all. Both are reported the same way — there is no
-	// third answer to give — and NO lockfile is written, because a
-	// partial lock claims a closure that was never resolved.
 	for _, dep := range []string{"corp.example/absent@1", "not-a-module"} {
 		dir := modtoolProject(t, "\""+dep+"\": {v: \"1.0.0\"}", nil)
 		r := ModTidy(dir, "")
@@ -144,12 +128,6 @@ func TestModTidyMissingModule(t *testing.T) {
 }
 
 func TestModTidySelectsMaxOfMinima(t *testing.T) {
-	// The two ways MVS discards a bid. WITHIN a round: `s` and `t` both
-	// ask for geo, and the higher ask wins. ACROSS rounds: the project
-	// itself asks for geo at 2.0.0, so the 1.x asks arriving in the next
-	// round are already below what is selected and change nothing.
-	// Selected versions only rise, which is why this terminates without
-	// a cycle check.
 	dir := modtoolProject(t,
 		"\"corp.example/s@1\": {v: \"1.0.0\"}, \"corp.example/t@1\": {v: \"1.0.0\"}, "+
 			"\"corp.example/geo@1\": {v: \"2.0.0\"}",
@@ -189,11 +167,6 @@ func TestModTidySelectsMaxOfMinima(t *testing.T) {
 }
 
 func TestModTidyRecomputesCanonAndCarriesOci(t *testing.T) {
-	// The two pins have different owners. `canon` is what the module in
-	// the store MEANS, so it is recomputed — a tidy that carried the old
-	// one forward would pin what the module used to mean. `oci` is the
-	// registry's word about the bytes it served, which nothing local can
-	// hear, so it survives untouched.
 	dir := modtoolProject(t, "\"corp.example/schemas/service@1\": {v: \"1.4.2\"}",
 		func(d string) {
 			modtoolVendor(t, d, "corp.example/schemas/service@1", map[string]string{
@@ -236,9 +209,9 @@ func TestModDeclaredDepsIgnoresWhatIsNotADepBlock(t *testing.T) {
 	// ordinary Aontu, so it can say anything; what it does not say is
 	// not a dependency, and reading it is not an error to report.
 	for _, src := range []string{
-		"1\n",                             // not a map at all
-		"mod: {path: \"a.b/c\"}\n",        // no dep block
-		"dep: 1\n",                        // dep is not a map
+		"1\n",
+		"mod: {path: \"a.b/c\"}\n",
+		"dep: 1\n",
 		"dep: {\"a.b/c@1\": 1}\n",         // an entry that is not a map
 		"dep: {\"a.b/c@1\": {}}\n",        // an entry declaring no version
 		"dep: {\"a.b/c@1\": {v: \"\"}}\n", // an empty version
@@ -276,11 +249,6 @@ func TestModReadLockAnswersNothingForWhatItCannotRead(t *testing.T) {
 }
 
 func TestModVendorMaterialisesTheWholeTree(t *testing.T) {
-	// From the CACHE, keyed by the hash the lockfile pins: that is what
-	// content-addressed means, and it is why `vendor` needs a lockfile
-	// while `tidy` needs a store. A module is a TREE, not an entry file
-	// — that is what an OCI layer holds — so nested directories come
-	// across too.
 	dir := t.TempDir()
 	cache := filepath.Join(dir, "cache")
 	v, _ := New().Unify(modSource)
@@ -324,8 +292,6 @@ func TestModVendorMaterialisesTheWholeTree(t *testing.T) {
 }
 
 func TestModVendorReportsWhatNoStoreHas(t *testing.T) {
-	// Two failures with the same answer: a key that does not route as a
-	// module path, and one that routes to nothing any store holds.
 	dir := t.TempDir()
 	write(t, filepath.Join(dir, "aontu_meta", "mod-lock.aon"),
 		"{\"lock\":{\"corp.example/absent@1\":{\"canon\":\"aon1-x\",\"oci\":\"\",\"v\":\"1\"},"+
@@ -339,11 +305,6 @@ func TestModVendorReportsWhatNoStoreHas(t *testing.T) {
 	}
 }
 
-// THE PUBLISH BOUNDARY (G6 phase 4). What a publish would push is a
-// manifest, and everything it ASSERTS is local: the annotations, the
-// layer's contents, and the gate that decides whether the version may
-// be minted at all. The push itself needs a registry this build does
-// not have; the assertions do not.
 
 // modtoolPublishable is a module in its own right: it declares its
 // path, its version and its entry, which is what a publish needs and a
@@ -403,10 +364,6 @@ func TestModManifestIsWhatAPublishWouldPush(t *testing.T) {
 }
 
 func TestModManifestLayerExcludesTheVendorCopy(t *testing.T) {
-	// A module is a TREE, so nested directories are in the layer. A
-	// published module carries its own sources and not a copy of
-	// everyone else's, so `aontu_meta/vendor/` is not: a consumer resolves the
-	// closure itself, and vendoring it here would publish the world.
 	dir := modtoolPublishable(t, "1.1.0", modSource)
 	if err := os.MkdirAll(filepath.Join(dir, "part"), 0o755); nil != err {
 		t.Fatal(err)
@@ -423,10 +380,6 @@ func TestModManifestLayerExcludesTheVendorCopy(t *testing.T) {
 }
 
 func TestModManifestNeedsAVersionAndAnEntry(t *testing.T) {
-	// A version is what a publish assigns, and the major an import
-	// spells lives inside it — a module that declares none has nothing
-	// to publish under. An entry file that is not there has no meaning
-	// to pin.
 	noVersion := ModManifest(modtoolPublishable(t, "", modSource), "")
 	if "error" != noVersion.Verdict ||
 		1 != len(noVersion.Missing) || "mod.version" != noVersion.Missing[0] {
@@ -509,8 +462,8 @@ func TestModSelfIgnoresWhatIsNotAModuleDeclaration(t *testing.T) {
 	// does not say about ITSELF leaves the manifest with nothing to
 	// mint, which is the same answer as saying nothing at all.
 	for _, src := range []string{
-		"1\n",       // not a map at all
-		"dep: {}\n", // no mod block
+		"1\n",
+		"dep: {}\n",
 		"mod: 1\n",  // a mod that is not a map
 	} {
 		dir := t.TempDir()
@@ -528,14 +481,6 @@ func TestModSelfIgnoresWhatIsNotAModuleDeclaration(t *testing.T) {
 // looking exactly like one that does (use-cases/BUGS.md §31).
 const modNilPin = "aon1-XaOkx_EXlEJ1tMhinEkWQDYl1aSmVzoB7LA_Dp0u2-Y"
 
-// A VENDORED MODULE IS A PROJECT INSIDE A PROJECT (the review's finding
-// H, use-cases/BUGS.md §31). `mod vendor` produces a FLAT tree, so a
-// module's own dependency sits beside it in the consumer's
-// `aontu_meta/vendor/` -- but the module carries its own `mod.aon`, which used
-// to stop the upward walk there, and the nested import answered
-// `module not fetched` for a module sitting one directory away. The
-// TypeScript twin is
-// `a-nested-import-reaches-the-consumers-vendor-tree`.
 func TestModTransitiveVendorResolves(t *testing.T) {
 	dir := modtoolProject(t,
 		"\"corp.example/schemas/service@1\": {v: \"1.4.2\"},"+
@@ -588,11 +533,6 @@ func TestModTransitiveVendorResolves(t *testing.T) {
 	}
 }
 
-// A NIL PIN IS WORSE THAN NO PIN: every module that fails to evaluate
-// hashes to the same string, so a lockfile written from one looks
-// exactly like a real pin and carries nothing (§31). `aontu hash`
-// already refuses such a file; tidy refuses it too. The TypeScript twin
-// is `tidy-refuses-to-pin-a-module-that-does-not-evaluate`.
 func TestModTidyRefusesAnUnevaluableModule(t *testing.T) {
 	dir := modtoolProject(t,
 		"\"corp.example/schemas/service@1\": {v: \"1.4.2\"}", func(d string) {
@@ -616,11 +556,6 @@ func TestModTidyRefusesAnUnevaluableModule(t *testing.T) {
 	}
 }
 
-// VERIFICATION IS A QUESTION; ANSWERING IT MUST NOT BE AN EDIT (§32).
-// Tidy recomputes and rewrites by design, so a CI job that tidies
-// before evaluating has no integrity protection at all: the lockfile
-// simply agrees with whatever the store now holds. The TypeScript twin
-// is `verify-catches-a-tampered-store-and-changes-nothing`.
 func TestModVerify(t *testing.T) {
 	svcDir := ""
 	dir := modtoolProject(t,
@@ -665,8 +600,6 @@ func TestModVerify(t *testing.T) {
 		t.Fatal("verify rewrote the lockfile")
 	}
 
-	// A module that no longer stands up at all says so, rather than
-	// reporting the hash of nil as though it were a meaning.
 	write(t, svcDir, "a: 1\na: 2\n")
 	broken := ModVerify(dir, "")
 	if "mismatch" != broken.Verdict || "" != broken.Mismatched[0].Got {
@@ -675,12 +608,6 @@ func TestModVerify(t *testing.T) {
 }
 
 func TestModVerifyRefusesAnUncoveredProject(t *testing.T) {
-	// NOTHING TO CHECK IS NOT A PASS. The gate walks what is LOCKED, so
-	// a project whose lockfile was never committed -- or whose lockfile
-	// predates a dependency someone added -- would verify clean over an
-	// empty set: absence reading as agreement, which is the shape of the
-	// defect this verb exists to close. The repair is a tidy, not a
-	// fetch, and the verdict says which.
 	dir := modtoolProject(t,
 		"\"corp.example/schemas/service@1\": {v: \"1.4.2\"}", func(d string) {
 			modtoolVendor(t, d, "corp.example/schemas/service@1",
@@ -705,9 +632,6 @@ func TestModVerifyRefusesAnUncoveredProject(t *testing.T) {
 		t.Fatalf("after tidy: %+v", r)
 	}
 
-	// A dependency added to mod.aon after the lockfile was written is
-	// the same hole one edit later: the pins that ARE there still verify,
-	// and the lockfile no longer covers the project.
 	write(t, filepath.Join(dir, "mod.aon"),
 		"mod: {path: \"corp.example/app\"}\ndep: {"+
 			"\"corp.example/schemas/service@1\": {v: \"1.4.2\"}, "+
@@ -723,13 +647,6 @@ func TestModVerifyRefusesAnUncoveredProject(t *testing.T) {
 }
 
 func TestModVerifyReportsWhatNoStoreHolds(t *testing.T) {
-	// A pin cannot be compared against a store that has nothing to
-	// compare, and there are three ways to have nothing: a key that
-	// does not route as a module path, one that routes to a module no
-	// store holds, and one whose store directory exists but whose entry
-	// file does not. All three are `missing` — the repair is a fetch,
-	// not an edit to the lockfile — and none of them is a mismatch,
-	// which would claim the store means something else.
 	dir := t.TempDir()
 	write(t, filepath.Join(dir, "aontu_meta", "mod-lock.aon"), lockHeader+
 		"{\"lock\":{\"corp.example/absent@1\":{\"canon\":\"aon1-x\",\"oci\":\"\",\"v\":\"1\"},"+

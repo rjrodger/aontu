@@ -12,13 +12,6 @@ const SARIF_LEVEL = {
     warning: 'warning',
     info: 'note',
 };
-// A site's file is a filesystem path, and a SARIF artifactLocation.uri
-// is a URI reference: `#`, `%`, spaces and every other URI-significant
-// character must be percent-encoded or a consumer parses the path as
-// something else (text after `#` becomes a fragment). Encoded BY BYTE
-// over UTF-8, with RFC 3986's unreserved and path characters kept
-// literal, so the Go twin produces identical bytes from an identical
-// loop (go/report_sarif.go sarifURI).
 function sarifUri(path) {
     const bytes = Buffer.from(path, 'utf8');
     let out = '';
@@ -46,11 +39,6 @@ function sarifLocation(site) {
     return { physicalLocation: physical };
 }
 function sarifResult(finding) {
-    // The engine orders sites data-first (the thing to fix), so the first
-    // site is the primary location and the rest are related — which for a
-    // two-site conflict puts the schema's declaration under
-    // `relatedLocations`, exactly where a code-scanning UI shows "the
-    // other side".
     const result = {
         level: SARIF_LEVEL[finding.severity],
         locations: [sarifLocation(finding.sites[0])],
@@ -64,26 +52,10 @@ function sarifResult(finding) {
     }
     return result;
 }
-/**
- * Render a vet report as SARIF 2.1.0 text (a minimal profile: one run,
- * one result per finding, the finding embedded in `properties`).
- *
- * @param report   A report from `vet()`.
- * @param version  The producer version for `tool.driver.version` —
- *                 the CLI passes its package version; the two ports'
- *                 version series are independent by design.
- * @returns        The SARIF JSON text, indented two spaces, keys in
- *                 the canonical emitter's sorted order.
- */
 function sarifReport(report, version) {
     return (0, exactjson_1.exactJSON)({
         $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
         runs: [{
-                // An `error` verdict means the run could not be set up (an
-                // unusable schema): zero findings from a FAILED run must not
-                // read like zero findings from a clean one, so the failure is
-                // carried in SARIF's own invocation metadata rather than by an
-                // indistinguishable empty result list.
                 invocations: [{
                         executionSuccessful: 'error' !== report.verdict,
                     }],

@@ -1,31 +1,5 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-// THE PATH CONSTRUCTOR (docs/design/PATHS.0.md). `path(p)` CAPTURES
-// `p` -- the one non-strict argument position in the language: every
-// other call reads its argument's value, this one reads its spelling.
-// `path($.a.b)` is the address `$.a.b` as a first-class value, not
-// the value found there; a plain reference (`$.a.b` alone) stays the
-// embedding it has always been.
-//
-// The capture happens in prepare(), which receives the argument
-// BEFORE the driving loop resolves it -- the same interception this
-// function always used, now kept instead of released: the RefVal's
-// spelling is read off its segments and the RefVal itself is never
-// driven, so no pass ever holds a resolvable reference here.
-//
-// `path()` with no argument is the path KIND (PathKindVal): the
-// vacuous constructor call is the kind, as `{}`-the-unit is to maps
-// -- see ContainerKindVal for the other half of that convention.
-//
-// A string argument is read by the ADDRESS grammar, not resolved as a
-// segment: `path("$.a")` is the same capture `path($.a)` is, and text
-// with no anchor is RELATIVE (`path("a.b")` is `path(.a.b)`, the
-// address the raw spelling captures). A COMPUTED argument -- an
-// expression, a reference to a string -- is the one shape that does
-// evaluate: the driven result converts by the same grammar at
-// resolve, which is what makes an address buildable (`refer() &
-// path("$.customers." + key())`) while a bare string still never IS
-// one (ADR-016): the conversion happens only inside this call.
 
 import type {
   Val,
@@ -110,12 +84,6 @@ class PathFuncVal extends FuncBaseVal {
         return []
       }
 
-      // The captured spelling, from a reference's segments or from a
-      // string literal read as address text. Both go through
-      // parseAddress, so what capture admits and what refer reads
-      // cannot drift. Anything else -- an expression, a reference to
-      // a string -- is left for the driving loop, and resolve
-      // converts the driven result below.
       let spelling: string | undefined
       if (true === arg.isRef) {
         spelling = captureSpelling(arg)

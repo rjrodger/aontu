@@ -2,10 +2,6 @@
 
 package main
 
-// The command's half of the colour gate (the review's finding F): the
-// library honours NO_COLOR, and only the command can see whether its
-// stderr is a terminal. The TypeScript twin is the `setColor(true ===
-// process.stderr.isTTY ? undefined : false)` call in ts/src/cli.ts.
 
 import (
 	"bytes"
@@ -18,20 +14,12 @@ import (
 )
 
 func TestColorForDestination(t *testing.T) {
-	// A TERMINAL is the one destination that gets to keep the default:
-	// nil means "leave it to NO_COLOR". A pty master answers the
-	// terminal-attributes ioctl, so it is one.
 	if tty := terminalForTest(t); nil != tty {
 		if nil != colorFor(tty) {
 			t.Fatal("a terminal should defer to NO_COLOR")
 		}
 	}
 
-	// /dev/null is a CHARACTER DEVICE AND NOT A TERMINAL, and colour
-	// must be off for it. Asking the inode's type instead of the
-	// terminal-attributes ioctl conflated the two, and that is what
-	// made `aontu view --check ... >/dev/null` compare a plain golden
-	// against coloured bytes in this port only.
 	dev, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -52,9 +40,6 @@ func TestColorForDestination(t *testing.T) {
 		t.Fatal("a regular file should force colour off")
 	}
 
-	// Neither is a pipe, nor the in-memory buffer every test in this
-	// package hands run() -- which is why the suite's own output has
-	// never carried escapes.
 	if on := colorFor(&bytes.Buffer{}); nil == on || *on {
 		t.Fatal("a non-file writer should force colour off")
 	}
@@ -71,9 +56,6 @@ func TestColorForDestination(t *testing.T) {
 	}
 }
 
-// run() applies the gate for every verb, and --jsonl hardens it: a
-// JSONL answer is machine-read by definition, even in a session that
-// happens to be attached to a terminal.
 func TestRunGatesColor(t *testing.T) {
 	defer aontu.SetColor(nil)
 

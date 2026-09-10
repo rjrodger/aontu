@@ -34,8 +34,6 @@ import { FeatureVal } from './FeatureVal'
 import { hasPlace, fillPlace } from './PlaceVal'
 
 
-
-
 class OpBaseVal extends FeatureVal {
   isOp = true
 
@@ -79,10 +77,6 @@ class OpBaseVal extends FeatureVal {
       return fillPlace(this, peer, ctx).unify(top(), ctx)
     }
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Op:' + this.opname(), this, peer)
-    // Declared without an initial value: every arm below assigns it, and
-    // seeding it with `this` made the two arms that stand the op read as
-    // redundant self-assignments. The arms themselves stay as they are —
-    // they mirror the dispatch switch in go/op.go arm for arm (ADR-001).
     let out: Val
 
     if (this.id == peer.id) {
@@ -95,9 +89,6 @@ class OpBaseVal extends FeatureVal {
 
     for (let arg of this.peg) {
       if (!arg.done) {
-        // Charged to the depth budget: this recurses without going
-        // through `unite`, so the counter would otherwise stay flat
-        // while the stack grows (see withDepth in unify.ts).
         const a = arg
         arg = withDepth(ctx, a, top(), () => a.unify(top(), ctx, ec(te, 'ARG')))
       }
@@ -112,12 +103,10 @@ class OpBaseVal extends FeatureVal {
       // takes the OpBaseVal arm below rather than a separate null arm.
       let result: Val = this.operate(ctx, newpeg) || this
 
-      // TODO: should be result.isOp
       if (result instanceof OpBaseVal) {
         if (peer.isTop) {
           out = this
         }
-        // TODO: should peer.isNil
         else if (peer.isNil) {
           out = makeNilErr(ctx, 'op[' + this.peg + ']', this, peer)
         }
@@ -142,24 +131,20 @@ class OpBaseVal extends FeatureVal {
       this.notdone()
       out = this.make(ctx, { peg: newpeg })
 
-      // TODO: make should handle this using ctx?
       out.site.row = this.site.row
       out.site.col = this.site.col
       out.site.url = this.site.url
       out.path = this.path
 
-      // why += 'top'
     }
     else if (peer.isNil) {
       this.notdone()
       out = peer
-      //why += 'nil'
     }
     else {
       this.notdone()
       out = new ConjunctVal({ peg: [this, peer] }, ctx)
 
-      // TODO: make should handle this using ctx?
       out.site.row = this.site.row
       out.site.col = this.site.col
       out.site.url = this.site.url
@@ -228,7 +213,6 @@ class OpBaseVal extends FeatureVal {
       undefined
     )
 
-    // TODO: refactor to use Site
     nil.path = this.path
     nil.site.url = this.site.url
     nil.site.row = this.site.row
@@ -237,7 +221,6 @@ class OpBaseVal extends FeatureVal {
     descErr(nil, ctx)
 
     if (ctx) {
-      // ctx.err.push(nil)
       ctx.adderr(nil)
     }
     else {

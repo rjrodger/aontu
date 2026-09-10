@@ -2,22 +2,6 @@
 
 package aontu
 
-// THE RECURSIVE RESIDUAL (docs/design/RECURSION.0.md; the Go side of
-// ts/src/val/RecurseVal.ts): where RefVal's prefix test used to
-// answer `path_cycle` for a self-reference -- `$.Node` written
-// anywhere inside `Node` -- it now answers this value: a deferred
-// reference carrying the target path, exactly as a constraint atom
-// carries its bound. No new syntax: the reference the author wrote
-// simply MEANS the fixpoint.
-//
-// The three moments of every residual: at unification, EXPAND ONE
-// LEVEL PER MEET WITH STRUCTURE (per destination, under ADR-005's
-// clone discipline; data is finite, so expansion terminates, with the
-// depth budget as backstop); in canon and the aon1- hash, SYMBOLIC
-// (the mu-form, finite and round-tripping); at generation, an
-// unexpanded residual in a demanded position refuses with
-// recursion_unexpanded -- guardedness is EMERGENT (next?: drops,
-// *null | $.Node generates).
 
 import "strings"
 
@@ -45,17 +29,10 @@ func newRecurse(target []string, xc int) *RecurseVal {
 func (r *RecurseVal) cjo() int      { return 47000 }
 func (r *RecurseVal) superior() Val { return top() }
 
-// body is the schema value the target names, from the ROOT: the
-// fixpoint is over the finished definition, and the definition's own
-// residual keeps it finite.
 func (r *RecurseVal) body(ctx *Ctx) Val {
 	if nil == ctx {
 		return nil
 	}
-	// The root walk first; when the residual was LIFTED out of its
-	// defining tree (vet's anchored meet), the root does not contain
-	// the target, and ctx.fixroot is the settled tree the lifter kept
-	// for exactly this walk.
 	if node := walkTarget(ctx.root, r.target); nil != node {
 		return node
 	}
@@ -97,10 +74,6 @@ func (r *RecurseVal) Unify(peer Val, ctx *Ctx) Val {
 		return r
 	}
 
-	// The same fixpoint twice is one fixpoint; different targets --
-	// mutual recursion meeting -- are BOTH held, each expanding as
-	// data arrives, through the fold that keeps a conjunct's members
-	// separate.
 	if pr, ok := peer.(*RecurseVal); ok {
 		if r.sameTarget(pr) {
 			return r
@@ -136,12 +109,6 @@ func (r *RecurseVal) Unify(peer Val, ctx *Ctx) Val {
 			out.path = cp(r.path)
 			return out
 		}
-		// ADR-005's clone discipline: the expansion is a
-		// per-destination instantiation, so the definition itself is
-		// never written into. The clone's type/hide marks are CLEARED
-		// at every depth, exactly as a plain reference copy clears
-		// them: the schema is hidden, the instances it expands into
-		// are the output.
 		level := clonePath(bodyv, cp(r.path))
 		walkMark(level, true, false, true, false)
 		bumpRecurse(level, r.xc+1)
@@ -177,12 +144,6 @@ func (r *RecurseVal) Gen(ctx *Ctx) (any, error) {
 	return nil, &AontuError{Msg: n.FullMessage(src, file, texts), Code: "recursion_unexpanded"}
 }
 
-// containsRecurseOf answers whether a definition holds a residual of
-// the given target -- i.e. the definition is (transitively) the
-// fixpoint that target names. A reference RESOLVING to such a
-// definition must itself answer the residual: cloned instead, every
-// reparse of a canon unrolled the schema one more level and canon
-// never converged.
 func containsRecurseOf(v Val, target []string, depth int) bool {
 	if nil == v || 8 < depth {
 		return false
@@ -199,14 +160,6 @@ func containsRecurseOf(v Val, target []string, depth int) bool {
 		}
 		return true
 	case *RefVal:
-		// A RAW REFERENCE to the target IS the recursion, minted or
-		// not: the answer must not depend on whether the definition's
-		// own prefix position has been visited yet. Without this arm
-		// the answer was ORDER-DEPENDENT -- reparsing a generated
-		// canon puts the instance before the definition, its trailing
-		// `$.spec.Step` leaves resolved before `Step.then` had minted,
-		// and each resolve cloned one more unrolled level until the
-		// unify depth guard (unify_cycle) killed the document.
 		if len(n.peg) != len(target) {
 			return false
 		}
@@ -265,15 +218,6 @@ func bumpRecurse(v Val, xc int) {
 			n.xc = xc
 		}
 	case *RefVal:
-		// A RAW REFERENCE TO A RECURSIVE TARGET IS THE RECURSION,
-		// minted or not -- the same reading containsRecurseOf already
-		// takes, and the reason bound 2 was inert. A freshly cloned
-		// level holds the definition's references UNRESOLVED, so this
-		// walk found no residual to stamp and xc read 0 at every
-		// expansion, in the healthy form too. The seed rides on the
-		// reference and the residual minted from it starts there
-		// (go/ref.go). Mirrors the same arm in
-		// ts/src/val/RecurseVal.ts bumpRecurse.
 		if n.rxc < xc {
 			n.rxc = xc
 		}

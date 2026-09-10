@@ -2,15 +2,7 @@
 
 package aontu
 
-// THE GRAMMAR SEAM (G9): compiling an ABNF grammar, and running it
-// under aontu's own budget. Twin of ts/src/grammar.ts.
-//
-// THE PARSE IS BOUNDED, and that is not optional. re() carries the
-// ReDoS guard because a regex match is counted by no evaluator budget
-// (docs/trust.md clause 2), and a user-supplied grammar is strictly
-// more expressive than the pattern subset that guard admits. The
-// engine's cancellation hook is what makes this answerable: it calls
-// back every N rule iterations and a false cancels the parse.
+// The grammar seam, ADR-033. Twin of ts/src/grammar.ts.
 
 import (
 	"strings"
@@ -20,12 +12,9 @@ import (
 	tabnas "github.com/tabnas/parser/go"
 )
 
-// The parse step ceiling. Deliberately a CONSTANT rather than a trust
-// knob: the budgets a profile may lower or raise (passes, depth) bound
-// aontu's own evaluation, and this bounds a third party's.
+// A constant, not a trust knob: this bounds a third party's grammar.
 const parseStepMax = 100000
 
-// How often the engine asks.
 const parseCheckEvery = 100
 
 type grammarEntry struct {
@@ -33,8 +22,7 @@ type grammarEntry struct {
 	why string
 }
 
-// Compiled grammars, by source. Guarded because a host may unify on
-// more than one goroutine; the TS twin needs no lock and says so.
+// Guarded because a host may unify on more than one goroutine.
 var (
 	grammarMu    sync.Mutex
 	grammarCache = map[string]*grammarEntry{}
@@ -51,15 +39,8 @@ func compileGrammar(src string) (*tabnas.Tabnas, string) {
 
 	entry := &grammarEntry{}
 
-	// Whitespace is NOT skipped: a grammar aontu runs describes a
-	// string with no spaces in it (a version, an address, a media
-	// type), and the engine's lexer would otherwise read `1 . 2 . 3`
-	// as `1.2.3` -- accepting input the grammar's author did not.
-	//
-	// The budget hook is installed HERE because the engine takes it at
-	// construction, not per parse. A compiled grammar is cached and
-	// reused, so the counter it reads is reset by parseWith before each
-	// run rather than captured per call.
+	// Lexing off, or the engine reads `1 . 2 . 3` as `1.2.3`. The hook
+	// is installed here because the engine takes it at construction.
 	no := false
 	tn := tabnas.Make(tabnas.Options{
 		Space: &tabnas.SpaceOptions{Lex: &no},
@@ -94,8 +75,7 @@ func parseWith(grammar *tabnas.Tabnas, text string) (any, string) {
 	return node, ""
 }
 
-// The first line of a host message. Both ports report the compiler's
-// or the parser's own first line, so a reason reads the same in each.
+// Both ports report the host's own first line.
 func firstLine(s string) string {
 	if i := strings.IndexByte(s, '\n'); 0 <= i {
 		return s[:i]

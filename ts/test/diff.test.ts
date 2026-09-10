@@ -15,8 +15,6 @@ import { diff } from '../dist/aontu'
 
 describe('diff', () => {
 
-  // A change at the ROOT itself: two documents that are not both maps
-  // (or both lists) compare as whole values, at `$`.
   test('root-change-is-reported-at-the-root', () => {
     const r = diff('a: 1', '[1]')
     Assert.equal(r.ok, true)

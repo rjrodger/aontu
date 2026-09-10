@@ -69,8 +69,6 @@ class ListVal extends BagVal {
               spread.v[0] :
             spread.v
 
-        // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-        // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
       }
     }
   }
@@ -88,23 +86,10 @@ class ListVal extends BagVal {
     const TOP = top()
     peer = peer ?? TOP
 
-    // A sizing residual (`length`, `unique`) sorts AFTER containers in a
-    // conjunct so that it counts the MERGED list rather than the first
-    // fragment (SIZING_CJO in ConstraintVal.ts). That makes the list the
-    // accumulator and the constraint its peer, the reverse of the usual
-    // order — and the reading belongs to the constraint either way, so
-    // hand it straight back.
     if (true === (peer as any).isConstraint) {
       return peer.unify(this, ctx)
     }
 
-    // A DISJUNCT ALTERNATIVE MATCHES ITS OWN LENGTH (BUGS.md §52
-    // regime 4, the X-C3 adjudication): in a trial, a literal list
-    // with no spread admits only a peer list of the same length -- a
-    // spread makes it variadic. Outside trials the ordinary
-    // elementwise merge stands (two statements of one list are one
-    // list), so `[] | [&: T]` stops admitting every list through the
-    // empty arm while `a: [] a: [1]` still merges.
     if (true === ctx._trialMode && true === (peer as any).isList
       && null == this.spread.cj && null == (peer as any).spread.cj
       && this.peg.length !== (peer as any).peg.length) {
@@ -153,19 +138,6 @@ class ListVal extends BagVal {
 
         propagateMarks(this, child)
 
-        // APPLIED ONCE PER ELEMENT, the guard MapVal has carried since
-        // the spread was written: an element that already holds this
-        // template's contribution is progressed by self-unification
-        // instead of having the template met into it a second time.
-        // Re-applying is the identity for a template that has already
-        // RESOLVED, which is why the missing guard went unnoticed here
-        // — but a template that residuates (`&: {k: key(1)}`, G8 phase
-        // 0) is not yet a value to be idempotent about, so each pass
-        // conjoined another copy and the element's canon DOUBLED per
-        // pass. The old `ctx.cc < 3` key delay hid it by ending the
-        // growth at three passes; the staging rule waits for the model
-        // to settle, and a model whose canon doubles every pass never
-        // does.
         let oval: Val
         if (!spread_cj.isTop
           && (child as any)._spr === spreadId(spread_cj)) {
@@ -187,11 +159,6 @@ class ListVal extends BagVal {
           oval =
             child.isNil ? child :
                 key_spread_cj.isNil ? key_spread_cj :
-                  // The no-op meet is SKIPPED on the normal path (it is the
-                  // identity) but TAKEN while recording: a value written once
-                  // and never met is still a contribution the author wants
-                  // pointed at, and the Go port's unite sees that meet (G7
-                  // phase 4). Instrumented runs pay knowingly.
                   key_spread_cj.isTop && child.done && undefined === keyctx.prov
                     ? child :
                     child.isTop && key_spread_cj.done ? key_spread_cj :
@@ -281,13 +248,6 @@ class ListVal extends BagVal {
   }
 
 
-  // Spread clone: only deep-clone children that are path-dependent
-  // (isFunc, isRef). Share all other children directly.
-  // Spread clone: when all children are ScalarKindVal (simple type
-  // constraints like `string`, `number`), share them directly to avoid
-  // N x M allocations. ScalarKindVal is safe to share: it is immutable,
-  // always done, never path-dependent, and never has marks mutated.
-  // For anything more complex, fall back to full deep clone.
   spreadClone(ctx: AontuContext): Val {
     // B1: share directly when the spread tree has no path-dependent
     // leaves. See MapVal.spreadClone for rationale.
@@ -337,11 +297,6 @@ class ListVal extends BagVal {
       out.peg[entry[0]] =
         (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, {
           ...childspec,
-          // AN ELEMENT IS A POSITION, exactly as a map's child is
-          // (MapVal.clone). Without this an explicitly pathed clone
-          // rebased the list and left every element at its source
-          // path -- the Go twin descends by index (go/clone.go, the
-          // *ListVal arm of clonePathKind).
           path: [...out.path, entry[0]],
         }) : entry[1]
     }
@@ -352,34 +307,20 @@ class ListVal extends BagVal {
     out.closed = this.closed
     out.optionalKeys = [...this.optionalKeys]
 
-    // console.log('LISTVAL-CLONE', this.canon, '->', out.canon)
     return out
   }
 
 
   get canon() {
-    // console.log('LISTVAL-CANON', this.optionalKeys)
     let keys = Object.keys(this.peg)
     return '' +
-      // this.errcanon() +
       '[' +
       (this.spread.cj ? '&:' + this.spread.cj.canon +
         (0 < keys.length ? ',' : '') : '') +
-      // No optional-element rendering. A list HAS no optional elements to
-      // render: a key:value pair in list position contributes no element
-      // at all, in either spelling and whatever its key (issue #40), so
-      // nothing a source can write reaches this method with an optional
-      // key. The Go port's ListVal.Canon has no such arm either, and the
-      // two canons must agree -- a canon is round-trippable, and a marker
-      // on an element the grammar cannot produce would not reparse.
-      // canonRiders, not .canon: a deprecated element renders
-      // back as its `deprecate(x, m)` call, reparseably (G3).
       keys.map(k => canonRiders(this.peg[k])).join(',') +
       ']'
   }
 } /* node:coverage ignore next 8 */
-
-
 
 
 export {

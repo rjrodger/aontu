@@ -35,22 +35,9 @@ import { format, unifiedDiff } from './format'
 export type { LintFinding, FormatReport, FormatOptions } from './format'
 
 
-// VERSION is the Aontu npm package version, and mirrors
-// go/aontu.go's `Version` (which tracks the Go module version
-// separately — the two version series are independent).
-//
-// Kept in step with package.json by the `version` npm lifecycle script,
-// which runs on `npm version` / `npm run repo-bump`. version.test.ts
-// fails if the two ever drift.
 const VERSION = '0.62.0'
 
 
-// A module file's VALUE, as far as it goes. COLLECTED, not raised: a
-// module file that does not stand up has no `mod.main` to read, and
-// the default entry name is the answer -- the resolution itself fails
-// later, on the file that is not there, rather than here on a metadata
-// read. That is what a collecting context does, so there is nothing to
-// catch: it answers what it could generate and records the rest.
 function genQuiet(val: any, aontu: Aontu): any {
   return val.gen(aontu.ctx({ collect: true }))
 }
@@ -64,25 +51,9 @@ class Aontu {
   constructor(popts?: AontuOptions) {
     this.opts = popts ?? {}
 
-    // THE MODULE EVALUATOR (G6 phase 2, ts/src/mod.ts). Resolving a
-    // module import needs two answers that only evaluation can give:
-    // what a module file SAYS (its `mod.main`), and what a module
-    // MEANS (its canon-hash, for the integrity check). Injected here
-    // rather than imported there, because the resolver runs inside a
-    // parse that this class started, and the file it runs in cannot
-    // import this one without closing a cycle around the language.
-    //
-    // COLLECTED, not raised: a module that leans on consumer context
-    // (a `$.x` its importer supplies) does not stand up alone, and its
-    // hash is still the hash of what it says — that residue is part of
-    // the hashed meaning, which is why `hcanon` keeps it in textual
-    // form (docs/capability-review/g6-distribution.md).
     ;(this.opts as any).mod = {
       ...((this.opts as any).mod ?? {}),
       eval: (this.opts as any).mod?.eval ?? ((src: string, path: string) => {
-        // One deeper: a module verified from inside a module
-        // verification is one more level of nesting, and the resolver
-        // refuses past its bound (MODULE_MAX_DEPTH in ts/src/mod.ts).
         const inner = new Aontu({
           ...this.opts,
           mod: {
@@ -118,12 +89,6 @@ class Aontu {
   }
 
 
-  // Parse source into a matching Val AST, not yet unified.
-  //
-  // NOTE: the returned Val is SINGLE-USE — unify()/generate() refine the
-  // tree in place (see Val.unify), so do not unify or generate the same
-  // parsed Val more than once, and do not share it across threads. Call
-  // parse() again for a fresh tree.
   parse(src: string, opts?: AontuOptions, ac?: AontuContext): Val | undefined {
     let out: Val | undefined
     let errs: any[] = []
@@ -140,12 +105,6 @@ class Aontu {
       errs.push(out)
     }
     else {
-      // A version-control conflict marker is refused BEFORE the parse
-      // (issue #5). None of `<`, `=` or `>` is an aontu operator, so a
-      // marker line is ordinary text and `<<<<<<< HEAD` parsed happily
-      // into the two-string list ["<<<<<<<","HEAD"] -- an unresolved
-      // merge became a plausible document instead of an error, and the
-      // report of it read as a failed `<` operation.
       const marker = findConflictMarker(src)
       if (-1 !== marker.offset) {
         const nil: any = makeNilErr(ac, 'merge_conflict')
@@ -158,10 +117,6 @@ class Aontu {
 
     if (0 === errs.length) {
       out = runparse(src, this.lang, ac)
-      // The include MANIFEST (G5, docs/trust.md): the resolved include
-      // closure as `{ path, capability }`, sorted and deduplicated so
-      // it is deterministic — the "file set" of hermeticity clause 1
-      // made observable. Content hashing and pinning stay with G6.
       out.deps = manifestOf(ac.manifest)
       ac.root = out
     }
@@ -207,10 +162,6 @@ class Aontu {
       out = uni.res
 
       out.deps = pval.deps
-      // THE DERIVED STRUCTURE (G4 phase 3): the edge set, computed
-      // once from the unified tree. Cheap on a document with no links
-      // — one guarded walk — and the thing impact analysis and the
-      // relation checks are traversals over.
       out.graph = graphOf(out)
       out.err = errs
       ac.root = out
@@ -222,19 +173,6 @@ class Aontu {
   }
 
 
-  // Generate output structure from source, which must parse and fully unify.
-  //
-  // The result is made of NATIVE values, and D9 puts two beyond what
-  // `JSON.stringify` can write: a `biginteger` (a `0d` literal with no
-  // fraction or exponent) generates as a native `bigint`, and a
-  // `bigdecimal` generates as a `Decimal`. Both are exact at any
-  // magnitude, which is the whole point of the leaves -- and both are
-  // confined to documents that opt in, so a `0d`-free document generates
-  // exactly what it always did.
-  //
-  // Serialise the result with `exactJSON` (exported alongside this
-  // class), NOT with `JSON.stringify`: the latter throws on a bigint and
-  // has no way to write exact digits as a JSON number.
   generate(src: string, opts?: any, ac?: AontuContext): any {
     try {
       let out = undefined
@@ -247,7 +185,6 @@ class Aontu {
       if (undefined !== pval && 0 === pval.err.length) {
 
         let uval = this.unify(pval, undefined, ac)
-        // console.log('AONTU-GENERATE-UVAL', uval.constructor, uval.mark)
 
         if (undefined !== uval && 0 === uval.err.length) {
 
@@ -255,23 +192,6 @@ class Aontu {
             : 0 < ac.err.length ? undefined
               : uval.gen(ac as any)
 
-          // The relation verdict (RELATIONS P2): declarations the
-          // graph atoms registered during unification are decided
-          // HERE, where no more information can arrive -- the sizing
-          // atoms' model. A violated declaration is a located
-          // evaluation error at the offending edge, and the generated
-          // value is discarded below.
-          //
-          // AFTER GENERATION, and only when generation SUCCEEDED. A
-          // document that cannot be generated has no finished model
-          // to have a graph verdict about: an unsettled disjunction
-          // leaves alternatives the graph walk cannot read, so a
-          // mirror the document writes is absent from the edge set
-          // and `inverse(n)` reports it missing -- a false finding,
-          // and one that buried the `disjunct_no_gen` that actually
-          // stopped the document. The check that a broken document is
-          // not blamed on its relations (`relations` verb, finding F)
-          // holds here too.
           if (!uval.isNil && 0 === ac.err.length) {
             relationErrors(ac as any, uval)
             if (0 < ac.err.length) {
@@ -333,17 +253,6 @@ function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
 }
 
 
-// Locate the first version-control conflict marker in a source, as a
-// 1-based row and column (offset -1 when there is none).
-//
-// The shape is git's, and it is matched exactly: SEVEN of `<`, `=` or `>`
-// at the very start of a line, then either the end of that line or a
-// space before the branch label. Requiring the run length and the line
-// start is what keeps a document that legitimately writes `a:"<<<<<<<"`,
-// or a row of `=` inside a string, from being refused -- the marker is
-// recognised as the artifact it is, not as a suspicious character.
-//
-// Kept byte-identical to findConflictMarker in go/lang.go.
 function findConflictMarker(src: string): {
   offset: number, row: number, col: number
 } {
@@ -444,17 +353,9 @@ export {
   util,
   formatExplain,
 
-  // D9 -- the generate contract. `exactJSON` is the supported way to
-  // turn `generate()` output into JSON when a document uses the exact
-  // leaves, and `Decimal` is the type a `bigdecimal` generates as (a
-  // `biginteger` generates as the language's own `bigint`).
   exactJSON,
   Decimal,
 
-  // G2 phase 2 -- the validation verb. The engine only: the CLI verb
-  // and the text/JSON renderers are phase 3, the Go port phase 4.
-  // `sarifReport` (phase 5) is library API so an embedder can emit the
-  // interchange form without shelling out.
   vet,
   sarifReport,
 
@@ -464,10 +365,6 @@ export {
   subsume,
   trimCheck,
 
-  // G6 -- the hash form and the canon-hash pin. `hcanon` is the
-  // unify-level canon plus the close()/type()/hide() wrappers that
-  // close its semantic gaps; `canonHash` is
-  // "aon1-" + base64url(SHA-256(UTF-8(hcanon(v)))).
   hcanon,
   canonHash,
 
@@ -497,10 +394,6 @@ export {
   renderValue,
   renderProfile,
 
-  // The template surface (docs/design/TEMPLATE.0.md): the two text
-  // transforms behind `aontu template`, and the marker an extension
-  // names. Neither evaluates anything -- a template is a spelling of
-  // a generator, so the transforms are text in and text out.
   desugarTemplate,
   resugarTemplate,
   markerFor,

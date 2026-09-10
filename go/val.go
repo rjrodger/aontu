@@ -1,21 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Package aontu is a Go port of the Aontu JSON structure unifier.
-//
-// Aontu unifies JSON-like structures using a CUE-inspired value
-// lattice. The canonical implementation is the TypeScript code under
-// ../ts/src; this package mirrors its core unification semantics and
-// is validated against the shared test specs in ../test/spec (run by
-// both implementations).
-//
-// Coverage note: this port has full parity with the TypeScript language
-// — scalars, scalar kinds, maps (nesting, merge, spreads &:, optional
-// keys, close/open), lists (incl. &: spreads), conjunction (&),
-// disjunction (|), preference (*), references ($.a.b / .x.a),
-// $name variables, the + operator, all eighteen built-in functions
-// (upper/lower/copy/key/pref/super/type/hide/close/open/move/path and
-// the constraint atoms min/max/above/below/neq), type/hide marks and
-// @"file" source loading.
 package aontu
 
 import (
@@ -25,17 +9,6 @@ import (
 	"strings"
 )
 
-// COLOUR IS A DECISION ABOUT THE DESTINATION, not about the message.
-// Every error frame hardcoded the ANSI escapes, so a piped report
-// carried terminal control codes into whatever read them -- a log file,
-// a CI annotation, an agent's parser (the review's finding F).
-//
-// NO_COLOR (no-color.org: set, to anything, means no colour) turns them
-// off everywhere, library callers included. The CLI additionally turns
-// them off when its stderr is not a terminal, through SetColor: a
-// library cannot see the destination, and a caller who has one is the
-// only one who can say. The twin is setColor/colorActive in
-// ts/src/err.ts.
 var colorOverride *bool
 
 // SetColor forces ANSI on or off; nil restores the NO_COLOR default.
@@ -62,14 +35,10 @@ func ansi(code string) string {
 // DONE marks a Val whose unification has fully converged.
 const DONE = -1
 
-// Val is the interface implemented by every value in the lattice.
 type Val interface {
 	// Canon returns the canonical, source-like representation.
 	Canon() string
 
-	// Gen produces the native Go value for output (JSON generation).
-	// A non-nil error means the value could not be generated (e.g. an
-	// unresolved type, conjunct or nil).
 	Gen(ctx *Ctx) (any, error)
 
 	// Unify combines this Val with peer, returning the result. The
@@ -86,18 +55,6 @@ type Val interface {
 	pos() int
 	setPos(p int)
 
-	// srctext is the SOURCE TEXT this value was written as, and
-	// srclen its extent in UTF-16 code units -- the units columns are
-	// already counted in (see utf16Len). Together with pos they make a
-	// site editable: canon is not source text, so `0x1F` (canon `31`)
-	// cannot be replaced by canon's length without corrupting the
-	// document. The twin is Site.len/Site.src in ts/src/site.ts, which
-	// carries the full note.
-	//
-	// THE EXTENT IS DERIVED FROM THE TEXT, in both ports, so the two
-	// cannot drift: TypeScript takes `src.length` (UTF-16 natively) and
-	// this takes utf16Len(stext). Reading the token's own `len` field
-	// instead would be one more thing to keep in step for no gain.
 	srctext() string
 	srclen() int
 	setSrctext(text string)
@@ -115,7 +72,6 @@ type Val interface {
 	// Marks: type values are constraints, hidden values are excluded
 	// from generation. Both are skipped when generating a containing map.
 	markedType() bool
-	// fromSpread reports the G7 provenance mark (see base.fspr).
 	fromSpread() bool
 	setFromSpread()
 	// written reports the AUTHORED mark (see base.fwrt), and innerOf
@@ -126,8 +82,6 @@ type Val interface {
 	setInnerOf(v Val)
 	deprecRec() map[string]string
 	setDeprecRec(rec map[string]string)
-	// The two render riders (P7): where a reference read this value,
-	// and the dispatch that emitted it.
 	readAddr() string
 	setReadAddr(addr string)
 	emitOrig() *emitOrigin
@@ -139,140 +93,26 @@ type Val interface {
 	setMarkHide(v bool)
 }
 
-// base provides the shared, defaulted Val state. Concrete Val types
-// embed it and override Canon/Gen/Unify/superior (and cjo/Nil where
-// they differ).
-// unsited is the source position of a value NO AUTHOR WROTE.
-//
-// Zero cannot mean "unset" here: it is a real position, the first byte
-// of the document, so a value minted by unification was indistinguishable
-// from one written at the very start and every site built from it read
-// "row 1, column 1". The canonical port has no such ambiguity -- a TS
-// site starts at -1 and only the parser moves it (ts/src/site.ts) -- and
-// this makes Go say the same thing structurally: EVERY constructor
-// starts here and the parser moves it with setPos.
-//
-// Established one divergence at a time before it was made an invariant:
-// conjuncts, disjuncts, tops and nils each set it for their own reason,
-// and scalars, funcs, maps, lists, refs and the rest were found reporting
-// 1:1 for arithmetic results and piped calls. Pinned by the vet-minted-*
-// rows (test/spec/vet.tsv) and why-piped-call-is-unsited (why.tsv).
 const unsited = -1
 
 type base struct {
 	dc   int
-	sp   int      // source position (byte offset), used to order error operands
+	sp   int
 	path []string // path from root (for reference resolution)
-	// The source TEXT this value was written as, the other half of sp.
-	// Empty means NO SPAN -- the value was minted by unification rather
-	// than written, or its rule had no open token -- and srclen answers
-	// -1 there, the same "unknown" row and col already use. A token with
-	// no text is no span, in both ports, which is what lets Go leave
-	// this at its zero value everywhere a Val is constructed instead of
-	// threading a -1 default through every newX. See ts/src/site.ts.
 	stext string
-	// spu marks a clone-minted value. TS sites carry a url that is null
-	// on parsed values and BECOMES '' at Val.clone (`?? ''`), and
-	// NilVal.make's later-in-source primary flip fires only when the two
-	// operands' urls are EQUAL — so a cloned operand meeting a parsed
-	// one keeps the driving operand primary regardless of position.
-	// spu is that url distinction: false = parsed (TS null), true =
-	// minted by clonePath's top level (TS ''). Children of a clone stay
-	// false, as TS's shallow clone shares the original children.
-	//
-	// KNOWN WRONG SET (issue #63). TS's clone COPIES the url, so what it
-	// really separates is "sited by the parser" from "made during
-	// evaluation" -- which is not the same partition as clone-vs-parsed,
-	// and the frames of a spread-applied conflict come out in the
-	// opposite order because of it. Marking parse-sited values instead
-	// is the fix, and it is its own change.
 	spu bool
-	// surl is the value's SOURCE NAME, the other half of the url TS
-	// carries on every site. spu above is only a distinction (parsed vs
-	// clone-minted) because, until a caller supplies real names, that is
-	// all the url ever amounts to here: one entry source, one text. The
-	// validation verb (vet.go) breaks that assumption -- it unifies TWO
-	// documents in one run -- so a value has to be able to say WHICH
-	// document it came from, both to be role-tagged in a report and to
-	// have its row/column computed against the right text. Empty means
-	// unnamed, which is every value in a single-source run.
 	surl  string
-	mtype bool // type mark
+	mtype bool
 	mhide bool // hide mark
-	// fspr marks a spread template's per-key clone, set at the one
-	// place a spread is applied and only on an INSTRUMENTED run (G7
-	// phase 4). Read by the provenance recorder; nothing else.
 	fspr bool
-	// fwrt marks a value the AUTHOR WROTE, and it lives on the value
-	// rather than in a set beside it so that CLONES CARRY IT (the
-	// review's finding E). The recorder used to decide "did the author
-	// write this" by looking the operand up in a set stamped over the
-	// parsed tree, which is true of the parsed tree and of nothing
-	// derived from it -- so a default reaching a generated child, a
-	// shape carried by a $ref, one side of an id()-merge were all dark,
-	// and `why` answered "nothing met at this path" over a value it had
-	// just printed. A clone of a written value IS that written value
-	// somewhere else: it carries the author's site, so it can be
-	// pointed at. Instrumented runs only (Why stamps it; nothing else).
-	// The TypeScript twin is WRITTEN in ts/src/provenance.ts.
 	fwrt bool
-	// finner is the WRITTEN CONTAINER this value stands inside at the
-	// SAME path: a junction's members, a preference's inner value, a
-	// function's arguments. `*1|integer` is one thing the author wrote
-	// and `*1` is not a second thing beside it, so an operand is
-	// reported as the outermost written value it is part of -- whether
-	// or not the fixpoint happened to meet that container whole here.
-	// A pointer, where TypeScript carries the container's id: a Val
-	// holding another Val as an own PROPERTY is a cycle through the
-	// tree there, and a struct field is not. See INNER_OF in
-	// ts/src/provenance.ts.
 	finner Val
-	// The deprecation record (G3 phase 4, `deprecate(x, m)`): boolean
-	// marks cannot hold a message, a replacement path and a version, so
-	// the value carries one optional record (keys msg/use/since, values
-	// strings). Propagated through meets by propagateMarks and carried
-	// by clonePath, exactly as the boolean marks are; canon renders it
-	// back reparseably (canonRiders). Mirrors Val.deprecation in
-	// ts/src/val/Val.ts.
 	deprec map[string]string
-	// THE READ ADDRESS (RENDER.0.md P7): the tree path a reference
-	// resolved this value AT, stamped where it was found. A resolved
-	// reference CLONES its target into the referring position, so a
-	// value that arrived by reference otherwise knows only where it
-	// came to rest -- and a trace saying a line came from
-	// `$.code.units.0` names the output, not the model. Written only by
-	// an instrumented run (Ctx.reads), carried by clonePath and by the
-	// meet rider, exactly as the deprecation record is. Mirrors
-	// Val.origin in ts/src/val/Val.ts.
 	origin string
-	// THE DISPATCH THAT PRODUCED THIS PIECE (RENDER.0.md D11, P7): the
-	// node an `emit` matched and the rule it took, stamped on every
-	// piece the dispatch instantiated. The INNERMOST dispatch wins: a
-	// nested rule set splices its pieces into the outer result, and the
-	// rule that wrote a line is the one that wrote it. Mirrors
-	// Val.emitted in ts/src/val/Val.ts.
 	emitted *emitOrigin
-	// The LINK (G4 phase 2/3): the tree address a `refer` resolved
-	// to, stamped on the string it answers. The string IS the value — a
-	// link, not an embedding — so nothing downstream could otherwise
-	// tell a checked link from a literal that happens to look like one,
-	// and the edge set (graph.go) is exactly the set of these.
 	link string
-	// relkey is the PREDICATE a rel()-minted link belongs to (the rel
-	// field's key), so the graph reports the edge under a DECLARED
-	// relation rather than inferring one (RELATIONS.0.md §3.2).
 	relkey string
-	// spr records the identity of the spread constraint already merged
-	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
-	// applies ONCE per child, and later passes only self-unify.
 	spr Val
-	// pdep caches the hasPathFunc classification (0 unknown, 1 yes,
-	// 2 no), mirroring the memoized `_isPathDependent` getter in TS
-	// Val: in-place refinement can resolve a key()/ref after first
-	// classification, and the cached answer must survive that, so the
-	// spread clone-vs-share decision stays stable across passes.
-	// Clones start unclassified, as in TS (clonePath builds fresh
-	// structs for every composite kind).
 	pdep int8
 }
 
@@ -326,8 +166,6 @@ func (b *base) setPos(p int)           { b.sp = p }
 func (b *base) srctext() string        { return b.stext }
 func (b *base) setSrctext(text string) { b.stext = text }
 
-// srclen is the extent in UTF-16 code units, or -1 for no span. Derived
-// rather than stored: see the note on the interface method.
 func (b *base) srclen() int {
 	if "" == b.stext {
 		return -1
@@ -389,22 +227,10 @@ type TopVal struct{ base }
 func newTop() *TopVal {
 	t := &TopVal{}
 	t.dc = DONE
-	// UNLOCATED until something locates it. A TOP is nearly always
-	// synthesised -- the implicit peer every unify starts from -- and the
-	// zero value of sp is a real position (the first byte of the source),
-	// so leaving it there drew an error frame about an implicit TOP at
-	// 1:1 of the entry file. TS gives an unset site row/col -1 and an
-	// empty url, which its frames render as `<no-file>:-1:-1`; -1 is
-	// already this port's spelling of the same thing (see newNil). A
-	// `top` WRITTEN in source is located by its value def, as in TS.
 	t.sp = -1
 	return t
 }
 
-// A fresh instance per call (mirrors ts/src/val/top.ts): unify mutates
-// Vals in place — setPaths writes paths, move() hide-walks set marks —
-// so a shared TOP singleton could be corrupted by one parse and change
-// the behaviour of every later parse in the same process.
 func top() *TopVal { return newTop() }
 
 func (t *TopVal) Canon() string { return "top" }
@@ -489,14 +315,6 @@ func (n *NilVal) attemptName() string {
 	return "unify"
 }
 
-// Path is the `$.a.b` location the failure is reported at.
-//
-// The path comes from the primary operand, as TS NilVal.make copies
-// av.path onto the nil. A nil with NO operands -- one raised about a
-// construct rather than about a failed meet, such as the refused
-// negation in `a:-0x_1` -- keeps the path setPaths gave it where it
-// sits in the tree; reading only the (absent) primary reported every
-// one of them at the root (issue #39).
 func (n *NilVal) Path() string {
 	if p := n.pathSegments(); 0 < len(p) {
 		return "$." + strings.Join(p, ".")
@@ -506,10 +324,6 @@ func (n *NilVal) Path() string {
 
 // pathSegments is the raw path the failure is reported at.
 func (n *NilVal) pathSegments() []string {
-	// A path assigned to the nil itself WINS: makeNilErr stores the slot
-	// the meet was driven at when it is more specific than the operand's
-	// own path, and residueErr stores the residue's. The operand is the
-	// fallback for a nil that was never given one.
 	if 0 < len(n.path) {
 		return n.path
 	}
@@ -520,12 +334,6 @@ func (n *NilVal) pathSegments() []string {
 	return residue.vpath()
 }
 
-// Headline is the first line of the full message: the `[aontu/<code>]`
-// marker, the attempt and the path. It is the ONE line of prose the two
-// ports hold to byte parity (the frames below it excerpt source, and the
-// short Message is each port's own), which is why the validation verb
-// reports it rather than Message -- a vet report crossing between the
-// ports must read the same in both (vet.go).
 func (n *NilVal) Headline() string {
 	plural := ""
 	if n.secondary != nil {
@@ -535,14 +343,6 @@ func (n *NilVal) Headline() string {
 		" value" + plural + " at path " + n.messagePath()
 }
 
-// messagePath is Path with EMPTY SEGMENTS DROPPED, which is what TS
-// descErr renders: its filter exists to keep a null out of the joined
-// path, and takes the empty-string key with it -- so `a: {"": integer}`
-// is reported at `$.a` in the message while the machine-readable report
-// keeps the segment (`$.a.`, vet.go). Reproduced rather than corrected:
-// the two ports' messages are held to byte parity, and which of the two
-// spellings is right for an empty key is a question about paths, not
-// about this line (docs/capability-review/g7-machine-access.md).
 func (n *NilVal) messagePath() string {
 	p := n.pathSegments()
 	segs := make([]string, 0, len(p))
@@ -557,22 +357,6 @@ func (n *NilVal) messagePath() string {
 	return "$." + strings.Join(segs, ".")
 }
 
-// FullMessage renders the failure the way the canonical TypeScript
-// implementation renders a THROWN error (descErr, ts/src/err.ts):
-// the `[aontu/<code>]` marker, the "Cannot <attempt> value(s) at path
-// <path>" headline, the (parameterised) hint, and one located source
-// frame per operand — byte-matched to the TS output, ANSI colouring
-// included. Used by the AontuError paths (unify/generate); the
-// LSP/Problem surface keeps the short Message below, mirroring TS's
-// own split (descErr vs the LSP's nilMessage).
-//
-// src and file are the ENTRY source and its name. texts is the text of
-// every source the parse read, by full path (Ctx.texts): a value that
-// came through an include carries a byte offset into ITS OWN file, so
-// a frame about it is rendered against that file's text and named with
-// that file. Without the map -- a parse-time caller has no context yet
-// -- the entry text is the fallback, which is what TS's resolveSrc
-// does when a site's file cannot be read.
 func (n *NilVal) FullMessage(src, file string, texts map[string]string) string {
 	if n.fullmsg != "" {
 		return n.fullmsg
@@ -586,30 +370,12 @@ func (n *NilVal) FullMessage(src, file string, texts map[string]string) string {
 	}
 	var b strings.Builder
 	b.WriteString(n.Headline())
-	// Separator before the first frame: one blank line after a hint, TWO
-	// when the code has none. That asymmetry is TS's, and it comes out of
-	// descErr's fixed [headline+hint, '\n', frame].join('\n') followed by
-	// its `\n\n` -> `\n` pass -- with no hint there is simply less text
-	// for that pass to collapse. Reproduced here rather than derived,
-	// because the twin tests compare these messages byte for byte.
 	gap := "\n\n\n"
 	if hint := hints[n.why]; hint != "" {
 		gap = "\n\n"
 		b.WriteString("\n\n")
-		// Trailing newlines are NOT part of the hint's spacing: TS ends
-		// descErr with a `.replace(/\n\n/g, '\n')` pass, which absorbs a
-		// hint's own trailing newline into the single blank line that
-		// separates it from the first frame. (Its deliberate blank lines
-		// survive that pass because they are "\n \n" -- newline, SPACE,
-		// newline -- not "\n\n".) Without the trim, the one hint that
-		// ends in a newline, `no_path`, gained a second blank line here
-		// and Go's message drifted a byte from TS's (issue #39).
 		b.WriteString(strinject(strings.TrimRight(hint, "\n"), n.details))
 	}
-	// An operandless nil still gets ONE frame, rendered about itself: its
-	// canon is "nil" and its site is where the refused construct was
-	// written, which is exactly what TS shows for `a:-0x_1` (its nil is
-	// built through addsite, so it carries the `-`).
 	b.WriteString(gap)
 	b.WriteString(n.frame(src, file, attempt, residue, n.secondary, texts))
 	if n.secondary != nil {
@@ -621,14 +387,6 @@ func (n *NilVal) FullMessage(src, file string, texts map[string]string) string {
 	return n.fullmsg
 }
 
-// frameFile names a frame's file the way a reader can open it: the
-// path with the working directory's prefix taken off, so a document in
-// the current directory prints as `clash.aon` rather than as its
-// absolute path. The twin of resolveFile in ts/src/err.ts, including
-// its two degenerate answers -- the working directory itself, and the
-// empty string, are both <no-file> -- and, like it, this cuts one
-// leading occurrence rather than every one, so a path that repeats the
-// working directory deeper down keeps it.
 func frameFile(url string) string {
 	cwd, err := os.Getwd()
 	if nil != err { //coverage:ignore Getwd fails only if the cwd is gone
@@ -641,17 +399,8 @@ func frameFile(url string) string {
 	return out
 }
 
-// frame renders one located source frame, byte-matched to the jsonic
-// errmsg block TS descErr emits: the value line, the blue `-->`
-// arrow with file:row:col, the source row with a caret naming the
-// value (and the map key when known), and the two following rows.
 func (n *NilVal) frame(src, file, attempt string, v, other Val,
 	texts map[string]string) string {
-	// PER-OPERAND SOURCE. The frame is about `v`, so it is rendered
-	// against the file `v` was parsed from whenever that text is in
-	// hand: its offset means nothing in any other text. Falling back
-	// keeps the entry pair, which is what shipped before and is still
-	// better than a coordinate computed in the wrong file.
 	if url := v.srcurl(); "" != url {
 		if text, have := texts[url]; have {
 			src, file = text, frameFile(url)
@@ -680,35 +429,13 @@ func (n *NilVal) frame(src, file, attempt string, v, other Val,
 		return ""
 	}
 
-	// A positionless value prints its RAW site in the arrow — TS sites
-	// default to row/col -1 and descErr does not clamp them there —
-	// while the excerpt and caret below use the clamped coordinates.
 	arrowRow, arrowCol := row, col
 	arrowFile := file
 	if v.pos() < 0 {
 		arrowRow, arrowCol = -1, -1
-		// ... and its FILE is unknown too. TS names each frame's file
-		// from that value's own site url, which an unlocated value leaves
-		// empty, so it prints `<no-file>` -- naming the entry source here
-		// pointed the reader at a file the value never came from.
 		arrowFile = "<no-file>"
 	}
 	fmt.Fprintf(&b, "  %s--> %s:%d:%d\n", ansi("\x1b[34m"), arrowFile, arrowRow, arrowCol)
-	// TWO lines of leading context, clamped at the top of the file, then
-	// the value's own line, then two trailing: the window TS's frame
-	// shows. Go printed only the trailing half, so every error below row
-	// 1 -- which is most of them in a real document -- framed with the
-	// lines AFTER the mistake and none of the lines before it, and the
-	// two ports' messages differed by those lines.
-	//
-	// THE GUTTER IS TWO SPACES PLUS THE NUMBER RIGHT-ALIGNED to the
-	// widest line number the frame shows, which is always the last one
-	// (row+2). A fixed %3d agreed with TS only while every shown number
-	// had one digit: from row 8 upward the two ports printed the same
-	// error with differently indented excerpts, and the caret moved with
-	// the gutter, so the frames disagreed on every document past nine
-	// lines. The two leading spaces are the `-->` header's own indent,
-	// which is what lines the frame up under it.
 	gutter := len(strconv.Itoa(row + 2))
 	excerpt := func(r int) {
 		fmt.Fprintf(&b, "%s  %*d | %s%s\n",
@@ -730,8 +457,6 @@ func (n *NilVal) frame(src, file, attempt string, v, other Val,
 	if caretCol < 1 { //coverage:ignore rowCol never returns a column below 1
 		caretCol = 1
 	}
-	// The caret sits under the source column, so its indent is the
-	// gutter's own width: two spaces, the number, and " | ".
 	b.WriteString(strings.Repeat(" ", 2+gutter+3+caretCol-1))
 	b.WriteString(ansi("\x1b[34m") + "^ ")
 	b.WriteString(keyPrefix)
@@ -762,15 +487,6 @@ func rowCol(src string, sp int) (int, int) {
 	return row, 1 + utf16Len(src[last+1:sp])
 }
 
-// utf16Len counts the UTF-16 code units in s.
-//
-// COLUMNS ARE COUNTED IN UTF-16 CODE UNITS, not bytes. That is what the
-// canonical port's sites carry -- JavaScript strings are UTF-16, so
-// jsonic's columns are too -- and it is what the LSP protocol asks for
-// by default (go/lsp converts its own offsets the same way). Counting
-// bytes put every column, and the caret under it, one place late for
-// each multi-byte character earlier in the line: `k:{"é":integer}`
-// framed at column 9 where TypeScript said 8.
 func utf16Len(s string) int {
 	n := 0
 	for _, r := range s {
@@ -791,10 +507,6 @@ func strinject(txt string, details map[string]string) string {
 	return txt
 }
 
-// Message renders the human-readable failure message. The phrasing of
-// the "Cannot <attempt> value: ..." line is kept compatible with the
-// canonical TypeScript LSP diagnostic text (nilMessage, ts/src/lsp.ts);
-// the thrown-error surface uses FullMessage above.
 func (n *NilVal) Message() string {
 	if n.msg != "" {
 		return n.msg
@@ -823,34 +535,11 @@ func (n *NilVal) Message() string {
 	return n.msg
 }
 
-// residueErr reports a value that survived unification but cannot be
-// generated, as the FULL located message TS renders for it -- the
-// `[aontu/<code>]` marker, the headline naming the path, the hint, and a
-// frame pointing at the value.
-//
-// Only a ROOT-position residue reaches these Gen methods: inside a bag,
-// the bag notices the non-generable child first and reports it (both
-// ports already agreed there, which is why this stayed hidden). At the
-// root each port was on its own, and this one answered with a bare
-// "Cannot generate value: <canon>" carrying no code marker, no path and
-// no frame -- so the one document shaped entirely like the mistake got
-// the least helpful message (issue #38).
-// probing reports whether this generation is vet's completeness probe
-// rather than an output run (Ctx.probe, and AontuContext.probe in the
-// canonical port). Nil-safe: a bare Gen with no context is an output
-// run.
 func probing(ctx *Ctx) bool {
 	return nil != ctx && ctx.probe
 }
 
 func residueErr(ctx *Ctx, v Val, code string) error {
-	// Recorded on the context first, as TS FeatureVal.gen does through
-	// makeNilErr — and, like TS, RAISED only when the context is not
-	// collecting. A collecting caller asked for the failures to be
-	// gathered rather than thrown, and returning an error there left the
-	// one thing it asked for (the reason) nowhere to be found: the
-	// validation verb reads exactly these off an isolated context to
-	// report residue the data has not yet satisfied (vet.go).
 	n := makeNilErr(ctx, code, v, nil)
 	n.path = cp(v.vpath())
 	if ctx != nil && ctx.collect {
@@ -873,38 +562,10 @@ func makeNilErrFull(ctx *Ctx, why string, a, b Val, attempt string, details map[
 	return n
 }
 
-// srcid is a value's SOURCE IDENTITY: the thing TS compares when it
-// gates the operand flip on `nil.site.url === bv.site.url`. A real
-// source name wins when there is one (the validation verb stamps one
-// per document, walk.go); otherwise the clone-mint flag stands in for
-// it, which is all a single-source run ever needs — one text, so the
-// only distinction left is parsed versus minted.
-// srcid is the document a value is attributed to, and the ONE thing
-// the operand flip below compares: two operands are ordered by position
-// only when they are positions in the same document.
-//
-// THE COMPARISON IS THE URL AND NOTHING ELSE, exactly as TS compares
-// `nil.site.url === bv.site.url` in NilVal.make. This used to bucket a
-// clone separately from a parsed value on the `posu` flag, on the
-// reading that TS's Val.clone blanks a clone's url. It does not:
-// `out.site.url = spec?.url ?? this.site.url` INHERITS the source's
-// url, so a clone and the value it meets stay comparable there. The
-// extra bucket made them incomparable here, and a spread-applied
-// constraint — whose template is a clone — never flipped, so
-// `a:&:min(3) a:{x:2}` emitted its two frames in the opposite order
-// from TS while the direct `a:min(3) a:2` agreed (#63).
 func srcid(v Val) string {
 	return v.srcurl()
 }
 
-// makeNilErr builds a NilVal error and records it on ctx. The operand
-// later in the source (greater position) becomes the primary, matching
-// the TypeScript NilVal.make ordering so error messages agree — and,
-// exactly as there, the flip fires only when the two operands share a
-// source identity (srcid above): a cloned operand meeting a parsed one,
-// or a schema value meeting a data value, keeps the driving operand
-// primary, because comparing their positions would be comparing
-// offsets into different texts.
 func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 	n := newNil(why)
 	if a != nil {
@@ -919,45 +580,6 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 			}
 		}
 	}
-	// THE PATH IS WHERE THE MEET IS, NOT WHERE THE OPERAND WAS WRITTEN
-	// (use-cases/BUGS.md §41). The operand path pathSegments falls back
-	// to decides the SITE correctly and the path only by accident: a
-	// MINTED operand (a preference's yardstick, an arithmetic or concat
-	// result) carries no path at all, so a conflict at `$.a` reported
-	// `$` -- the whole document, not the key to edit. The slot is the
-	// location this meet is being driven at, so it is the answer
-	// whenever it is known.
-	//
-	// Only EXTENDS, never redirects: taken when the operand's path is a
-	// prefix of the slot, so a nil minted away from the descent keeps
-	// the path its operand carries. Mirrors NilVal.make in
-	// ts/src/val/NilVal.ts.
-	//
-	// A MEET OF TWO OPERANDS HAPPENS AT THE SLOT, always. A value that
-	// arrives by REFERENCE carries a path re-based onto the referring
-	// field, and the two ports corrupt it DIFFERENTLY -- this port's
-	// fallback is the slot plus the schema's own tail, TS's is the
-	// referring field plus that tail -- so neither operand path is
-	// trustworthy once a reference is in play. The prefix test below
-	// cannot tell the corrupt case from a legitimately deeper one,
-	// because the corrupt path here EXTENDS the right answer. The slot
-	// is the one thing both ports know exactly, so a real meet takes it.
-	//
-	// A SINGLE-OPERAND nil is left alone: a residue, a closed key and a
-	// generation failure are not meets, they are facts about one value.
-	// The ONE exception is an operand that was MINTED -- a preference's
-	// yardstick, an arithmetic or concat result -- which carries no path
-	// at all, so a conflict at `$.a` reported `$`, the whole document
-	// rather than the key to edit.
-	//
-	// This used to ask whether the operand's path was a PREFIX of the
-	// slot, and extend it when so. Once a meet takes the slot outright
-	// the question is vacuous: every nil still reaching here carries
-	// either no path or one at least as long as the slot, so the prefix
-	// walk never ran a single comparison across the whole suite. ADR-002
-	// closes unreachable code by deleting it rather than by covering it,
-	// and the emptiness test below is what the walk actually decided.
-	// Mirrors NilVal.make in ts/src/val/NilVal.ts.
 	if ctx != nil && 0 < len(ctx.slot) &&
 		(b != nil || 0 == len(n.pathSegments())) {
 		n.path = cp(ctx.slot)
@@ -973,22 +595,8 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 type AontuError struct {
 	Msg string
 
-	// Code is the error code of the FIRST underlying failure (the
-	// NilVal `why`, e.g. "scalar_value", "no_path", "mapval_no_gen"),
-	// mirroring errs()[0].why on the TypeScript AontuError. Empty when
-	// no code is known (e.g. wrapped parse errors). Codes -- unlike
-	// message text -- are in cross-implementation parity, registered in
-	// test/spec/errcodes.tsv and pinned by `errc` spec rows.
 	Code string
 
-	// Row and Col locate a PARSE failure, 1-based, or -1 when the
-	// failure knows no position. The merge-conflict refusal and the
-	// parser's own syntax failure both fill them, which is exactly
-	// where the canonical port carries a position too. The validation
-	// verb reports them (vet.go), so the two ports have to know the
-	// same things here -- and until they both threaded the parser's
-	// position through, a machine-readable report said -1:-1 for a
-	// fault the human renderer drew a caret under.
 	Row int
 	Col int
 }

@@ -1,29 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE MCP TOOL LIBRARY (G7 phase 6,
-// docs/capability-review/g7-machine-access.md; completed to the full
-// CLI verb surface by the use-case review's MCP recommendation,
-// use-cases/SUPPORT.md): the verbs an agent calls, over the Model
-// Context Protocol, as a transport-free library. The split follows
-// the LSP's (docs/lsp.md): this file is the protocol and the tools,
-// ts/src/mcp-server.ts is stdio and nothing else, and the whole thing
-// is testable without a socket.
-//
-// Every tool returns THE SAME JSON CONTRACT THE CLI PRINTS. That is
-// the point of the surface: an agent that has read `aontu vet
-// --format json` output knows what the `vet` tool answers, and a
-// report copied from one to the other is the same object. The tools
-// add no vocabulary of their own.
-//
-// The server evaluates under a CONFINED resolver (G5, docs/trust.md):
-// a caller hands source text, and text that could reach out through
-// `@"..."` is exactly what a server must not run unconfined. By
-// default every include is denied; a server started with
-// `--root <dir>` (ts/src/mcp-server.ts) resolves includes confined
-// below that root instead — the CLI's `--trust root:<dir>` posture —
-// and lets every document argument arrive as a `<name>Path` file
-// under the same root. The package-resolver leg is never enabled
-// here.
 
 import { readFileSync, realpathSync } from 'node:fs'
 import {
@@ -71,7 +47,6 @@ export type McpResponse = {
 }
 
 
-// JSON-RPC's own codes, the three a server this small can raise.
 const PARSE_ERROR = -32700
 const METHOD_NOT_FOUND = -32601
 const INVALID_PARAMS = -32602
@@ -91,13 +66,6 @@ export type ToolDef = {
   // Argument validation beyond "required and a string": the message
   // for a call that could not be made, or undefined for a good call.
   check?: (a: any) => string | undefined
-  // ENGINES THAT TAKE NO TRUST PROFILE (subsume, trimCheck,
-  // relationCheck, patch) build their own evaluators, so the served
-  // profile cannot ride into them as an argument the way it rides
-  // into vet or get. Their documents are PRE-PARSED under the profile
-  // by callTool instead (confinedParseFailure below), and `refuse` is
-  // the tool's own error report for a document that fails it. A tool
-  // whose engine takes `trust` directly declares no `refuse`.
   refuse?: (
     a: any, finding: VetFinding, trust: TrustOptions,
     paths: Record<string, string>) => any
@@ -106,22 +74,6 @@ export type ToolDef = {
 }
 
 
-// The trust profile a served evaluation runs under: no includes at
-// all — or, when the server was started with --root, includes
-// realpath-confined below that root (the CLI's `--trust root:<dir>`
-// semantics; docs/trust.md). The package-resolver leg is enabled by
-// neither.
-//
-// The profile is INJECTED into every tool by callTool rather than
-// applied by each tool for itself. That is deliberate: four of the six
-// original tools once called the library with no profile at all, so a
-// served `@"x.js"` was require()d in the server process, while the
-// module header claimed confinement. (That particular include is
-// refused outright now -- ADR-012 -- but a served document could still
-// read every file the server can.) A tool that must remember to
-// confine itself is a tool that eventually forgets, and the forgetting
-// is silent. With the profile arriving as an argument, a tool cannot
-// run unconfined without visibly discarding it.
 export function servedTrust(root?: string): TrustOptions {
   return null == root
     ? { include: 'none' }
@@ -133,17 +85,6 @@ function served(trust: TrustOptions): Aontu {
 }
 
 
-// DOES THIS DOCUMENT STAND UP UNDER THE SERVED PROFILE — or the
-// finding that says why not. This is the confinement gate for the
-// engines that take no trust profile, and parse is the whole include
-// story: `@"..."` resolves at parse time (ts/src/lang.ts), so a
-// document whose confined parse is clean either has no includes at
-// all (capability 'none') or resolves every one below the root — and
-// an engine that then re-resolves the same closure under the default
-// profile reads exactly the files the confined parse proved in
-// bounds. A parse that fails for any reason refuses the call: an
-// engine's own answer for a document this profile cannot read is not
-// an answer this server may compute.
 export function confinedParseFailure(
   src: string, trust: TrustOptions, path?: string
 ): VetFinding | undefined {
@@ -154,18 +95,6 @@ export function confinedParseFailure(
 }
 
 
-// Confinement is realpath-then-prefix-check, mirroring the include
-// resolver's own rule (ts/src/lang.ts, docs/trust.md): the file's
-// real path must sit below the root's real path, so a symlink inside
-// the root pointing outside it is an escape, not a loophole.
-//
-// A path that does not (fully) exist cannot be realpath'd whole, and
-// falling back to the LEXICAL form compares apples to oranges when the
-// root itself sits behind a symlink -- on macOS a root under /var
-// realpaths to /private/var, so a merely-missing file inside it read
-// as an escape instead of "cannot read" (the CI failure that bought
-// this comment). Realpath the deepest EXISTING ancestor and re-attach
-// the rest, so both sides of the prefix check are in real coordinates.
 function realpathOf(p: string): string {
   try {
     return realpathSync(p)
@@ -301,8 +230,6 @@ const TOOLS: ToolDef[] = [
     run: (a, trust, paths) => summaryOf(str(a.src), trust, paths.src),
   },
 
-  // The evolution and change verbs (the use-case review's "MCP is a
-  // read-only subset" gap, use-cases/09-agent-tools/README.md gap 11).
 
   {
     name: 'subsume',
@@ -419,11 +346,6 @@ const TOOLS: ToolDef[] = [
     },
     required: ['source'],
     docs: ['source'],
-    // The pre-parse finding rides `errors`, exactly where the engine
-    // puts its own reason for a document that does not stand up
-    // (ts/src/relation.ts, the review's finding F). NOT `findings`:
-    // RelationFinding is its own vocabulary (code, relation, at,
-    // detail) and a document with no graph has no graph findings.
     refuse: (_a, finding) =>
       ({ verdict: 'error', findings: [], errors: [finding] }),
     run: (a, _trust, paths) =>
@@ -644,9 +566,6 @@ const TOOLS: ToolDef[] = [
     },
     required: ['source'],
     docs: ['source'],
-    // The pre-parse finding rides `errors`, exactly where the engine
-    // puts its own reason for a document that does not stand up
-    // (ts/src/trim.ts, the review's finding F).
     refuse: (_a, finding) =>
       ({ verdict: 'error', redundant: [], errors: [finding] }),
     run: (a, _trust, paths) =>
@@ -784,15 +703,6 @@ function hashOf(
 }
 
 
-// ---------------------------------------------------------------------
-// THE BREAKING POLICY WRAPPER. Re-implemented from ts/src/cli.ts
-// (runBreaking and policyCompat) rather than extracted from it: cli.ts
-// owns the process-facing halves — files, git revisions, exit codes,
-// rendering — that a served tool must not import, and the policy
-// itself (which mode applies, which side is general, how verdicts
-// aggregate) is small enough that a shared home would be all seam.
-// cli.ts is the reference; a change there is a change here.
-
 type BreakingMode = 'backward' | 'forward' | 'full' | 'none'
 
 // Verdict aggregation: an error anywhere makes the run an error;
@@ -844,8 +754,6 @@ function policyCompatOf(
 }
 
 
-// The declared mode: the mode argument overrides the document's own
-// policy; neither means backward (v1-valid documents stay valid).
 function breakingMode(
   a: any, trust: TrustOptions, paths: Record<string, string>
 ): BreakingMode {
@@ -867,8 +775,6 @@ function breakingOf(
     new: { src: str(a.new), url: paths.new ?? 'new', path: paths.new },
   }
 
-  // backward: the NEW document is the general side — every old
-  // instance must still be admitted. forward: the old one is.
   const checks: Array<{
     general: typeof sides.old, specific: typeof sides.old
   }> = []
@@ -897,11 +803,6 @@ function breakingOf(
   return { verdict: BREAKING_VERDICT[worst], mode, findings }
 }
 
-
-// ---------------------------------------------------------------------
-// The set tool: the CLI's `set` verb minus the filesystem — the patch
-// engine (ts/src/patch.ts) already answers with the new overlay text,
-// and the caller owns the write.
 
 // The assignments arrive structured ({path, value}) rather than as the
 // CLI's `<path>=<value>` spelling, and are re-joined for the engine's
@@ -937,12 +838,6 @@ function setError(overlay: string, finding: VetFinding): any {
 
 function setOf(
   a: any, trust: TrustOptions, paths: Record<string, string>): any {
-  // THE ASSIGNMENT VALUES ARE DOCUMENTS TOO: each one is appended (or
-  // spliced) into the overlay and evaluated there by the engine's
-  // final vet, so a value that smuggles an include — or a newline and
-  // then an include — gets the same confined pre-parse as the
-  // documents themselves, wrapped exactly as the engine's own
-  // spanValue wraps a fragment (ts/src/patch.ts).
   for (const x of a.assignments) {
     const denied = confinedParseFailure('v: ' + x.value, trust, paths.overlay)
     if (null != denied) {
@@ -960,13 +855,6 @@ function setOf(
 }
 
 
-// ---------------------------------------------------------------------
-// The tool list as MCP spells it: a name, a description, and a JSON
-// Schema for the arguments. With a served root, every document
-// property gains its `<name>Path` file alternative — and comes OFF the
-// `required` list, because JSON Schema's `required` cannot say "one of
-// the two"; callTool's own argument check still refuses a call that
-// carries neither.
 export function toolList(root?: string): any[] {
   return TOOLS.map((t) => {
     const properties: Record<string, any> = { ...t.properties }
@@ -1000,17 +888,6 @@ function refusal(text: string): any {
 }
 
 
-// One tool call. A tool that REFUSES (an invalid document, a path that
-// names nothing, a document the served profile cannot read) is not a
-// protocol error: it answers with its own report and `isError` false,
-// because the report IS the answer the agent asked for. `isError` is
-// reserved for a call that could not be made at all — an unknown tool,
-// a missing or malformed argument, a file argument the server cannot
-// serve.
-// `opts.tools` is injectable for the same reason the watch loop's
-// waiter is: the catch below is defensive code no document reaches --
-// every verb answers with a report rather than throwing -- and code
-// the suite cannot execute is code the ADR-002 floor cannot hold.
 export function callTool(
   name: string, args: any,
   opts?: { root?: string, tools?: ToolDef[] }): any {
@@ -1024,13 +901,6 @@ export function callTool(
   const a: any = { ...(args ?? {}) }
   const paths: Record<string, string> = {}
 
-  // THE FILE ALTERNATIVES (--root). A document that did not arrive as
-  // inline text may arrive as a `<name>Path` file — served only when
-  // the operator granted a root at startup, confined below it by the
-  // same realpath rule the include resolver applies, and recorded in
-  // `paths` so the engine resolves the file's own relative includes
-  // from its directory (the CLI's rule for a named file). Inline text
-  // wins when a caller sends both.
   for (const doc of tool.docs ?? []) {
     if ('string' === typeof a[doc]) {
       continue

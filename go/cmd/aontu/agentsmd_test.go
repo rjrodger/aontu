@@ -109,10 +109,6 @@ func TestAgentsMdUsageErrorsExit2(t *testing.T) {
 
 // --- G11 phase 7: the shape's depth ---
 
-// TWO LEVELS TELL AN AGENT WHAT THE DOCUMENT IS ABOUT AND NOTHING IT
-// CAN ACT ON: `{"entity":{&:top}}` names the root key and says `top`
-// under it. The default is unchanged, because the stanza is spliced
-// into a file people read; a caller that wants the fields asks.
 func TestAgentsMdDepth(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "model.aon")

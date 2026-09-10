@@ -11,7 +11,6 @@ const JunctionVal_1 = require("./JunctionVal");
 const BagVal_1 = require("./BagVal");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
-// TODO: move main logic to op/conjunct
 class ConjunctVal extends JunctionVal_1.JunctionVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -39,34 +38,24 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Conjunct', this, peer);
         let done = true;
         this.peg = norm(this.peg);
-        // console.log('\nCONJUNCT', ctx.cc, this.id, this.canon, peer.id, peer.canon)
         // Unify each term of conjunct against peer
         let upeer = [];
         let newtype = this.mark.type || peer.mark.type;
         let newhide = this.mark.hide || peer.mark.hide;
         for (let vI = 0; vI < this.peg.length; vI++) {
-            // console.log('CONJUNCT-peg', vI, this.peg[vI].canon, this.peg[vI].mark)
             newtype = this.peg[vI].mark.type || newtype;
             newhide = this.peg[vI].mark.hide || newhide;
         }
         for (let vI = 0; vI < this.peg.length; vI++) {
             this.peg[vI].mark.type = newtype;
             this.peg[vI].mark.hide = newhide;
-            // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
             upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
                 (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'OWN') }) : ctx, this.peg[vI], peer, 'cj-own');
             upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type;
             upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide;
-            // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].dc);
             if (upeer[vI].isNil) {
                 return upeer[vI];
-                // return Nil.make(
-                //   ctx,
-                //   '&peer[' + upeer[vI].canon + ',' + peer.canon + ']',
-                //   this.peg[vI],
-                //   peer
-                // )
             }
         }
         upeer = norm(upeer);
@@ -96,7 +85,6 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             }
             else {
                 val = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'DEF') }) : ctx, t0, t1, 'cj-peer-t0t1');
-                // console.log('CONJUNCT-T', t0.canon, t1?.canon, '->', val.canon)
                 done = done && type_1.DONE === val.dc;
                 newtype = this.mark.type || val.mark.type;
                 newhide = this.mark.hide || val.mark.hide;
@@ -119,7 +107,6 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             // Empty conjuncts evaporate.
             out = (0, top_1.top)();
         }
-        // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {
             out = outvals[0];
             out.mark.type = newtype;
@@ -129,7 +116,6 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             out = new ConjunctVal({ peg: outvals, mark: { type: newtype, hide: newhide } }, ctx);
         }
         out.dc = done ? type_1.DONE : this.dc + 1;
-        // console.log('CONJUNCT-unify', this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
         (0, utility_1.explainClose)(te, out);
         return out;
     }
@@ -141,19 +127,6 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         return '&';
     }
     gen(ctx) {
-        // A RESIDUATED SIZING ATOM DECIDES HERE (the review's finding C,
-        // use-cases/BUGS.md §16). `length`/`unique` over a container keep
-        // the readings that MORE MEMBERS COULD STILL CHANGE -- an upper
-        // bound satisfied, a lower bound violated, distinctness so far --
-        // rather than deciding against whatever the container held when it
-        // first settled (ConstraintVal.admitContainer). Generation is where
-        // no more members can arrive, so it is where the provisional
-        // reading becomes the verdict: the container generates if the atom
-        // is satisfied, and the atom's OWN refusal is raised if it is not.
-        //
-        // Without this the conjunct would report `conjunct` for a document
-        // whose only fault is a length -- the constraint's message is the
-        // one the author needs.
         const residue = (0, BagVal_1.sizingResidue)(this);
         if (undefined !== residue) {
             const settled = residue.con.settleContainer(residue.bag, ctx);
@@ -162,12 +135,10 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         // Unresolved conjunct cannot be generated, so always an error.
         let nil = (0, err_1.makeNilErr)(ctx, 'conjunct', this, // (formatPath(this.peg, this.absolute) as any),
         undefined);
-        // TODO: refactor to use Site
         nil.path = this.path;
         nil.site.url = this.site.url;
         nil.site.row = this.site.row;
         nil.site.col = this.site.col;
-        // descErr(nil, ctx)
         if (null == ctx) {
             throw new err_2.AontuError(nil.msg);
         }

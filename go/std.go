@@ -7,23 +7,6 @@ import (
 	"strings"
 )
 
-// THE LANGUAGE-SUPPLIED MODELS (G4 phase 4,
-// docs/capability-review/g4-identity-relations.md, and the Go side of
-// ts/src/std.ts): `@"aontu:system"` is served from the engine itself —
-// no filesystem, no package resolution — so a document may use it under
-// every include capability except `none`, and the hermeticity posture
-// is not widened by a source that never leaves the process.
-//
-// EVERY name here carries the `aontu:` prefix (ADR-028): a
-// language-supplied schema is spelled one way, and the scheme is what
-// makes it unshadowable. There is no second, bare-name spelling.
-//
-// The TEXT is the shared artifact: ts/src/std.ts carries the same
-// bytes, and test/spec/aontu-system.tsv pins its canon and its
-// canon-hash in both engines, so the two copies cannot drift without a
-// red suite.
-// It carries no backtick for that reason: one string literal per port,
-// and Go's raw string has no escape.
 
 const stdSystem = `# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
 # and relations need no syntax: they are schemas. Everything here is
@@ -220,11 +203,6 @@ var stdSources = map[string]string{
 	"aontu:profile":         stdProfile,
 }
 
-// aontuScheme is the prefix of a language-supplied model
-// (docs/design/MODELS.0.md D1; docs/design/RENDER.0.md P0): Node's
-// device, a spelling no relative path, package name or module path can
-// reach, so the resolver routes on it before any other leg and never
-// touches the filesystem for it.
 const aontuScheme = "aontu:"
 
 // aontuModels lists the names the scheme serves, sorted, for the
@@ -241,14 +219,6 @@ func aontuModels() []string {
 	return names
 }
 
-// THE LANGUAGE-SUPPLIED MODELS (docs/design/MODELS.0.md D1;
-// docs/design/RENDER.0.md P0 and P1), the Go side of ts/src/std.ts.
-// aontu:code is the OUTPUT VOCABULARY: an instance of it is what a
-// transform evaluates to and what `aontu render` folds to bytes.
-// aontu:profile is the schema of a render profile, the data a unit of
-// one language is rendered under. Both are pinned by canon and hash
-// rows (test/spec/aontu-code.tsv, test/spec/aontu-profile.tsv); the
-// texts carry no backtick, and the raw string keeps their backslashes.
 const stdCode = `# aontu:code --- THE OUTPUT VOCABULARY. An aontu transform evaluates to
 # an instance of this schema, and 'aontu render' turns the instance
 # into bytes. Because it is an ordinary schema, a transform's result is
@@ -484,9 +454,6 @@ const stdProfile = `# aontu:profile --- THE PROFILE VOCABULARY. A profile is the
 aontu: Profile: %profile
 `
 
-// stdLangText is the text profile (RENDER.0.md D5): the profile of a
-// fragment-only unit, and the fallback of every language without a
-// lowering. The same bytes as STD_LANG_TEXT in ts/src/std.ts.
 const stdLangText = `# aontu:lang/text --- THE TEXT PROFILE. The profile of a unit whose
 # declarations are fragments and text escapes only: indentation, and
 # nothing else, since a fold over fragments applies nothing else. Every
@@ -501,9 +468,6 @@ const stdLangText = `# aontu:lang/text --- THE TEXT PROFILE. The profile of a un
 aontu: Profile: { lang:"text" indent:{ unit:" " width:2 } }
 `
 
-// stdLangTypescript is the TypeScript profile (RENDER.0.md D5, P5), the
-// Go side of STD_LANG_TYPESCRIPT in ts/src/std.ts: the same bytes,
-// pinned by a hash row.
 const stdLangTypescript = `# aontu:lang/typescript --- THE TYPESCRIPT PROFILE. The data a unit of
 # TypeScript renders under: indentation, the comment forms, the string
 # quote and its escape table, the identifier rules and the type forms.

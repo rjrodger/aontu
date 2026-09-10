@@ -44,8 +44,6 @@ const Os = __importStar(require("node:os"));
 const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
 (0, node_test_1.describe)('diff', () => {
-    // A change at the ROOT itself: two documents that are not both maps
-    // (or both lists) compare as whole values, at `$`.
     (0, node_test_1.test)('root-change-is-reported-at-the-root', () => {
         const r = (0, aontu_1.diff)('a: 1', '[1]');
         Assert.equal(r.ok, true);

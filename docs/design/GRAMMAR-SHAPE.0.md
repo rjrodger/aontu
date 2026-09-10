@@ -10,7 +10,7 @@ a change to aontu.
 
 ## 1. What aontu does today
 
-[ADR-032](../../ADR.md#adr-032--a-grammar-is-a-string-and-parsing-is-a-function)
+[ADR-033](../../ADR.md#adr-033--a-grammar-is-a-string-and-parsing-is-a-function)
 gives aontu two builtins. `abnf(g)` compiles an RFC 5234 grammar and
 answers its source; `parse(g, v)` applies one and answers the tabnas
 AST. The AST is the whole of the answer:

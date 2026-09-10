@@ -5,10 +5,6 @@ exports.sigRefuse = sigRefuse;
 const err_1 = require("./err");
 const sig_1 = require("./sig");
 const ScalarKindVal_1 = require("./val/ScalarKindVal");
-// The scalar-kind words the gate enforces, each to its lattice
-// marker. A declared type is gate-checkable only when EVERY union
-// word is here: `any`, `constraint`, and the container words leave
-// the argument to the builtin.
 const SIG_KIND = new Map([
     ['string', String],
     ['number', Number],

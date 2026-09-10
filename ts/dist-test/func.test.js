@@ -7,8 +7,6 @@ const __1 = require("..");
 const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
 let lang = new lang_1.Lang();
-// const G = (x: string, ctx?: any) => new Unify(x, lang)
-//   .res.gen(ctx || new AontuContext({ root: new MapVal({ peg: {} }) }))
 const A = new __1.Aontu();
 const G = (x) => A.generate(x);
 (0, node_test_1.describe)('func', function () {
@@ -239,11 +237,6 @@ const G = (x) => A.generate(x);
         (0, expect_1.expect)(G('a:key()')).equal({ a: '' });
         (0, expect_1.expect)(G('key()')).equal('');
         (0, expect_1.expect)(G('key() & string')).equal('');
-        // `&` binds tighter than `|`, so the unparenthesised spelling is
-        // `(key() & *a) | string` -- at the root key() is '', so that is
-        // `"" | string`: two alternatives still admitted, which ADR-007
-        // refuses as incomplete rather than folding them into one. The
-        // parenthesised form is the composition this line is about.
         (0, expect_1.expect)(G('key() & (*a|string)')).equal('');
         (0, expect_1.expect)(() => G('key() & *a|string')).throw(/disjunct_no_gen/);
         (0, expect_1.expect)(() => G('key() & number')).throw(/scalar/);
@@ -308,33 +301,6 @@ const G = (x) => A.generate(x);
         (0, expect_1.expect)(G('a:b:key()+key()')).equal({ a: { b: 'aa' } });
         (0, expect_1.expect)(G('a:b:(key()+key())')).equal({ a: { b: 'aa' } });
     });
-    /*
-    test('key-deep', () => {
-      expect(G('x:key(A)')).equal({ x: 'a' })
-      expect(G('x:{y:key(B)}')).equal({ x: { y: 'b' } })
-      expect(G('[key(C)]')).equal(['c'])
-      expect(G('[x,key(D)]')).equal(['x', 'd'])
-      expect(G('x:{y:[key(E)]}')).equal({ x: { y: ['e'] } })
-    })
-  
-    test('key-path', () => {
-      expect(G('x:FOO y:key($.x)')).equal({ x: 'FOO', y: 'foo' })
-      expect(G('x:{a:BAR} y:key($.x.a)')).equal({ x: { a: 'BAR' }, y: 'bar' })
-      expect(G('x:BAZ y:{z:key($.x)}')).equal({ x: 'BAZ', y: { z: 'baz' } })
-    })
-  
-    test('key-pref', () => {
-      expect(G('x:FOO y:key($.x)')).equal({ x: 'FOO', y: 'foo' })
-      expect(G('x:{a:BAR} y:key($.x.a)')).equal({ x: { a: 'BAR' }, y: 'bar' })
-      expect(G('x:BAZ y:{z:key($.x)}')).equal({ x: 'BAZ', y: { z: 'baz' } })
-    })
-    
-    test('key-spread', () => {
-      expect(G('a:{&:x:key(FOO)} a:{b:{y:1}}')).equal({ a: { b: { x: 'foo', y: 1 } } })
-      expect(G('a:{&:x:key(BAR)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 'bar', y: 1 }, c: { x: 'bar', y: 2 } } })
-      expect(G('a:{&:z:key(QUX)} a:{b:{y:1}}')).equal({ a: { b: { z: 'qux', y: 1 } } })
-    })
-    */
     (0, node_test_1.test)('pref-basic', () => {
         (0, expect_1.expect)(G('pref(1)')).equal(1);
         (0, expect_1.expect)(G('pref(abc)')).equal('abc');
@@ -412,12 +378,6 @@ const G = (x) => A.generate(x);
         (0, expect_1.expect)(G('close({x:1}) & {x:1}')).equal({ x: 1 });
         (0, expect_1.expect)(G('close({x:1}) & {x:number}')).equal({ x: 1 });
     });
-    /*
-      test('close-expr', () => {
-        expect(G('close({x:1}).x')).equal(1)
-        expect(G('close([1,2])[0]')).equal(1)
-      })
-    */
     (0, node_test_1.test)('close-path', () => {
         (0, expect_1.expect)(G('x:{a:1} y:close($.x)')).equal({ x: { a: 1 }, y: { a: 1 } });
         (0, expect_1.expect)(G('x:[1,2] y:close($.x)')).equal({ x: [1, 2], y: [1, 2] });
@@ -429,37 +389,15 @@ const G = (x) => A.generate(x);
         (0, expect_1.expect)(G('open(hello)')).equal('hello');
         (0, expect_1.expect)(G('open(true)')).equal(true);
     });
-    /*
-    test('open-functionality', () => {
-      // Test that open() allows additional properties to be unified
-      const a0 = new Aontu()
-      const G = a0.generate.bind(a0)
-  
-      expect(G('open({x:1}) & {y:2}')).equal({ x: 1, y: 2 })
-      expect(G('open([1,2]) & [3,4,5]')).equal([3, 4, 5])
-      expect(G('open({x:1}) & {x:number}')).equal({ x: 1 })
-    })
-    */
     (0, node_test_1.test)('open-close-interaction', () => {
         const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
-        // Test opening a previously closed object
         (0, expect_1.expect)(G('open(close({x:1})) & {y:2}')).equal({ x: 1, y: 2 });
         // expect(G('close(open({x:1})) & {y:2}')).throw(/closed/)
     });
-    /*
-      test('type-basic', () => {
-        expect(G('type(1)')).equal(1)
-        expect(G('type(hello)')).equal('hello')
-        expect(G('type(true)')).equal(true)
-        expect(G('type({x:1})')).equal({ x: 1 })
-        expect(G('type([1,2])')).equal([1, 2])
-      })
-    */
     (0, node_test_1.test)('type-functionality', () => {
         const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
-        // type() should mark values as type constraints
         (0, expect_1.expect)(G('type(1) & number')).equal(1);
         (0, expect_1.expect)(G('type(hello) & string')).equal('hello');
         (0, expect_1.expect)(G('type(true) & boolean')).equal(true);
@@ -469,17 +407,12 @@ const G = (x) => A.generate(x);
     (0, node_test_1.test)('type-canon', () => {
         const N = (x, _ctx) => new unify_1.Unify(x, lang)
             .res.canon;
-        (0, expect_1.expect)(N('type(1)')).equal('1'); // TODO: perhaps 1/type ?
+        (0, expect_1.expect)(N('type(1)')).equal('1');
         (0, expect_1.expect)(N('type(foo)')).equal('"foo"');
         (0, expect_1.expect)(N('type({x:1})')).equal('{"x":1}');
         (0, expect_1.expect)(N('type([1,2])')).equal('[1,2]');
     });
     (0, node_test_1.test)('super-basic', () => {
-        // super() with NO argument is refused at parse: super takes exactly
-        // one, and arity is checked for every built-in (issue #51). It used
-        // to be a silent no-op returning the func's own superior, which is
-        // TOP -- so the call generated `undefined` and said nothing about
-        // the missing argument.
         (0, expect_1.expect)(() => G('super()')).throws(/aontu\/func_arity/);
         // super(1) is the KIND `integer`, which is a type value and so does
         // not generate on its own -- meet it with a member to see it.

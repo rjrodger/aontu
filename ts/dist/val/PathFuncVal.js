@@ -58,12 +58,6 @@ class PathFuncVal extends FuncBaseVal_1.FuncBaseVal {
             if (null == arg) {
                 return [];
             }
-            // The captured spelling, from a reference's segments or from a
-            // string literal read as address text. Both go through
-            // parseAddress, so what capture admits and what refer reads
-            // cannot drift. Anything else -- an expression, a reference to
-            // a string -- is left for the driving loop, and resolve
-            // converts the driven result below.
             let spelling;
             if (true === arg.isRef) {
                 spelling = captureSpelling(arg);

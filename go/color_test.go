@@ -2,12 +2,6 @@
 
 package aontu
 
-// COLOUR IS A DECISION ABOUT THE DESTINATION (the review's finding F).
-// Every error frame hardcoded its ANSI escapes, so a message piped into
-// a log, a CI annotation or an agent's parser arrived wrapped in
-// terminal control codes the reader then had to strip before it could
-// match anything. The TypeScript twin is
-// `color-is-gated-by-no-color-and-the-caller` in ts/test/error.test.ts.
 
 import (
 	"strings"
@@ -40,10 +34,6 @@ func TestColorGate(t *testing.T) {
 		t.Fatal("NO_COLOR did not disable colour")
 	}
 
-	// A caller who can see the destination outranks the environment in
-	// both directions -- this is the call cmd/aontu makes from the
-	// terminal-ness of its stderr, and the one --jsonl makes
-	// unconditionally.
 	on := true
 	SetColor(&on)
 	if !colorActive() || !esc(frame()) {

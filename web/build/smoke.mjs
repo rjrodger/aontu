@@ -1,14 +1,3 @@
-/* Smoke-test the browser bundle (web/aontu-bundle.js) without a
- * browser: load it into a bare `node:vm` context that has NO Node
- * builtins (only TextEncoder/TextDecoder, which every browser has),
- * then drive the exact calls web/playground.html makes for each
- * bundled example.
- *
- *   cd web/build && node smoke.mjs
- *
- * Exits non-zero on the first failed check. Also cross-checks
- * canonHash against the real Node crypto via ts/dist, proving the
- * bundled pure-JS SHA-256 shim agrees with node:crypto. */
 
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'

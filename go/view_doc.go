@@ -2,25 +2,6 @@
 
 package aontu
 
-// THE SHAPE OF THE MODEL ITSELF, which no other kind draws. Mirrors
-// drawDoc in ts/src/view.ts function for function.
-//
-// Every other figure here reads a REPORT -- the edge set, the
-// provenance record, the subsumption order -- and so can only draw a
-// document that has links, contributions or peers. A reader meeting a
-// model for the first time wants the plainer thing first: what is in
-// it, and how it is arranged.
-//
-// This is `get --keys --types` as a picture, and it reads the same
-// walk: map keys in code-point order, list indices in order, and a
-// leaf's KIND rather than its value. Values are what the document is
-// for; the shape is what a reader needs before any of them mean
-// anything.
-//
-// DEPTH IS A BOUND, NOT AN ELISION MARK. Below it the subtree is not
-// drawn and the row says how many keys were not drawn, because a tree
-// that stops without saying so is the one thing a structural drawing
-// must not be.
 
 import (
 	"sort"
@@ -54,13 +35,6 @@ type docEntry struct {
 func docEntries(v Val) []docEntry {
 	switch n := throughDoc(v).(type) {
 	case *MapVal:
-		// AN ALIAS DECLARATION IS NOT PART OF THE DOCUMENT
-		// (docs/reference-language.md, "Aliases"): it does not
-		// generate and it does not appear in canon. It IS a key of the
-		// root map in the value tree, which `get --keys` reports and
-		// this does not -- a figure of the document's shape that showed
-		// `%Cents` beside `customers` would be drawing the declaration
-		// as data (use-cases/BUGS.md 74).
 		keys := []string{}
 		for k := range n.peg {
 			if strings.HasPrefix(k, "%") {
@@ -84,13 +58,6 @@ func docEntries(v Val) []docEntry {
 	return nil
 }
 
-// docLeaf is what a leaf IS, in one short word: its canon, cut where
-// the figure is the shape and not the data.
-//
-// A CONTAINER WITH NOTHING IN IT IS NOT A LEAF, and calling it one by
-// writing nothing after the key would make it read as a value the
-// figure declined to describe. Its canon says what it is -- `{}`, `[]`,
-// or a template a spread wrote and no member filled.
 func docLeaf(v Val) string {
 	canon := throughDoc(v).Canon()
 	if 32 < viewLen(canon) {
@@ -143,12 +110,6 @@ func drawDoc(root Val, at string, depth int, as, style string, max int,
 		child := throughDoc(entry.child)
 		kids := docEntries(child)
 		under := len(stack) < depth
-		// A container the depth bound stops at says how many keys are
-		// not drawn; a leaf says what it is.
-		// A leaf says what it is and a stopped container says how many
-		// keys it holds; both are written after the key with one space,
-		// and neither is ever empty (a canon has at least one
-		// character).
 		mark := ""
 		if 0 == len(kids) {
 			mark = " " + docLeaf(child)

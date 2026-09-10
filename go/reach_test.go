@@ -2,10 +2,6 @@
 
 package aontu
 
-// What the two ports must AGREE on about reachability is
-// test/spec/reach.tsv. This file holds the arms that are this port's
-// own: the parse-failure path `parseEntry` gives Go, which collect mode
-// gives TypeScript on the context instead.
 
 import "testing"
 

@@ -112,7 +112,7 @@ written up in
 [GRAMMAR-SHAPE.0.md](docs/design/GRAMMAR-SHAPE.0.md).
 
 New codes: `abnf_grammar`, `parse_arg`, `parse_failed`. Rationale in
-[ADR-032](ADR.md#adr-032--a-grammar-is-a-string-and-parsing-is-a-function).
+[ADR-033](ADR.md#adr-033--a-grammar-is-a-string-and-parsing-is-a-function).
 
 ### BREAKING: `Semver` carries build metadata and checks by grammar
 

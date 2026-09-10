@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE OVERLAY PATCH VERB (G7 phase 5, the Go side of ts/src/cli.ts):
-// change a document by APPENDING to an overlay, not by rewriting it.
-// An overlay entry is just another conjunct and unification is
-// order-independent, so this needs no rewriter — the format-preserving
-// in-place edit is stage 2, and needs a comment-preserving CST the
-// parser stack does not have.
 
 package main
 
@@ -120,14 +114,6 @@ func runSet(argv []string, stdout, stderr io.Writer) int {
 		io.WriteString(stdout, renderSetJSON(report, wrote)+"\n")
 	} else {
 		head := "verdict: " + report.Verdict
-		// A replacement is REPORTED as the edit it is, not left for the
-		// reader to infer from a changed file: `where: what -> what`, in
-		// source spelling, because the spelling is what changed.
-		//
-		// PAST TENSE ONLY WHERE IT HAPPENED. A refused write leaves the
-		// file exactly as it was, and one assignment can be replaceable
-		// while another makes the whole run invalid -- so "replaced:"
-		// there tells an operator the pin was changed when it was not.
 		verb := "would replace: "
 		if wrote {
 			verb = "replaced: "
@@ -143,13 +129,6 @@ func runSet(argv []string, stdout, stderr io.Writer) int {
 			head += "\n(dry run)"
 		}
 
-		// A SUCCESSFUL COMMAND WRITES ITS STATUS TO STDOUT, findings or
-		// not. Routing on the finding COUNT was right while every
-		// finding this verb could produce was an error; InPlace made a
-		// WARNING possible, and a run that held, wrote the file and
-		// exited 0 then sent its whole report to stderr, leaving stdout
-		// empty. The verdict decides the stream; warnings are
-		// diagnostics and go to stderr beside it.
 		failed := aontu.VetInvalid == report.Verdict ||
 			aontu.VetError == report.Verdict
 		findingText := []string{}

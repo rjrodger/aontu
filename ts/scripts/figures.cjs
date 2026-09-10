@@ -1,16 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// THE FIGURES THE DOCUMENTATION SHOWS, drawn by the engine and by the
-// published grammar rather than by hand. A hand-drawn picture of the
-// value lattice is a second source of truth for the one thing the
-// language is built on, and it was wrong about `path()` and the numeric
-// leaves for as long as it existed. The same argument covers the
-// syntax: a diagram of the grammar that is not READ FROM the grammar is
-// a diagram of what somebody believed the grammar said.
-//
-// Run by `make build-ts` after the compile, since it needs ts/dist;
-// ts/test/docs.test.ts holds the committed files to what this writes,
-// so a stale figure fails the suite rather than reaching a reader.
 
 const Fs = require('node:fs')
 const Path = require('node:path')
@@ -47,12 +36,6 @@ function drawLattice() {
 // ---------------------------------------------------------------------
 // The grammar, drawn from grammar/aontu.abnf.
 
-// THE RULES, SPLIT IN TWO, and between them every rule in the file --
-// the split is checked below, so a rule added to the grammar and to
-// neither list fails the build rather than going undrawn. One figure of
-// forty rules would be four thousand units wide and legible at no size;
-// these are the two questions a reader actually arrives with. How a
-// value COMPOSES:
 const SYNTAX = ['root', 'value', 'disjunct', 'conjunct', 'prefixed', 'sum',
   'atom', 'map', 'entry', 'spread', 'pair', 'list', 'element', 'func',
   'name', 'ref', 'segment', 'place']
@@ -62,20 +45,10 @@ const LEXICAL = ['kind', 'scalar', 'string', 'char', 'unescaped', 'escape',
   'hex', 'exact', 'number', 'exponent', 'digits', 'ws',
   'ALPHA', 'DIGIT', 'DQUOTE']
 
-// `name` is forty-four alternatives of one shape, and drawn as a fan it
-// is three and a half thousand units of the same rounded box. The
-// grammar text has the list, the reference tabulates it with what each
-// one MEANS, and a third copy in a picture would be the widest and the
-// least useful of the three.
 const COLLAPSED = {
   name: () => Rail.Comment('one of the builtin functions'),
 }
 
-// WHITESPACE IS NOT DRAWN. The grammar threads `ws` between every pair
-// of elements, which is true and which turns every track into an
-// alternating chain of `ws` boxes. Eliding it is the ordinary railroad
-// convention, the figure's caption says so, and `ws` is still drawn as
-// a rule of its own in the lexical figure.
 const isWs = (e) => 'ref' === e.t && 'ws' === e.v
 
 // A character range as a reader sees it: the characters themselves
@@ -87,8 +60,6 @@ function rangeLabel(lo, hi) {
   return lo === hi ? show(lo) : show(lo) + '-' + show(hi)
 }
 
-// The reader's expression tree as a railroad node. The two vocabularies
-// line up one for one, which is why this is a fold and not a layout.
 function railNode(e) {
   switch (e.t) {
     case 'lit':
@@ -105,11 +76,6 @@ function railNode(e) {
     case 'alt':
       return Rail.Choice(...e.v.map(railNode))
     case 'rep': {
-      // The three the railroad vocabulary has. A BOUNDED repetition
-      // (`2*4x`, `4x`) has no node here and would have to be drawn as a
-      // sequence or an unbounded rail, either of which says something
-      // the grammar does not; the reader accepts the syntax, so this
-      // refuses rather than draw it wrong.
       if (0 === e.min && 1 === e.max) {
         return Rail.Optional(railNode(e.v))
       }
@@ -124,15 +90,6 @@ function railNode(e) {
   }
 }
 
-// The railroad renderer states its palette in hex, which no host page
-// can follow. Every colour becomes a CSS variable with that hex as its
-// default, so the figure stays standalone and a page that binds
-// `--rr-ink` and its kin gets it in the theme -- the arrangement the
-// engine's own SVG figures already have with `--av-ink`.
-//
-// EVERY REWRITE MUST MATCH. A renderer that changes its palette would
-// otherwise ship an unthemed figure in silence; here it fails the
-// build, which is the only moment anyone is looking.
 const RAIL_PALETTE = [
   ['background:#fff', 'background:var(--rr-bg,#fff)'],
   ['stroke:#334', 'stroke:var(--rr-rule,#334)'],
@@ -181,8 +138,6 @@ function drawGrammar(names) {
   return themed(Rail.modelToSvg(model))
 }
 
-
-// ---------------------------------------------------------------------
 
 // The figures, by file name. Each is a thunk, so the check in
 // ts/test/docs.test.ts and the write below draw from the one table.

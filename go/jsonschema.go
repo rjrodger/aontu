@@ -8,23 +8,6 @@ import (
 	"strings"
 )
 
-// JSON SCHEMA EXPORT (the Go side of ts/src/jsonschema.ts).
-//
-// The review's finding I / SUPPORT.md act 2: "JSON Schema's decisive
-// 2026 advantage is not its validator ecosystem -- it is that every
-// major LLM provider's structured-output API natively constrains
-// generation to JSON Schema." Without an export, Aontu cannot ride that
-// path and then apply vet as the semantic gate, and an MCP tool's
-// inputSchema -- which the protocol REQUIRES to be JSON Schema -- cannot
-// be derived from an Aontu tool model at all.
-//
-// THE MAPPING IS LOSSY, AND SAYS SO PER CONSTRUCT. See the TypeScript
-// twin's header for the full statement: a converter that dropped an
-// evaluate-only must(), an exact 0d leaf or a unique(k) silently would
-// hand its caller a schema that ADMITS MORE than the model does, which
-// is the failure mode this language exists to refuse.
-//
-// Draft 2020-12, because that is what the structured-output APIs read.
 
 const jsonSchemaDraft = "https://json-schema.org/draft/2020-12/schema"
 
@@ -48,7 +31,6 @@ type SchemaReport struct {
 	// Lossy names every construct that could not be carried, in document
 	// order.
 	Lossy []SchemaLoss `json:"lossy"`
-	// Schema is the JSON Schema document; empty on error.
 	Schema map[string]any `json:"schema"`
 	// Verdict: ok everything carried, lossy the schema is a WEAKER
 	// statement than the model, error the document does not stand up.
@@ -73,10 +55,6 @@ func schemaPathText(path []string) string {
 	return "$." + strings.Join(path, ".")
 }
 
-// kindType is the JSON type for a kind. number and its four leaves all
-// become JSON's two numeric types; the exactness of biginteger and
-// bigdecimal has no JSON type at all, which is a loss the caller is told
-// about rather than a silent widening.
 var kindType = map[Kind]string{
 	KindString:     "string",
 	KindBoolean:    "boolean",
@@ -134,8 +112,6 @@ func schemaFromConstraint(sc *schemaCtx, path []string,
 		out["type"] = "number"
 	}
 
-	// An OPEN endpoint is JSON Schema's exclusive form, a keyword of its
-	// own in 2020-12 rather than the boolean flag draft-4 used.
 	if nil != c.lo {
 		key := "minimum"
 		if c.lo.open {
@@ -160,10 +136,6 @@ func schemaFromConstraint(sc *schemaCtx, path []string,
 		out["not"] = map[string]any{"enum": vals}
 	}
 
-	// Aontu DEFINES its portable regex subset, and every member of it is
-	// also an ECMA-262 expression -- which is what JSON Schema's pattern
-	// is read as -- so this crosses without translation. More than one
-	// pattern needs allOf: pattern is a single keyword.
 	if 1 == len(c.res) {
 		out["pattern"] = c.res[0].src
 	} else if 1 < len(c.res) {
@@ -216,28 +188,8 @@ func schemaFromConstraint(sc *schemaCtx, path []string,
 	return out
 }
 
-// schemaFromVal is the exporter proper. Every arm answers a schema; the
-// ones that cannot answer honestly report a loss and fall back to {},
-// which admits anything -- the safe direction for a document that will
-// be checked again by vet, and the direction the loss report exists to
-// make visible.
-// schemaDeprecationText is the record's text keys -- the ones with
-// nothing in 2020-12 to carry them. DEPRECATION_KEYS in
-// ts/src/val/DeprecateFuncVal.ts is the authority on what a record may
-// hold; this is that list, and a key added there without a JSON Schema
-// home belongs here too.
 var schemaDeprecationText = []string{"msg", "use", "since"}
 
-// DEPRECATION IS AN ANNOTATION, and 2020-12 has one: `deprecated`. The
-// export used to drop the whole record in SILENCE -- no keyword, and
-// no loss line even under --strict -- which is the one thing the
-// verb's own contract says it never does (use-cases/BUGS.md §56).
-//
-// The boolean crosses faithfully. The record's STRINGS have no home in
-// 2020-12, so they are reported as a loss rather than invented into
-// `description`: this exporter emits no `description` anywhere, and
-// quietly making it mean "deprecation note" would be a mapping a
-// consumer cannot undo. Mirrors fromVal in ts/src/jsonschema.ts.
 func schemaFromVal(sc *schemaCtx, path []string, v Val) map[string]any {
 	out := schemaFromValInner(sc, path, v)
 
@@ -273,10 +225,6 @@ func schemaFromValInner(sc *schemaCtx, path []string, v Val) map[string]any {
 
 	switch t := v.(type) {
 	case *PrefVal:
-		// A preference is its inner value plus a DEFAULT. JSON Schema's
-		// default is annotation rather than constraint -- it does not
-		// validate -- which is exactly what a preference is when
-		// something else supplies the value.
 		inner := schemaFromVal(sc, path, t.peg)
 		if gen, ok := schemaGenerated(t.peg); ok {
 			inner["default"] = gen
@@ -290,15 +238,6 @@ func schemaFromValInner(sc *schemaCtx, path []string, v Val) map[string]any {
 		return schemaFromConstraint(sc, path, t)
 
 	case *ConjunctVal:
-		// A SIZING RESIDUE is a container and its own sizing atom, kept
-		// together because more members could still change the atom's
-		// reading (use-cases/BUGS.md §16). Both halves are exportable
-		// and both must be: the container gives the shape, the atom
-		// gives uniqueItems and the length keywords, and a walk that saw
-		// only "a conjunct" would report the whole field as unresolved
-		// and admit anything. Mirrors ts/src/jsonschema.ts.
-		// A conjunct that is NOT a residue falls out of the switch to
-		// the residue loss below, as every other unresolved value does.
 		if con, bag, ok := sizingResidue(t); ok {
 			out := schemaFromVal(sc, path, bag)
 			for k, val := range schemaFromConstraint(sc, path, con) {
@@ -347,10 +286,6 @@ func schemaFromValInner(sc *schemaCtx, path []string, v Val) map[string]any {
 		return map[string]any{}
 	}
 
-	// Everything else is residue: a reference that did not resolve, a
-	// function or operator still waiting, a nil. None of them is a
-	// property constraint, and guessing one would be inventing a
-	// promise.
 	sc.lose(path, schemaResidueName(v),
 		"this is not a value yet, so there is nothing to constrain a "+
 			"consumer to; the schema admits anything here")
@@ -381,10 +316,6 @@ func schemaGenerated(v Val) (any, bool) {
 	return out, true
 }
 
-// schemaFromDisjunct maps a disjunction of CONCRETE members to an enum
-// -- the shape a structured-output API constrains best -- and anything
-// else to anyOf. A preferred member contributes the default either way,
-// which is how *"a"|"b"|"c" reaches a provider as a defaulted enum.
 func schemaFromDisjunct(sc *schemaCtx, path []string,
 	v *DisjunctVal) map[string]any {
 	var def any
@@ -473,10 +404,6 @@ func schemaFromMap(sc *schemaCtx, path []string, v *MapVal) map[string]any {
 			append(append([]string{}, path...), "&"), v.spread)
 	}
 
-	// CLOSEDNESS IS THE ONE THING JSON SCHEMA SAYS EXACTLY AS AONTU
-	// DOES. A closed map is additionalProperties:false; an open one
-	// leaves the keyword off, since JSON Schema's default is already
-	// open.
 	if v.closed {
 		out["additionalProperties"] = false
 		if nil != spread {
@@ -509,8 +436,6 @@ func schemaFromList(sc *schemaCtx, path []string, v *ListVal) map[string]any {
 		return out
 	}
 
-	// A written list literal is a TUPLE: position by position, and no
-	// more. 2020-12 spells that prefixItems plus items:false.
 	prefix := make([]any, 0, len(v.peg))
 	for i, el := range v.peg {
 		prefix = append(prefix, schemaFromVal(sc,

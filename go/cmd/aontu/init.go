@@ -1,20 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// `aontu init` (G11 phase 6,
-// docs/capability-review/g11-agent-onramp.md; the Go twin of runInit
-// in ts/src/cli.ts).
-//
-// NOT SCAFFOLDING CONVENIENCE. The agent's most expensive failure is
-// writing a FIRST document at all: the measurement that opened G11
-// found one reaching for the wildcard its neighbours use and getting
-// `verdict: valid` over data that violates it. A known-good starting
-// document turns generation into editing, which is the operation a
-// model is reliably good at.
-//
-// The trio is real, runnable and tested where it lives
-// (docs/skill/init/, run by ts/test/helpdoc.test.ts), and staged into
-// both ports by the same generator that stages the teaching pack, so
-// the two write the same bytes.
 
 package main
 
@@ -29,12 +14,6 @@ import (
 
 const initHelp = "aontu init [dir] (try --help)"
 
-// initFile is one member of the trio, as helpdoc/init/index.tsv spells
-// it: the name to write, the mode to write it with, and the repository
-// file it was staged from. A scaffold whose script has to be chmod'ed
-// before it runs is a scaffold with a step missing; a staged copy
-// nothing compares with its source is a second source of truth waiting
-// to drift, which is what `source` is for (init_test.go).
 type initFile struct {
 	name   string
 	mode   fs.FileMode
@@ -104,10 +83,6 @@ func runInit(argv []string, stdout, stderr io.Writer) int {
 
 	files := initFiles()
 
-	// REFUSES TO OVERWRITE, and checks every member BEFORE writing any
-	// of them: a scaffold that wrote two files and then refused the
-	// third would leave a directory in a state neither the caller nor a
-	// re-run can reason about.
 	var standing []string
 	for _, f := range files {
 		if _, err := os.Stat(filepath.Join(dir, f.name)); nil == err {

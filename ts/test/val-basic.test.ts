@@ -57,7 +57,6 @@ const lang = new Lang()
 const PL = lang.parse.bind(lang)
 const P = (x: string, ctx?: any) => PL(x, ctx)
 const PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
-// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
 const GC = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
 
@@ -65,7 +64,6 @@ const GC = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
 const N = (x: string, _ctx?: any) => new Unify(x, lang).res.canon
 const A = new Aontu()
 const G = (s: string, _ctx?: any) => A.generate(s)
-
 
 
 const makeSK_String = () => new ScalarKindVal({ peg: String })
@@ -77,7 +75,6 @@ const makeSK_Boolean = () => new ScalarKindVal({ peg: Boolean })
 const makeBooleanVal = (v: boolean) => new BooleanVal({ peg: v })
 const makeNumberVal = (v: number, c?: AontuContext) => new NumberVal({ peg: v }, c)
 const makeIntegerVal = (v: number, c?: AontuContext) => new IntegerVal({ peg: v }, c)
-
 
 
 describe('val-basic', function() {
@@ -102,13 +99,6 @@ describe('val-basic', function() {
   it('gen', () => {
     let ctx = makeCtx()
 
-    // expect(P('1').gen(ctx)).equal(1)
-    // expect(P('"a"').gen(ctx)).equal('a')
-    // expect(P('b').gen(ctx)).equal('b')
-    // expect(P('true').gen(ctx)).equal(true)
-    // expect(P('top').gen(ctx)).equal(undefined)
-    // expect(P('a:1').gen(ctx)).equal({ a: 1 })
-    // expect(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } })
 
     // expect(() => P('nil').gen(ctx)).throw(/literal_nil/)
 
@@ -363,9 +353,6 @@ describe('val-basic', function() {
     expect(ti0.unify(x0, ctx).isNil).equal(true)
 
 
-    // Integer and Number are distinct kinds: 11 (integer) & 11.0
-    // (number) no longer cross-unify (CUE-faithful number model; see
-    // AGENTS.md "Known TS/Go divergences").
     expect(x0.unify(n0, ctx).isNil).equal(true)
     expect(n0.unify(x0, ctx).isNil).equal(true)
 
@@ -391,18 +378,11 @@ describe('val-basic', function() {
     // expect(P('-3').canon).equal('-3')
     // expect(P('+4').canon).equal('4')
 
-    // const ctx = makeCtx()
-    // expect(G('0', ctx)).equal(0)
-    // expect(G('1', ctx)).equal(1)
-    // expect(G('2.2', ctx)).equal(2.2)
-    // expect(G('-3', ctx)).equal(-3)
-    // expect(G('+4', ctx)).equal(4)
 
     const lang = new Lang({
       // debug: true,
       // trace: true,
 
-      // TODO: make this work
       idcount: 0
     })
     const i11 = lang.parse('(11)')
@@ -471,7 +451,6 @@ describe('val-basic', function() {
     expect(tu(ctx, t1, t0)).equal(t0)
 
     let x0 = makeNumberVal(0)
-    // Integer 0 and Number 0 are distinct kinds and do not unify.
     expect(tu(ctx, n0, x0).isNil).exist()
     expect(tu(ctx, x0, n0).isNil).exist()
 
@@ -479,7 +458,6 @@ describe('val-basic', function() {
     expect(makeIntegerVal(11).same(makeIntegerVal(11))).equal(true)
     expect(makeIntegerVal(11).same(makeIntegerVal(22))).equal(false)
   })
-
 
 
   it('null', () => {
@@ -509,7 +487,6 @@ describe('val-basic', function() {
     let m0 = new MapVal({ peg: {} })
     expect(m0.canon).equal('{}')
 
-    // TODO: update
     expect(tu(ctx, m0, m0).canon).equal('{}')
 
     expect(tu(ctx, m0, TOP).canon).equal('{}')
@@ -532,28 +509,20 @@ describe('val-basic', function() {
     expect(tu(ctx, t0, m0).isNil).exist()
 
 
-    // NOTE: makeNumberVal builds a NUMBER-kind 1, and number-kind canon
-    // round-trips its kind, so it renders as `1.0` (an unsuffixed `1`
-    // would reparse as an integer). An integer-kind 1 still canons as
-    // `1` — see test/spec/number-model.tsv.
     let m1 = new MapVal({ peg: { a: makeNumberVal(1) } })
-    // print(m1, 'm1')
     expect(m1.canon).equal('{"a":1.0}')
 
     let m1u = m1.unify(TOP, ctx)
-    // print(m1u, 'm1u')
     expect(m1u.canon).equal('{"a":1.0}')
 
 
     let u01 = m0.unify(m1, ctx)
-    // print(u01, 'u01')
     expect(u01.canon).equal('{"a":1.0}')
     expect(m1u.canon).equal('{"a":1.0}')
     expect(m0.canon).equal('{}')
     expect(m1.canon).equal('{"a":1.0}')
 
     let u02 = m1.unify(m0, ctx)
-    // print(u02, 'u02')
     expect(u02.canon).equal('{"a":1.0}')
     expect(m0.canon).equal('{}')
     expect(m1.canon).equal('{"a":1.0}')
@@ -603,7 +572,6 @@ describe('val-basic', function() {
 
 
     let l0 = new ListVal({ peg: vals })
-    // console.log(l0)
 
     expect(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]')
 
@@ -614,7 +582,6 @@ describe('val-basic', function() {
 
 
   it('var', () => {
-    // TODO: make Aontu.generate support this
 
     let q0 = new VarVal({ peg: 'a' })
     expect(q0.canon).equal('$a')
@@ -644,7 +611,6 @@ describe('val-basic', function() {
     let d5 = new ConjunctVal({ peg: PA(['{a:1}']) })
     let d6 = new ConjunctVal({ peg: PA(['{a:1}', '{b:2}']) })
 
-    // let d100 = new ConjunctVal([makeIntegerVal(1), new RefVal({peg:'/x')])
     let d100 =
       new ConjunctVal({
         peg: [
@@ -685,11 +651,9 @@ describe('val-basic', function() {
     expect(tu(ctx, TOP, d3).canon).equal('1')
 
 
-    // TODO: term order is swapped by ConjunctVal impl - should be preserved
     expect(tu(ctx, d100, TOP).canon).equal('1')
     expect(tu(ctx, TOP, d100).canon).equal('1')
 
-    // TODO: same for DisjunctVal
     expect(tu(ctx, new ConjunctVal({ peg: [] }), TOP).canon).equal('top')
 
     expect(A.parse('1 & .a')?.canon).equal('1&.a')
@@ -729,10 +693,6 @@ describe('val-basic', function() {
     expect(tu(ctx, P('1|top'), TOP).canon).equal('1|top')
     expect(tu(ctx, P('1|number|top'), TOP).canon).equal('1|number|top')
 
-    // ADR-007: two alternatives still admitted is INCOMPLETE residue,
-    // not the first member. These used to answer 1 -- the old fold's
-    // `1 & number`, a value chosen by the fold rather than by the
-    // model.
     expect(() => tu(ctx, P('1|number'), TOP).gen(ctx))
       .throws(/disjunct_no_gen/)
     expect(() => tu(ctx, P('1|number|top'), TOP).gen(ctx))
@@ -776,33 +736,9 @@ describe('val-basic', function() {
   })
 
 
-
   it('ref-conjunct', () => {
     return;
 
-    /*
-        let m0 = P(`
-    a: 1
-    b: /a
-    c: 1 & /a
-    d: 1
-    e: /d & /a
-    f: /b
-    `, { xlog: -1 })
-  
-        let g = []
-        g = []; console.log(m0.gen(ctx))
-  
-        let c0 = new AontuContext({ root: m0 })
-        let u0 = m0.unify(TOP, c0)
-  
-        g = []; console.log(u0.gen(ctx))
-  
-        let c0a = new AontuContext({ root: u0 })
-        let u0a = u0.unify(TOP, c0a)
-  
-        g = []; console.log(u0a.gen(ctx))
-    */
 
     let m1 = P(`
   u: { x: 1, y: number}
@@ -866,12 +802,9 @@ b: c2: {n:2}
 
     let m2u = m2.unify(TOP, c2)
     expect(m2u.canon)
-      // .equal('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
       .equal('{"a":{"x":1},"b":{&:$.a,"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
 
   })
-
-
 
 
   it('repeat-spread', () => {
@@ -922,7 +855,6 @@ b: c2: {n:2}
   })
 
 
-
   it('pref', () => {
     let ctx = makeCtx()
 
@@ -944,43 +876,12 @@ b: c2: {n:2}
     })
     expect(pu0).include({
 
-      // FIX: use jest toMatchObject
-      // peg: {
-      //   dc: -1,
-      //   row: -1,
-      //   col: -1,
-      //   url: '',
-      //   peg: 'p0',
-      //   path: [],
-      //   kind: String,
-      // },
-      // path: [],
-      // pref: {
-      //   dc: -1,
-      //   row: -1,
-      //   col: -1,
-      //   url: '',
-      //   peg: 'p0',
-      //   path: [],
-      //   kind: String,
-      // }
     })
-
-
 
 
     p0.peg = makeSK_String()
     expect(p0.canon).equal('*string')
     expect(() => p0.gen(ctx)).throw(/no_gen/)
-
-    // p0.pref = new Nil([], 'test:pref')
-    // expect(p0.canon).equal('string')
-    // expect(p0.gen([])).equal(undefined)
-
-    // p0.peg = new Nil([], 'test:val')
-    // expect(p0.canon).equal('nil')
-    // expect(p0.gen([])).equal(undefined)
-
 
 
     let p1 = new PrefVal({ peg: new StringVal({ peg: 'p1' }) })
@@ -992,29 +893,11 @@ b: c2: {n:2}
     let up21 = p2.unify(p1, ctx)
     expect(up21.canon).equal('*"p1"')
 
-    // A KIND peg narrows to the value that satisfied it and STAYS a
-    // preference (ADR-011 R1): `*string & "s0"` is `*"s0"`, which is
-    // what the long form answers -- `(string&"s0") | (top&"s0")` keeps
-    // the star on the arm that survived. It used to answer a bare
-    // `"s0"`, because a kind peg gated nothing and the peer simply
-    // replaced the preference.
     let up2s0 = p2.unify(new StringVal({ peg: 's0' }), ctx)
     expect(up2s0.canon).equal('*"s0"')
 
-    // ... and it is FIXED by that narrowing, because the override
-    // space narrowed with it: `super(string)` is `top`, so the second
-    // arm was `top & "s0"`, which is `"s0"` and admits nothing else.
-    // A default whose type has been pinned to one value has no room
-    // left to be overridden in.
     expect(up2s0.unify(new StringVal({ peg: 's1' }), ctx).canon)
       .equal('nil')
-
-
-
-
-    // let u0 = P('1|number').unify(TOP, ctx)
-
-    // let u1 = P('*1|number').unify(TOP, ctx)
 
 
     expect(UC('a:1')).equal('{"a":1}')
@@ -1024,7 +907,6 @@ b: c2: {n:2}
       .equal('{"a":*1|number,"b":top,"c":*1|number}')
 
     expect(UC('a:*1|number,a:*2|number'))
-      // .equal('{"a":*2|*1|number}')
       .equal('{"a":*2|*1|number}')
 
     expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
@@ -1033,9 +915,6 @@ b: c2: {n:2}
 
     let d0 = P('1|number').unify(TOP, ctx)
     expect(d0.canon).equal('1|number')
-    // No preference, two alternatives: incomplete, not the fold's 1
-    // (ADR-007). `*1|number` a few lines down is the spelling that
-    // decides it.
     expect(() => d0.gen(ctx)).throws(/disjunct_no_gen/)
 
 

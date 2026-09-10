@@ -34,10 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// `nom` -- NAME TRANSFORMATION (SPIKE, ts/src/val/NomFuncVal.ts,
-// docs/design/JOSTRACA.0.md). TypeScript only, so the cases live here
-// rather than in test/spec/*.tsv: a shared row must pass in BOTH
-// engines and the Go port has no `nom` yet.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const expect_1 = require("./expect");
@@ -56,8 +52,6 @@ const E = (src) => {
     return undefined;
 };
 (0, node_test_1.describe)('nom', () => {
-    // THE MAP FORM: every spelling of one name, in one call. Nine keys,
-    // and they are the vocabulary.
     (0, node_test_1.test)('every-spelling', () => {
         (0, expect_1.expect)(G('x: nom("user_id")').x).equal({
             camel: 'userId',
@@ -72,9 +66,6 @@ const E = (src) => {
         });
         Assert.deepEqual(Object.keys(G('x: nom("a")').x).sort(), [...NomFuncVal_1.NOM_STYLES].sort());
     });
-    // THE SOURCE FORMAT IS NOT DECLARED, which is what makes this the
-    // general case: N formats in and M out is one splitter and M
-    // renderers, not N*M converters.
     (0, node_test_1.test)('any-format-in', () => {
         const spellings = [
             'user_id', 'userId', 'UserId', 'UserID', 'USER_ID',
@@ -85,37 +76,23 @@ const E = (src) => {
             Assert.equal(G('x: nom("' + s + '", snake)').x, 'user_id');
         }
     });
-    // The splitter is the RENDERER'S own (splitWords, ts/src/lower.ts),
-    // so a name derived here and a name `aontu:profile`'s %case derives
-    // cannot disagree. These are its hard cases.
     (0, node_test_1.test)('word-boundaries', () => {
         Assert.equal(G('x: nom("HTTPServer", snake)').x, 'http_server');
         Assert.equal(G('x: nom("XMLHttpRequest", upper)').x, 'XML_HTTP_REQUEST');
         Assert.equal(G('x: nom("utf8String", kebab)').x, 'utf-8-string');
         Assert.equal(G('x: nom("v2Api", snake)').x, 'v_2_api');
     });
-    // THE ACRONYM SET is why a style alone is not enough: `ledgerId` is
-    // `LedgerID` in Go and `ledgerId` in TypeScript, which is a fact
-    // about the TARGET, so it is an argument.
     (0, node_test_1.test)('acronyms', () => {
         Assert.equal(G('x: nom("ledgerId", pascal)').x, 'LedgerId');
         Assert.equal(G('x: nom("ledgerId", pascal, [ID])').x, 'LedgerID');
-        // Go's unexported spelling: camel never treats the FIRST word as
-        // an acronym, and does treat the rest (caseName's rule, shared
-        // with the renderer).
         Assert.equal(G('x: nom("ledgerId", camel, [ID])').x, 'ledgerID');
         Assert.equal(G('x: nom("idLedger", camel, [ID])').x, 'idLedger');
         // An all-caps word the splitter kept whole is rescued by the set.
         Assert.equal(G('x: nom("HTTPServer", pascal)').x, 'HttpServer');
         Assert.equal(G('x: nom("HTTPServer", pascal, [HTTP])').x, 'HTTPServer');
-        // The map form takes the set as its SECOND argument, by shape: a
-        // list is the acronyms, a string is the style.
         (0, expect_1.expect)(G('x: nom("ledgerId", [ID])').x.pascal).equal('LedgerID');
         (0, expect_1.expect)(G('x: nom("ledgerId", [ID])').x.camel).equal('ledgerID');
     });
-    // MEMBERSHIP DECIDES AN ACRONYM, not how the input spelled it.
-    // Asking whether `capitalise` changed the word made the same name
-    // answer two ways depending on its source spelling.
     (0, node_test_1.test)('text-is-spelling-independent', () => {
         Assert.equal(G('x: nom("ledgerId", text, [ID])').x, 'Ledger ID');
         Assert.equal(G('x: nom("ledgerID", text, [ID])').x, 'Ledger ID');
@@ -124,8 +101,6 @@ const E = (src) => {
         // A leading acronym is one too.
         Assert.equal(G('x: nom("idNumber", text, [ID])').x, 'ID number');
     });
-    // `.` and `/` are nom's separators, folded before the shared
-    // splitter is asked -- `aontu:profile`'s %case set is unchanged.
     (0, node_test_1.test)('namers-own-separators-and-styles', () => {
         Assert.equal(G('x: nom("a.b/c", pascal)').x, 'ABC');
         Assert.equal(G('x: nom("userId", dot)').x, 'user.id');
@@ -135,8 +110,6 @@ const E = (src) => {
         // spelling anyone asks a namer for, so it is not a style here.
         Assert.equal(E('x: nom("userId", "as-is")'), 'invalid-arg');
     });
-    // THE MAP IS CLOSED: the nine keys are the vocabulary, so a typo is
-    // refused rather than answering nothing.
     (0, node_test_1.test)('map-is-closed', () => {
         Assert.equal(E('x: nom("user_id") & {pascel: "y"}'), 'closed');
         Assert.equal(E('x: nom("user_id").pascel'), 'no_path');
@@ -164,10 +137,6 @@ const E = (src) => {
         Assert.equal(E('x: nom("_", pascal)'), 'invalid-arg');
         Assert.equal(E('x: nom("_")'), 'invalid-arg');
     });
-    // A PATH IS TEXT, and namer renames the text rather than tidying
-    // it: `_ - space . /` are the separators and everything else is word
-    // content, so the `$` root marker rides into the first word. Taking
-    // the tail is `split`'s job, not this one's.
     (0, node_test_1.test)('a-path-is-text', () => {
         (0, expect_1.expect)(G('z: x: {a: 1}\nz: y: nom(path($.z.x.a), kebab)').z.y)
             .equal('$-z-x-a');
@@ -179,8 +148,6 @@ const E = (src) => {
     (0, node_test_1.test)('forward-reference', () => {
         Assert.equal(G('x: nom($.n, pascal)\nn: $.m\nm: "user_id"').x, 'UserId');
     });
-    // WHAT IT IS FOR. The spike's worked example wrote `Planet` out by
-    // hand, because `upper("planet")` is `PLANET`. Now it derives.
     (0, node_test_1.test)('derives-the-identifier-a-generator-needs', () => {
         const out = G(`
 model: { name: user_account fields: [id, emailAddress, ledgerId] }
@@ -202,8 +169,6 @@ go: each($.model.fields, nom(_, pascal, [ID]))
             table: 'create table user_account (',
             cols: ['  id text', '  email_address text', '  ledger_id text'],
         });
-        // One model, three targets, one function -- and Go gets its own
-        // acronym rule without the model knowing about Go.
         (0, expect_1.expect)(out.go).equal(['ID', 'EmailAddress', 'LedgerID']);
     });
 });

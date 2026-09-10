@@ -1,14 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE VET VERB (G2 phase 4, the Go side of ts/src/cli.ts).
-//
-// Exit codes are VERDICT CLASSES, not a pass/fail bit: an agent loop
-// branches on "the data contradicts the truth" (1) differently from
-// "the data has not supplied everything the truth requires" (3), and
-// differently again from "the schema itself is broken" (4), which is
-// never the data's fault. 2 stays what it already was for this CLI --
-// the caller got the invocation wrong -- which is why an unreadable
-// file is a 2 rather than a 4.
 
 package main
 
@@ -75,10 +66,6 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 	for i := 0; i < len(argv); i++ {
 		arg := argv[i]
 		switch {
-		// -h/--help before anything else, INCLUDING the file count: the
-		// usage errors below all end with "(try --help)", and a verb
-		// that then refused --help as an unknown option was sending the
-		// reader in a circle.
 		case "-h" == arg, "--help" == arg:
 			return &vetArgs{help: true, format: args.format}, ""
 		case "--at" == arg:
@@ -95,13 +82,6 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 			}
 			args.format = argv[i]
 		case "--max-errors" == arg:
-			// ONE GRAMMAR, spelled the same way in both ports: decimal
-			// digits, one to nine of them, at least 1. Atoi alone
-			// accepted a leading sign and SATURATED on overflow (a
-			// twenty-digit argument silently became MaxInt64), while
-			// the canonical port's Number() accepted `1.0`, `1e2` and
-			// `0x10` -- so the same documented invocation meant
-			// different things in the two shipped commands.
 			i++
 			raw := ""
 			if len(argv) > i {
@@ -110,9 +90,6 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 			if !maxErrorsRe.MatchString(raw) {
 				return nil, "aontu: --max-errors needs a positive whole number"
 			}
-			// Atoi cannot fail on one to nine digits, so its error is
-			// dropped; zero is the one value the grammar still admits
-			// and the check below refuses.
 			n, _ := strconv.Atoi(raw)
 			if n < 1 {
 				return nil, "aontu: --max-errors needs a positive whole number"
@@ -175,9 +152,6 @@ func renderFinding(f aontu.VetFinding) string {
 		out = append(out, "  actual:   "+*f.Actual)
 	}
 	for _, s := range f.Sites {
-		// Every site carries the canon of the value it stands for: that
-		// is what makes the two sides of a conflict readable side by
-		// side. A site with no file name renders as none.
 		out = append(out, fmt.Sprintf("  %s: %s:%d:%d (%s)",
 			s.Role, s.File, s.Row, s.Col, s.Value))
 	}
@@ -246,13 +220,6 @@ func renderVetCoverage(c aontu.VetCoverage) []string {
 	return out
 }
 
-// vetReportJSON is the machine-readable form. `aontu` names the
-// producer, so a report read from a file or a pipe says which version
-// and which verb made it without the consumer having to know.
-//
-// The field order is LEXICOGRAPHIC: the canonical emitter sorts object
-// keys (exactJSON) and Go's encoder writes declaration order, so the
-// two agree only if the declaration is already sorted.
 type vetReportJSON struct {
 	Aontu vetProducerJSON `json:"aontu"`
 	// Absent unless the run asked for it (G11 phase 5), so no existing
@@ -289,12 +256,6 @@ func renderVetJSON(report aontu.VetReport) string {
 	return strings.TrimSuffix(buf.String(), "\n")
 }
 
-// How often --watch polls for a change. Polling by mtime+size rather
-// than a native watcher: the design asks for "re-run on file mtime
-// change", and native watcher semantics differ by platform (rename
-// versus change events, editors that replace the inode) in exactly the
-// ways that made every build tool fall back to polling. A var, not a
-// const, so the waiter's own test can shorten it.
 var watchPoll = 100 * time.Millisecond
 
 func watchSignature(files []string) string {
@@ -312,16 +273,6 @@ func watchSignature(files []string) string {
 	return strings.Join(parts, "\n")
 }
 
-// watchWait blocks until any watched file's signature moves off
-// `before`. This is the real waiter: it never returns false, so a real
-// watch runs until the process is interrupted; tests swap vetWatchWait
-// to bound the loop.
-//
-// The BASELINE is an argument, not a snapshot taken here: the loop
-// records it BEFORE each vet run, so a save landing between the run's
-// reads and the wait still compares as a change. A waiter that
-// snapshotted on entry would adopt that unvetted save as its baseline
-// and wait indefinitely on a stale report.
 func watchWait(files []string, before string) bool {
 	for {
 		time.Sleep(watchPoll)
@@ -334,11 +285,6 @@ func watchWait(files []string, before string) bool {
 // Swapped by tests; the command always runs the real waiter.
 var vetWatchWait = watchWait
 
-// watchVet is the watch loop: one report per run, one run per change,
-// streaming to stdout. An unreadable file mid-watch reports (exit class
-// 2 from vetOnce) and keeps watching — a file being rewritten is
-// briefly unreadable, and dying on it would make the mode useless for
-// the very moment it exists for.
 func watchVet(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 	files := append([]string{args.schema}, args.data...)
 	before := watchSignature(files)
@@ -394,19 +340,9 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 		sources = append(sources, source{file: file, src: string(src)})
 	}
 
-	// Each data file is vetted on its own, because a parsed tree is
-	// single-use (docs/reference-api.md) -- and because two data files
-	// are two candidates for the same truth, not one merged candidate.
 	verdict := aontu.VetValid
 	truncated := false
 	findings := []aontu.VetFinding{}
-	// COVERAGE ACROSS SEVERAL DATA FILES (G11 phase 5). Two data files
-	// are two candidates for one truth, so the schema side is the SAME
-	// for each: Declared is taken once, and a declaration is unused
-	// only when NO file met it -- the intersection, because a
-	// declaration one file exercised is exercised. The data side adds
-	// up: leaves and checked leaves sum, and Unchecked is the union.
-	// Mirrors ts/src/cli.ts.
 	var cov *aontu.VetCoverage
 	var unusedEvery map[string]bool
 	uncheckedAll := map[string]bool{}
@@ -421,13 +357,6 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 			MaxErrors: args.maxErrors,
 			SchemaURL: args.schema,
 			DataURL:   source.file,
-			// The paths as well as the labels: a relative `@"file"`
-			// load inside either document resolves from ITS OWN
-			// directory, the way `aontu <file>` already resolves one
-			// (aontuForFile in main.go). The path is passed AS TYPED,
-			// not resolved: it doubles as the label above, and a
-			// report that mixed the typed path with an absolute one
-			// would name the same file two ways.
 			SchemaPath: args.schema,
 			DataPath:   source.file,
 			Coverage:   args.coverage,
@@ -468,28 +397,11 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 			}
 		}
 
-		// A SCHEMA-SIDE FAULT IS THE SAME FAULT FOR EVERY DATA FILE, so
-		// it is reported ONCE. `error` means exactly that -- the run
-		// could not be set up from the truth's side, never the data's
-		// (the exit table in docs/reference-api.md) -- so the report the
-		// first file produced is the report every later file would
-		// produce, character for character. Concatenating them repeated
-		// one broken schema N times and, past the cap, marked the report
-		// `truncated` over a single underlying fault. It only became
-		// visible once the `error` verdict started carrying findings at
-		// all: while the list was empty there was nothing to duplicate.
-		// Mirrors the same break in ts/src/cli.ts.
 		if aontu.VetError == report.Verdict {
 			break
 		}
 	}
 
-	// The cap is on the REPORT, not on each file. Capping every file's
-	// list and then concatenating them let `--max-errors 1` emit one
-	// finding PER FILE -- and leave `truncated` false while doing it,
-	// because no single file had been cut. The engine still caps each
-	// run, so a pathological file cannot flood the aggregate before it
-	// gets here; this is the second, honest cut.
 	cap := args.maxErrors
 	if 0 == cap {
 		cap = aontu.VetMaxErrors
@@ -521,12 +433,6 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 
 	fmt.Fprintln(stdout, text)
 
-	// A VACUOUS CHECK IS A FAILED GATE UNDER --strict-coverage, and
-	// only under it: the verdict WORD is unchanged, so nothing that
-	// passes today starts failing, and a caller who wants the stronger
-	// gate asks for it. The reason goes to stderr, because stdout is a
-	// report contract -- a JSON consumer reads coverage.vacuous and a
-	// person reads this.
 	if args.strictCoverage && nil != report.Coverage && report.Coverage.Vacuous {
 		fmt.Fprintln(stderr,
 			"aontu: no data leaf was constrained by the schema:"+

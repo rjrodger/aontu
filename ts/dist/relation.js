@@ -5,38 +5,11 @@ exports.relationErrors = relationErrors;
 exports.relationCheck = relationCheck;
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 const utility_1 = require("./utility");
-// RELATION GRAPH VERDICTS (RELATIONS.0.md §3.3, replacing the G4
-// phase 5 magic-key pass): acyclicity and inverse consistency over
-// the edge set, DECLARED by the graph atoms -- `acyclic()` and
-// `inverse(name)` conjoined at the field whose key is the predicate
-// -- and decided AFTER unification, never by it.
-//
-// Why not in the lattice. Both properties are GLOBAL and NON-MONOTONE:
-// an acyclic graph becomes cyclic when one more edge unifies in, and an
-// inverse that is present becomes absent when the far side is narrowed.
-// The lattice guarantee is that more information never falsifies what
-// has been observed, so a constraint that could be true and then false
-// is not a constraint the lattice may hold. These are facts about the
-// finished model, so the atoms only REGISTER during unification
-// (GraphAtomVal.register, onto ctx._reldecls), and the verdict lands
-// at GENERATION -- the sizing atoms' model -- where no more
-// information can arrive. The `relations` verb reports the same
-// verdict from the same declarations: one decision, two surfaces.
-//
-// The old declaration channel -- a `relations:` key at the document
-// root, read by name -- is GONE, discharging ADR-010's grandfather
-// clause: the engine no longer knows any spellable key. The target
-// half of the old declaration is `rel(t)`'s flow at the site, which
-// checks by unifying rather than by a report-layer probe.
 const aontu_1 = require("./aontu");
 const vet_1 = require("./vet");
 const graph_1 = require("./graph");
 const keyorder_1 = require("./keyorder");
 const err_1 = require("./err");
-// The first cycle reachable from `start`, as the node paths it runs
-// through, or undefined. Depth-first with the path as the stack, and
-// the successors visited in sorted order, so the cycle a report names
-// is the same one in both ports.
 function findCycle(start, succ, done) {
     const stack = [];
     const onStack = new Set();
@@ -62,13 +35,8 @@ function findCycle(start, succ, done) {
     };
     return walk(start);
 }
-// The verdict itself, pure over what the evaluation produced: the
-// registered declarations and the edge set. Shared by the generation
-// hook (relationErrors) and the `relations` verb, so the two surfaces
-// cannot disagree.
 function relationFindings(decls, graph) {
     const findings = [];
-    // The edge set, indexed the two ways the checks read it.
     const byRelation = new Map();
     const pairs = new Set();
     for (const e of graph.edges) {
@@ -139,20 +107,10 @@ function relationFindings(decls, graph) {
             }
         }
     }
-    // SORTED, because a report is read by a machine that diffs it: by the
-    // position the offending edge is written at, then by code, then by
-    // the detail (two inverse declarations on one predicate can flag one
-    // edge twice). The sort is STABLE and the predicates were iterated
-    // in sorted order, so what order remains is fixed anyway.
     findings.sort((a, b) => (0, keyorder_1.cmpCodePoint)(a.at, b.at) || (0, keyorder_1.cmpCodePoint)(a.code, b.code)
         || (0, keyorder_1.cmpCodePoint)(a.detail.join(' '), b.detail.join(' ')));
     return findings;
 }
-// The generation hook (Aontu.generate, between unification success
-// and value generation): each finding becomes a LOCATED evaluation
-// error at the offending edge, exactly as an unmet sizing atom
-// refuses at generation. Findings name node paths and positions the
-// document spelled, so the walk to the site cannot miss.
 function relationErrors(ctx, root) {
     const decls = ctx._reldecls;
     if (0 === decls.size) {
@@ -170,11 +128,6 @@ function relationErrors(ctx, root) {
             }
             node = node?.peg?.[seg];
         }
-        // No unwrap AFTER the walk: a finding's `at` names an edge
-        // element, and an edge's element is a string -- an atom-wrapped
-        // element mints no edge in the first place (the graph visit
-        // descends atoms only at field values), so the walk cannot end on
-        // an atom.
         ctx.adderr((0, err_1.makeNilErr)(ctx, f.code, node, undefined, 'relate', {
             relation: f.relation,
             detail: f.detail.join(' -> '),
@@ -200,24 +153,10 @@ function relationCheck(src, opts) {
         };
     }
     const decls = ctx._reldecls;
-    // The count rides every report from here down: the engine knows it
-    // at exactly this point, and a caller asking "was there anything to
-    // check?" should not have to evaluate the document a second time to
-    // find out.
     const counted = true === options.count ? { declared: decls.size } : {};
     if (0 === decls.size) {
         return { verdict: 'pass', findings: [], ...counted };
     }
-    // NOR IS A DOCUMENT THAT CANNOT BE GENERATED. Unification can
-    // succeed over a tree that still holds an unsettled disjunction --
-    // more than one alternative admitted, which `disjunct_no_gen`
-    // refuses at generation -- and the graph walk cannot read inside
-    // one: the links in every alternative are invisible, so a mirror
-    // the document plainly writes is missing from the edge set and
-    // `inverse(n)` calls it missing. Generation is therefore asked
-    // FIRST, on a collecting context of its own, and what it says is
-    // the answer. Generation is what the atoms' verdict lands at, so
-    // this is the same order the engine itself now runs in.
     const gctx = ctx.clone({ err: [], collect: true });
     root.gen(gctx);
     if (0 < gctx.err.length) {

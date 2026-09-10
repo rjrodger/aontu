@@ -34,16 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// THE TEACHING PACK, THE CODE LOOKUP AND THE STARTING DOCUMENT (G11
-// phases 1-3 and 6), and the TypeScript twin of
-// go/cmd/aontu/help_test.go, explain_test.go and init_test.go.
-//
-// What the two ports must AGREE on -- the corpus bytes, the topic list
-// and its order, every exit class, and the tool help itself -- is
-// asserted in both suites against the same repository sources. These
-// are CLI-level messages and the shared spec suite runs the engine, so
-// there is no shared mode that could carry them; asserting both ports
-// against one source is what makes the agreement checkable anyway.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const node_child_process_1 = require("node:child_process");
@@ -55,8 +45,6 @@ const hints_1 = require("../dist/hints");
 const cli_1 = require("../dist/cli");
 const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js');
 const REPO = Path.join(__dirname, '..', '..');
-// Windows carries no POSIX permission bits and no POSIX shell; the
-// two assertions that need either say so where they stand.
 const WINDOWS = 'win32' === process.platform;
 function run(args) {
     const env = { ...process.env };
@@ -73,8 +61,6 @@ function run(args) {
         };
     }
 }
-// LINE ENDINGS ARE THE CHECKOUT'S BUSINESS, the rule every other gate
-// in this repository states.
 function readRepo(rel) {
     return Fs.readFileSync(Path.join(REPO, rel), 'utf8')
         .replaceAll('\r\n', '\n').replaceAll('\r', '\n');
@@ -91,9 +77,6 @@ function readRepo(rel) {
                 ' — run `make helpdoc`');
         }
     });
-    // THE TWO PORTS SERVE THE SAME CORPUS, in the same order. Both read
-    // the same generated index, so this is what catches a stage that
-    // wrote one port and not the other.
     (0, node_test_1.test)('both-ports-stage-the-same-topics', () => {
         const goDir = Path.join(REPO, 'go', 'cmd', 'aontu', 'helpdoc');
         const index = readRepo('go/cmd/aontu/helpdoc/index.tsv')
@@ -179,12 +162,6 @@ function readRepo(rel) {
         Assert.equal(r.code, 0);
         Assert.ok(r.out.startsWith('Usage: aontu'));
     });
-    // --- G11 phase 3: explain ---
-    // EVERY REGISTERED CODE RESOLVES. This is the property that makes
-    // the verb usable from a report: a caller reading `[aontu/x]` out of
-    // a finding can always ask what it means. The registry is read from
-    // the shared TSV rather than the engine table, so the test can fail
-    // when the two disagree instead of agreeing with itself.
     (0, node_test_1.test)('explain-answers-for-every-registered-code', () => {
         const codes = readRepo('test/spec/errcodes.tsv')
             .split('\n')
@@ -296,9 +273,6 @@ function readRepo(rel) {
         Assert.equal((0, cli_1.runExplain)(['nope']), 2);
     });
     // --- G11 phase 2: the one-argument mistyped-verb hint ---
-    // `aontu help` used to answer `cannot read help: open help: no such
-    // file or directory` and exit 1 -- the bare word read as a file name,
-    // with the good hint gated behind a SECOND argument.
     (0, node_test_1.test)('bare-word-is-diagnosed-as-a-mistyped-verb', () => {
         for (const [arg, near] of [
             ['vett', 'vet'], ['gett', 'get'], ['explian', 'explain'],
@@ -344,9 +318,6 @@ function readRepo(rel) {
         // from both `get` and `vet`, and `get` sorts first.
         Assert.equal((0, cli_1.nearestVerb)('xet', ['vet', 'get']), 'get');
     });
-    // KNOWN_VERBS feeds the suggestion, and is a SEPARATE list from the
-    // if-chain in main() because the chain's arms have three shapes.
-    // This is what stops the two drifting.
     (0, node_test_1.test)('known-verbs-all-dispatch', () => {
         for (const verb of cli_1.KNOWN_VERBS) {
             const r = run([verb, '--help']);
@@ -354,12 +325,6 @@ function readRepo(rel) {
             Assert.equal(r.code, 0, `${verb} --help: ${r.err}`);
         }
     });
-    // AND THE OTHER DIRECTION, which is the one that actually drifts: a
-    // verb added to the dispatch and not to the list is invisible until
-    // somebody mistypes it and gets no suggestion. #187 added `allow`
-    // while this branch was open and that is exactly what would have
-    // happened. Read from the source, because a dispatch arm is not
-    // enumerable at run time.
     (0, node_test_1.test)('every-dispatched-verb-is-in-known-verbs', () => {
         const src = readRepo('ts/src/cli.ts');
         const dispatched = new Set();
@@ -372,30 +337,7 @@ function readRepo(rel) {
                 'caller who mistypes it gets no suggestion');
         }
     });
-    // THE TWO PORTS' TOOL HELP IS ONE TEXT, EXCEPT WHERE A VERB EXISTS IN
-    // ONLY ONE OF THEM. It was byte-identical before G11 and nothing
-    // asserted it, so a verb documented in one port and not the other
-    // shipped silently -- which is exactly what happened while this
-    // branch was open: #187 added `allow` to the TypeScript CLI and
-    // touched no Go file, and the first version of this case (byte
-    // identity) caught it on the first merge.
-    //
-    // Byte identity is the WRONG invariant, though, because that
-    // divergence is real: `allow` is not in the Go port yet, and Go's
-    // help should not document a verb that port does not have. (`mcp`
-    // differs: Go carries a stub verb for it, so Go's help documents it
-    // and says it is part of the npm build.)
-    //
-    // So the invariant is two-sided. Go's help must be a SUBSEQUENCE of
-    // TypeScript's -- Go may never carry a line TypeScript lacks -- and
-    // every run of TypeScript-only lines must sit in a block that names
-    // a DECLARED port-only verb. An undeclared drift in the shared text
-    // still fails, which is the whole point of the gate; a tracked
-    // divergence does not.
     const TS_ONLY_VERBS = [
-        // ADR-001 keeps the ports at parity; until `allow` is ported, the
-        // Go help documents no verb the Go binary refuses. Remove this
-        // entry in the commit that lands `allow` in Go.
         'allow',
     ];
     function helpTextOf(file, decl) {
@@ -494,9 +436,6 @@ function readRepo(rel) {
             .filter((line) => !line.trimStart().startsWith('#')).join('\n');
         Assert.ok(!code.includes('"*"'), 'model.aon reaches for the quoted star');
     });
-    // The trio is only worth writing if it holds up: the emitted
-    // documents run their own check.sh, and the coverage accounting
-    // phase 5 added answers that something was actually examined.
     (0, node_test_1.test)('init-writes-a-trio-that-checks-itself', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-init-'));
         const r = run(['init', dir]);
@@ -504,21 +443,12 @@ function readRepo(rel) {
         for (const f of helpdoc_1.INITDOC) {
             const at = Path.join(dir, f.name);
             Assert.equal(Fs.readFileSync(at, 'utf8'), f.text);
-            // NOT ON WINDOWS, which carries no POSIX permission bits: every
-            // file there reads back 0666 whatever mode was asked for, so the
-            // check would be asserting the platform rather than the code.
-            // What the trio records, and that both ports stage the same
-            // modes, is asserted above on every platform.
             if (!WINDOWS) {
                 Assert.equal(Fs.statSync(at).mode & 0o777, f.mode, f.name);
             }
         }
         Assert.ok(r.out.includes(Path.join(dir, 'check.sh')), r.out);
         Assert.ok(r.out.includes('aontu help language'), r.out);
-        // THE SCRIPT ITSELF, through a real shell, where there is one: its
-        // `set -eu`, its `cd`, its quoting. Windows has no POSIX shell to
-        // hold it to, and go/cmd/aontu/init_test.go runs the four commands
-        // it carries in-process on every platform.
         if (!WINDOWS) {
             const env = { ...process.env };
             delete env.NODE_V8_COVERAGE;
@@ -577,11 +507,6 @@ function readRepo(rel) {
         Assert.equal(help.code, 0);
         Assert.ok(help.out.includes('Usage: aontu'), help.out);
     });
-    // THE IN-PROCESS ENTRY, and every arm of it: the cases above drive
-    // the PACKAGED BINARY, which is a child whose coverage is
-    // deliberately not counted, so the verb is exercised here as a
-    // library call as well. The default directory is `.`, so the call is
-    // made from inside a temporary one.
     (0, node_test_1.test)('init-is-callable-in-process-and-defaults-to-the-cwd', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-init-cwd-'));
         const was = process.cwd();

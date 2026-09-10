@@ -2,17 +2,6 @@
 
 package aontu
 
-// THE PLACEHOLDER `_` (G8 phase 3, the Go side of
-// ts/src/val/PlaceVal.ts): a HOLE in a call, filled by whatever the
-// call is unified with.
-//
-//	x: {&: {m: _ + 2}}   x: a: m: 1     ->  a: m: 3
-//	greeting: upper(_) & hello          ->  "HELLO"
-//
-// ALONE, `_` IS TOP WITH A MARK: it admits everything and is filled by
-// its peer. What makes it different is that a CALL can see it, and a
-// call that holds one waits for a peer to fill it instead of resolving
-// around it.
 
 // PlaceVal is the hole.
 type PlaceVal struct{ base }
@@ -45,18 +34,6 @@ func (p *PlaceVal) Unify(peer Val, ctx *Ctx) Val {
 	return peer
 }
 
-// boundArgStart is the first argument index a hole walk must NOT cross
-// into: A HOLE BELONGS TO ITS NEAREST ENCLOSING GENERATOR. A `_`
-// inside a generator's template (pack/each, arg 1) or condition
-// (filter, arg 1) is that generator's to bind — "_ is the source
-// child" — so neither hasPlace nor fillPlace may reach it from
-// outside. Before this boundary, `close(pack(d, _ & t))` reported a
-// hole to the OUTER call, so an ordinary overlay statement was
-// absorbed into the template instead of merging with the generated
-// child (use-cases/BUGS.md §10), and an outer pack's fill pass
-// captured a NESTED pack's hole lexically (§34). The data argument
-// (arg 0) is not a binding position, so it stays visible. Mirrors
-// boundArgStart in ts/src/val/PlaceVal.ts.
 func boundArgStart(v Val) int {
 	if fv, ok := v.(*FuncVal); ok {
 		if "pack" == fv.name || "filter" == fv.name ||
@@ -67,10 +44,6 @@ func boundArgStart(v Val) int {
 	return int(^uint(0) >> 1) // max int
 }
 
-// hasPlace reports whether v CONTAINS a hole. Asked of a call before it
-// resolves: a call holding one must wait for a peer to fill it. Holes
-// inside a generator's own binding arguments are NOT this value's
-// holes — see boundArgStart above.
 func hasPlace(v Val) bool {
 	switch n := v.(type) {
 	case *PlaceVal:
@@ -121,23 +94,12 @@ func hasPlace(v Val) bool {
 	return false
 }
 
-// fillPlace is the same tree with every hole filled by fill. Answers
-// the value UNCHANGED when it holds no hole, so a caller can test
-// identity to know whether anything was filled -- and so a tree with no
-// hole is never needlessly rebuilt.
 func fillPlace(v Val, fill Val) Val {
 	if p, ok := v.(*PlaceVal); ok {
 		// A FILL IS A POSITION: the hole knows where it sits in the
 		// instance, the datum arriving in it does not. Mirrors
 		// fillPlace in ts/src/val/PlaceVal.ts.
 		out := clonePath(fill, cp(p.path))
-		// THE HOLE'S PATH IS THE WHOLE ANSWER, tail included. cloneAt
-		// OVERLAYS (overlayPath), which keeps the source segments past
-		// the destination's depth -- right for a reference, whose
-		// target may be deeper than the referring site, and wrong for a
-		// hole, whose position is fully known. Without this a fill from
-		// a source deeper than the hole (`pack($.a.b.c, {arg:_})`)
-		// carried `c.t` onto the end of a path that does exist.
 		out.setvpath(cp(p.path))
 		return out
 	}
@@ -215,14 +177,6 @@ func fillPlaceArgs(vals []Val, fill Val, bound int) []Val {
 	return out
 }
 
-// holdsStaged reports whether a STAGED call (the staging rule, G8
-// phase 0) stands anywhere in v. Such a call has not decided: its
-// arguments are still being driven AT ITS OWN SITE, so a REFERENCE's
-// copy shares it rather than owning a set of arguments it would drive
-// at the referring position instead (ref.go, ADR-025). A staged call
-// ANYWHERE counts, because what a document references is usually the
-// conjunct the call sits in rather than the call. Twin: the
-// `holdsStaged` getter in ts/src/val/Val.ts.
 func holdsStaged(v Val) bool {
 	switch n := v.(type) {
 	case *FuncVal:
