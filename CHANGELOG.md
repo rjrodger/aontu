@@ -7,15 +7,30 @@ which implementation each change affects.
 
 ## Unreleased
 
-> **RELEASE SEQUENCING.** The two `each` entries below (the removal and
-> the rename) must not ship in one release. Between them, `each`
-> changes meaning from a meet to a replacement. Cut a release after the
-> removal, with `each` simply absent, and release the rename after
-> that. Together they are silent for a record template; apart, every
-> affected call errors. See
-> [ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
-> No other entry in this section carries the hazard: each of the rest
-> fails loudly on an old document.
+## Go 0.1.20 — 2026-09-10 · TypeScript 0.62.0
+
+> **UPGRADING FROM 0.61.0: `each` changed meaning, and `form` is gone.**
+> In 0.61.0 `each(d, t)` MET each member of `d` with `t`. Here it
+> REPLACES that member with `t`, and the meet is spelled
+> `each(d, _ & t)`. The call site does not change shape, so a record
+> template is the one case that does not error:
+> `each($.ports, {protocol: *TCP|string})` now drops every port's own
+> fields instead of adding to them. **Add `_ &` to every two-argument
+> `each` whose template is a record, before upgrading.** A kind
+> template and the one-argument `each($.m)` fail loudly instead
+> (no-gen, arity). `form`, which carried the replacement in 0.60.0 and
+> 0.61.0, is gone: it is refused with `unknown_function` in both ports,
+> and it is spelled `each` now.
+>
+> The two are one decision taken in two steps, and the steps were meant
+> to reach you in two releases, the first with `each` simply absent so
+> that an old call could not be silent. Both had landed before either
+> shipped, so they arrive together and this warning stands in place of
+> the sequencing. The record is
+> [#189](https://github.com/aontu-lang/aontu/issues/189).
+>
+> No other entry below carries the hazard: each of the rest fails
+> loudly on an old document.
 
 ### `aontu allow`: the role gate
 
@@ -98,7 +113,7 @@ where you wrote `aontu: code: units: [...]`. Both fail loudly.
 It is a **convention and only a convention**: a user's own schemas are
 neither checked nor warned about, and `aontu vet` gains no finding for a
 lowercase `type()`. Rationale in
-[ADR-031](ADR.md#adr-031--a-path-part-that-names-a-type-is-camelcase).
+[#190](https://github.com/aontu-lang/aontu/issues/190).
 
 ### FIX: the path of a conflict is the field to edit
 
@@ -262,7 +277,7 @@ the hole's owner are all the function's own and are untouched.
 `each_data` returns to service and `form_data` retires; its released
 meaning is unchanged, and the registry keeps both rows, being
 append-only. Rationale in
-[ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
+[#189](https://github.com/aontu-lang/aontu/issues/189).
 
 ### BREAKING: `each` is removed, `form` carries the bound
 
@@ -301,7 +316,7 @@ to a replacement.
 `each_data` is retired but stays registered in
 `test/spec/errcodes.tsv`, which is append-only; a non-bag argument now
 answers `form_data`. Rationale in
-[ADR-026](ADR.md#adr-026--each-is-retired-form-carries-the-bound).
+[#189](https://github.com/aontu-lang/aontu/issues/189).
 
 ### `aontu fmt`: the repeat stops at a record
 
