@@ -73,10 +73,44 @@ aontu: System: {
   # admits a string the grammar accepts and answers that string
   # unchanged, which is what lets the default sit beside it.
   #
-  # THE GRAMMARS ARE INLINE, not references to a member of this file:
-  # a reference between members does not survive the include, for the
-  # reason Service states above.
+  # THE GRAMMARS ARE MEMBERS, named once and reused. A reference
+  # between members of a bundled model survives the include when the
+  # target carries no type() mark -- what Service works around is a
+  # reference to a MARKED member, which the include's own marks make
+  # unusable. A grammar is an ordinary string, so it is safe to name.
   #
+  # They are hide()den because a schema's grammar is not part of the
+  # document the schema checks: without it the two strings generate
+  # into every document that includes this model.
+  #
+  # LOWER CASE, deliberately, where every other member here is
+  # CamelCase: the case of a bundled key says whether it names a TYPE,
+  # and these name grammars.
+  semverPreRelease: hide(
+    abnf(
+      "pre-release = pre-release-id *( \".\" pre-release-id )\n"
+      + "pre-release-id = \"0\" [ *digit alnum-tail ]\n"
+      + "  / positive-digit *digit [ alnum-tail ] / alnum-tail\n"
+      + "alnum-tail = non-digit *id-char\n"
+      + "id-char = digit / non-digit\n"
+      + "non-digit = letter / \"-\"\n"
+      + "digit = \"0\" / positive-digit\n"
+      + "positive-digit = %x31-39\n"
+      + "letter = %x41-5A / %x61-7A\n"
+    )
+  )
+  semverBuild: hide(
+    abnf(
+      "build = build-id *( \".\" build-id )\n"
+      + "build-id = 1*id-char\n"
+      + "id-char = digit / non-digit\n"
+      + "non-digit = letter / \"-\"\n"
+      + "digit = \"0\" / positive-digit\n"
+      + "positive-digit = %x31-39\n"
+      + "letter = %x41-5A / %x61-7A\n"
+    )
+  )
+
   # BUILD METADATA IS CARRIED AND COMES LAST. The spec says it MUST be
   # ignored when determining precedence, so it is the one element a
   # comparison walking the tuple from the left should stop before:
@@ -87,30 +121,8 @@ aontu: System: {
       integer & min(0)
       *0 | (integer & min(0))
       *0 | (integer & min(0))
-      *"" | parse(
-        abnf(
-          "pre-release = pre-release-id *( \".\" pre-release-id )\n"
-          + "pre-release-id = \"0\" [ *digit alnum-tail ]\n"
-          + "  / positive-digit *digit [ alnum-tail ] / alnum-tail\n"
-          + "alnum-tail = non-digit *id-char\n"
-          + "id-char = digit / non-digit\n"
-          + "non-digit = letter / \"-\"\n"
-          + "digit = \"0\" / positive-digit\n"
-          + "positive-digit = %x31-39\n"
-          + "letter = %x41-5A / %x61-7A\n"
-        )
-      )
-      *"" | parse(
-        abnf(
-          "build = build-id *( \".\" build-id )\n"
-          + "build-id = 1*id-char\n"
-          + "id-char = digit / non-digit\n"
-          + "non-digit = letter / \"-\"\n"
-          + "digit = \"0\" / positive-digit\n"
-          + "positive-digit = %x31-39\n"
-          + "letter = %x41-5A / %x61-7A\n"
-        )
-      )
+      *"" | parse($.aontu.System.semverPreRelease)
+      *"" | parse($.aontu.System.semverBuild)
     ] & length(5)
   )
   # (The Relation schema that used to sit here is retired with the

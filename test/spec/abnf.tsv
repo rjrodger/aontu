@@ -70,3 +70,27 @@ abnf-refuses-a-nil-argument	errc	a: abnf(1 & "x")	scalar_kind
 parse-refuses-a-nil-grammar	errc	a: parse(1 & "x", "5")	scalar_kind
 parse-refuses-a-nil-argument	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G, 1 & "x")	scalar_kind
 parse-constraint-refuses-a-nil-peer	errc	G: abnf("v = 1*d\\nd = %x30-39\\n")\na: parse($.G) & (1 & "x")	scalar_kind
+#
+# SHAPING THE TREE. The answer is the RAW tree, so a document that wants
+# natural structure builds it with the language's own verbs: pick()
+# projects one field of every child, filter() selects children by rule,
+# and join() folds a one-element selection back to a scalar. These rows
+# are the worked examples, and they also pin the two facts about the
+# tree's SHAPE that a grammar author has to know.
+# One child per field, each keeping its rule name.
+shape-projects-every-child	gens	G: hide(abnf("ver = \\"v\\" maj \\".\\" min \\".\\" pat\\nmaj = 1*DIGIT\\nmin = 1*DIGIT\\npat = 1*DIGIT\\nDIGIT = %x30-39\\n"))\nt: hide(parse($.G, "v1.2.30"))\nparts: pick($.t.kids, src)\nnames: pick($.t.kids, rule)	{"names":["maj","min","pat"],"parts":["1","2","30"]}
+# A LEADING FIELD LOSES ITS NAME. The converter folds a production's
+# first element into the parent's node, so `ver = maj "." min "." pat`
+# answers a first child named DIGIT where the row above answers `maj`.
+# The fix is the row above: give the production a leading terminal.
+# Identical in both ports, so it is a property of the grammar
+# compiler and not a parity break.
+shape-a-leading-field-loses-its-name	gens	G: hide(abnf("ver = maj \\".\\" min \\".\\" pat\\nmaj = 1*DIGIT\\nmin = 1*DIGIT\\npat = 1*DIGIT\\nDIGIT = %x30-39\\n"))\nt: hide(parse($.G, "1.2.30"))\nparts: pick($.t.kids, src)\nnames: pick($.t.kids, rule)	{"names":["DIGIT","min","pat"],"parts":["1","2","30"]}
+# filter() by rule is how a field is read out by name; join() over a
+# one-element projection is how it comes back as a scalar rather than a
+# list. The whole match is always `src` on the root node.
+shape-selects-one-field-by-rule	gens	G: hide(abnf("media = \\"@\\" type \\"/\\" sub\\ntype = 1*ALPHA\\nsub = 1*ALPHA\\nALPHA = %x61-7A\\n"))\nt: hide(parse($.G, "@text/plain"))\ntype: join(pick(filter($.t.kids, {rule:"type"}), src))\nsub: join(pick(filter($.t.kids, {rule:"sub"}), src))\nwhole: $.t.src	{"sub":"plain","type":"text","whole":"@text/plain"}
+# A repetition answers one child per iteration.
+shape-a-repetition-is-one-child-each	gens	G: hide(abnf("dur = \\"P\\" seg *seg\\nseg = num unit\\nnum = 1*DIGIT\\nunit = \\"h\\" / \\"m\\" / \\"s\\"\\nDIGIT = %x30-39\\n"))\nt: hide(parse($.G, "P1h30m45s"))\nsegs: pick($.t.kids, src)	{"segs":["1h","30m","45s"]}
+# The classic dotted quad, four children of one rule.
+shape-a-dotted-quad	gens	G: hide(abnf("ip = \\"#\\" o \\".\\" o \\".\\" o \\".\\" o\\no = 1*3DIGIT\\nDIGIT = %x30-39\\n"))\nt: hide(parse($.G, "#192.168.0.1"))\noctets: pick($.t.kids, src)	{"octets":["192","168","0","1"]}

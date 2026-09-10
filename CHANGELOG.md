@@ -74,14 +74,51 @@ packages are now pinned EXACTLY and identically in the two ports:
 range, because `bnf` 0.1.11 peer-asks for `parser` 0.9.1, and 0.9.1
 regresses `path($.z.x.a)` in TypeScript alone.
 
+**A grammar reads better in backticks.** A backtick string spans lines,
+so a grammar can be written as a grammar rather than as a run of
+escapes:
+
+```aon
+G: abnf(
+  `
+media = "@" type "/" sub
+type = 1*ALPHA
+sub = 1*ALPHA
+ALPHA = %x61-7A
+`
+)
+
+ok: "@text/plain" & parse($.G)
+```
+
+(The bundled models still spell their grammars with `\n` escapes: each
+port holds that text in a raw string literal, and a raw string cannot
+contain a backtick.)
+
+**Shaping the tree** is the language's own job, and three verbs do it:
+`pick` projects one field of every child, `filter` selects children by
+rule, `join` folds a one-element selection back to a scalar. Worked
+through five small grammars in the reference and pinned by the
+`shape-*` rows.
+
+One shape rule a grammar author has to know, and it is now written
+down: **a production's leading element folds into the parent**, so
+`ver = maj "." min "." pat` answers a first child named `DIGIT` rather
+than `maj`. Give the production a leading terminal and every field
+keeps its name. Both engines do this identically. The parser answering
+natural structure directly needs the ABNF front-end to reach the
+engine's own value builders, which it does not yet do; the request is
+written up in
+[GRAMMAR-SHAPE.0.md](docs/design/GRAMMAR-SHAPE.0.md).
+
 New codes: `abnf_grammar`, `parse_arg`, `parse_failed`. Rationale in
 [ADR-032](ADR.md#adr-032--a-grammar-is-a-string-and-parsing-is-a-function).
 
 ### BREAKING: `Semver` carries build metadata and checks by grammar
 
 `$.aontu.System.Semver` is a **five**-element tuple, where 0.62.0
-shipped four, and the two string parts are checked by an inline ABNF
-grammar rather than by a pattern:
+shipped four, and the two string parts are checked by an ABNF grammar
+rather than by a pattern:
 
 ```
 [major minor patch pre-release build]

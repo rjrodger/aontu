@@ -56,6 +56,9 @@ the [Explanation](explanation.md).
 - [Generation](#generation)
 - [Subsumption](#subsumption)
 - [Errors](#errors)
+- [Grammars: `abnf()` and `parse()`](#grammars-abnf-and-parse)
+  - [A grammar reads better in backticks](#a-grammar-reads-better-in-backticks)
+  - [Shaping the tree](#shaping-the-tree)
 - [The constraint algebra](#the-constraint-algebra)
   - [Named constraint aliases](#named-constraint-aliases)
 
@@ -3112,7 +3115,11 @@ Three things about the two string parts are worth knowing:
   carries an ABNF grammar for each instead and applies it with
   `parse()`, so `"beta_1"`, `"alpha..1"` and `"01"` are all refused
   (`[aontu/empty]`) where an alphabet pattern admitted the last two.
-  See [grammars](#grammars-abnf-and-parse).
+  The two grammars are members of the model in their own right,
+  `semverPreRelease` and `semverBuild`, hidden so a schema's grammar
+  does not generate into the document it checks, and lower-case because
+  the case of a bundled key says whether it names a type. See
+  [grammars](#grammars-abnf-and-parse).
 - **The two grammars differ where the spec does.** A wholly numeric
   pre-release identifier may not carry a leading zero, because
   pre-releases are compared numerically; a build identifier may,
@@ -4272,10 +4279,107 @@ a `0` is always the same token wherever it appears. Spell it as the
 class and `numeric-identifier`'s `"0"` branch is never reached, so
 `1.0.0` stops parsing while `1.2.3` still does.
 
-The tree is the raw shape the parser builds. Choosing a different shape
-means naming the engine's own value builders from the grammar, which the
-grammar compiler cannot yet express as data; until it can, a document
-reads the tree it is given.
+### A grammar reads better in backticks
+
+A backtick string spans lines, so a grammar can be written as a grammar
+rather than as a run of escapes. Write this as `media.aon`:
+
+<!-- test: scenario abnf-backtick -->
+<!-- test: file media.aon -->
+```aon
+G: abnf(
+  `
+media = "@" type "/" sub
+type = 1*ALPHA
+sub = 1*ALPHA
+ALPHA = %x61-7A
+`
+)
+
+ok: "@text/plain" & parse($.G)
+```
+
+<!-- test: run -->
+```sh
+$ aontu media.aon
+{
+  "G": "\nmedia = \"@\" type \"/\" sub\ntype = 1*ALPHA\nsub = 1*ALPHA\nALPHA = %x61-7A\n",
+  "ok": "@text/plain"
+}
+```
+
+The leading newline is part of the string and costs nothing: a grammar
+is a list of rules, and ABNF ignores a blank line. The bundled
+[`aontu:system`](#the-aontusystem-vocabulary) model still spells its two
+grammars with `\n` escapes, because its text is held in a raw string
+literal in each port and a raw string cannot contain a backtick.
+
+### Shaping the tree
+
+The answer is the RAW tree, so a document that wants natural structure
+builds it with the language's own verbs. Three do the work:
+[`pick`](#projecting-fields-pick) projects one field of every child,
+[`filter`](#selecting-filter-and-match) selects children by rule, and
+[`join`](#folding-to-a-string-join) folds a one-element selection back
+to a scalar. `hide()` keeps the grammar and the tree out of the
+generated document. Write this as `shape.aon`:
+
+<!-- test: scenario abnf-shape -->
+<!-- test: file shape.aon -->
+```aon
+G: hide(
+  abnf(
+    `
+ver = "v" maj "." min "." pat
+maj = 1*DIGIT
+min = 1*DIGIT
+pat = 1*DIGIT
+DIGIT = %x30-39
+`
+  )
+)
+
+t: hide(parse($.G, "v1.2.30"))
+
+parts: pick($.t.kids, src)
+names: pick($.t.kids, rule)
+minor: join(pick(filter($.t.kids, { rule:"min" }), src))
+whole: $.t.src
+```
+
+<!-- test: run -->
+```sh
+$ aontu shape.aon
+{
+  "minor": "2",
+  "names": [
+    "maj",
+    "min",
+    "pat"
+  ],
+  "parts": [
+    "1",
+    "2",
+    "30"
+  ],
+  "whole": "v1.2.30"
+}
+```
+
+**A leading field loses its name**, and that is the one shape rule a
+grammar author has to know. The compiler folds a production's first
+element into the parent's node, so `ver = maj "." min "." pat` answers a
+first child named `DIGIT` where the version above answers `maj`. The fix
+is the `"v"` above: give the production a leading terminal and every
+field keeps its name. Both engines do this identically, so it is a
+property of the grammar compiler rather than a difference between the
+ports.
+
+One more limit follows from reading a tree rather than a value: every
+leaf is the **text** the rule matched, so `"30"` is a string and stays
+one, and nothing here turns it into `30`. Naming the engine's own value
+builders from the grammar would answer that and the fold above together,
+and the grammar compiler cannot yet express them as data.
 
 ## The constraint algebra
 

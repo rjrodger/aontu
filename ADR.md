@@ -3172,6 +3172,18 @@ itself.
   (`@array$`, `@push$`, `@object$`). A document cannot write a
   callback, so until a builtin can be named as DATA the output shape is
   not something a `.aon` file can choose.
+- **Shaping the tree is the LANGUAGE's job, for now.** `pick` projects
+  one field of every child, `filter` selects children by rule, `join`
+  folds a one-element selection back to a scalar; five small grammars
+  work it through in the reference and the `shape-*` rows pin it. Two
+  limits are recorded rather than worked around: a production's leading
+  element folds into the parent (so its field loses its name unless the
+  production starts with a terminal), and every leaf is the TEXT the
+  rule matched, so `"30"` never becomes `30`. Both are identical in the
+  two engines, so both are properties of the grammar compiler. The fix
+  belongs upstream, in the ABNF front-end, which alone knows its own
+  desugaring: the request is
+  [GRAMMAR-SHAPE.0.md](docs/design/GRAMMAR-SHAPE.0.md).
 - **A parser is a constraint, and it is not a TRANSFORMING one.**
   `parse(g)` preserves its peer, as every other atom in the algebra
   does, which is what keeps it idempotent and order-independent under
@@ -3182,17 +3194,20 @@ itself.
   is a later decision, not this one.
 - **`Semver` uses the pair, and stays a list.** The tuple is now
   `[major minor patch pre-release build]`, five elements, with the two
-  string parts checked by an INLINE ABNF grammar applied through
-  `parse(g)`. This is the decision's own validation: the pre-release
+  string parts checked by an ABNF grammar applied through `parse(g)`. This is the decision's own validation: the pre-release
   shape is precisely what `re()` cannot express (a quantified group
   holding a quantifier, refused as `constraint_pattern`), so the
   vocabulary previously checked its ALPHABET and let `"alpha..1"` and
   `"01"` through. Both are now refused, and the build part is carried
   rather than dropped.
-  - The grammars are INLINE, not members of the vocabulary referred to
-    by name: a reference from one member of an included file to another
-    does not survive the include, which is the same reason `Service` is
-    written out rather than as `Component & {kind: service}`.
+  - The grammars are MEMBERS of the vocabulary, `semverPreRelease` and
+    `semverBuild`, `hide()`n so a schema's grammar does not generate
+    into the document it checks. The rule that made `Service` write
+    itself out is narrower than it was stated: a reference between
+    members survives an include when the target carries no `type()`
+    mark, and a grammar is an ordinary string. They are lower-case
+    where every other member is CamelCase, because the case of a
+    bundled key says whether it names a TYPE.
   - The numeric parts stay INTEGERS in a list, not a parsed dotted
     string, for the reason ADR-028 chose a list: a version is COMPARED,
     component by component from the left, which a string does not do by
