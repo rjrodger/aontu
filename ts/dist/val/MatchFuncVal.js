@@ -7,22 +7,6 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const PrefVal_1 = require("./PrefVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
-// THE DEFAULTED-SCRUTINEE RULE (ADR-004, use-cases/BUGS.md §5). The
-// generation-effective view of a settled scrutinee: a preference — or
-// a disjunction carrying one — means "this value unless something
-// overrides it", and by resolve time the model has SETTLED (staging
-// rule), so nothing will. The value generation is about to emit is
-// therefore the value the patterns must be tested against. Testing
-// against the still-open preference instead let a pattern SELECT an
-// arm by overriding the default: `side_effect:*readonly|write|
-// destructive` beside `match(.side_effect, destructive, true, false)`
-// answered `true` while generating "readonly" next to it — a derived
-// value contradicting the very value it derives from, exit 0.
-// A pref-free scrutinee (open disjunction included) is untouched:
-// matching by unifiability is its documented meaning.
-// Exported for the multi-pref unit test (ADR-002, the subsumeNode
-// precedent): rankPrefs leaves a settled disjunct at most one pref, so
-// the min-rank scan below cannot be reached through a document.
 function effectiveScrutinee(v) {
     let out = v;
     if (true === out?.isDisjunct && Array.isArray(out.peg)) {
@@ -30,10 +14,6 @@ function effectiveScrutinee(v) {
         if (0 === prefs.length) {
             return v;
         }
-        // Generation picks the LOWEST rank (effectiveDefault in
-        // subsume.ts; `a:**1|*2` generates 2). rankPrefs leaves at most
-        // one pref standing in a settled disjunct, so the scan is
-        // defensive.
         out = prefs.reduce((a, b) => b.rank < a.rank ? b : a);
     }
     return (0, PrefVal_1.prefInnerPeg)(out);
@@ -42,9 +22,6 @@ class MatchFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isMatchFunc = true;
-        // THE STAGING RULE (G8 phase 0). A scrutinee that is still being
-        // narrowed can match an EARLIER pattern than the one it will end up
-        // matching, and the arm a match takes is not a thing to guess at.
         this.staged = true;
     }
     funcname() {
@@ -53,10 +30,6 @@ class MatchFuncVal extends FuncBaseVal_1.FuncBaseVal {
     prepare(_ctx, _args) {
         return null;
     }
-    // The scrutinee is argument 0 and the patterns are the odd
-    // arguments; the results are the even ones after 0, and the last
-    // argument is a DEFAULT when the count is even. Written once, read
-    // by both the driver below and resolve.
     hasDefault() {
         return 0 === this.peg.length % 2;
     }

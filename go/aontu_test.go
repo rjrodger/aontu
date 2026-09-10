@@ -80,25 +80,12 @@ func TestReservedKeyPrefixRejected(t *testing.T) {
 	}
 }
 
-// TestVersionFormat guards the VERSION constant, which `make publish-go
-// V=x.y.z` rewrites. That rewrite used a BSD-only in-place sed form that
-// no-opped silently on GNU sed, so a malformed or stale constant could ship.
-// Mirrors ts/test/version.test.ts.
 func TestVersionFormat(t *testing.T) {
 	if !regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(VERSION) {
 		t.Fatalf("VERSION is not a plain semver triple: %q", VERSION)
 	}
 }
 
-// TestParseCanonNestedJunctions pins PARSE-level canon of nested
-// junctions: a junction child that is itself a junction with more than
-// one term is parenthesised (the TS JunctionVal.canon rule), so the
-// text reparses to the same structure — `(1|2)&3` must not print as
-// the differently-parsing `1|2&3`. No spec mode observes parse-level
-// canon (the shared suite is unify-level), so this table is pinned by
-// per-port twins: the TS twin with the SAME rows is
-// parse-canon-nested-junctions in ts/test/lang.test.ts. Closes the
-// issue #30 divergence.
 func TestParseCanonNestedJunctions(t *testing.T) {
 	rows := []struct{ src, canon string }{
 		{"a:(1|2)&3", `{"a":(1|2)&3}`},

@@ -2,22 +2,6 @@
 
 package aontu
 
-// MODULE TOOLING (G6 phase 3, the Go side of ts/src/mod-tool.ts): the
-// LOCAL half — `aontu mod tidy`, `verify`, `vendor` and `manifest`.
-//
-// Evaluation never touches the network, and neither does this: tidy
-// resolves versions and rewrites the lockfile from what is already in
-// the local stores, verify asks whether the stores still MEAN what the
-// lockfile pins and changes nothing, and vendor materialises the locked
-// closure into the project. Fetching and publishing are the network
-// half, and are not in this build (see the register).
-//
-// MINIMUM VERSION SELECTION, not a solver: each module declares the
-// MINIMUM version of each dependency it needs, and the selected version
-// is the maximum of those minima over the closure. Deterministic
-// without backtracking — the lockfile CONFIRMS the resolution rather
-// than determining it, which is why a tidy run re-runs to the same
-// bytes.
 
 import (
 	"encoding/json"
@@ -32,7 +16,6 @@ import (
 // ModLock is one entry of the lockfile, and of a tidy report. Field
 // order is LEXICOGRAPHIC, the canonical emitter's order.
 type ModLock struct {
-	// Canon is the canon-hash of the module as it is in the local store.
 	Canon string `json:"canon"`
 	// Mod is the module path and major, as an import spells it.
 	Mod string `json:"mod"`
@@ -55,7 +38,6 @@ type ModTidyReport struct {
 	Verdict     string   `json:"verdict"`
 }
 
-// ModVerifyReport is the result of `aontu mod verify`.
 type ModVerifyReport struct {
 	// Mismatched is what the lockfile pins against what the store now
 	// means, for each module that does not match, sorted by module.
@@ -69,9 +51,6 @@ type ModVerifyReport struct {
 	Verified []string `json:"verified"`
 }
 
-// ModMismatch is one locked module whose store no longer means what the
-// lockfile pins. Got is empty when the store holds something that does
-// not evaluate at all.
 type ModMismatch struct {
 	Got  string `json:"got"`
 	Mod  string `json:"mod"`
@@ -85,11 +64,6 @@ type ModVendorReport struct {
 	Verdict  string   `json:"verdict"`
 }
 
-// VersionCompare is numeric-dotted version order: `1.10.0` is above
-// `1.9.0`, which STRING order gets wrong, and that is the whole reason
-// this is not a `<` on the text. A part that is not a number compares
-// as text, after every number — a pre-release tag is below no version
-// and above none. Mirrors versionCompare in ts/src/mod-tool.ts.
 func VersionCompare(a, b string) int {
 	ap := strings.Split(a, ".")
 	bp := strings.Split(b, ".")
@@ -98,10 +72,6 @@ func VersionCompare(a, b string) int {
 		n = len(bp)
 	}
 	for i := 0; i < n; i++ {
-		// A part the shorter version does not have is ZERO, so `1.2`
-		// and `1.2.0` are the same version -- which is what everyone
-		// means by them, and what a lockfile rewritten from either must
-		// agree on.
 		x, y := "0", "0"
 		if i < len(ap) {
 			x = ap[i]
@@ -140,12 +110,6 @@ type modEval struct {
 	gen   any
 	hash  string
 	canon string
-	// ok is DID IT STAND UP ON ITS OWN? A module that does not evaluate
-	// has no meaning to pin, and CanonHash of the nil it collapses to is
-	// the SAME string for every such module -- so a lockfile written
-	// from one carries no information while looking exactly like one
-	// that does (use-cases/BUGS.md §31). `aontu hash` already refuses
-	// that file; tidy refuses it too, and this is what tells it.
 	ok bool
 }
 
@@ -189,22 +153,6 @@ func declaredDeps(file string) map[string]string {
 	return out
 }
 
-// usableRef is a dependency or lockfile key as a module ref this
-// tooling may ACT on, or false.
-//
-// Two ways to be unusable, one answer. A key that is not module-shaped
-// names nothing the resolver can find; a key that is shaped but whose
-// path cannot legally be a directory (`..` in it, a reserved device
-// name) must not be turned into one, which is the whole of the
-// traversal fix on this side. Both land in the caller's `missing`
-// bucket, because from the report's point of view they are the same
-// fact: the lockfile names something that cannot be resolved here.
-//
-// A STALE LOCKFILE IS THE REASON THIS EXISTS AT ALL. resolveModule
-// gates the evaluator, but `tidy`, `verify` and `vendor` read a
-// lockfile straight off disk -- one that may have been committed
-// before the gate existed -- so the gate has to be here too. Mirrors
-// usableRef in ts/src/mod-tool.ts.
 func usableRef(mod string) (ModuleRef, bool) {
 	ref, ok := parseModuleRef(mod)
 	if !ok || "" != validateModulePath(ref.Path) {
@@ -348,16 +296,7 @@ func ModTidy(root, cache string) ModTidyReport {
 		main := filepath.Join(dir, moduleMain(filepath.Join(dir, "mod.aon"), 0))
 		hash := ""
 		if data, err := os.ReadFile(main); nil == err {
-			// RECOMPUTED, never carried over: the pin is what the module
-			// in this store MEANS, and a tidy that copied the old hash
-			// forward would pin what it used to mean.
 			got := evalMod(toValidSource(string(data)), main)
-			// A NIL PIN IS WORSE THAN NO PIN. A module that does not
-			// stand up hashes to CanonHash(nil) -- the same string for
-			// every broken module -- so writing it would put a
-			// plausible, uninformative pin in the lockfile and silently
-			// void the "breaks on any semantic change in the closure"
-			// contract (BUGS.md §31).
 			if !got.ok {
 				unevaluable = append(unevaluable, mod)
 				continue
@@ -400,35 +339,12 @@ func ModTidy(root, cache string) ModTidyReport {
 	}
 }
 
-// ModVerify asks whether every locked module still MEANS what the
-// lockfile pins. Recompute and compare, and CHANGE NOTHING.
-//
-// The verb exists because ModTidy cannot answer this question. Tidy
-// recomputes and REWRITES by design -- a pin is what a module means now
-// -- so tampering with a vendored module and running tidy makes the
-// lockfile agree with the tampering, `verdict: ok`, and the next
-// evaluation passes. That is correct for the job tidy does and useless
-// as a gate, which left a CI job that tidies before evaluating with no
-// integrity protection at all (use-cases/BUGS.md §32). Verification is
-// a question; answering it must not be an edit. Mirrors modVerify in
-// ts/src/mod-tool.ts.
 func ModVerify(root, cache string) ModVerifyReport {
 	locked := readLock(root)
 	verified := []string{}
 	mismatched := []ModMismatch{}
 	missing := []string{}
 
-	// NOTHING TO CHECK IS NOT A PASS. A project with no lockfile at all
-	// — or one whose lockfile predates a dependency someone added —
-	// would otherwise verify clean, because the loop below walks what is
-	// LOCKED and there is nothing locked to walk. That is the same shape
-	// as the defect this verb exists to close: absence reading as
-	// agreement. Every dependency the project itself declares must be in
-	// the lockfile before the pins mean anything, and the repair is a
-	// tidy rather than a fetch. Transitive dependencies need no separate
-	// check: a locked module's own imports are resolved when its pin is
-	// recomputed, so one that is unreachable makes its DEPENDANT fail to
-	// evaluate and lands in mismatched below.
 	unlocked := []string{}
 	for mod := range declaredDeps(filepath.Join(root, "mod.aon")) {
 		if _, ok := locked[mod]; !ok {
@@ -461,10 +377,6 @@ func ModVerify(root, cache string) ModVerifyReport {
 			continue
 		}
 
-		// A module that no longer stands up is not a match: it has no
-		// meaning to compare, and reporting the hash of nil would print
-		// the same string for every broken module. The empty Got says
-		// the store holds something that does not evaluate.
 		got := evalMod(toValidSource(string(data)), main)
 		want := locked[mod].Canon
 		if got.ok && want == got.hash {
@@ -521,17 +433,6 @@ func ModVendor(root, cache string) ModVendorReport {
 			missing = append(missing, mod)
 			continue
 		}
-		// WHY THERE IS NO CONTAINMENT CHECK ON `to`, at the one write
-		// site that copied a tree outside the project: usableRef above
-		// is the gate, and after it a store path CANNOT escape. Every
-		// element is non-empty and neither begins nor ends with `.`, so
-		// none is `.` or `..`; moduleRe's element class admits no `/`,
-		// no `\` and no leading slash, so no element can re-root the
-		// join. A second lexical check here would be unreachable code,
-		// which ADR-002 asks to be deleted rather than excluded -- so
-		// the invariant is pinned by a test that drives the escape
-		// through this verb instead. ANY NEW CALLER of moduleDir must
-		// go through usableRef too; `mod get` is the next one.
 		to := moduleDir(vendorRoot, ref)
 		if from != to {
 			if err := copyTree(from, to); nil != err { //coverage:ignore a readable store copies
@@ -591,35 +492,12 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-// THE PUBLISH BOUNDARY (G6 phase 4, the Go side of modManifest in
-// ts/src/mod-tool.ts). A module is an OCI artifact, and what a publish
-// PUSHES is a manifest: a config media type, one layer holding the
-// module's source tree, and annotations carrying the module path, its
-// version and its canon-hash.
-//
-// The push needs a registry, which this build does not have. Everything
-// the push would ASSERT is local, and that is what `aontu mod manifest`
-// answers: the exact artifact description, computed the way the
-// registry would be told it, plus the gate that decides whether it may
-// be minted at all.
-//
-// WHY THE ANNOTATION MATTERS MORE THAN THE BYTES. "Has the truth
-// changed?" is one annotation read and a string compare — no download,
-// no parse — because the canon-hash pins MEANING rather than text. A
-// consumer holding `aon1-oQs6…` can ask a registry index whether the
-// module still hashes to it, and a reformat, a comment or a file split
-// will not move it.
 
 // ModuleConfigMediaType is the config media type the design fixes: an
 // Aontu module is not an image, and the type is what tells a registry
 // so.
 const ModuleConfigMediaType = "application/vnd.aontu.module.v1+json"
 
-// ModuleAnnotationCanon and ModuleAnnotationMajor are the two facts OCI
-// has no predefined key for. OCI asks a custom key to be the reverse
-// DNS of a domain its author controls, and the project's own home is
-// the only domain it has — inventing an `aontu.dev` would be a claim it
-// cannot back.
 const (
 	ModuleAnnotationCanon = "com.github.rjrodger.aontu.canon"
 	ModuleAnnotationMajor = "com.github.rjrodger.aontu.major"
@@ -686,11 +564,6 @@ func majorOf(version string) string {
 	return version[:end]
 }
 
-// layerFiles is every file of a module's source tree, relative and
-// forward-slashed. `aontu_meta/vendor/` is excluded: a published module
-// carries its own sources, not a copy of everyone else's — a consumer
-// resolves the closure itself, and a nested vendor tree would publish
-// the world.
 func layerFiles(dir, prefix string) []string {
 	out := []string{}
 	entries, err := os.ReadDir(dir)
@@ -798,8 +671,6 @@ func ModManifest(root, against string) ModManifestReport {
 		return report
 	}
 
-	// Backward compatibility: the NEW version is the general side, so
-	// every instance the old one admitted must still be admitted.
 	gate := Subsume(newSrc, toValidSource(string(priorData)), &SubsumeOptions{
 		GeneralURL:   main,
 		SpecificURL:  priorMain,

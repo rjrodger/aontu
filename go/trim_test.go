@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The trim internals no source reaches (ADR-002; the Go side of
-// ts/test/coverage3.test.ts, coverage3-trim): trimDeleteAt's honest
-// answers for paths a candidate enumeration from an identical parse
-// can never produce, and trimEvalCanon's fold of a probe whose
-// deletion cannot land. Cross-package runs (the CLI tests) do not
-// count toward this package's coverage, so the arms are exercised
-// here directly.
 
 package aontu
 
@@ -22,8 +15,6 @@ func TestTrimInternals(t *testing.T) {
 	root.set("a", inner)
 	root.set("s", newInteger(2))
 
-	// A mid-path segment that is not a bag proves nothing to delete:
-	// the walk stops inside the loop, before the final-key check.
 	if trimDeleteAt(root, []string{"s", "deep", "deeper"}) {
 		t.Fatal("expected false for a scalar mid-path")
 	}
@@ -35,7 +26,6 @@ func TestTrimInternals(t *testing.T) {
 	if trimDeleteAt(root, []string{"zz", "deep"}) {
 		t.Fatal("expected false for a missing mid-path key")
 	}
-	// A missing FINAL key likewise.
 	if trimDeleteAt(root, []string{"a", "zz"}) {
 		t.Fatal("expected false for a missing final key")
 	}
@@ -52,17 +42,11 @@ func TestTrimInternals(t *testing.T) {
 		t.Fatalf("expected optional [y], got %v", inner.optional)
 	}
 
-	// trimEvalCanon answers ok=false for a probe whose deletion cannot
-	// land (the caller's "load-bearing" fold).
 	if _, ok, _ := New().trimEvalCanon("a:1", []string{"zz", "deep"}); ok {
 		t.Fatal("expected ok=false for an unlandable deletion")
 	}
 }
 
-// AN `error` VERDICT SAYS WHY (the review's finding F). Both
-// single-document verbs used to answer an unusable document with an
-// empty report, which is the one answer a repair loop cannot act on.
-// The TypeScript twin is `verb-errors` in ts/test/vet.test.ts.
 func TestSingleDocumentVerbsReportWhy(t *testing.T) {
 	// A document that PARSES and then contradicts itself: the finding
 	// is the engine's own, with both operands sited.
@@ -87,9 +71,6 @@ func TestSingleDocumentVerbsReportWhy(t *testing.T) {
 		t.Fatalf("trim parse finding: %+v", tp.Errors[0])
 	}
 
-	// Relations, both arms. `Findings` stays the GRAPH's vocabulary --
-	// a document with no graph has no graph findings -- and the reason
-	// rides `Errors`.
 	rr := New().RelationCheck("a:1 a:2")
 	if "error" != rr.Verdict || 0 != len(rr.Findings) || 1 != len(rr.Errors) {
 		t.Fatalf("relations: %+v", rr)

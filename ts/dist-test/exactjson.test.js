@@ -34,27 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-/*
- * D9 -- the generate contract, from the TypeScript side.
- *
- * Two things are pinned here that no shared TSV row can reach:
- *
- *   1. THE RUNTIME TYPES generate() returns. Byte-exact serialisation
- *      cannot see them: an integral bigdecimal (`0d1e3`) and a
- *      biginteger serialise to DIFFERENT text, but a biginteger and an
- *      ordinary integer serialise to the SAME text while generate()
- *      returned the wrong object. Canon pins the AST kind, the `gens`
- *      rows pin the bytes, and only these assertions pin the object.
- *      go/generate_test.go is the mirror on the Go side.
- *
- *   2. THE EMITTER ITSELF -- `exactJSON`, the public export the CLI and
- *      the spec runner's `gens` mode both go through. Its Go
- *      counterpart is `json.Encoder` with `SetEscapeHTML(false)` (see
- *      specGens in go/spec_test.go), so the anchor test below asserts
- *      that on everything WITHOUT an exact leaf the emitter is
- *      byte-identical to JSON.stringify -- which is what the `gens`
- *      mode already settled the two ports on.
- */
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const aontu_1 = require("../dist/aontu");
@@ -64,13 +43,8 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         const out = gen('x:0d5');
         Assert.equal(typeof out.x, 'bigint');
         Assert.equal(out.x, 5n);
-        // The case the bytes cannot distinguish: an ordinary integer and a
-        // biginteger of the same value both serialise as `5`, so only the
-        // runtime type separates them.
         Assert.equal(typeof gen('x:5').x, 'number');
         Assert.equal((0, aontu_1.exactJSON)(gen('x:5')), (0, aontu_1.exactJSON)(out));
-        // Exact past binary64 -- the reason the leaf exists. As a plain
-        // `number` this would have been 9007199254740992.
         const big = gen('x:0d9007199254740993');
         Assert.equal(typeof big.x, 'bigint');
         Assert.equal(big.x, 9007199254740993n);
@@ -81,9 +55,6 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         const out = gen('x:0d0.1');
         Assert.ok(out.x instanceof aontu_1.Decimal);
         Assert.ok(out.x.equals(aontu_1.Decimal.fromString('0.1')));
-        // An INTEGRAL bigdecimal is still a Decimal, never a bigint and
-        // never a number: `0d1e3` is a bigdecimal by source (D3) and the
-        // leaves are disjoint (D2).
         const integral = gen('x:0d1e3');
         Assert.ok(integral.x instanceof aontu_1.Decimal);
         Assert.equal(typeof integral.x, 'object');
@@ -94,14 +65,6 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         Assert.equal(sum.x.toString(), '0.3');
     });
     (0, node_test_1.test)('an-integer-past-the-safe-range-generates-as-a-bigint', () => {
-        // Issue #21's generate half. Go's integer leaf is an int64, exact
-        // across the whole window; TypeScript's is a double, so above the
-        // safe-integer range a `number` no longer renders its own digits --
-        // JSON.stringify(2**60) is 1152921504606847000, a DIFFERENT integer.
-        // Handing the emitter a bigint is what lets it write the true value,
-        // and the emitter cannot work it out for itself: by then a
-        // float-kind 1e21 (whose `1e+21` shortest form IS correct, in both
-        // ports) looks like just another number.
         const big = gen('x:1152921504606846976');
         Assert.equal(typeof big.x, 'bigint');
         Assert.equal(big.x, 1152921504606846976n);
@@ -112,21 +75,12 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         const sum = gen('x:576460752303423488+576460752303423488');
         Assert.equal(typeof sum.x, 'bigint');
         Assert.equal(sum.x, 1152921504606846976n);
-        // THE LINE IS Number.isSafeInteger, so it falls between 2^53-1 and
-        // 2^53. Both serialise to the same bytes, which is exactly why the
-        // `gens` rows cannot see this boundary and this test has to.
         Assert.equal(typeof gen('x:9007199254740991').x, 'number');
         Assert.equal(typeof gen('x:9007199254740992').x, 'bigint');
         Assert.equal((0, aontu_1.exactJSON)(gen('x:9007199254740992')), '{"x":9007199254740992}');
-        // A float-kind value stays a number at any magnitude: its shortest
-        // form is the right answer and the exact digits would be wrong.
         Assert.equal(typeof gen('x:1e21').x, 'number');
         Assert.equal((0, aontu_1.exactJSON)(gen('x:1e21')), '{"x":1e+21}');
-        // 10^20 is exact, outside int64, and so number kind by R1 -- the
-        // control that shows the cut is on KIND, not on magnitude.
         Assert.equal(typeof gen('x:100000000000000000000').x, 'number');
-        // An integer-kind bigint is still not a biginteger: the leaves stay
-        // disjoint (D2), and only canon can tell them apart.
         Assert.equal(new aontu_1.Aontu().unify('x:1152921504606846976').canon, '{"x":1152921504606846976}');
         Assert.equal(new aontu_1.Aontu().unify('x:0d1152921504606846976').canon, '{"x":0d1152921504606846976}');
     });
@@ -149,8 +103,6 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         Assert.ok(out.z[1] instanceof aontu_1.Decimal);
     });
     (0, node_test_1.test)('JSON-stringify-cannot-serialise-the-result', () => {
-        // The reason exactJSON exists, asserted rather than asserted about:
-        // the standard serialiser THROWS on the biginteger leaf...
         Assert.throws(() => JSON.stringify(gen('x:0d5')), TypeError);
         // ...and silently mangles the bigdecimal into an object shape (and
         // then throws on the bigint coefficient inside it).
@@ -163,9 +115,6 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         Assert.equal((0, aontu_1.exactJSON)(gen('x:-0d5')), '{"x":-5}');
         Assert.equal((0, aontu_1.exactJSON)(gen('x:0d123456789012345678901234567890')), '{"x":123456789012345678901234567890}');
         Assert.equal((0, aontu_1.exactJSON)(gen('x:0d9007199254740993')), '{"x":9007199254740993}');
-        // Plain digits, no `0d` marker -- that is canon's business, not
-        // JSON's -- but an integral bigdecimal keeps its `.0` so the JSON
-        // still shows a decimal.
         Assert.equal((0, aontu_1.exactJSON)(gen('x:0d0.1')), '{"x":0.1}');
         Assert.equal((0, aontu_1.exactJSON)(gen('x:0d1e3')), '{"x":1000.0}');
         Assert.equal((0, aontu_1.exactJSON)(gen('x:-0d1.5')), '{"x":-1.5}');
@@ -173,19 +122,11 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         Assert.equal((0, aontu_1.exactJSON)(gen('x:{y:0d7}')), '{"x":{"y":7}}');
     });
     (0, node_test_1.test)('sorts-object-keys-where-JSON-stringify-would-not', () => {
-        // The ONE place this emitter deliberately differs from JSON.stringify,
-        // and it exists because a JS object cannot represent the required
-        // order: ECMAScript lists canonical array-index keys first, ascending
-        // numerically, so `{"10":..,"9":..}` is unrepresentable as insertion
-        // order. Go's encoding/json sorts map keys, so sorting here is what
-        // makes the two ports byte-identical.
         const idx = { '10': 2, '9': 1 };
-        Assert.equal(JSON.stringify(idx), '{"9":1,"10":2}'); // ECMAScript order
+        Assert.equal(JSON.stringify(idx), '{"9":1,"10":2}');
         Assert.equal((0, aontu_1.exactJSON)(idx), '{"10":2,"9":1}'); // lexicographic
         // Plain insertion order is sorted too -- same rule, no special case.
         Assert.equal((0, aontu_1.exactJSON)({ b: 1, a: 2 }), '{"a":2,"b":1}');
-        // The 2^32 boundary, which is what shows the old order was ECMAScript's
-        // and not anyone's design: only indices below it are hoisted.
         Assert.equal(JSON.stringify({ '4294967295': 1, '4294967296': 2, '5': 3 }), '{"5":3,"4294967295":1,"4294967296":2}');
         Assert.equal((0, aontu_1.exactJSON)({ '4294967295': 1, '4294967296': 2, '5': 3 }), '{"4294967295":1,"4294967296":2,"5":3}');
         // Nested objects sort at every level.
@@ -194,18 +135,6 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         Assert.equal((0, aontu_1.exactJSON)([3, 1, 2]), '[3,1,2]');
     });
     (0, node_test_1.test)('is-JSON-stringify-byte-for-byte-without-the-exact-leaves', () => {
-        // The Go-parity anchor. Go's encoder (HTML escaping OFF) was
-        // aligned with JSON.stringify when the `gens` mode landed, so
-        // agreeing with JSON.stringify here is how this emitter stays
-        // aligned with Go for everything the exact leaves did not add.
-        //
-        // KEY ORDER IS EXCLUDED, and deliberately: every object below is
-        // already in sorted order, so the two agree. Where they do not, the
-        // sort wins -- see the preceding test.
-        // Control characters, written by code point so the source file
-        // carries no invisible bytes: NUL, backspace, formfeed, escape,
-        // unit separator. JS and Go both shorthand \b and \f and both
-        // write \u00xx for the rest.
         const CONTROLS = String.fromCharCode(0, 8, 12, 27, 31);
         const values = [
             null, true, false, 0, -0, 1, 1.5, 1e21, 1e-7, 1e20, -3,
@@ -232,8 +161,6 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
             '  ]',
             '}',
         ].join('\n'));
-        // JSON.stringify's `space` semantics: a string indent, and a number
-        // clamped to ten spaces.
         Assert.equal((0, aontu_1.exactJSON)({ a: 1 }, '\t'), '{\n\t"a": 1\n}');
         Assert.equal((0, aontu_1.exactJSON)({ a: 1 }, 99), '{\n' + ' '.repeat(10) + '"a": 1\n}');
         Assert.equal((0, aontu_1.exactJSON)({ a: 1 }, 0), '{"a":1}');
@@ -241,9 +168,6 @@ const gen = (src) => new aontu_1.Aontu().generate(src);
         Assert.equal((0, aontu_1.exactJSON)({ a: {}, b: [] }, 2), '{\n  "a": {},\n  "b": []\n}');
     });
     (0, node_test_1.test)('escapes-line-and-paragraph-separators', () => {
-        // The one place JS and Go's encoder disagree by default: Go escapes
-        // U+2028/U+2029, JS leaves them literal. Byte parity wins, and the
-        // escaped form is still legal JSON that decodes to the same string.
         const LS = String.fromCharCode(0x2028);
         const PS = String.fromCharCode(0x2029);
         Assert.equal((0, aontu_1.exactJSON)({ a: 'x' + LS + 'y' }), '{"a":"x\\u2028y"}');

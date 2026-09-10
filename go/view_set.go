@@ -2,15 +2,6 @@
 
 package aontu
 
-// The view document (VIEWS.0.md, "6. The view document").
-//
-// A projection that runs in CI belongs in a file. A view document is an
-// ORDINARY document that includes the model and declares its figures as
-// data; `views` is the AUTHOR's key and nothing here knows the name
-// (ADR-010), which is why `--views` names the path.
-//
-// This mirrors the view-document section of ts/src/view.ts function for
-// function; test/spec/views.tsv pins both ports on the same rows.
 
 import (
 	"sort"
@@ -46,9 +37,6 @@ type ViewSetReport struct {
 	Errors []VetFinding `json:"errors,omitempty"`
 }
 
-// The keys a declaration may carry, and what each one is. The names are
-// the library's option names, which are the CLI's flag names without
-// the dashes: one vocabulary, three doors.
 var declText = []string{
 	"kind", "as", "out", "at", "relation", "order", "groupBy", "label",
 	"sets", "member", "universe", "edges",
@@ -84,9 +72,6 @@ func viewDocumentFinding(path, message, note string) VetFinding {
 	return viewFinding("view_document_shape", "reference", path, message, note)
 }
 
-// viewPlan is one validated declaration: everything the drawing needs,
-// decided before any figure is drawn, so a document with three bad
-// declarations reports three faults rather than the first.
 type viewPlan struct {
 	name string
 	kind string
@@ -267,14 +252,6 @@ func viewPlanOf(name string, decl any, at string) (*viewPlan, []VetFinding) {
 	return &viewPlan{name: name, kind: kind, as: as, out: opts.Out, max: max, opts: opts}, nil
 }
 
-// ViewSet draws N FIGURES OF ONE DOCUMENT. The document is evaluated
-// ONCE, with the provenance recorder on, and every figure but the
-// ladder draws from that one root; the ladder re-runs `why` by
-// construction.
-//
-// The caller writes the files, and only when the whole set rendered:
-// N figures of one model are only meaningful together, so a set whose
-// third figure refuses must not leave the first two on disk.
 func (a *Aontu) ViewSet(src string, opts *ViewOptions) ViewSetReport {
 	options := ViewOptions{}
 	if nil != opts {

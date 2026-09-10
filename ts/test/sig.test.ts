@@ -1,12 +1,5 @@
 /* Copyright (c) 2021-2026 Richard Rodger, MIT License */
 
-// The signature registry's parity gates (docs/design/SIGNATURES.0.md,
-// ADR-001). Three facts hold the design together: the inlined copy IS
-// the shared declaration (byte identity), every declaration line
-// ROUND-TRIPS through this port's parser (render(parse(line)) is the
-// line — the same gate go/sig_test.go holds for the Go parser, which
-// is what pins the two parsers to each other), and the declared names
-// are exactly the built-in names the engine serves.
 
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
@@ -26,9 +19,6 @@ const SHARED = Path.join(__dirname, '..', '..', 'test', 'spec', 'signature.tsv')
 describe('sig', () => {
 
   test('sigdecl-is-the-shared-declaration', () => {
-    // Line endings are the checkout's business, not the declaration's:
-    // a CRLF checkout (Windows autocrlf) must compare equal, the same
-    // tolerance the shared spec runner extends to every .tsv.
     const norm = (s: string) => s.replace(/\r\n/g, '\n')
     const shared = Fs.readFileSync(SHARED, 'utf8')
     expect(norm(SIGDECL)).equal(norm(shared))

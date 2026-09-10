@@ -7,14 +7,6 @@ const formatPath = (path) => 0 === path.length ? '$' : '$.' + path.join('.');
 // Digits-only segments are list indices, which is exactly how the rest
 // of the engine spells them.
 const isIndex = (seg) => /^[0-9]+$/.test(seg);
-// The node a link starts at and the relation it hangs under, derived
-// from the link's own position.
-//
-// A DECLARED predicate (rel()-minted) is authoritative: the link is cut
-// at the key the rel() sat on, wherever that is on the way down, which
-// is what makes a MAP-valued relation report the relation rather than
-// the inner label. Without one the relation is INFERRED: strip the list
-// indices, and the first real key above the link is it.
 const cut = (at, relkey) => {
     if (undefined !== relkey) {
         for (let i = at.length - 1; 0 <= i; i--) {
@@ -29,11 +21,6 @@ const cut = (at, relkey) => {
         ? { from: formatPath([]), key: relkey ?? '' }
         : { from: formatPath(at.slice(0, i)), key: relkey ?? at[i] };
 };
-// The graph of an evaluated tree. Walks POSITIONS, not values: a
-// reference or a spread can put one value object at several positions,
-// and a walk guarded by object identity would find the first and miss
-// every other place it is reached. The guard is therefore the ancestor
-// chain — which is what a cycle actually is.
 function graphOf(root) {
     const edges = [];
     const disjunct = [];
@@ -65,11 +52,6 @@ function graphOf(root) {
         if (true === node.isGraphAtom && undefined !== node.held) {
             visit(node.held, path, ancestors, hidden, undecided);
         }
-        // An unresolved conjunction (a link waiting on a peer that never
-        // came, a constraint still open) holds its terms at the SAME
-        // position; every link among them is written there, and is an
-        // edge. This is what a match-selected branch or a deferred refer()
-        // looks like after evaluation.
         if (true === node.isConjunct && Array.isArray(node.peg)) {
             ancestors.add(node);
             for (const term of node.peg) {
@@ -77,10 +59,6 @@ function graphOf(root) {
             }
             ancestors.delete(node);
         }
-        // AN UNRESOLVED DISJUNCTION IS NOT A VALUE (ADR-007), so a link
-        // under one of its arms is not an edge. Its POSITION is collected
-        // instead, so a figure can report what the document leaves
-        // undecided rather than drawing it or dropping it in silence.
         if (true === node.isDisjunct && Array.isArray(node.peg)) {
             ancestors.add(node);
             for (const arm of node.peg) {
@@ -97,10 +75,6 @@ function graphOf(root) {
         }
     };
     visit(root, [], new Set(), false, false);
-    // DETERMINISTIC by construction, not by luck: edges by the position
-    // they are written at, which is unique — one link, one place. That
-    // holds through a conjunction too: its terms share the position, and
-    // two links there would have had to unify into one.
     edges.sort((a, b) => (0, keyorder_1.cmpCodePoint)(a.at, b.at));
     if (0 < disjunct.length) {
         return { edges, disjunct: [...new Set(disjunct)].sort(keyorder_1.cmpCodePoint) };

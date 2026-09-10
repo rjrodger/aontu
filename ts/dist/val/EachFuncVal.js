@@ -41,9 +41,6 @@ class EachFuncVal extends FuncBaseVal_1.FuncBaseVal {
         const peg = [];
         for (let i = 0; i < vals.length; i++) {
             const elctx = ctx.descend(String(i));
-            // A FULL INSTANCE per element, to the leaves (`dup`, ADR-005),
-            // at the element's own position -- see PackFuncVal.resolve --
-            // with `_` bound to the source child and NOTHING met into it.
             const inst = tmpl.clone(elctx, { dup: true });
             (0, Val_1.repathInstance)(inst, inst.path);
             peg.push((0, PlaceVal_1.fillPlace)(inst, vals[i], elctx));

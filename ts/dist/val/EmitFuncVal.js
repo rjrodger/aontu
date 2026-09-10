@@ -22,15 +22,6 @@ function isRefusal(x) {
 // data and may be computed.
 function tableTemplates(table) {
     const t = table;
-    // A NAMED TABLE IS A PLACEHELD `emit`, and its table is the table.
-    // A table written at a document position is DRIVEN there -- a body's
-    // relative references resolve against wherever it sits and miss --
-    // so the position that holds one unevaluated is the one position the
-    // language already never drives: a call's template argument.
-    // `%wire = emit(_, [ … ])` is that position with the selection left
-    // open, and it reads as what it is, an apply-templates waiting for
-    // its nodes: `emit(.listen, %wire)` passes them, `.listen & %wire`
-    // fills the hole, and both are the same dispatch.
     if (true === t?.isEmitFunc) {
         return tableTemplates(t.peg[1]);
     }
@@ -55,12 +46,6 @@ function tableTemplates(table) {
     }
     return { code: 'emit_table' };
 }
-// One rule. Both keys are required: a template with no pattern would
-// match everything by accident, and one with no body would emit
-// nothing while claiming a node. The two optional keys -- a `replace`
-// map and an `esc` naming the convention its values are escaped by,
-// `none` the one opt-out -- are the template's shape too, and D3's two
-// static checks run here, on the template alone, before any node.
 function oneTemplate(m, idx) {
     const match = m.peg.match;
     const body = m.peg.body;
@@ -96,12 +81,6 @@ function oneTemplate(m, idx) {
 function textOf(v) {
     return true === v?.isScalar && 'string' === typeof v.peg ? v.peg : undefined;
 }
-// The literal strings of a body -- a string element, and the strings
-// written directly in a map element's `of` list or `text` -- which are
-// the text the template wrote. A string an expression or a nested
-// dispatch computes is not one: D3's third rule (a spliced result is
-// finished) and its second (a substituted value is never re-scanned)
-// both follow from substituting at these spots and nowhere else.
 function literalSpots(elems) {
     const out = [];
     elems.forEach((el, i) => {
@@ -129,11 +108,6 @@ function literalSpots(elems) {
     });
     return out;
 }
-// D3's two static checks, on the template alone and before any node:
-// a key inside another is ambiguous whatever the order
-// (replace_overlap), and a key no literal holds means the template
-// drifted from its map (replace_unused). Keys are visited in code
-// point order, so both ports name the same pair.
 function checkReplace(keys, lits) {
     const sorted = [...keys].sort(keyorder_1.cmpCodePoint);
     for (const a of sorted) {
@@ -150,10 +124,6 @@ function checkReplace(keys, lits) {
     }
     return undefined;
 }
-// D3's first two rules as one scan: at each position the longest key
-// that matches is taken and its value written out whole, and the scan
-// moves past the KEY -- the value is never looked at again, so no
-// value can introduce a key.
 function substitute(text, pairs) {
     let out = '';
     let i = 0;
@@ -170,11 +140,6 @@ function substitute(text, pairs) {
     }
     return out;
 }
-// The instance with the template's literal text at element `i`
-// rewritten through the pairs -- on the fresh instance, where the
-// structure is exactly the template's, and before any binding, so a
-// value written in is never scanned again and a spliced result is
-// never touched.
 function substituted(inst, i, lits, pairs, ctx) {
     for (const l of lits) {
         if (l.i !== i) {
@@ -215,14 +180,6 @@ function bindNode(v, node, ctx, fail) {
             return v;
         }
         const out = found.clone(ctx);
-        // A RELATIVE REFERENCE IS A READ TOO (RENDER.0.md P7), and the one
-        // read no reference resolution sees: the binding answers it here,
-        // from the matched node, rather than letting a path resolve at a
-        // position the body never occupies. Without this a nested rule set
-        // whose selection is `.handlers` reported its nodes at the address
-        // they came to rest, which is in the OUTPUT. A node carries an
-        // address only under an instrumented run, which is what makes the
-        // second test the whole guard.
         if (null == out.origin && null != node.origin) {
             ;
             out.origin = node.origin +
@@ -265,12 +222,6 @@ function bindNode(v, node, ctx, fail) {
     }
     return v;
 }
-// The field of `node` a reference names, or undefined when it names
-// none. Only a chain of plain NAMES is a field: a parent step has no
-// answer at a node that is an origin rather than a position, and a
-// variable segment is not a name until something resolves it -- both
-// are refused here rather than left to resolve somewhere else, which
-// is the failure mode the binding exists to remove.
 function nodeField(ref, node) {
     let cur = node;
     for (const seg of ref.peg) {
@@ -288,21 +239,6 @@ function nodeField(ref, node) {
     }
     return cur;
 }
-// The address of one matched node: its own read address when it has
-// one, else the SELECTION's read address and the node's key under it
-// -- a selection is read once and walked, so its members carry no read
-// of their own.
-//
-// A COMPUTED SELECTION HAS NO ADDRESS, AND THE TRACE SAYS SO: an empty
-// node. `filter(...)` builds a bag no path in the document names, and
-// the only other thing to report is where the bag came to REST -- a
-// position inside a template instance, which is not in the document,
-// and which the two ports number differently. Publishing that would
-// have made the trace a parity break as well as a fiction. The rule
-// address answers the same way: `<table>#<index>` for a table a
-// reference reached, and `#<index>` alone for one written inline at the
-// call site, which has no address of its own. `#` is in no path, so a
-// rule's address can never be read as one.
 function nodeAddr(sel, key, node) {
     if (null != node.origin) {
         return node.origin;
@@ -349,21 +285,10 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return super.unify(peer, ctx);
     }
     resolve(ctx, args) {
-        // THE MEMBERS WITH THEIR KEYS, read through the one helper every
-        // fold reads a bag by (./members.ts): source order for a list,
-        // sorted-key order for a map, a hidden child and an unfilled
-        // optional left out. The KEY is what the trace addresses a node by
-        // -- it is the node's key IN THE SELECTION, which is the only
-        // thing a walk of a computed bag knows about where a node sits.
         const nodes = (0, members_1.bagMembers)(args?.[0], ctx);
         if (undefined === nodes) {
             return (0, err_1.makeNilErr)(ctx, 'emit_data', this);
         }
-        // A NAMED TABLE IS REACHED BY REFERENCE, and the reference -- not
-        // the table -- is what is followed. Followed HERE rather than in
-        // the staged drive, which waits for a SETTLED target: a table is a
-        // template, a template holding a hole never settles, and waiting
-        // for one would mean the dispatch never fires.
         let table = args?.[1];
         if (true === table?.isRef) {
             table = table.unify((0, top_1.top)(), ctx);
@@ -372,10 +297,6 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         if (isRefusal(templates)) {
             return this.refuse(ctx, templates);
         }
-        // THE TRACE'S TWO ADDRESSES (RENDER.0.md D11, P7), computed once
-        // per dispatch and only when the run is instrumented: the table's
-        // own, which every rule of it is numbered under, and the
-        // selection's, which every node of it is keyed under.
         const rec = undefined !== ctx.reads;
         const tableAddr = rec ? (table?.origin ?? '') : '';
         const selAddr = rec ? args?.[0]?.origin : undefined;
@@ -392,11 +313,6 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
             const fail = {};
             let mark = undefined;
             if (rec) {
-                // THE NODE KEEPS ITS ADDRESS (P7). A body passes the node on
-                // through `_`, and a nested rule set dispatching over it can
-                // then say where it came from -- otherwise the node arrives as
-                // an element of a list the body wrote, and the only address
-                // left is where that list came to rest.
                 const naddr = nodeAddr(selAddr, member.key, node);
                 if ('' !== naddr && null == node.origin) {
                     ;
@@ -446,14 +362,6 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return tried.join(' ');
     }
-    // The replacement pairs for one node: the template's `replace` map
-    // instantiated at the node -- bound, filled and driven as a body is
-    // -- each value as text by the one number-to-text rule (`plusText`,
-    // the rule `+` and `join` share), escaped by the template's
-    // convention unless that is `none`, and sorted longest key first so
-    // the scan takes the longest match at every position (D3's first
-    // rule). A value that is not text, or has not settled, is
-    // replace_value.
     replacements(ctx, node, tmpl, fail) {
         if (undefined === tmpl.replace) {
             return undefined;
@@ -477,13 +385,6 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         pairs.sort((a, b) => b[0].length - a[0].length || (0, keyorder_1.cmpCodePoint)(a[0], b[0]));
         return pairs;
     }
-    // Instantiate one body at the node and SPLICE its pieces into the
-    // output. A full instance to the leaves (`dup`, ADR-005), because a
-    // bare clone shares the inner structure of any call in the body and
-    // the first node's resolution would answer for every node; the
-    // template's replacements written into the instance's literal text;
-    // then the two bindings, relative references and the hole, both to
-    // the node.
     instantiate(ctx, node, tmpl, out, fail, mark) {
         const pairs = this.replacements(ctx, node, tmpl, fail);
         if (undefined !== fail.code) {
@@ -497,23 +398,9 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
                 inst = substituted(inst, i, tmpl.lits, pairs, elctx);
             }
             let piece = (0, PlaceVal_1.fillPlace)(bindNode(inst, node, elctx, fail), node, elctx);
-            // A NESTED DISPATCH IS DRIVEN HERE, not left for the next pass.
-            // Its selection is bound and the model has settled, so it has
-            // everything it needs -- and it must answer NOW, because what
-            // makes the result flat is splicing its pieces into this one.
-            // Left standing, a nested `emit` resolved a pass later, as a
-            // list INSIDE the list, and the fragment algebra is flat.
-            // Through `unite` rather than by hand: a rule set that walks
-            // into itself for ever is charged to the depth budget and
-            // refused as `unify_cycle`, like any other runaway descent.
             if (!piece.done) {
                 piece = (0, unify_1.unite)(elctx, piece, (0, top_1.top)(), 'emit');
             }
-            // THE INNERMOST DISPATCH OWNS THE PIECE (P7). A body element
-            // that is a nested rule set has already stamped what it emitted,
-            // and those pieces are spliced into this result here: the rule
-            // that WROTE a line is the one the trace names, so a stamp is
-            // written only where there is none.
             const at = out.length;
             splice(piece, out);
             if (undefined !== mark) {

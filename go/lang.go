@@ -19,32 +19,7 @@ import (
 	path "github.com/tabnas/path/go"
 )
 
-// The parser is built on the Go ports of the @tabnas parser stack
-// (@tabnas/jsonic and its expr and path plugins) — the same stack the
-// canonical TypeScript parser (ts/src/lang.ts) uses. This keeps syntax in
-// parity instead of maintaining a divergent hand-written parser.
-//
-// Construction model (important): the Go jsonic port emits plain Go
-// values (map[string]any, []any, float64, string, bool, nil) and shares
-// the node reference between the `val` and `map` rules, so replacing a
-// map node in the `map` rule does not propagate upward. We therefore:
-//   1. wrap scalar leaves into Vals in the `val` rule (capturing the
-//      source byte offset for error ordering),
-//   2. record key order on each map via a sentinel entry in the `pair`
-//      rule (Go maps are unordered, unlike JS objects), and
-//   3. convert map[string]any -> MapVal and []any -> ListVal in a final
-//      post-walk (asVal).
-//
-// The grammar layers the expr operators (& | * $ . +), the path plugin,
-// custom rules for &: spreads and a?: optional keys, and the multisource
-// plugin for @"file" loading — the same stack and order as ts/src/lang.ts.
 
-// orderKey is the sentinel map entry holding insertion order, spreadKey
-// holds the &: spread value. The reserved prefix keeps them from
-// colliding with real keys; a source key carrying the prefix is rejected
-// (see trackOrder) rather than silently corrupting the map. (The TS
-// implementation stores this state under a Symbol, so it is immune; this
-// guard keeps the Go behaviour safe for the same exotic input.)
 const reservedKeyPrefix = "\x00aontu_"
 const orderKey = reservedKeyPrefix + "order"
 const spreadKey = reservedKeyPrefix + "spread"
@@ -55,12 +30,6 @@ const optionalKey = reservedKeyPrefix + "optional"
 // of the document. Twin of aontu_alias_keys in ts/src/lang.ts.
 const aliasKeysKey = reservedKeyPrefix + "aliaskeys"
 
-// keyRefusalsKey is the sentinel holding this map's KEY REFUSALS: a
-// declaration SPELLED WITH A COLON (the form before 0.58.0) and a key
-// the bare-text rule refuses (`x=y: 1`), each with the code, the source
-// position to site it at and its details. Read where the map is
-// converted, which writes the refusal in the value's place. Twin of
-// aontu_key_refusals in ts/src/lang.ts.
 const keyRefusalsKey = reservedKeyPrefix + "keyrefusals"
 
 // keyRefusal is one such refusal: the key, the code, where to site it
@@ -74,13 +43,6 @@ type keyRefusal struct {
 	details map[string]string
 }
 
-// aliasEqAt records, per lexer, the source index of the `=` that follows
-// an alias name -- THE DECLARATION OPERATOR (docs/design/ALIASES.0.md,
-// X-1 as settled 2026-09-05). Decided where the name is claimed and
-// consumed at that index, so an entry never outlives the next text
-// position. Keyed by the Lex because the text hook is one function
-// shared by every parse, and parses run concurrently. Twin of the
-// `aontu_eq_at` mark on the TS lexer.
 var aliasEqAt sync.Map
 
 const posKey = reservedKeyPrefix + "pos"
@@ -90,21 +52,8 @@ const posKey = reservedKeyPrefix + "pos"
 // `{`; the text is what gives it an extent (base.srclen, ts/src/site.ts).
 const srcKey = reservedKeyPrefix + "src"
 
-// elidedSpreadKey marks a map whose `&:` spread was written with no
-// value (issue #48). A bool rather than a Val: nothing can be stored
-// under spreadKey to carry it, since a spread with no value is exactly
-// what is missing.
 const elidedSpreadKey = reservedKeyPrefix + "elidedspread"
 
-// theLang is the default parser (base ""), resolving relative @"file"
-// loads from the process working directory.
-//
-// Built LAZILY, on first use, rather than as a package variable: the
-// module leg of the resolver (G6 phase 2, mod.go) evaluates a module to
-// verify it, and evaluation reaches this parser — a package-variable
-// initialiser would be a static initialisation cycle through the very
-// resolver it installs. Once, so the parser is still built exactly one
-// time however many goroutines ask for it first.
 var (
 	theLangOnce sync.Once
 	theLangVal  *jsonic.Jsonic
@@ -117,11 +66,6 @@ func theLang() *jsonic.Jsonic {
 	return theLangVal
 }
 
-// langCache memoises base -> parser. multisource resolves a top-level
-// load's relative path against opts.Path, which is fixed when the plugin
-// is applied, so each distinct non-empty entry base needs its own parser.
-// (Nested loads inside a loaded file are rebased per-file by multisource
-// itself, via the jsonic context meta.)
 var (
 	langCacheMu sync.Mutex
 	langCache   = map[string]*jsonic.Jsonic{}
@@ -147,10 +91,6 @@ func langForBase(base string) (*jsonic.Jsonic, error) {
 	if err != nil { //coverage:ignore makeLang cannot fail — see mustMakeLang
 		return nil, err
 	}
-	// Bound memory in long-running hosts (e.g. the LSP) that may resolve
-	// many distinct bases over their lifetime: once the cache is full,
-	// stop adding rather than growing without limit. Bases past the cap
-	// are rebuilt per call (slower) but never leak.
 	if len(langCache) < maxLangCache {
 		langCache[base] = j
 	}
@@ -161,58 +101,22 @@ func boolPtr(b bool) *bool { return &b }
 
 func mustMakeLang(base string, resolver multisource.Resolver) *jsonic.Jsonic {
 	j, err := makeLang(base, resolver)
-	// makeLang's only error sources are its three plugin registrations,
-	// which take compile-time literal options and ignore the base — and
-	// this very call already succeeds at package init.
 	if err != nil { //coverage:ignore plugin registration cannot fail
 		panic("aontu: jsonic grammar setup failed: " + err.Error())
 	}
 	return j
 }
 
-// inElem reports whether this val rule was pushed from a LIST ELEMENT.
-//
-// An optional key is not a list element. The same pair WITHOUT the `?` --
-// `a:[x:1]` -- is already discarded by both ports, because a key:value
-// pair is simply not an element; adding `?` must not turn a discarded pair
-// into a materialised one. It did here, purely because the optional form
-// reached the `val` rule's dive alts while the plain form never does.
-//
-// The canonical port avoids this a different way, by intercepting
-// OPTKEY+QM in the `elem` rule itself (the aontu-optional-key-elem alt in
-// ts/src/lang.ts) so `val` never sees it. Guarding the dive is the smaller
-// change here and keeps the two grammars' shapes recognisable.
-//
-// Worth naming what the bug actually cost: the phantom element MERGED with
-// a real one, so `a:[x?:1] a:[{q:9}]` generated {"q":9,"x":1} -- content
-// injected into a neighbouring element, not merely a stray entry.
 func inElem(r *jsonic.Rule) bool {
 	return r != nil && r.Parent != nil && "elem" == r.Parent.Name
 }
 
-// makeLang builds the aontu parser for an include base and a resolver:
-// fileResolver for evaluation, and the formatter's memory stub (format.go),
-// which answers every include with nothing because the formatter reads the
-// file it is given and no other.
 func makeLang(base string, resolver multisource.Resolver) (*jsonic.Jsonic, error) {
 	j := jsonic.Make(jsonic.Options{
-		// Brand parse errors as aontu's, exactly as ts/src/lang.ts does
-		// with `errmsg: { name: 'aontu', suffix: false }`. Without it a
-		// syntax error reached the user marked `[jsonic/unexpected]`,
-		// naming a dependency the reader never chose, where the canonical
-		// engine says `[aontu/unexpected]` (issue #32, family 1).
 		ErrMsg: &jsonic.ErrMsgOptions{
 			Name:   "aontu",
 			Suffix: false,
 		},
-		// Aontu's own text for the two parse hints, replacing the
-		// parser's defaults — the same two, with the same wording, that
-		// ts/src/lang.ts sets through `jsonic.options({hint:{...}})`.
-		// Without them a Go syntax error explained itself in the
-		// parser's terms ("do not match any rule alternative active at
-		// this position") where the canonical engine explains itself in
-		// the user's, and points at the `#` comment character as the way
-		// to bisect the problem (issue #50).
 		Hint: map[string]string{
 			"unknown": `
 Since the error is unknown, this is probably a bug. Please consider
@@ -226,13 +130,6 @@ The character(s) {src} were not expected at this point as they do not
 match the expected syntax. Use the # character to comment out lines to
 help isolate the syntax error.`,
 		},
-		// Only # line comments are valid Aontu syntax (see
-		// docs/reference-language.md; ts/src/lang.ts sets the same).
-		// Def MERGES with the parser's defaults (#, //, /* */) rather
-		// than replacing them, so the slash and multi markers have to
-		// be removed explicitly — a nil def is the removal marker.
-		// ts/src/lang.ts achieves the same by first clearing with
-		// `comment: { def: null }`.
 		Comment: &jsonic.CommentOptions{
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.CommentDef{
@@ -241,33 +138,13 @@ help isolate the syntax error.`,
 				"multi": nil,
 			},
 		},
-		// A PAIR INSIDE A LIST IS A SINGLE-KEY MAP ELEMENT:
-		// `[a:1, b:2]` is `[{a:1}, {b:2}]` (ts/src/lang.ts builds the
-		// element in its elem bc). The option routes the pair into the
-		// list as a raw `map[string]any{key: val}`; elemSpread then
-		// stamps aontu's sentinels onto it (order, position, source)
-		// so asValDepth converts it exactly as a braced map converts.
 		List: &jsonic.ListOptions{Pair: boolPtr(true)},
 		// See tsTextCheck: the text stage of the bare-text rule (a run
 		// is letters, digits, `-` and `_`, or it is refused), and the
 		// alias name and its `=`, as in the TS lexer's text check hook.
 		Text: &jsonic.TextOptions{Check: tsTextCheck},
-		// See tsNumCheck: a numeric prefix of a larger run is not a
-		// number (`100'sq'` is one refused run, `2026-09-05` one
-		// string), as in TS.
 		Number: &jsonic.NumberOptions{
-			// Sep must be restated: passing any NumberOptions with an
-			// empty Sep DISABLES separators ("Empty string disables" —
-			// the strict-JSON grammars depend on that), so this struct
-			// had turned them off and `1_000` unified to the STRING
-			// "1_000" while the TS port (whose option merge keeps the
-			// default) gave 1000. Caught by test/spec/engine-parity.tsv.
 			Sep: "_",
-			// See sepInvalid: a separator is legal only as a SINGLE
-			// separator BETWEEN digits, and the engine's matcher leaves
-			// two gaps (`1__0`, `0x_ff`). Exclude is the exact analogue
-			// of the TS `number.exclude` RegExp — same matched source,
-			// same "decline the whole run to text" outcome.
 			Exclude: numberExcluded,
 			Check:   tsNumCheck,
 		},
@@ -275,48 +152,18 @@ help isolate the syntax error.`,
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.ValueDef{
 				"string": kindDef(KindString),
-				// `number` is the numeric SUPERTYPE (it admits any
-				// numeric leaf); `float` names the binary64 leaf that
-				// `number` used to name. See scalar.go's Kind lattice.
 				"number":     kindDef(KindNumber),
 				"integer":    kindDef(KindInteger),
 				"float":      kindDef(KindFloat),
 				"biginteger": kindDef(KindBigInteger),
 				"bigdecimal": kindDef(KindBigDecimal),
 				"boolean":    kindDef(KindBoolean),
-				// The `0d` exact literal (D3). A regex value def with
-				// Consume claims the whole run — INCLUDING a `.` — from
-				// the full forward source, so it wins over both the
-				// number matcher (which declines `0d…` as not fully
-				// numeric) and the dot token that would otherwise split
-				// `0d1.5` into a path reference. See exactLiteralRe.
-				// THE ALIAS SIGIL (docs/design/ALIASES.0.md §4). `%` is
-				// part of an alias's name, so the name is one lexeme
-				// wherever it appears and its meaning is decided by
-				// POSITION: a binding in key position (`%uint8 = …`
-				// declares), a use in value position (`listen: %uint8`
-				// refers). Consume claims the run whole for the same
-				// reason the exact literal below does -- the text
-				// matcher's ender set would otherwise carve the `%` off
-				// and leave a bare `uint8`, which is precisely the
-				// capture the sigil exists to prevent.
-				//
-				// A key is taken from the token's SOURCE, so one lexeme
-				// serves both positions. Mirrors the alias arm of the
-				// text check hook in ts/src/lang.ts.
 				"alias": {
 					Match:   aliasRe,
 					Consume: true,
 					ValFunc: func(m []string) any {
 						name := m[0]
 						return jsonic.TokenValFunc(func(r *jsonic.Rule, _ *jsonic.Context) any {
-							// AN ALIAS REFERENCE IS A PATH REFERENCE:
-							// `%uint8` is `$.%uint8`, root-absolute and
-							// one segment. Order independence,
-							// alias-of-alias, redeclaration unifying and
-							// cycle refusal spanning both namespaces are
-							// then the reference machinery the language
-							// already has, not a second resolver.
 							rv := newRef([]any{name}, false)
 							rv.absolute = true
 							if r.ON > 0 {
@@ -342,10 +189,6 @@ help isolate the syntax error.`,
 					},
 				},
 				"top": valDef(func(sp int) Val { t := top(); t.sp = sp; return t }),
-				// G8 phase 3: the placeholder. A BARE `_` is the hole;
-				// `"_"` quoted, and any longer bare word containing it,
-				// stay text. Reserving it is a breaking change, pinned
-				// by place.tsv. Mirrors ts/src/lang.ts.
 				"_":     valDef(func(sp int) Val { p := newPlace(); p.sp = sp; return p }),
 				"nil":   valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
 				"true":  valDef(func(sp int) Val { v := newBoolean(true); v.sp = sp; return v }),
@@ -361,43 +204,9 @@ help isolate the syntax error.`,
 			// Duplicate keys combine into a conjunct (mirrors the jsonic
 			// merge in ts/src/lang.ts), e.g. `a:1 a:2` -> `a:1&2`.
 			Merge: func(prev, val any, r *jsonic.Rule, ctx *jsonic.Context) any {
-				// A new key (prev == nil) has nothing to unify — take the
-				// value as-is. (asVal(nil) is an empty MapVal, so merging
-				// would wrongly yield `{} & val`.) tabnas's multisource calls
-				// this for every key of a top-level @"file" load, including
-				// new ones, so this guard is required for source loading.
 				if prev == nil {
 					return val
 				}
-				// A BOOKKEEPING ENTRY, not a source value: combine it
-				// structurally rather than unifying it as a Val (issue #3).
-				//
-				// multisource's mergeIntoParent copies the loaded file's map
-				// node into the host node ONE KEY AT A TIME through this
-				// function, and the loaded node carries the same reserved
-				// sentinel entries every aontu map node carries. Unifying
-				// those turned the host's `[]string` order list into a
-				// ConjunctVal, so asValDepth's `n[orderKey].([]string)`
-				// assertion failed, the order list read back empty, and
-				// EVERY key of the host map vanished -- `a:1 @"f" c:3`
-				// generated `{"c":3}` (only the pairs after the include, which
-				// re-seeded a fresh list) where TypeScript generates all three.
-				//
-				// Dispatch is by TYPE because jsonic's merge hook is not given
-				// the key. It is unambiguous: a parsed source value is never a
-				// `[]string` (jsonic list nodes are `[]any`), so this arm is
-				// reachable only from orderKey and optionalKey, the two
-				// sentinels that hold one.
-				//
-				// The other two sentinels need no arm. spreadKey holds a Val
-				// and wants exactly the ordinary conjunct merge below, which is
-				// what it gets. posKey never REACHES this hook with a prev to
-				// merge against: recordMapPos is an after-close action, so the
-				// host map is stamped only once its own rule closes, which is
-				// always after an include nested in it has merged -- prev is
-				// nil there and the guard above returns the loaded value, which
-				// recordMapPos then overwrites unconditionally. (Confirmed by
-				// panicking in an arm for it: no include shape reaches it.)
 				if pl, ok := prev.([]string); ok {
 					if vl, ok := val.([]string); ok {
 						return appendNew(pl, vl...)
@@ -420,32 +229,9 @@ help isolate the syntax error.`,
 			// Override the default `+` (addition) precedence to match the
 			// aontu plus operator (binds tighter than & and |).
 			"addition": map[string]interface{}{"infix": true, "src": "+", "left": 20000000, "right": 21000000},
-			// Re-base unary minus for the same reason. Every aontu
-			// operator sits far above the @tabnas/expr defaults, so the
-			// default prefix binding power (4000000) left unary `-`
-			// LOOSER than every infix operator: `-5 & integer` parsed as
-			// `-(5 & integer)`, whose operand is an unresolved
-			// ConjunctVal, which negate() rejects — so every such
-			// expression collapsed to a `negative` nil (likewise `-2+3`,
-			// `-1|2`). Unary minus must bind TIGHTER than `+`, `&` and
-			// `|`: 22000000 sits above addition (20/21M) and below star
-			// / dot-prefix (24M), so `-0xFF.5` still parses as
-			// `-(0xFF.5)`.
-			//
-			// Unary plus is raised with it. positive-prefix is the
-			// identity in both ports, so its binding power is not
-			// observable either way; the entry exists so the two op
-			// tables are literally the same table, and a reader diffing
-			// them never has to work out whether a difference matters.
 			"negative": map[string]interface{}{"prefix": true, "src": "-", "right": 22000000},
 			"positive": map[string]interface{}{"prefix": true, "src": "+", "right": 22000000},
-			// Replace the default grouping paren with a preval-active
-			// function paren: `name(args)` is a call, `(expr)` is grouping.
 			"plain": nil,
-			// Disable the default arithmetic infix ops (mirrors
-			// ts/src/lang.ts): only + is an Aontu operator. With these
-			// removed, / and % are plain text chars (`a:6/2` is the bare
-			// string "6/2") and infix - and * are syntax errors.
 			"subtraction":    nil,
 			"multiplication": nil,
 			"division":       nil,
@@ -464,15 +250,6 @@ help isolate the syntax error.`,
 		return nil, err
 	}
 
-	// A dangling operator at end of input (`a:1&`, `a:$`, `a:.`) makes
-	// the pinned @tabnas/expr Go port build a self-referential term: the
-	// expression slice contains its own ListRef wrapper. Its recursive
-	// evaluation (run in the expr rule's own after-close action) would
-	// then recurse forever — a fatal, unrecoverable stack overflow. The
-	// TS plugin instead drops such unfilled terms. Prepend an action
-	// that snips the back-edges first, restoring the TS shape; the
-	// evaluate() guards below then map any now-missing operand to an
-	// `incomplete_expression` nil (mirroring ts/src/lang.ts).
 	j.Rule("expr", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependAC(func(r *jsonic.Rule, ctx *jsonic.Context) {
 			if r.N["expr"] < 1 {
@@ -489,14 +266,6 @@ help isolate the syntax error.`,
 	cj := j.Token("#E&")
 	cl := jsonic.TinCL
 
-	// expr: a `&` followed by `:` after an expression value belongs to
-	// the enclosing map as a spread, not to the expression as a conjunct
-	// — backtrack both tokens so the expression completes (and
-	// evaluates) and the map's spread alts take over. This makes infix
-	// expressions before a spread parse (`zz:-2.5+-2.5 &:string`),
-	// matching the expr-rule close alt in ts/src/lang.ts. The
-	// expr-counter reset mirrors the plugin's own expr-end alts, whose
-	// evaluation after-close only runs at counter zero.
 	j.Rule("expr", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependClose(
 			&jsonic.AltSpec{
@@ -509,12 +278,6 @@ help isolate the syntax error.`,
 	qm := j.Token("#QM", "?")
 	optkey := []jsonic.Tin{jsonic.TinTX, jsonic.TinST, jsonic.TinNR}
 
-	// val: a leading `&:` is an implicit spread map (a:&:{x:1}); push to
-	// map without consuming. Otherwise wrap scalar leaves into Vals.
-	// An optional key at the top level (`a?:1` with no braces) needs the
-	// val rule to dive into a map on seeing `key ?`, with a fresh node
-	// so the descended map does not share the parent's node object
-	// (mirrors the two OPTKEY,QM val alts in ts/src/lang.ts).
 	freshMapNode := func(r *jsonic.Rule, _ *jsonic.Context) { r.Node = map[string]any{} }
 
 	j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
@@ -544,23 +307,8 @@ help isolate the syntax error.`,
 		rs.AddAC(wrapLeaf)
 	})
 
-	// map: a leading `&:` pushes to pair without consuming; `key ?` is
-	// an optional-key pair (for the top-level `a?:1` dive from val).
-	// On close, a `&:` bubbles up (mirrors the map close in
-	// ts/src/lang.ts) so a sibling spread after an implicit colon-chain
-	// map reattaches at the right level (see the pair close alts).
 	j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependOpen(
-			// N pk:1 — the implicit map created for a `&:`-led pair value
-			// must carry the pair-key depth counter, as the map created
-			// for `q:a:1` does. TS reaches this map through jsonic's
-			// implicit-map val alt, which sets pk; Go reaches it through
-			// THIS alt, which did not — so at the spread pair's close pk
-			// read 0, the keep-closing-until-pk=0 alt never fired, and
-			// the unconditional continue-pair fallback swallowed the next
-			// top-level pair into the spread's map: `q:&:{k:1} q:a:2`
-			// grew a nested "q" inside q. Traced by diffing r.n at map-BO
-			// across ports: TS {dmap:2,pk:1}, Go {dmap:2}.
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, N: map[string]int{"pk": 1}, G: "spread"},
 			&jsonic.AltSpec{S: [][]jsonic.Tin{optkey, {qm}}, P: "pair", B: 2, G: "optional"},
 		)
@@ -579,13 +327,6 @@ help isolate the syntax error.`,
 			&jsonic.AltSpec{S: [][]jsonic.Tin{optkey, {qm}, {cl}}, P: "val", U: map[string]any{"optional": true}, G: "optional"},
 		)
 		rs.PrependClose(
-			// A following `&:` starts a sibling spread pair in the
-			// current map: directly inside a braced map (pk<=0) at any
-			// depth, or in the implicit top-level map (dmap<=1). Inside
-			// an implicit colon-chain map (pk>0) it bubbles up instead
-			// (second alt), so `&:k:a &:p:2` yields two sibling spreads
-			// on the enclosing map, not a spread nested in the first
-			// spread's template (mirrors the pair close in ts/src/lang.ts).
 			&jsonic.AltSpec{
 				S: [][]jsonic.Tin{{cj}, {cl}},
 				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
@@ -604,16 +345,6 @@ help isolate the syntax error.`,
 		rs.PrependOpen(
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
 
-			// An optional key in LIST position is consumed here and
-			// contributes NO element, mirroring the two
-			// aontu-optional-*-elem alts in ts/src/lang.ts.
-			//
-			// Two alts, because the first has to see OPTKEY+QM to know
-			// what this is, then hand the pair to `val` without letting
-			// `val`'s own optional-dive fire (which is what materialised
-			// a phantom {x:1} element). It backs up one token and
-			// re-enters elem carrying a marker; the second alt reads that
-			// marker and pushes the VALUE alone.
 			&jsonic.AltSpec{
 				S: [][]jsonic.Tin{optkey, {qm}}, B: 1, R: "elem",
 				U: map[string]any{"aontu_optional": true},
@@ -633,11 +364,6 @@ help isolate the syntax error.`,
 		rs.AddAC(elemSpread)
 	})
 
-	// list: convert the raw slice into a ListVal at rule close, carrying
-	// the open token's source position — exactly where and how the TS
-	// grammar builds its ListVal (the list rule bc + addsite in
-	// ts/src/lang.ts), so a list operand in an error frame points at its
-	// `[` (issue #34).
 	j.Rule("list", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.AddAC(wrapList)
 	})
@@ -653,13 +379,6 @@ help isolate the syntax error.`,
 // listSpread marks the &: spread value within a parsed list slice.
 type listSpread struct{ val Val }
 
-// elemKeyRules holds the single-key element's key to THE MAP'S RULES:
-// a key the map rule would refuse (a colon declaration, a bare-text
-// refusal) is refused in the element too, in the value's place and
-// sited at the key, rather than generated as `[{"x=y": 1}]`; and a
-// declaration is a declaration IN the element, which is where
-// MapVal.Unify refuses it -- a list element is not the top level. Twin
-// of the elem rule's bc in ts/src/lang.ts.
 func elemKeyRules(m map[string]any, ktkn, sep *jsonic.Token, key string) {
 	if kr, ok := keyRefusalOf(ktkn, sep, key); ok {
 		m[keyRefusalsKey] = []keyRefusal{kr}
@@ -669,14 +388,6 @@ func elemKeyRules(m map[string]any, ktkn, sep *jsonic.Token, key string) {
 }
 
 func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
-	// A PAIR IN LIST POSITION IS A SINGLE-KEY MAP ELEMENT (the rule
-	// optional.tsv's block states; ts/src/lang.ts builds the element in
-	// its elem bc). Two spellings arrive by two routes:
-	//
-	// The OPTIONAL pair (`[x?:1]`) is consumed by the two
-	// aontu-optional-*-elem alts above, and its VALUE was pushed as the
-	// last entry; it is rebuilt here into the single-key map, with the
-	// key marked optional IN the element -- `[x?:1]` is `[{x?:1}]`.
 	if r.U["aontu_optional_elem"] == true {
 		if list, ok := r.Node.([]any); ok && 0 < len(list) && r.Prev != nil {
 			key := keyOf(r.Prev.O0)
@@ -695,12 +406,6 @@ func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
 		return
 	}
 
-	// The PLAIN pair (`[x:1]`): jsonic's ListPair option already pushed
-	// `map[string]any{key: val}` as the last element; it lacks aontu's
-	// sentinels (order, position, source), without which asValDepth
-	// reads it as an EMPTY map. Stamp them, and an elided value
-	// (`[a:]`, a raw nil in the pushed map) then refuses through the
-	// same isElidedNode path a braced map's elision takes.
 	if r.U["pair"] == true {
 		if list, ok := r.Node.([]any); ok && 0 < len(list) {
 			if m, ok := list[len(list)-1].(map[string]any); ok {
@@ -731,12 +436,6 @@ func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
 	list[len(list)-1] = &listSpread{val: sv}
 }
 
-// recordMapPos stamps the map rule's open-token source position into
-// the raw map node under the reserved posKey sentinel; asValDepth lifts
-// it onto the MapVal. This is the raw-node analogue of the TS map rule
-// bc's addsite (site.row/col from r.o0), so a map operand in an error
-// frame points at its `{` — or, for an implicit map, at the token that
-// opened it — identically in both ports (issue #34).
 func recordMapPos(r *jsonic.Rule, _ *jsonic.Context) {
 	m, ok := r.Node.(map[string]any)
 	if !ok || 0 == r.ON {
@@ -783,22 +482,6 @@ func kindDef(k Kind) *jsonic.ValueDef {
 	})}
 }
 
-// stampSrc records the open token's SOURCE TEXT on a parsed value, the
-// other half of the byte offset every caller here already reads. The
-// extent a site reports is derived from it (base.srclen), so this one
-// call is what makes a site editable rather than merely locatable --
-// see ts/src/site.ts for the full note and the corruption it prevents.
-//
-// NOT ScalarVal.src, which is a different field for a different job:
-// that one is the literal's SPELLING, kept so `$.a.0x0` addresses the
-// key `0x0`, and it is deliberately carried through operations that
-// produce new values. A site span must NOT travel that way -- a value
-// minted by unification occupies no source text -- so the two are
-// stored apart even where a scalar literal makes them equal.
-// bagIsBraceless reports a map or list that was opened WITHOUT its
-// brace -- the implicit top-level map. The open token's source text is
-// the discriminator: `{` or `[` for a braced bag, the first key or
-// element for an implicit one. Used by the `star-prefix` guard.
 func bagIsBraceless(v Val) bool {
 	switch v.(type) {
 	case *MapVal:
@@ -845,11 +528,6 @@ func wrapLeaf(r *jsonic.Rule, _ *jsonic.Context) {
 	}
 	switch n := r.Node.(type) {
 	case float64:
-		// The engine now saturates an overflowing literal to ±Inf (1e999
-		// lexes as a NUMBER on both ports, matching JS unary +), so the
-		// text-fallback branch below never sees it. A non-finite number
-		// is a not_number error nil, exactly as the TS ac maps
-		// !Number.isFinite (ts/src/lang.ts).
 		if math.IsInf(n, 0) || math.IsNaN(n) {
 			e := newNil("not_number")
 			e.sp = sp
@@ -900,33 +578,11 @@ func overflowsFloat(src string) bool {
 	return ok && ne.Err == strconv.ErrRange
 }
 
-// The int64 range, as exact float64 bounds. -2^63 and 2^63 are both
-// exactly representable as a float64; 2^63-1 is NOT (it rounds up to
-// 2^63), which is why the upper bound is exclusive — and why the hex
-// literal 0x7fffffffffffffff correctly falls outside the range.
 const (
 	int64MinFloat   = -9223372036854775808.0
 	int64LimitFloat = 9223372036854775808.0
 )
 
-// isIntegerKind reports whether a numeric value has *integer* kind. All
-// three conditions must hold:
-//
-//	(a) the source text, when there is any, contains no '.'
-//	(b) the value is integral
-//	(c) the value lies within the int64 range
-//
-// Pass src == "" at construction sites with no source text (raw values
-// from an implicit top-level list, operator results); condition (a) is
-// then vacuous and (b)+(c) decide.
-//
-// The range test is deliberately NOT written as `n == float64(int64(n))`:
-// converting an out-of-range float64 to an int64 is implementation-
-// dependent in Go, and that accident is exactly what used to make this
-// port disagree with TypeScript about 1e21, 0x7fffffffffffffff and
-// friends. Compare against the float64 bounds first, convert after.
-//
-// Kept in lock-step with isIntegerKind in ts/src/val/numkind.ts.
 func isIntegerKind(n float64, src string) bool {
 	if strings.Contains(src, ".") {
 		return false
@@ -936,42 +592,11 @@ func isIntegerKind(n float64, src string) bool {
 	return n == math.Trunc(n) && int64MinFloat <= n && n < int64LimitFloat
 }
 
-// isExactInBinary64 reports whether an exact integer is carried EXACTLY
-// by a binary64 — the single exactness question D6's sum contract and
-// D7's literal rule both ask, so that a literal and a computed sum can
-// never disagree about what "exact" means. (Same name, same job, in
-// ts/src/val/numkind.ts.)
-//
-// THE RULE IS EXACTNESS, NOT MAGNITUDE. 2^124 is a power of two and so
-// survives a binary64 unharmed however big it looks
-// (0x10000000000000000000000000000000 is still a value); 10^20 and 10^21
-// are exact too, because their odd part fits in 53 bits. What fails is
-// 2^53+1, 2^63-1 (which rounds UP to 2^63) and 2^64-1 — values that
-// would have to change to be stored.
-//
-// big.Float.SetInt is exact by construction (it takes whatever precision
-// the integer needs), so Float64's reported accuracy is exactly the
-// question: Exact means the conversion lost nothing. An integer too big
-// for a binary64 converts to ±Inf with accuracy Above/Below, so the
-// overflow case needs no separate test.
 func isExactInBinary64(n *big.Int) bool {
 	_, acc := new(big.Float).SetInt(n).Float64()
 	return acc == big.Exact
 }
 
-// isIntegerStorable reports whether an exact integer can be held by the
-// `integer` leaf: inside the int64 window AND carried exactly by a
-// binary64 (D6's storage contract, applied to a computed sum in
-// integerPlus).
-//
-// IsInt64 is exactly the R1 window: the bounds are [-2^63, 2^63) over
-// the reals, and over the integers that is [-2^63, 2^63-1].
-//
-// The binary64 half is the parity-critical one: Go's int64 holds sums
-// TypeScript's double cannot, so a test written only against the window
-// would let this port store 9007199254740993 while the canonical port
-// silently stored …992. Kept in lock-step with isIntegerStorable in
-// ts/src/val/numkind.ts, which asks the same two questions of a bigint.
 func isIntegerStorable(n *big.Int) bool {
 	return n.IsInt64() && isExactInBinary64(n)
 }
@@ -980,44 +605,8 @@ func isIntegerStorable(n *big.Int) bool {
 // being able to hold every integer. See numberVal's D7 gate.
 const pow53Float = 9007199254740992.0
 
-// maxIntegerLiteralExponent bounds the `e<n>` exponent that
-// isLossyIntegerLiteral will materialise as zeros — a scale bomb
-// (`1e1000000000`) must never be expanded just to be measured.
-//
-// It costs nothing to decline above it: a non-zero coefficient at an
-// exponent this large is beyond every finite binary64 (max ~1.8e308), so
-// wrapLeaf has ALREADY turned the literal into a not_number error nil
-// before numberVal is reached. (The canonical port refuses the same
-// literal as lossy instead, since its lexer hands over an Infinity
-// rather than declining first; both ports error, which is the
-// contractual part — the message text is not, see AGENTS.md.)
 const maxIntegerLiteralExponent = 400
 
-// isLossyIntegerLiteral reports whether src is an integer-source literal
-// whose exact value a binary64 cannot hold — the D7 test, mirroring
-// isLossyIntegerLiteral in ts/src/val/numkind.ts.
-//
-// WHICH LITERALS ARE IN SCOPE. An integer-source literal is one that
-// denotes an exact integer:
-//
-//   - plain decimal digits (`9007199254740993`), with the landed `_`
-//     separator rule;
-//   - a base-prefixed run (`0x…`, `0o…`, `0b…`);
-//   - either of those with a NON-NEGATIVE exponent (`1e21`), which still
-//     denotes an integer.
-//
-// Everything else is out of scope and unchanged. A '.' in the source
-// makes it a float literal by R1's condition (a), so it is not an
-// integer source at all; a NEGATIVE exponent (`2e-1`, `1e-400`) denotes
-// a fraction — `1e-400` is exactly 0 today, a landed row — and D7 is not
-// about fractions. An empty src is a construction site with no source
-// text (operator results, raw implicit-list values), and D7 is about
-// literals. The `0d` family never reaches here: it has its own matcher
-// and its own exact leaves.
-//
-// The value is re-derived from the SOURCE TEXT and not read off the
-// lexed float64, because that float64 is the rounded value this rule
-// exists to detect: comparing it with itself would always agree.
 func isLossyIntegerLiteral(src string) bool {
 	s := strings.ReplaceAll(src, "_", "")
 	// A literal token carries no sign (`-1` is unary minus applied to
@@ -1092,61 +681,11 @@ func allDigits(s string) bool {
 	return true
 }
 
-// exactLiteralRe matches a `0d` exact-leaf literal (D3):
-//
-//	0[dD] digits [ . digits ] [ (e|E) [+-] digits ]
-//
-// with single `_` separators BETWEEN digits — the landed separator rule,
-// spelled directly into each digit run (`[0-9](?:_?[0-9])*`), so a
-// leading, trailing or repeated separator simply is not part of the
-// literal.
-//
-// The pattern is byte-identical to BIG_LITERAL_RE in
-// ts/src/val/Decimal.ts (which is kept RE2-compatible for exactly that
-// reason), so the two ports cannot drift on what a literal is.
-//
-// THE SIGN IS NOT PART OF THE PATTERN, though it is part of the D3
-// grammar: `-0d5` is the existing unary-minus prefix applied to `0d5`,
-// exactly as `-1.5` already is (see negate). The canonical port must
-// leave it out — its value matchers run BEFORE the fixed-token matcher,
-// so a `[-+]?` there would claim the `+` of `0d1 +0d2` and silently turn
-// an addition into an implicit list — and this port matches it rather
-// than diverging on a pattern the design says is shared.
-//
-// The regex is the accept language exactly, and it is applied to the
-// full forward source (ValueDef.Consume), so it claims the longest VALID
-// prefix and leaves anything else to the ordinary grammar:
-//
-//	0d1.5   -> one literal (the fraction is claimed before the dot token
-//	           can split it into a path reference)
-//	0d1.    -> the literal `0d1`, then a dot token: a trailing `.` is
-//	           claimed only when a digit follows
-//	0d.5    -> no match (no digit after the marker), bare `0d` likewise;
-//	           D3's rejected forms fall through to the ordinary grammar
-//	0d-5    -> the literal never sees the `-`: the sign belongs BEFORE
-//	           the prefix (`-0d5`)
-//
-// aliasRe matches an alias name: the sigil and an identifier. Kept
-// byte-identical to ALIAS_RE in ts/src/lang.ts so the two ports cannot
-// drift on what an alias name is.
 var aliasRe = regexp.MustCompile(`^%[A-Za-z_][A-Za-z0-9_]*`)
 
 var exactLiteralRe = regexp.MustCompile(
 	`^0[dD]([0-9](?:_?[0-9])*)(?:\.([0-9](?:_?[0-9])*))?(?:[eE]([-+]?[0-9](?:_?[0-9])*))?`)
 
-// exactLiteral turns the exactLiteralRe match groups (1 integer digits,
-// 2 fraction digits, 3 exponent) into a constructor for the literal's
-// Val, deferring only the source position (which the lexer does not know
-// until the token is bound to a rule).
-//
-// LEAF BY SOURCE, mirroring R1's precedent (D3): digits only is a
-// BIGINTEGER; a `.` or an exponent anywhere makes it a BIGDECIMAL. So
-// `0d5` is a biginteger and `0d1e3` is a bigdecimal whose value happens
-// to be integral — and whose canon is therefore `0d1000.0`, not
-// `0d1000`, because `0d1000` would reparse as a biginteger (D4).
-// negSrc rebuilds the spelling of a negated literal. `-` is a prefix
-// OPERATOR and not part of the literal, so the text has to be rebuilt to
-// keep src meaning "how this value is spelled" (see ScalarVal.src).
 func negSrc(src string) string {
 	if src == "" {
 		return ""
@@ -1199,37 +738,11 @@ func exactLiteral(m []string) func(int) Val {
 	}
 }
 
-// exactDecimal builds a NORMALISED Decimal from already-separator-
-// stripped digit runs (an empty frac or exp meaning "none"), enforcing
-// D6's exactness budget. It returns an error CODE ("" on success) so
-// both callers — the literal path and the NewBigDecimal API — refuse
-// identically.
-//
-// neg is always false from the literal path: a `0d` literal carries no
-// sign (the unary-minus operator handles it — see exactLiteralRe). Only
-// the API, whose input is a whole signed number as text, passes true.
 func exactDecimal(neg bool, intPart, frac, exp string) (*Decimal, string) {
-	// The budget is enforced HERE — before any value is built, on the
-	// SOURCE form: normalising `0d1e1000000000` is itself the resource
-	// event the bound exists to prevent. The scale half is the
-	// load-bearing one, since that literal's coefficient is one digit.
-	//
-	// Coefficient digits are counted AS WRITTEN, leading zeros included,
-	// matching readBigLiteral in ts/src/val/Decimal.ts — the two ports
-	// need not agree on any cleverer rule, and a literal padded past the
-	// bound with zeros is refused in both.
-	//
-	// Normalisation can still fold a negative scale into the
-	// coefficient, so a value that passes both bounds holds at most
-	// decimalMaxCoeffDigits + decimalMaxScale + 1 digits — bounded, and
-	// small enough to render.
 	if len(intPart)+len(frac) > decimalMaxCoeffDigits {
 		return nil, "decimal_budget"
 	}
 
-	// scale = fraction digits - exponent. Computed in big.Int because
-	// the exponent is unbounded source text; the budget check below is
-	// what makes it safe to narrow to int32 afterwards.
 	scale := big.NewInt(int64(len(frac)))
 	if exp != "" {
 		e, ok := new(big.Int).SetString(exp, 10)
@@ -1263,30 +776,9 @@ func exactNil(why string) func(int) Val {
 	}
 }
 
-// stripSeps removes the digit separators from a matched digit run. The
-// regex has already checked that each one sits between two digits.
 func stripSeps(s string) string { return strings.ReplaceAll(s, "_", "") }
 
-// numberVal picks an integer-kind vs a float-kind (IEEE-754 binary64)
-// ScalarVal for a parsed numeric literal (mirrors ts/src/lang.ts). src
-// is the literal's source text, or "" where there is none. The result is
-// always a numeric LEAF: no ScalarVal ever carries the KindNumber
-// supertype.
-//
-// D7 — A LOSSY INTEGER LITERAL IS REFUSED, NOT ROUNDED. An
-// integer-source literal (decimal or base-prefixed, no '.') whose value a
-// binary64 cannot hold exactly becomes a located parse-time error whose
-// hint names the escape: write it as a `0d` literal, which holds it
-// exactly. Refusal over corruption — `x:9007199254740993` used to
-// generate …992 with no signal at all.
 func numberVal(n float64, src string, sp int) Val {
-	// The gate is an optimisation, not part of the rule: every integral
-	// value strictly inside the 2^53 window is exact, and an inexact
-	// integer literal always ROUNDS TO at least 2^53 in magnitude, so
-	// isLossyIntegerLiteral could only answer true above it. Ordinary
-	// numbers — every literal in a real config — therefore never touch
-	// the big.Int path. (The canonical port has no such gate; it changes
-	// no answer, only the work done to reach it.)
 	if pow53Float <= math.Abs(n) && isLossyIntegerLiteral(src) {
 		e := newNil("lossy_integer_literal")
 		e.sp = sp
@@ -1313,12 +805,6 @@ func numberVal(n float64, src string, sp int) Val {
 // trackOrder appends this pair's key to the enclosing map's insertion
 // order (first occurrence wins; duplicates are merged by value).
 func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
-	// The enclosing map is the parent (map rule)'s node. The old engine
-	// left r.Node as that map at after-close time for every pair shape;
-	// the reworked engine adopts a dive pair's child value into r.Node at
-	// close, so reading r.Node directly wrote the pair's key into its own
-	// value map. The parent's node is the enclosing map in every shape on
-	// both engines.
 	var m map[string]any
 	if r.Parent != nil {
 		m, _ = r.Parent.Node.(map[string]any)
@@ -1333,13 +819,6 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	// into a conjunct) rather than recording it as a key.
 	if r.U["spread"] == true {
 		cn := r.Child.Node
-		// An elided SPREAD value (`x:$obj&:` with nothing after the
-		// colon) refuses the whole map, not a key (issue #48). A spread
-		// is not a child, so a refusal stored in its place has nothing
-		// to attach to: `x:&:` has no children for the spread to apply
-		// to, and the map would generate as `{}` with the mistake
-		// silently gone. The marker is read where the map is converted,
-		// which turns the container itself into the refusal.
 		if isElidedNode(cn) {
 			m[elidedSpreadKey] = true
 			return
@@ -1353,10 +832,6 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 		return
 	}
 
-	// jsonic 0.6.0 maintains the pair key on r.U["key"], exactly as the
-	// TS grammar does — and it is the only correct source for a path-dive
-	// pair (`q:a:{x:11}`), whose rule's O0 token is the outer key. Fall
-	// back to the token only for alts that bypass jsonic's key capture.
 	key, _ := r.U["key"].(string)
 	if "" == key {
 		key = keyOf(r.O0)
@@ -1371,34 +846,10 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 			`"\x00aontu_"`)
 	}
 
-	// A DECLARATION IS A PAIR WHOSE KEY IS AN ALIAS NAME. The key TEXT
-	// alone cannot be the test: a quoted `"%a": 1` is an ordinary key
-	// that merely starts with the sigil, and erasing it would be wrong.
-	// The TOKEN is what separates them -- a quoted key arrives as TinST,
-	// the alias lexeme as the value token the alias def produced.
-	//
-	// Recorded on the enclosing map, never on the value, and that is the
-	// point: a reference COPIES the value it resolves to, so a mark
-	// riding the value would erase the referring field too. Being a
-	// property of the map is also what carries it through a meet, the
-	// way optional keys are carried.
 	if kr, ok := keyRefusalOf(r.O0, r.O1, key); ok {
-		// A KEY REFUSAL is written where the map is converted, in the
-		// value's place and sited at the key, so the frame points at the
-		// spelling to change. A declaration spelled with a colon is
-		// refused rather than read as the ordinary key `%foo` the text
-		// would otherwise become -- a document written for the old form
-		// would then generate a "%foo" field and every `%foo` use would
-		// resolve to nothing, and neither says why.
 		krs, _ := m[keyRefusalsKey].([]keyRefusal)
 		m[keyRefusalsKey] = append(krs, kr)
 	} else if isAliasDecl(r.O0, r.O1, key) {
-		// Always recorded here; whether the map is ALLOWED to carry
-		// declarations is decided on the VALUE (MapVal.Unify), not at
-		// the parse. The parse cannot see it: an INCLUDED file's
-		// declarations are at the root of their own text, and only once
-		// the loaded map is placed does it become apparent that root is
-		// not the document's. Twin of the collection in ts/src/lang.ts.
 		ak, _ := m[aliasKeysKey].([]string)
 		m[aliasKeysKey] = append(ak, key)
 	}
@@ -1427,14 +878,6 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	m[orderKey] = appendNew(ord, key)
 }
 
-// appendNew appends each of add to base, skipping any entry base already
-// holds — the "first occurrence wins" rule that governs both reserved
-// `[]string` bookkeeping entries. Key order records where a key was FIRST
-// seen (a duplicate merges into the existing entry's value rather than
-// moving it), and the optional-key list is a set.
-//
-// Used by trackOrder for one key at a time and by the map merge hook to
-// fold a loaded file's whole list into the host's (issue #3).
 func appendNew(base []string, add ...string) []string {
 	for _, k := range add {
 		seen := false
@@ -1463,27 +906,11 @@ func keyOf(t *jsonic.Token) string {
 	return t.Src
 }
 
-// isAliasDecl reports whether a pair is an ALIAS DECLARATION: its key
-// token is an alias name (the lexeme the alias def produced -- a quoted
-// `"%a"` arrives as TinST and is an ordinary key) and its separator is
-// the declaration operator `=`, marked by the text hook. Twin of
-// isAliasDecl in ts/src/lang.ts.
 func isAliasDecl(ktkn, sep *jsonic.Token, key string) bool {
 	return ktkn != nil && ktkn.Tin != jsonic.TinST && aliasRe.MatchString(key) &&
 		sep != nil && sep.Use != nil && true == sep.Use["aontu_eq"]
 }
 
-// keyRefusalOf decides THE KEY REFUSALS a pair may carry, from its key
-// TOKEN -- never from the key text alone, since a quoted `"%a"` or
-// `"x=y"` is an ordinary key: a declaration spelled with a colon
-// (alias_colon, sited at the name) and a key the bare-text rule
-// refuses (bare_punct, sited at the offending character -- its first
-// occurrence in the key, since every character before it is text and
-// it is not). False for an ordinary key, and for a declaration, which
-// is a binding (isAliasDecl), not a refusal. Asked FIRST by the pair
-// rule and by elemSpread, before the declaration is, so a pair in list
-// position is held to the map's rules. Twin of keyRefusalOf in
-// ts/src/lang.ts.
 func keyRefusalOf(ktkn, sep *jsonic.Token, key string) (keyRefusal, bool) {
 	if ktkn == nil || ktkn.Tin == jsonic.TinST {
 		return keyRefusal{}, false
@@ -1506,21 +933,6 @@ func keyRefusalOf(ktkn, sep *jsonic.Token, key string) (keyRefusal, bool) {
 	return keyRefusal{}, false
 }
 
-// refuseAliasSegment refuses an ALIAS NAME USED AS A PATH SEGMENT --
-// `$.%foo` -- returning the nil to raise, or nil when the terms are
-// clean. The alias namespace and the path namespace are disjoint: an
-// alias is reached by writing `%foo` and only that.
-//
-// The engine spells an alias reference AS a root reference to the
-// declaration, which is what gives it order independence and a cycle
-// check shared with paths -- but that is an implementation of the name,
-// not a second way to write it. Left writable, `$.%b` inside an
-// INCLUDED file would reach the includer's `%b` rather than its own,
-// which is the cross-file capture the sigil exists to prevent.
-//
-// `%foo` lexes to the reference itself, so it arrives as a TERM rather
-// than a string segment; a quoted `$."%foo"` arrives as the string.
-// Both shapes are checked. Twin of the guard in ts/src/lang.ts dotRef.
 func refuseAliasSegment(terms []any, r *jsonic.Rule) *NilVal {
 	// Terms here are always Vals, and the shapes are exactly two that
 	// can carry a name: a RefVal (whose peg is the segment list) and a
@@ -1550,18 +962,6 @@ func refuseAliasSegment(terms []any, r *jsonic.Rule) *NilVal {
 	return nv
 }
 
-// tsTextCheck is the TEXT stage of the bare-text rule, and the place
-// an alias name and the declaration operator are read (below). It runs
-// before the default text matcher at every text position, exactly as
-// the text check hook does in ts/src/lang.ts, arm for arm.
-//
-// THE BARE-TEXT RULE. A bare string holds letters, digits, `-` and `_`,
-// and nothing else. Every other punctuation character is either SYNTAX,
-// where the grammar gives it a meaning, or an ERROR where it does not
-// -- never silently part of a string. `x=y`, `6/2`, `50%` and `>10`
-// were all bare strings once, each a well-formed wrong document, and
-// each is refused now, naming the character (bare_punct). See
-// scanBareRun for the classification.
 func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 	pnt := l.Cursor()
 	start := pnt.SI
@@ -1570,12 +970,6 @@ func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 	}
 	src := l.Src
 
-	// THE DECLARATION OPERATOR. At an alias name, look past horizontal
-	// space for a lone `=` and remember where it is; the alias value def
-	// then claims the name exactly as before. `=` is syntax ONLY there:
-	// anywhere else it is punctuation outside its syntax, and the scan
-	// below refuses it (`foo = 1`, `a: x=y`). Mirrors the alias arm of
-	// the text check hook in ts/src/lang.ts, decision for decision.
 	if '%' == src[start] {
 		if m := aliasRe.FindString(src[start:]); "" != m {
 			j := start + len(m)
@@ -1589,10 +983,6 @@ func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 		}
 	}
 
-	// The `=` the arm above marked: the separator of a declaration, as
-	// a colon token whose source is `=`. The pair rule is then the pair
-	// rule, and the formatter writes the spelling it read. Marked in Use
-	// so the pair rule can tell it from a colon, which no longer declares.
 	if '=' == src[start] {
 		if at, ok := aliasEqAt.Load(l); ok && at.(int) == start {
 			aliasEqAt.Delete(l)
@@ -1614,20 +1004,10 @@ func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 		return nil
 	}
 
-	// THE BARE-TEXT RULE (scanBareRun). Last, so that a name, a
-	// declaration operator and an exact literal are read before a run is
-	// judged as text. The run is never empty: every ender is a token an
-	// earlier matcher claims, so the text stage only opens on a
-	// character the scan classifies as text or as bad.
 	run := scanBareRun(l, start, false)
 	msrc := src[start:run.end]
 
 	if run.bad >= 0 {
-		// BAD: the run is refused whole, sited at the character. As a
-		// VALUE the token's function builds the refusal at the parse,
-		// where the rule carries the position. As a KEY the token is read
-		// for its source alone, so the mark in Use is what the pair rule
-		// reads to write the refusal where the map is converted.
 		off := run.bad - start
 		ch := run.ch
 		tkn := l.Token("#VL", jsonic.TinVL,
@@ -1646,11 +1026,6 @@ func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 		return &jsonic.LexCheckResult{Done: true, Token: tkn}
 	}
 
-	// CLEAN, with a `-` past its start (`team-payments`, `2026-09-05`):
-	// claimed here as one text token, because the default matcher's
-	// ender set would carve the run at the `-` (the negation prefix's
-	// fixed token). Any other clean run is the default matcher's, which
-	// also reads the value keywords and the `_` hole.
 	if strings.Contains(msrc, "-") {
 		tkn := l.Token("#TX", jsonic.TinTX, msrc, msrc)
 		pnt.SI += len(msrc)
@@ -1669,20 +1044,6 @@ type bareRun struct {
 	ch  string
 }
 
-// scanBareRun classifies each character of the run at start three
-// ways, in this order: TEXT continues the run; an ENDER stops it;
-// anything else is BAD. The ender set is the lexer's own (textEnderAt),
-// so it cannot drift from the grammar. A bad run is still scanned to
-// its ender, so the refusal claims the whole spelling and the lexer
-// never reads the tail of it as syntax.
-//
-// `-` is text wherever the scan sees it. A run never STARTS on one:
-// `-` is the sign of a number and the negation prefix, a fixed token
-// the fixed matcher claims before either scanning stage can run, so
-// `a:-1` is the negation of 1 and `a:6-2` the string. The `+` of an
-// exponent (`1e+2`) is admitted only with expo set -- by the NUMBER
-// stage's scan, the one stage that can make a number of it. Twin of
-// scanBareRun in ts/src/lang.ts, decision for decision.
 func scanBareRun(l *jsonic.Lex, start int, expo bool) bareRun {
 	src := l.Src
 	i := start
@@ -1759,27 +1120,12 @@ func textEnderAt(l *jsonic.Lex, pos int, ch rune) bool {
 	return false
 }
 
-// tsNumCheck is the NUMBER stage of the bare-text rule. The matcher
-// runs before the text matcher and reads a number up to the next ender
-// -- and `-` is an ender, being the negation prefix's fixed token, so it
-// would take the `2026` of `2026-09-05` and leave `-09-05` to the
-// grammar; and it takes a numeric PREFIX where the TS matcher requires
-// the whole run (`100'sq'`). The hook scans the whole run first and
-// declines for the matcher wherever the run is not its to lex: a run
-// with a bad character (the text stage refuses it), a run that is not
-// entirely a number (`2026-09-05`, `6-2` are text). Twin of the number
-// check hook in ts/src/lang.ts.
 func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 	pnt := l.Cursor()
 	start := pnt.SI
 	if start >= pnt.Len {
 		return nil
 	}
-	// A run no number can open declines for the matcher in one byte
-	// read. A DIGIT opens a number here and nothing else: the sign and
-	// the dot open the matcher's own grammar, but they are fixed tokens
-	// (the prefix operators and member access), claimed before this
-	// hook can run.
 	c := l.Src[start]
 	if !('0' <= c && c <= '9') {
 		return notANumber
@@ -1792,16 +1138,6 @@ func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 	if !fullNumeric(src) {
 		return notANumber
 	}
-	// A base-prefixed integer beyond int64 (0xffffffffffffffff)
-	// overflows the standard number matcher into a text fallback, but
-	// is a finite float in JS — construct the numeric token here with
-	// the JS value (big-int digits, float64 precision).
-	//
-	// This branch builds the token itself and so never reaches the
-	// Number.Exclude hook — apply the separator rule here too, or a big
-	// base-prefixed literal would keep accepting `0x_...` after the
-	// small ones stopped (and diverge from TS, which excludes every
-	// magnitude in one place).
 	if numberExcluded(src) {
 		return notANumber
 	}
@@ -1823,37 +1159,6 @@ func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 // matcher's to lex: the text stage reads it.
 var notANumber = &jsonic.LexCheckResult{Done: true}
 
-// sepInvalid reports whether a matched number source breaks the digit
-// separator rule: a separator is legal only as a SINGLE separator
-// BETWEEN digits (the rule test/spec/engine-parity.tsv records as the
-// engine's adjudication; pinned by the sep-* rows in
-// test/spec/number-model.tsv).
-//
-// The engine's number matcher enforces most of that already — `1_`,
-// `_1`, `1_.5`, `1._5`, `1e_2`, `1e2_` all fall through to text — but
-// two gaps remain: a REPEATED separator (`1__0` lexed as 10) and a
-// separator at the edge of a base-prefixed digit run (`0x_ff`, `0xff_`
-// lexed as 255). Both silently accept a typo as a different number, so
-// the whole run is declined and lexes as text ("1__0"), exactly as `1_`
-// already does.
-//
-// Kept in lock-step with the `number.exclude` RegExp in ts/src/lang.ts,
-// which is /__|^[-+]?0[xXoObB]_|_$/. The prefix letter is matched in
-// both cases so the rule does not depend on which prefix spellings the
-// engine accepts.
-// numberExcluded reports whether a matched number source must be
-// declined by the Go engine so that it lexes as text, matching the
-// canonical TypeScript engine.
-//
-// It used to carry a second reason, upperBasePrefix: the TS number
-// matcher spelled the base prefixes lower-case only, so `0X1F` fell to
-// text there while Go read 31, and Go mirrored the quirk to stay in step.
-// That function documented its own exit condition -- "if the upstream
-// @tabnas TypeScript lexer ever gains the upper-case spellings, delete
-// this function and let BOTH engines accept them, the spec rows will fail
-// loudly and say so". @tabnas/parser 0.8.3 gained them, the base-upper-*
-// rows duly failed, and this is that deletion. Both engines now read
-// `0X1F` as 31, exactly as JavaScript itself always has.
 func numberExcluded(msrc string) bool {
 	return sepInvalid(msrc)
 }
@@ -1909,11 +1214,6 @@ func basedFloat(s string) (float64, bool) {
 	return f, true
 }
 
-// fullNumeric reports whether src parses in its entirety as a numeric
-// literal (decimal/exponent, hex/octal/binary, or with _ separators).
-// An overflowing literal still counts (it becomes not_number later),
-// and base-prefixed integers beyond int64 are still numeric (JS
-// Number('0xffffffffffffffff') is a finite float).
 func fullNumeric(src string) bool {
 	// src opens on a digit (tsNumCheck admits nothing else), so it is
 	// never empty once the separators are gone.
@@ -1962,12 +1262,6 @@ func basedNumeric(s string) bool {
 	return true
 }
 
-// snipExprCycles removes cyclic back-edges from an expression tree: a
-// dangling trailing operator makes the expr Go port append the
-// expression's own ListRef wrapper (or slice) as its final term. Only
-// true back-edges (an ancestor of the current walk) are dropped —
-// legitimately shared nodes are untouched. See the expr rule action in
-// makeLang.
 func snipExprCycles(node any) any {
 	out, _ := snipWalk(node, map[any]bool{})
 	return out
@@ -2020,11 +1314,6 @@ func snipWalk(node any, seen map[any]bool) (any, bool) {
 	}
 }
 
-// incompleteNil is the evaluate() result for an operator whose required
-// operand is missing (`a:$`, `a:1+`, `a:*` — a dangling operator whose
-// unfilled term was snipped). Unify surfaces it as a "Cannot resolve
-// value" error, mirroring the incomplete_expression NilVal in
-// ts/src/lang.ts.
 func incompleteNil(r *jsonic.Rule) Val {
 	n := newNil("incomplete_expression")
 	if r != nil && r.ON > 0 {
@@ -2033,7 +1322,6 @@ func incompleteNil(r *jsonic.Rule) Val {
 	return n
 }
 
-// evaluate builds Val nodes for the expr operators.
 func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interface{}) interface{} {
 	// Top-level expression wrappers are evaluated outside any rule
 	// (expr.Evaluation(nil, nil, ...) in asValDepth); the NoRule
@@ -2079,19 +1367,6 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		}
 		inner := asVal(terms[0])
 
-		// A PREFERENCE MARKS A VALUE, AND A BARE KEY IS NOT ONE.
-		// `*a: 1` has no braces, so the prefix took the whole IMPLICIT
-		// map as its operand and the document silently became
-		// `*{"a":1}` -- `*a: 1, b: 2` became a one-element LIST, losing
-		// `b` outright. Neither is anything the author wrote.
-		//
-		// The accident is confined to the first position of the implicit
-		// top-level map, the only place no brace has yet committed the
-		// rule to a map: `{*a: 1}` and `a: 1, *b: 2` are ALREADY parse
-		// errors. A BRACED operand is untouched -- `*{x:1}` and `*[1]`
-		// are the real spelling and the shared spec pins them -- and the
-		// open token's own source text is what separates the two.
-		// Mirrors the same guard in ts/src/lang.ts 'star-prefix'.
 		if bagIsBraceless(inner) {
 			nv := newNil("pref_implicit_bag")
 			if r.ON > 0 {
@@ -2115,23 +1390,6 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			return incompleteNil(r)
 		}
 		nv := negate(terms[0])
-		// A refused negation is an error nil, and it must be LOCATED:
-		// TS builds its own through addsite (ts/src/lang.ts), so its
-		// frame points at the `-`. Go's was positionless, which left the
-		// nil with neither a site nor -- once setPaths runs over it -- a
-		// way to be told apart from the root (issue #39).
-		// THE SITE GOES ON EVERY RESULT, not only the refused one, and
-		// BOTH HALVES of it. A refused negation is an error nil and has
-		// to be located (issue #39), but `negate` returns a freshly
-		// allocated scalar for the ordinary case and that got neither
-		// the position nor the span: `a:-1` reported column 1 -- the
-		// key, because sp defaulted to 0 -- with no span at all, where
-		// the canonical port's addsite records the `-` token for both.
-		//
-		// No shared row reported such a site, so the suite was green
-		// over the divergence. Pinned now by vet-negative-literal, which
-		// is what found the column half after review found the span
-		// half.
 		if r.ON > 0 {
 			nv.setPos(r.O0.SI)
 		}
@@ -2195,11 +1453,6 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			return r0
 		}
 		vv := newVar(asVal(terms[0]))
-		// Locate the variable at its `$`, exactly as the absolute-ref
-		// branch above does. Without this a `$name` had no site at all,
-		// so an error about one (`a:$x` with no such variable) drew its
-		// frame at the start of the line -- the enclosing pair -- rather
-		// than at the reference TS points to.
 		if r.ON > 0 {
 			vv.sp = r.O0.SI
 		}
@@ -2210,40 +1463,16 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			return incompleteNil(r)
 		}
 		ov := newPlusOp(asVal(terms[0]), asVal(terms[1]))
-		// Source position for error frames (TS ops carry their site).
-		//
-		// Guarded like every sibling handler: an expression is evaluated
-		// OUTSIDE any rule when it is the last member of a func-paren
-		// comma group (expr.Evaluation(nil, nil, ...) in asValDepth,
-		// which the NoRule sentinel at the top of this function stands
-		// in for), and reading O0 there dereferenced the sentinel's
-		// empty open-token slice -- a nil pointer panic that the
-		// parser's recover reported as an `internal` engine defect on
-		// `neq(1,1+1)`.
 		if r.ON > 0 {
 			ov.sp = r.O0.SI
 		}
 		stampSrc(ov, r)
 		return ov
 	case "func-paren":
-		// preval injects the function name as a raw string term[0] for
-		// `name(args)`; plain `(expr)` grouping has the inner Val in
-		// term[0] (no name preval). So a string term[0] means a call —
-		// an unrecognised name is an error, not grouping (mirrors the
-		// `unknown_function` NilVal in ts/src/lang.ts func-paren).
 		if len(terms) > 0 {
 			if name, ok := terms[0].(string); ok {
 				return buildCall(r, name, terms[1:])
 			}
-			// A NON-string term[0] with more terms after it is a CALL
-			// whose target is not a name — `f(1)(2)`, `(1)(2)`,
-			// `upper("x")(2)`. There is nothing to call, so it is the
-			// same refusal an unrecognised name gets. This arm used to
-			// return the LAST term, which silently discarded the call
-			// and answered `2`, while TypeScript refused with
-			// `unknown_function`: a schema constrained only by such a
-			// construct went unchecked in Go, in both the schema and
-			// the data direction (status-2026-08-21.md section 4).
 			if len(terms) > 1 {
 				// Sited exactly as buildCall sites an unrecognised
 				// NAME: a located refusal is the whole product here,
@@ -2256,14 +1485,6 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 				stampSrc(n, r)
 				return n
 			}
-			// PLAIN `(expr)` GROUPING. The group's value is the inner
-			// value, but its SITE is the paren: a reader looking for
-			// `(integer | biginteger)` looks at the `(`, and that is
-			// where the canonical port points -- at the OUTERMOST open
-			// paren, whatever the spacing or the nesting inside it.
-			// Keeping the inner term's own position put the caret one
-			// column right of the value it named, and two columns right
-			// with a space after the paren.
 			gv := asVal(terms[0])
 			if r.ON > 0 {
 				gv.setPos(r.O0.SI)
@@ -2276,12 +1497,6 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 	return newNil("unknown_op")
 }
 
-// negate returns the arithmetic negation of a numeric operand. It never
-// narrows the kind (an integer stays an integer, a float stays a float,
-// each exact leaf stays itself) and never yields negative zero (D5:
-// `-0d0` is `0d0`, `-0d0.0` is `0d0.0`). A non-numeric operand — and any
-// numeric leaf not handled here — falls through to the `negative` nil
-// rather than being silently mishandled.
 func negate(t any) Val {
 	switch v := t.(type) {
 	case float64:
@@ -2329,21 +1544,8 @@ func toVals(terms []interface{}) []Val {
 	return out
 }
 
-// maxNodeDepth bounds asVal's recursion so pathologically deep input
-// (thousands of nested {}/[]) yields a clean error instead of a fatal,
-// unrecoverable Go stack overflow. Lists convert at their rule close
-// (wrapList) with a per-list depth restart, so asVal's own counter no
-// longer sees the full nesting; the transitive bound that keeps
-// setPaths, clonePath and the unify walks stack-safe is therefore
-// enforced by valTreeDepth in parseBase — an ITERATIVE scan over the
-// finished tree. Real configs are orders of magnitude shallower.
 const maxNodeDepth = 10000
 
-// valTreeDepth reports the maximum nesting depth of a finished Val
-// tree, iteratively — this check is what permits every later walker to
-// recurse without its own guard. Bags and every wrapper that adds a
-// recursion frame in those walkers count a level; the scan stops early
-// once the bound is exceeded.
 func valTreeDepth(v Val) int {
 	type item struct {
 		v Val
@@ -2402,17 +1604,6 @@ func valTreeDepth(v Val) int {
 // converted recursively; map order comes from the order sentinel.
 func asVal(node any) Val { return asValDepth(node, 0) }
 
-// listOfRaw builds a ListVal from a raw element slice, extracting the
-// spread and optional markers the elem rule leaves behind. Shared by
-// wrapList (the list rule close) and the asValDepth fallback.
-// isElidedNode reports whether a raw pair value is an ELISION -- a key
-// written with nothing after its colon -- rather than a value.
-//
-// It has three spellings, because the parser represents "nothing" three
-// ways depending on which rule consumed the pair: a plain `a:` leaves a
-// nil, and the optional `a?:` leaves the Undefined sentinel. Both are the
-// same mistake (issue #48), and an explicit `a:null` is neither -- that
-// arrives as a real ScalarVal from the `null` value def.
 func isElidedNode(v any) bool {
 	if v == nil {
 		return true
@@ -2425,10 +1616,6 @@ func isElidedNode(v any) bool {
 
 func listOfRaw(n []any, depth int) *ListVal { return listOfRawAt(n, depth, -1) }
 
-// listOfRawAt is listOfRaw with the enclosing list's source position,
-// used to locate an elided element (issue #48). A raw list that never
-// passed the list rule -- an implicit top-level one -- has none, as its
-// TS twin rawToVal has no site either.
 func listOfRawAt(n []any, depth int, sp int) *ListVal {
 	lv := &ListVal{}
 	for _, e := range n {
@@ -2441,9 +1628,6 @@ func listOfRawAt(n []any, depth int, sp int) *ListVal {
 			continue
 		}
 		if e == nil {
-			// An elided ELEMENT (`[,]`, `[1,,2]`), refused for the same
-			// reason as an elided map value (issue #48). A trailing comma
-			// (`[1,]`) is not an elision and never reaches here.
 			en := newNil("elided_value")
 			en.sp = sp
 			lv.peg = append(lv.peg, en)
@@ -2494,13 +1678,6 @@ func asValDepth(node any, depth int) Val {
 			en.sp = mv.sp
 			return en
 		}
-		// A KEY REFUSAL (the pair rule records them: a declaration
-		// spelled with a colon, a key the bare-text rule refuses) becomes
-		// the refusal, in place of whatever followed the colon and sited
-		// at the KEY rather than at the map -- at the offending character
-		// of it, where there is one -- so the frame points at the
-		// spelling to change. Twin of the map rule's pass over
-		// aontu_key_refusals in ts/src/lang.ts.
 		refused := map[string]keyRefusal{}
 		if krs, ok := n[keyRefusalsKey].([]keyRefusal); ok {
 			for _, kr := range krs {
@@ -2526,26 +1703,9 @@ func asValDepth(node any, depth int) Val {
 				continue
 			}
 			if isElidedNode(v) {
-				// An elided value (`a:`) is REFUSED, not made a null
-				// (issue #48): a key with nothing after the colon is a
-				// mistake in the source, and turning it into a value made
-				// that mistake indistinguishable from a deliberate
-				// `a:null`. Located at the enclosing map's own position,
-				// which is where TS's addsite puts it too -- the elided
-				// value has no token of its own to point at.
-				//
-				// A colon chain (`a: b:1`) is not an elision: its value is
-				// the nested pair, which does reach the node.
 				en := newNil("elided_value")
 				en.sp = mv.sp
 				mv.set(k, en)
-				// An elided value under an OPTIONAL key stops being
-				// optional. Optionality is about a value that may be
-				// absent at GENERATE; it does not excuse a source that
-				// stops after the colon. Left optional, the refusal is
-				// dropped with the key and `a?:` generates `{}` -- a
-				// silent nothing, worse than either the old null or the
-				// error.
 				for i, ok := range mv.optional {
 					if ok == k {
 						mv.optional = append(mv.optional[:i], mv.optional[i+1:]...)
@@ -2558,15 +1718,6 @@ func asValDepth(node any, depth int) Val {
 		}
 		return mv
 	case []any:
-		// An OPERATOR EXPRESSION, not a list: the head is the Op
-		// descriptor and the tail its operands. Reduce it through the
-		// same evaluate the parser uses, or `k2.b` in an implicit
-		// top-level list became the nonsense list [nil,"k2","b"] --
-		// asVal on the descriptor is a nil, and the operands trail
-		// behind it. TypeScript gets this reduced by @tabnas/expr 0.5.4
-		// ("stop skipping implicit-list members"); the Go port of that
-		// fix still hands the raw slice over, so the reduction is done
-		// here to keep the two ports agreeing (ADR-001).
 		if 0 < len(n) {
 			if op, ok := n[0].(*expr.Op); ok {
 				return asValDepth(evaluate(nil, nil, op, n[1:]), depth+1)
@@ -2577,39 +1728,15 @@ func asValDepth(node any, depth int) Val {
 		// already ListVals via wrapList. No position, as in TS rawToVal.
 		return listOfRaw(n, depth)
 	case float64:
-		// Source text is unavailable here (raw values from the implicit
-		// top-level list, expr operands), so the "no '.'" condition of
-		// isIntegerKind is vacuous and the integral + int64-range
-		// conditions decide. Routed through numberVal so this path can
-		// never drift from the parsed-literal one.
 		return numberVal(n, "", -1)
 	case string:
 		return newString(n)
 	case bool:
 		return newBoolean(n)
 	}
-	// No arm for a raw nil or the Undefined sentinel. Both used to become
-	// a NullVal here -- that was the elided value (`a:`, `[,]`, `a?:`)
-	// arriving -- and an elision is now refused where the container is
-	// converted, which knows the key or index and the position to report
-	// it at. Anything else reaching here with no value is genuinely
-	// unaccounted for, and says so.
 	return newNil("parse_unknown")
 }
 
-// parseBase is parse with an explicit base directory for resolving
-// relative @"file" loads.
-// findConflictMarker returns the byte offset of the first
-// version-control conflict marker line in src, or -1 when there is none.
-//
-// The shape is git's, and it is matched exactly: SEVEN of `<`, `=` or `>`
-// at the very start of a line, then either the end of that line or a
-// space before the branch label. Requiring the run length and the line
-// start is what keeps a document that legitimately writes `a:"<<<<<<<"`,
-// or a row of `=` inside a string, from being refused -- the marker is
-// recognised as the artifact it is, not as a suspicious character.
-//
-// Kept byte-identical to findConflictMarker in ts/src/aontu.ts.
 func findConflictMarker(src string) int {
 	offset := 0
 	for _, rawline := range strings.Split(src, "\n") {
@@ -2632,23 +1759,6 @@ func findConflictMarker(src string) int {
 	return -1
 }
 
-// toValidSource replaces invalid UTF-8 in a source with U+FFFD, ONE per
-// maximal invalid subpart, before anything reads it.
-//
-// This is where TypeScript's replacement happens too, though it never had
-// to be written: Node decodes the file to UTF-16 as it reads it, so the
-// engine only ever sees well-formed text. Go carried the raw bytes all
-// the way to the JSON encoder, which replaced them PER BYTE at the very
-// end -- so a truncated three-byte sequence (E2 82) inside a string
-// generated two replacement characters where TypeScript generated one,
-// and the encoder wrote them as `�` escapes where TypeScript wrote
-// the character itself (issue #32, family 2).
-//
-// strings.ToValidUTF8 collapses a run of invalid bytes into a single
-// replacement, which is the maximal-subpart rule Node's decoder follows.
-// Doing it at DECODE rather than at encode also means every stage in
-// between -- lexer, parser, canon, error frames -- sees the same text the
-// canonical engine sees, instead of only the final output agreeing.
 func toValidSource(src string) string {
 	if utf8.ValidString(src) {
 		return src
@@ -2656,20 +1766,9 @@ func toValidSource(src string) string {
 	return strings.ToValidUTF8(src, "�")
 }
 
-// parseWithTrust is parseBase under a trust sink (G5, docs/trust.md):
-// the sink carries the include capability, the warning window and the
-// manifest accumulator into the resolver via the parse meta bag, and a
-// recorded denial comes back as the include_denied error -- checked
-// BEFORE not-found, because an escape that also failed to read must
-// report as the refusal it is.
 func parseWithTrust(src, base, file string, trust *trustSink) (Val, error) {
 	src = toValidSource(src)
 
-	// A version-control conflict marker is refused BEFORE the parse
-	// (issue #5). None of `<`, `=` or `>` is an aontu operator, so a
-	// marker line is ordinary text and `<<<<<<< HEAD` parsed happily into
-	// the two-string list ["<<<<<<<","HEAD"] -- an unresolved merge became
-	// a plausible document instead of an error.
 	if off := findConflictMarker(src); off >= 0 {
 		return newMap(), conflictError(src, file, off)
 	}
@@ -2678,56 +1777,25 @@ func parseWithTrust(src, base, file string, trust *trustSink) (Val, error) {
 	if err != nil { //coverage:ignore langForBase cannot fail — see makeLang
 		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
 	}
-	// ParseMeta, not Parse: the meta bag is this parse's private channel
-	// back from the @"file" resolver, and it is how a failed load is
-	// reported (see notFoundMetaKey in source.go). A fresh map per call is
-	// what keeps it PER-PARSE, which matters because langForBase caches the
-	// parser -- the *jsonic.Jsonic here is shared across goroutines, so
-	// nothing parse-specific may be stored on it or on its options.
-	// The sink is a POINTER so a failure inside a NESTED include reaches
-	// this parse: the plugin gives each nested source a SHALLOW COPY of its
-	// parent's meta, which carries the pointer but not later writes to a
-	// plain value. See notFoundSink.
 	sink := &notFoundSink{}
 	meta := map[string]any{notFoundMetaKey: sink}
 	if nil != trust {
 		meta[trustMetaKey] = trust
 	}
-	// The parser names the source in its own error frames from
-	// meta["fileName"] (TS passes the same through popts.path), and
-	// defaults to "<no-file>" without it. parseBase had no filename to
-	// give until it was threaded in, so every Go syntax error pointed at
-	// `<no-file>` where the canonical engine named the file (issue #50).
 	if "" != file {
 		meta["fileName"] = file
 	}
 
 	out, err := lang.ParseMeta(src, meta)
 
-	// A failed @"file" load is a parse error in TS (the multisource plugin
-	// raises multisource_not_found during the parse); mirror that here.
-	//
-	// The meta check comes BEFORE the parse error, not after: a missing
-	// include can leave the parse failing for a secondary reason, and
-	// "source not found: x" is the diagnosis the user needs -- the cascade
-	// is noise.
 	if nil != trust && "" != trust.denied {
 		return newMap(), &AontuError{Msg: trust.denied, Code: "include_denied"}
 	}
 
-	// A module that is absent, fails its pin, or nests too deep (G6
-	// phase 2) is refused the same way and for the same reason: the
-	// resolution cannot stand, and a bare-member module import would
-	// otherwise vanish in the merge and leave a plausible,
-	// silently-partial document.
 	if nil != trust && "" != trust.modCode {
 		return newMap(), &AontuError{Msg: trust.modMsg, Code: trust.modCode}
 	}
 
-	// The code comes from the sink, not a constant: a load can fail
-	// because the source was not there or because its extension is not
-	// read as Aontu source (includeKinds, source.go), and the two are
-	// different diagnoses reaching parseBase through one channel.
 	if "" != sink.msg {
 		return newMap(), &AontuError{Msg: sink.msg, Code: sink.code}
 	}
@@ -2739,12 +1807,6 @@ func parseWithTrust(src, base, file string, trust *trustSink) (Val, error) {
 		return newMap(), nil
 	}
 	root := asVal(out)
-	// The transitive depth bound (see maxNodeDepth): checked ONCE here,
-	// iteratively, before any recursive walker touches the tree. The
-	// registered budget-class max_depth code is unchanged; only the
-	// stage moved (parse instead of a nil embedded at the cut), which
-	// no row pins — TS has no equivalent guard at all (its stack
-	// overflows first, a documented gap).
 	if valTreeDepth(root) > maxNodeDepth {
 		n := newNil("max_depth")
 		return newMap(), &AontuError{Msg: n.FullMessage(src, file, nil), Code: "max_depth"}
@@ -2769,20 +1831,6 @@ func conflictError(src, file string, off int) *AontuError {
 	}
 }
 
-// syntaxError is a parse failure as the engine reports it. Code mirrors
-// TS, whose jsonic parse errors wrap as an outer why:'parse' nil holding
-// an inner why:'syntax' nil -- and it is the INNER syntax code that
-// leads errs() on the thrown error, so `syntax` is the cross-port
-// first-code for a source that fails to parse (pinned by error.tsv
-// errc-parse-syntax).
-//
-// THE POSITION TRAVELS WITH IT. The parser knows exactly where it
-// stopped -- it draws a caret there -- and the rendered message carried
-// the only copy, so `vet --format json` reported row -1, col -1 for a
-// document whose fault the human renderer located to the character. A
-// machine-readable report that says "somewhere in this file" is the one
-// a repair loop can do nothing with. Both fields are already 1-based
-// here (tabnas.TabnasError), which is the base a site uses.
 func syntaxError(err error, src string) *AontuError {
 	row, col := -1, -1
 	if je, ok := err.(*jsonic.JsonicError); ok {
@@ -2796,14 +1844,6 @@ func syntaxError(err error, src string) *AontuError {
 	}
 }
 
-// opCharHint is the targeted parse hint for CUE-trained authors and
-// models: `>` and `<` are not Aontu operators (the op-chars reservation
-// stands), and an agent that emits `number > 0` should be redirected to
-// the bound atoms, not left with a bare "unexpected character".
-// Appended to a parse error's message when the source carries an
-// unquoted `<` or `>`; the TS twin is opCharHint in ts/src/lang.ts,
-// byte-identical text. The chars of interest are all ASCII, so a
-// byte scan matches the TS code-unit scan exactly.
 func opCharHint(src string) string {
 	q := byte(0)
 	for i := 0; i < len(src); i++ {
@@ -2824,12 +1864,6 @@ func opCharHint(src string) string {
 	return ""
 }
 
-// buildCall builds a call from a NAME and the argument terms as the
-// author wrote them: the arity check, the comma-group rule and the
-// raw-value conversion, stated once. The call takes its position from
-// the rule's opening token, which is the function name -- `min` for
-// `min(1)` -- and that is what a site should point at. Mirrors
-// buildCall in ts/src/lang.ts.
 func buildCall(r *jsonic.Rule, name string, argterms []any) Val {
 	if !funcSet[name] {
 		n := newNil("unknown_function")
@@ -2840,13 +1874,6 @@ func buildCall(r *jsonic.Rule, name string, argterms []any) Val {
 		return n
 	}
 
-	// Arity is known for every built-in, so a surplus or missing
-	// argument is a mistake in the SOURCE, refused here where the author
-	// can see it (issue #51). It was previously left to each function to
-	// notice or not: the two ports disagreed on `upper()` and on
-	// `close()`, and `min(1,2)` noticed nothing at all -- it built a
-	// constraint that merely refused to generate later, with a message
-	// about the map rather than about the call.
 	if ar, known := funcArity[name]; known {
 		got := writtenArgCount(argterms)
 		if got < ar[0] || (-1 != ar[1] && got > ar[1]) {
@@ -2864,13 +1891,6 @@ func buildCall(r *jsonic.Rule, name string, argterms []any) Val {
 		}
 	}
 
-	// A comma group is ONE raw-slice term (writtenArgCount). For a
-	// function whose arguments are distinct POSITIONS — deprecate's
-	// value and record, pack's and each's data and template — the group
-	// is expanded back into them here, while a written list literal,
-	// already a *ListVal, stays one argument. The constraint atoms are
-	// not in this set: `neq(1,2)` is one argument LIST, not two
-	// positions. Mirrors ts/src/lang.ts.
 	terms := argterms
 	if positionalArgFuncs[name] && 1 == len(terms) {
 		if raw, ok := terms[0].([]any); ok {
@@ -2889,22 +1909,11 @@ func buildCall(r *jsonic.Rule, name string, argterms []any) Val {
 
 	if constraintAtoms[name] {
 		cv := newConstraint(name, args, sp)
-		// The span too, as the canonical port does: a constraint's site
-		// names its OPENING TOKEN -- `min` for `min(1)` -- which is
-		// exactly what the row and column above already point at. Left
-		// unstamped, Go reported -1 where TypeScript reported 3, and the
-		// shared subsume rows caught it.
 		stampSrc(cv, r)
 		return cv
 	}
 
 	fv := newFunc(name, args)
-	// Locate the call, as the constraint-atom branch just above already
-	// does. A FuncVal left at the zero sp -- which is a REAL position,
-	// the first byte of the source -- handed that position to any
-	// conjunct built over it (newConjunct takes its site from its first
-	// term), so `a:super(1)&integer` drew its frame at the key rather
-	// than at the value (issue #41).
 	if r.ON > 0 {
 		fv.sp = r.O0.SI
 		stampSrc(fv, r)

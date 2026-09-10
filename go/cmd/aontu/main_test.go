@@ -21,13 +21,6 @@ func TestRenderJSON(t *testing.T) {
 	}
 }
 
-// The CLI must not HTML-escape, and must write exact leaves as exact
-// digits — the same two choices the shared suite's gens mode makes.
-// Neither is visible to a spec row: the shared runner serialises with
-// its own encoder (specGens), so the CLI's rendering is only covered
-// here. json.MarshalIndent, which this used to call, escapes <, > and &
-// by default and so printed different bytes from the canonical
-// TypeScript CLI for any document containing them.
 func TestRenderJSONMatchesTypeScriptBytes(t *testing.T) {
 	cases := []struct{ src, want string }{
 		// TypeScript: exactJSON(generate(src), 2), which never escapes.
@@ -81,9 +74,6 @@ func TestReplSession(t *testing.T) {
 	}
 }
 
-// TestAontuForFileRelativeLoad checks the file-evaluation path resolves
-// a relative @"file" load against the entry file's directory (the fix
-// for `aontu /path/to/main.aontu` failing from another cwd).
 func TestAontuForFileRelativeLoad(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "main.aontu")
@@ -118,21 +108,6 @@ func TestReplEmptyAndUnknown(t *testing.T) {
 	}
 }
 
-// render surfaces an encoder failure rather than printing partial JSON.
-// A sum that overflows binary64 generates as +Inf, which encoding/json
-// refuses — the one input shape that reaches the Encode error arm.
-// A NON-FINITE SUM IS REFUSED BY THE ENGINE, NOT BY THE ENCODER.
-//
-// This test used to assert the opposite, and pinned a defect: the sum
-// reached the JSON encoder as +Inf and came back as Go's raw
-// `json: unsupported value: +Inf` -- no `[aontu/...]` code, no site, and
-// a different failure entirely from TypeScript's, which crashed with
-// `[aontu/internal]` (use-cases/BUGS.md 39). Both ports now refuse the
-// sum where it is written, with float_overflow.
-//
-// That is also why render's own encode-error branch is now marked
-// unreachable: with the engine refusing every non-finite float, no
-// generated value reaches the encoder that it cannot encode.
 func TestFloatOverflowIsRefusedNotUnencodable(t *testing.T) {
 	const max = "1.7976931348623157e308"
 	out, err := render(aontu.New(), "a: "+max+"+"+max, "json")

@@ -7,30 +7,7 @@ exports.kindSubsumes = kindSubsumes;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
 const err_1 = require("../err");
-// import { BaseVal } from './BaseVal'
 const FeatureVal_1 = require("./FeatureVal");
-// Kind markers.
-//
-// A ScalarKindVal's canon is its marker's constructor name, lowercased,
-// so these class names are load-bearing language surface: `Integer` is
-// the keyword `integer`, `Float` is the keyword `float`.
-//
-// The numeric part of the lattice is a pure supertype over disjoint
-// leaves:
-//
-//   number                       (the global Number constructor)
-//   |- integer     Integer       int64-window exact
-//   |- float       Float         IEEE-754 binary64
-//   |- biginteger  BigInteger    exact, opt-in via 0d
-//   |- bigdecimal  BigDecimal    exact, opt-in via 0d
-//
-// The global `Number` constructor is the marker for the SUPERTYPE only:
-// no concrete ScalarVal ever carries it. A binary64 value is FLOAT kind
-// (NumberVal is the binary64 leaf; the class name is historical).
-//
-// A ScalarKindVal for `number` matches a concrete value of any numeric
-// leaf, and meeting it with a leaf yields that leaf. Two distinct leaves
-// are disjoint sets with no common lower bound, so they do not unify.
 // A ScalarKind for the int64-window exact integers.
 class Integer {
 }
@@ -44,8 +21,6 @@ exports.Float = Float;
 class BigInteger {
 }
 exports.BigInteger = BigInteger;
-// A ScalarKind for the exact base-10 decimals, reached only by a `0d`
-// literal carrying a `.` or an exponent.
 class BigDecimal {
 }
 exports.BigDecimal = BigDecimal;
@@ -53,21 +28,9 @@ exports.BigDecimal = BigDecimal;
 class Null {
 }
 exports.Null = Null;
-// A ScalarKind for tree addresses (docs/design/PATHS.0.md): the value
-// a `path(p)` call captures. Sits UNDER string -- an address is a
-// string with more structure, so string-kinded schemas over address
-// fields keep admitting -- while staying a distinct leaf, so a plain
-// string literal and a path value refuse each other exactly as the
-// number tower's leaves do. Reached only by the `path()` builtin, as
-// the exact numeric leaves are reached only by `0d`.
 class Path {
 }
 exports.Path = Path;
-// The immediate lattice parent of each kind marker. A marker absent from
-// this table sits directly under top (string, boolean, null -- and
-// `number` itself, which is the root of the numeric family).
-//
-// Adding a leaf is one row.
 const KIND_PARENT = new Map([
     [Integer, Number],
     [Float, Number],
@@ -91,7 +54,6 @@ function kindSubsumes(sup, sub) {
     }
     return false;
 }
-// class ScalarKindVal extends BaseVal {
 class ScalarKindVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -114,9 +76,6 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
         }
         else if (peerIsScalarVal) {
             let peerKind = peer.kind;
-            // A kind admits a concrete value of that kind, or of any kind
-            // below it: `float & 1.5` is 1.5, and `number & 1` is 1 because
-            // integer sits under number.
             if (kindSubsumes(this.peg, peerKind)) {
                 out = peer;
             }
@@ -125,9 +84,6 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
             }
         }
         else if (peerIsScalarKind) {
-            // The meet of two kinds is the narrower one when they are
-            // comparable. Distinct leaves (float & integer) are disjoint sets
-            // of values, so they have no common lower bound and fail.
             if (this.peg === peer.peg) {
                 out = this;
             }
@@ -145,17 +101,12 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
             out = (0, err_1.makeNilErr)(ctx, 'not-scalar-type', this, peer);
         }
         ctx.explain && (0, utility_1.explainClose)(te, out);
-        // console.log('SCALARKINDVAL', this.canon.peer.canon, '->', out.canon)
         return out;
     }
     get canon() {
         let ctor = this.peg;
         return ctor.name.toLowerCase();
     }
-    // The super() ladder: a leaf kind lifts to its parent kind
-    // (super(integer) -> number, super(float) -> number), and a kind with
-    // no parent lifts to top (super(number) -> top). A concrete value
-    // lifts to its own leaf via ScalarVal.superior.
     superior() {
         const parent = kindParent(this.peg);
         return null == parent ?

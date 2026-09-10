@@ -9,26 +9,7 @@ import (
 	"testing"
 )
 
-// The number tower's GENERATE contract (docs/design/number-tower.md, D9).
-//
-// These tests exist because byte-exact serialisation CANNOT see what
-// they check. The three surfaces are deliberately separate:
-//
-//	canon  pins the AST kind        (0d1e3 canons as `0d1000.0`)
-//	gens   pins the bytes           (it emits `1000.0`)
-//	here   pins the runtime OBJECT  (it is a *Decimal, not a float64)
-//
-// The gap is real in both directions: an integral bigdecimal and a
-// biginteger serialise to DIFFERENT text (`1000.0` vs `1000`) though
-// both are exact, while a biginteger and an integer serialise to the
-// SAME text (`5`) with completely different native types. Only an
-// assertion on the concrete type can tell the second pair apart, so the
-// spec suite alone would let generate return the wrong object and stay
-// green.
 
-// TestGenerateNativeExactTypes pins the concrete Go type generate
-// returns for every scalar leaf — above all the two exact ones, whose
-// types are the consumer-visible half of D9.
 func TestGenerateNativeExactTypes(t *testing.T) {
 	cases := []struct {
 		name string
@@ -159,11 +140,6 @@ func TestGenerateExactTypesNested(t *testing.T) {
 	}
 }
 
-// TestGeneratedBigIntegerIsACopy pins the immutability contract at the
-// API boundary (D8): pegs are immutable and shared by clones, so the
-// mutable *big.Int a consumer receives must not BE the peg. Without the
-// copy, mutating a generated value would corrupt a $var bound to it and
-// silently change the next generate.
 func TestGeneratedBigIntegerIsACopy(t *testing.T) {
 	a := New()
 	vars := map[string]Val{"n": NewBigInteger(big.NewInt(5))}
@@ -223,10 +199,6 @@ func TestExactValuesMarshalAsRawDigits(t *testing.T) {
 	}
 }
 
-// TestCLIMarshalIndentKeepsExactDigits runs the exact leaves through the
-// encoder the CLI actually uses (json.MarshalIndent in
-// go/cmd/aontu/main.go), so the command line cannot quietly lose what
-// json.Marshal preserves.
 func TestCLIMarshalIndentKeepsExactDigits(t *testing.T) {
 	out, err := New().Generate("a:0d9007199254740993\nb:0d1e3\nc:0d0.1")
 	if err != nil {
@@ -242,15 +214,6 @@ func TestCLIMarshalIndentKeepsExactDigits(t *testing.T) {
 	}
 }
 
-// TestNonPointerBigIntMarshalsAsObject is the negative control for the
-// pointer requirement in D9 — the reason ScalarVal.Gen must hand out a
-// *big.Int and not a big.Int. A value big.Int in an `any` has no
-// MarshalJSON in its method set, so encoding/json falls back to the
-// struct encoder and emits `{}` for it: an exact number silently
-// replaced by an empty object, which is precisely the class of failure
-// the exact leaves exist to eliminate. If this test ever fails because
-// the standard library changed, the pointer is still correct — but the
-// comment explaining why can be relaxed.
 func TestNonPointerBigIntMarshalsAsObject(t *testing.T) {
 	b, err := json.Marshal(map[string]any{"x": *big.NewInt(5)})
 	if err != nil {
@@ -261,10 +224,6 @@ func TestNonPointerBigIntMarshalsAsObject(t *testing.T) {
 	}
 }
 
-// TestDecimalMarshalJSONIsPlainDigits pins the emitter itself: plain
-// digits at every magnitude, never scientific notation, no `0d` marker
-// (that is canon's business, not JSON's), and the single decimal place
-// kept for an integral value so the JSON still shows a decimal.
 func TestDecimalMarshalJSONIsPlainDigits(t *testing.T) {
 	cases := []struct {
 		coeff int64
@@ -274,7 +233,7 @@ func TestDecimalMarshalJSONIsPlainDigits(t *testing.T) {
 		{15, 1, "1.5"},
 		{-15, 1, "-1.5"},
 		{1, 1, "0.1"},
-		{1, -3, "1000.0"}, // integral: the .0 stays
+		{1, -3, "1000.0"},
 		{0, 1, "0.0"},
 		{1, 20, "0.00000000000000000001"}, // plain form, not 1e-20
 	}
@@ -323,8 +282,6 @@ func TestLossyIntegerLiteralRefused(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expected a refusal for %q", c.src)
 			}
-			// The two substrings the shared spec rows assert: the reason,
-			// and the escape.
 			if !strings.Contains(err.Error(), "exactly representable") {
 				t.Fatalf("error does not give the reason: %v", err)
 			}
@@ -359,8 +316,6 @@ func TestLossyIntegerLiteralRefused(t *testing.T) {
 // write a number one way and have it accepted, and the other way and
 // have it refused.
 func TestLiteralAndSumAgreeOnExactness(t *testing.T) {
-	// 4503599627370496 + 4503599627370497 is 2^53+1 exactly — the sum
-	// binary64 addition used to round to …992 in silence.
 	sumErr := func(src string) error {
 		_, err := New().Generate(src)
 		return err
@@ -372,9 +327,6 @@ func TestLiteralAndSumAgreeOnExactness(t *testing.T) {
 		t.Fatalf("expected the same value as a literal to be refused")
 	}
 
-	// And the predicate itself, at the boundary. Storable adds the int64
-	// window to the exactness test; the literal rule asks only for
-	// exactness, which is why 10^20 (outside int64) is still a value.
 	pow53 := big.NewInt(9007199254740992)
 	pow53Plus1 := new(big.Int).Add(pow53, big.NewInt(1))
 	pow20, _ := new(big.Int).SetString("100000000000000000000", 10)
@@ -401,25 +353,6 @@ func TestLiteralAndSumAgreeOnExactness(t *testing.T) {
 	}
 }
 
-// TestIntegerGeneratesAsInt64AtEveryMagnitude is the Go half of issue
-// #21, and it records a DELIBERATE cross-port asymmetry in the native
-// type — the one place D9's generate contract cannot be identical in
-// both ports, because the leaf's storage is not.
-//
-// Go's integer leaf IS an int64: exact across the whole window, at every
-// magnitude, and encoding/json writes its digits. So there is nothing to
-// do here and no threshold to place — an integer generates as an int64
-// whether it is 1 or 2^60.
-//
-// TypeScript's integer leaf is a double, which above Number.MAX_SAFE_INTEGER
-// stops rendering its own digits (JSON.stringify(2**60) is
-// 1152921504606847000, a different integer). So the canonical port
-// generates a `bigint` beyond that line to keep the value exact —
-// see IntegerVal.gen and ts/test/exactjson.test.ts.
-//
-// The BYTES agree either way, which is what the shared gens rows pin
-// (number-tower.tsv, gens-exact-int-*). Only the runtime type differs,
-// and only in the port whose storage forced it.
 func TestIntegerGeneratesAsInt64AtEveryMagnitude(t *testing.T) {
 	cases := []struct {
 		src  string
@@ -427,8 +360,8 @@ func TestIntegerGeneratesAsInt64AtEveryMagnitude(t *testing.T) {
 		json string
 	}{
 		{"x:1", 1, `{"x":1}`},
-		{"x:9007199254740991", 9007199254740991, `{"x":9007199254740991}`}, // 2^53-1
-		{"x:9007199254740992", 9007199254740992, `{"x":9007199254740992}`}, // 2^53
+		{"x:9007199254740991", 9007199254740991, `{"x":9007199254740991}`},
+		{"x:9007199254740992", 9007199254740992, `{"x":9007199254740992}`},
 		{"x:1152921504606846976", 1152921504606846976, `{"x":1152921504606846976}`},
 		{"x:9223372036854774784", 9223372036854774784, `{"x":9223372036854774784}`},
 		{"x:-1152921504606846976", -1152921504606846976, `{"x":-1152921504606846976}`},

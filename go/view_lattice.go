@@ -2,18 +2,6 @@
 
 package aontu
 
-// THE VALUE LATTICE, and where this document's values sit on it.
-// Mirrors the lattice section of ts/src/view.ts function for function.
-//
-// THE SCAFFOLD IS THE LANGUAGE'S, NOT THE DOCUMENT'S: `top` at the
-// join, the four kind families under it, `path()` under `string`, the
-// four numeric leaves under `number`, and `nil` at the meet. Every
-// Aontu document is drawn against the SAME shape, which is what makes
-// two of these figures comparable -- and what makes this a view of the
-// language that a document annotates, rather than a picture assembled
-// out of whatever the document happened to contain.
-//
-// See docs/unification.md for what the ordering means.
 
 import (
 	"sort"
@@ -21,12 +9,6 @@ import (
 	"strings"
 )
 
-// latticeKindParent is the scaffold: each kind and the one above it.
-// The ENGINE decides which kind sits under which -- kindParent in
-// go/scalar.go, and its twin in ts/src/val/ScalarKindVal.ts -- and
-// a test in each port holds this table to it, so adding a kind to the
-// engine makes the figure grow a node rather than quietly leave one
-// out.
 var latticeKindParent = [][2]string{
 	{"string", "top"},
 	{"path()", "string"},
@@ -39,12 +21,6 @@ var latticeKindParent = [][2]string{
 	{"null", "top"},
 }
 
-// latticeColumns is the columns, left to right: the MINIMAL kinds, the
-// ones with nothing under them. Everything else is drawn centred over
-// the columns it covers, so this list alone fixes the figure's
-// horizontal order -- and it puts the kinds that reach the bottom from
-// higher up (`boolean`, `null`) on the outside, where their lines pass
-// the numeric fan rather than crossing it.
 var latticeColumns = []string{"path()", "integer", "float", "biginteger",
 	"bigdecimal", "boolean", "null"}
 
@@ -87,10 +63,6 @@ func latticeAncestors(name string) []string {
 	return out
 }
 
-// latticeSpan is the columns one node covers: its own if it is
-// minimal, otherwise every column beneath it. `nil` is beneath
-// everything and above nothing, so the walk finds no column under it
-// and the whole width is its span -- which is where it belongs.
 func latticeSpan(name string) []int {
 	for i, col := range latticeColumns {
 		if col == name {
@@ -127,19 +99,6 @@ func latticeCovers(parent, child string) bool {
 	return false
 }
 
-// latticePoint is WHERE ONE VALUE SITS, or "" for a value that is not
-// at a single point. The answers are the kinds of thing a document
-// holds:
-//
-//	a CONCRETE scalar sits at its kind -- `8080` is an `integer`, and
-//	superior() is the lattice's own answer to which;
-//	a KIND MARKER sits AT that kind -- `integer` written as a schema
-//	is the node itself, not a value under it;
-//	everything else -- a constraint, an unresolved disjunction, a
-//	reference -- is not one point. `integer & min(1)` is a REGION of
-//	the lattice and `*8080 | integer` is two places at once, so
-//	drawing either at a node would be a claim the figure cannot
-//	support. Both are counted into the loss report instead.
 func latticePoint(v Val) string {
 	name := ""
 	switch node := throughDoc(v).(type) {
@@ -215,11 +174,6 @@ func latticeCensus(root Val, at string) (map[string][]string, []string) {
 	return counts, unplaced
 }
 
-// latticeCell is what one node is written as: its name, and the count
-// of the document's values that landed on it. A node with nothing at
-// it is still drawn -- the shape is the language's, and a figure that
-// left the empty nodes out would be a different lattice for every
-// document.
 func latticeCell(counts map[string][]string, name string) string {
 	n := len(counts[name])
 	if 0 == n {
@@ -228,10 +182,6 @@ func latticeCell(counts map[string][]string, name string) string {
 	return name + " (" + strconv.Itoa(n) + ")"
 }
 
-// latticeGutter is the gap between one column and the next. It is
-// THREE because the SVG draws a box a character wider than its text:
-// two of those characters are the box's own padding and the third is
-// the gap between one box and the next.
 const latticeGutter = 3
 
 // latticeLayout is the horizontal layout, in characters: one column
@@ -262,19 +212,9 @@ func latticeLayout(counts map[string][]string) ([]int, int) {
 func latticeAt(name string, cx []int) int {
 	span := latticeSpan(name)
 	lo, hi := cx[span[0]], cx[span[len(span)-1]]
-	// Rounded half up, as JavaScript's Math.round does it; both ends
-	// are non-negative here, so there is no negative-zero case to
-	// separate the two rules.
 	return (lo + hi + 1) / 2
 }
 
-// latticeGlyph is the box-drawing glyph for one column of a rule, from
-// the four facts that meet there: whether the rule continues left and
-// right, and whether a stem leaves upward and downward. Deciding it
-// this way is what lets `number` -- which is BOTH one of the many
-// under `top` and the one above the numeric leaves -- come out as the
-// join it is, without a case written for it. The table is total, so no
-// column has to be asked whether it has a glyph.
 var latticeGlyph = map[string]rune{
 	"....": '─', "...d": '│', "..u.": '│', "..ud": '│',
 	".r..": '─', ".r.d": '┌', ".ru.": '└', ".rud": '├',
@@ -305,19 +245,11 @@ func (p *latticePainting) put(y, x int, text string, role string) {
 	}
 }
 
-// latticeText is the figure, PAINTED rather than assembled from padded
-// strings: the nodes have to line up with the rules that join them,
-// and a count changes a cell's width -- so the geometry is settled
-// first, in columns, and every glyph is then written at a place
-// already known.
 func latticeText(counts map[string][]string, style string) string {
 	paint := newPainter(style)
 	cx, width := latticeLayout(counts)
 	p := &latticePainting{width: width}
 
-	// A cell is its name and, where the document reached it, the
-	// count: two roles, so a terminal can mute the second without
-	// touching the first.
 	cell := func(y int, name string) {
 		text := latticeCell(counts, name)
 		left := latticeAt(name, cx) - viewLen(text)/2
@@ -373,9 +305,6 @@ func latticeText(counts map[string][]string, style string) string {
 		stems(y, by)
 	}
 
-	// Four node rows and three joins. `open` is every node whose line
-	// downward has not been drawn yet, which is what carries `boolean`
-	// and `null` past the numeric row to the bottom rule.
 	open := []string{}
 	y := 0
 	for r, row := range latticeRows {
@@ -423,15 +352,6 @@ func latticeText(counts map[string][]string, style string) string {
 	return strings.Join(out, "\n")
 }
 
-// latticeSvg is the same figure as SVG, off the same column layout, so
-// the two profiles are one drawing in two grammars rather than two
-// drawings. A node the document REACHES is drawn with the ordinary
-// rule stroke (`av-box`) and one it does not with the faint one
-// (`av-cell`), because every node is drawn whether this document
-// reaches it or not and a reader has to see which is which without
-// counting. NO NEW CLASS: those two already mean a box and a faint
-// box, so a host page that themed the other figures gets this one for
-// nothing.
 func latticeSvg(counts map[string][]string, at, style string) string {
 	const rowH = 3 * svgLH
 	const boxH = 26
@@ -446,11 +366,6 @@ func latticeSvg(counts map[string][]string, at, style string) string {
 	x := func(name string) int { return svgPAD + latticeAt(name, cx)*svgCH }
 	y := func(name string) int { return svgPAD + boxH/2 + rowOf[name]*rowH }
 
-	// Edges first, so a box always sits over the lines that reach it.
-	// The horizontal jog is placed just above the CHILD rather than
-	// halfway down, which is what keeps `boolean` and `null` -- three
-	// rows from `top` to `nil` with nothing between -- clear of the
-	// numeric row they pass.
 	edges := append([][2]string{}, latticeKindParent...)
 	for _, col := range latticeColumns {
 		edges = append(edges, [2]string{"nil", col})
@@ -473,9 +388,6 @@ func latticeSvg(counts map[string][]string, at, style string) string {
 			}
 			placed += len(counts[name])
 			parts = append(parts, svgRect(x(name)-w/2, y(name)-boxH/2, w, boxH, cls))
-			// The name and the count in ONE text element, as the tree
-			// does it: two runs on one baseline, so the count is muted
-			// without the figure having to place it.
 			parts = append(parts, "<text x=\""+itoa(x(name))+"\" y=\""+
 				itoa(y(name)+5)+"\" text-anchor=\"middle\">"+
 				"<tspan class=\"av-t\">"+viewSvgEsc(name)+"</tspan>"+
@@ -487,11 +399,6 @@ func latticeSvg(counts map[string][]string, at, style string) string {
 		"Value lattice at "+at+": "+itoa(placed)+" value(s) placed", parts, style)
 }
 
-// latticeLines is the figure's height. The row count is fixed -- the
-// lattice is the language's, and no option makes it smaller -- so
-// `--max-rows` below it is still a refusal, because a figure that
-// quietly overran a stated bound is the thing every other kind here
-// refuses to be; the message says raise rather than narrow.
 var latticeLines = 3*len(latticeRows) - 2
 
 func drawLattice(root Val, at, as, style string, max int,

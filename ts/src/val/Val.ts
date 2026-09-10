@@ -34,22 +34,6 @@ type ValSpec = {
   mark?: Partial<ValMark>,
   kind?: any,
 
-  // THE PER-DESTINATION INSTANTIATION FLAG (ADR-005). A generator's
-  // template is cloned once per destination, and every clone must be
-  // a full instance: nothing path-dependent may be shared between two
-  // destinations, or the first destination's resolution answers for
-  // them all. The default clone shares inner structure deliberately
-  // (`peg: this.peg` below — the move()/copy() ghost rows in
-  // test/spec/func.tsv pin that sharing), so instantiation asks for
-  // depth explicitly: `dup: true` makes FuncBaseVal, PrefVal and
-  // OpBaseVal clone their inner Vals too, and the bag/junction clones
-  // carry the flag down. Set by pack/each template instantiation,
-  // filter condition testing, spread application (MapVal/
-  // ListVal.spreadClone), and REFERENCE RESOLUTION of a target that
-  // holds no staged call, whose copy is a per-destination instance
-  // too (ADR-025) — never by the residuation clone, whose sharing is
-  // pinned behaviour, and never by a copy of something still being
-  // settled at its own site, which is what keeps the ghost rows.
   dup?: boolean,
 
 
@@ -72,7 +56,6 @@ type ValSpec = {
 }
 
 
-
 const DONE = -1
 
 const SPREAD = Symbol('spread')
@@ -84,12 +67,6 @@ const SPREAD = Symbol('spread')
 const EMPTY_ERR: any[] = Object.freeze([]) as unknown as any[]
 
 
-// Process-global, monotonic Val id source. Correctness only requires ids
-// to be unique within a single unify run (fast-path identity checks,
-// `same()`), which holds. It is NOT reset between generate() calls, so in
-// a long-running host (e.g. the LSP) it grows for the process lifetime;
-// that is acceptable — an id is a small number and is never used as a
-// memory key. TODO: switch to the per-run ctx.vc counter (see ctx.ts).
 let ID = 1000
 
 
@@ -164,39 +141,12 @@ abstract class Val {
     hide: false,
   }
 
-  // The deprecation record (G3 phase 4, `deprecate(x, m)`): boolean
-  // marks cannot hold a message, a replacement path and a version, so
-  // the Val carries one optional record. Keys are the three the
-  // builtin defines (msg, use, since), all optional, values strings;
-  // `use` is a path spelled as a STRING — a live reference would
-  // resolve and unify, which is not wanted. Propagated through meets
-  // by propagateMarks and carried by clone, exactly as the boolean
-  // marks are.
   deprecation?: Record<string, string>
 
-  // The LINK (G4 phase 2/3): the tree address a `refer` resolved to,
-  // stamped on the string it answers. The string IS the value — a
-  // link, not an embedding — so nothing downstream could otherwise
-  // tell a checked link from a literal that happens to look like one,
-  // and the edge set (ts/src/graph.ts) is exactly the set of these.
   link?: string
 
-  // THE READ ADDRESS (RENDER.0.md P7): the tree path a reference
-  // resolved this value AT, stamped where it was found. A resolved
-  // reference CLONES its target into the referring position, so a
-  // value that arrived by reference otherwise knows only where it came
-  // to rest -- and a trace saying a line came from `$.code.units.0`
-  // names the output, not the model. Written only by an instrumented
-  // run (AontuContext.reads), carried by clone and by the meet rider,
-  // exactly as the deprecation record is.
   origin?: string
 
-  // THE DISPATCH THAT PRODUCED THIS PIECE (RENDER.0.md D11, P7): the
-  // node an `emit` matched and the rule it took, stamped on every
-  // piece the dispatch instantiated. The INNERMOST dispatch wins: a
-  // nested rule set splices its pieces into the outer result, and the
-  // rule that wrote a line is the one that wrote it. Written only by
-  // an instrumented run, and carried like `origin`.
   emitted?: EmitOrigin
 
   // The GRAPH of an evaluated document (G4 phase 3): the edge set,
@@ -222,7 +172,6 @@ abstract class Val {
   // functions whose branches no supported Node can execute.
   private _ctx: any
 
-  // TODO: Site needed in ctor
   constructor(spec: ValSpec, ctx?: AontuContext) {
     this._ctx = ctx
 
@@ -239,14 +188,11 @@ abstract class Val {
     // ctx.clone just to carry it.
     this.path = spec?.path ?? ctx?.path ?? []
 
-    // TODO: make this work
-    // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
     this.id = ++ID
 
     this.mark.type = !!spec.mark?.type
     this.mark.hide = !!spec.mark?.hide
 
-    // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
   }
 
 
@@ -295,26 +241,6 @@ abstract class Val {
     out.site.row = spec?.row ?? this.site.row
     out.site.col = spec?.col ?? this.site.col
     out.site.url = spec?.url ?? this.site.url
-    // THE SPAN TRAVELS WITH THE POSITION. Copying row and col but not
-    // the extent would leave a site that names a place and denies it has
-    // any width — internally inconsistent, and it made the two ports
-    // disagree on every derived value (the shared subsume rows caught
-    // it). Safe because the span is VERIFIABLE: a consumer reads the
-    // document at (row, col, len) and refuses when it does not match
-    // `src`, so a span that has stopped describing its value is
-    // detectable rather than believed. See ts/src/site.ts.
-    //
-    // Read from `this.site`, never from the spec: ValSpec.src is a
-    // DIFFERENT field — ScalarVal's literal spelling, kept so `$.a.0x0`
-    // addresses the key `0x0` — and reading it here would put a path
-    // segment where a source span belongs.
-    //
-    // UNCONDITIONAL, as the Go twin is (clonePath, go/clone.go). A
-    // guard dropping the span when the spec relocates the value was
-    // written first and the coverage gate refused it as dead: nothing
-    // clones to a new row or column. Should a relocating caller ever
-    // appear it must drop both fields — an extent belongs to a place,
-    // and the text at a new one is not this value's to claim.
     out.site.len = this.site.len
     out.site.src = this.site.src
 
@@ -332,11 +258,6 @@ abstract class Val {
       out.deprecation = this.deprecation
     }
 
-    // THE RENDER RIDERS TRAVEL WITH THE CLONE (P7), for the reason the
-    // deprecation record does: a clone of a value read at `$.schema`
-    // was read at `$.schema`, and a clone of an emitted piece is still
-    // that dispatch's. Both are absent unless the run is instrumented,
-    // so this is two undefined reads otherwise.
     if (null != this.origin) {
       out.origin = this.origin
     }
@@ -344,17 +265,6 @@ abstract class Val {
       out.emitted = this.emitted
     }
 
-    // THE APPLY-ONCE MARK TRAVELS WITH THE CLONE. `_spr` records which
-    // spread template has already been merged into this value, and the
-    // bag loops read it to keep a template from being applied twice
-    // (MapVal.unify, ListVal.unify). A clone that dropped it looked
-    // un-spread, so a REFERENCE resolving to a templated bag had the
-    // template applied a second time -- over the value the first
-    // application had already produced. With `n: key()` that meant
-    // meeting the answered `"x"` as though it were a map and asking
-    // `key()` again, which answered `"n"`: `$.a.b.f.x.n.n`, "n"
-    // against "x" (use-cases/BUGS.md §50). The Go port carries it and
-    // answered correctly; this is the canonical side catching up.
     if (null != (this as any)._spr) {
       ; (out as any)._spr = (this as any)._spr
     }
@@ -362,26 +272,9 @@ abstract class Val {
       ; (out as any)._sid = (this as any)._sid
     }
 
-    // PROVENANCE TRAVELS WITH THE CLONE, exactly as the site does, and
-    // for the same reason: a clone of a value the author wrote IS that
-    // written value somewhere else, and it carries the author's site,
-    // so it can be pointed at. Without this a default reaching a
-    // `pack()`-generated child, or a shape carried by a `$ref`, was
-    // invisible to `why` -- which answered "nothing met at this path"
-    // over a value it had just printed (the review's finding E). See
-    // WRITTEN in ts/src/provenance.ts; the mark is only ever set by an
-    // instrumented run, so this is one undefined read otherwise.
     if (true === (this as any)[WRITTEN]) {
       (out as any)[WRITTEN] = true
     }
-    // AND SO DOES BEING PART OF SOMETHING. A clone of a disjunction's
-    // member is still that member of that written disjunction, and the
-    // whole statement is what the author needs shown -- otherwise a
-    // default reaching a generated child reports `*"info"` and
-    // `string` as two contributions at two columns, where the author
-    // wrote `*info | string` once. A number, deliberately: a Val
-    // holding another Val as an own property is a cycle through the
-    // tree. See INNER_OF in ts/src/provenance.ts.
     if (null != (this as any)[INNER_OF]) {
       (out as any)[INNER_OF] = (this as any)[INNER_OF]
     }
@@ -390,16 +283,6 @@ abstract class Val {
   }
 
 
-  // Shallow clone for spread constraints: creates a new Val with the
-  // correct path context but shares non-path-dependent children.
-  // Override in MapVal/ListVal to avoid deep-cloning simple children.
-  //
-  // A FULL INSTANCE (`dup`, ADR-005): a spread constraint is applied
-  // once per destination child, and each application must own its
-  // path-dependent innards — a bare clone shared a call's arguments
-  // and a preference's inner value across destinations, so a spread
-  // like `&: {k: key(0)} & $.schema.C` resolved its one shared key()
-  // at the first child it met (use-cases/BUGS.md §12's id_name form).
   spreadClone(ctx: AontuContext): Val {
     const out = this.clone(ctx, { dup: true })
     repathInstance(out, out.path)
@@ -407,12 +290,6 @@ abstract class Val {
   }
 
 
-  // True if this Val's unification result depends on its own `path`
-  // — i.e. the tree contains a RefVal, KeyFuncVal, PathFuncVal,
-  // MoveFuncVal, or SuperFuncVal. Used by MapVal/ListVal.spreadClone
-  // to share the spread constraint across keys when it's safe.
-  // Lazy + cached: the answer is a function of the Val's immutable
-  // structure, so we compute once per Val.
   _isPathDependent?: boolean
   get isPathDependent(): boolean {
     if (this._isPathDependent !== undefined) return this._isPathDependent
@@ -443,13 +320,6 @@ abstract class Val {
   }
 
 
-  // A STAGED CALL STANDING ANYWHERE IN THIS VALUE (the `staged` flag,
-  // G8 phase 0). Such a call has not decided: its arguments are still
-  // being driven AT ITS OWN SITE, so a REFERENCE's copy shares it
-  // rather than owning a set of arguments it would drive at the
-  // referring position instead (RefVal.find, ADR-025). Not cached:
-  // unlike isPathDependent this is a fact about the value's current
-  // state, and the whole point is that it stops being true.
   get holdsStaged(): boolean {
     if (true === (this as any).staged) {
       return true
@@ -470,14 +340,6 @@ abstract class Val {
   }
 
 
-  // PUT A MINTED VALUE WHERE THIS ONE STANDS: the site travels, and so
-  // does provenance, because the two answer one question. A narrowed
-  // disjunction, a lifted kind, a resolved reference -- each is a
-  // value the engine built from a value the author wrote, standing
-  // where that one stood. Carrying the site and withholding the mark
-  // would let `why` print a value, know the line it came from, and
-  // still answer "nothing met at this path" (the review's finding E).
-  // See WRITTEN and INNER_OF in ts/src/provenance.ts.
   place(v: Val) {
     v.site.row = this.site.row
     v.site.col = this.site.col
@@ -493,25 +355,8 @@ abstract class Val {
     return v
   }
 
-  // CONTRACT: implementations should treat `this` and `peer` as
-  // immutable and return a new Val. KNOWN EXCEPTION: the MapVal/ListVal
-  // fast-path for a TOP peer returns and refines `this` in place (an
-  // intentional optimization for the fixpoint loop). The practical
-  // consequence is that a parsed/unified tree is SINGLE-USE — do not
-  // re-unify or re-generate the same Val, and do not share it across
-  // threads. The public Aontu.unify/generate entry points re-parse per
-  // call, so this only matters if you hold and reuse a Val yourself.
   unify(_peer: Val, _ctx: AontuContext): Val { return this }
 
-  // TODO: indicate marks in some way that is ignored by reparse.
-  // Need an annotation/taggins syntax? a:{}/type ?
-  // ABSTRACT: every concrete Val renders its own canonical form. There
-  // used to be an empty-string default here, and the one class relying
-  // on it (ExpectVal) was rendering a key with no value -- `{"r":}`,
-  // text that is not a document (issue #43). With that fixed, nothing
-  // reached the default, so it is declared rather than defaulted: a new
-  // Val that forgets `canon` is now a compile error instead of silently
-  // canoning as nothing.
   abstract get canon(): string
 
 
@@ -550,7 +395,6 @@ abstract class Val {
       ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
     ].filter(n => null != n).join(','))
 
-    // let insp = this.inspection(inspect)
     let insp = this.inspection(1 + d)
     if (null != insp && '' != insp) {
       s.push('/' + insp)
@@ -587,12 +431,6 @@ abstract class Val {
 }
 
 
-// Prototype-level defaults for Val's type-discriminator flags.
-// Keeping these on the prototype (instead of per-instance class-field
-// initializers) removes ~35 property writes from every Val construction
-// and eliminates the corresponding hidden-class transitions. Subclasses
-// override only the flags that differ, via their own class-field
-// initializers (e.g. `MapVal.isMap = true`).
 Object.assign(Val.prototype, {
   isVal: true,
 
@@ -639,22 +477,6 @@ Object.assign(Val.prototype, {
 })
 
 
-// THE INSTANCE PATH NORMALISATION (ADR-005), the TS mirror of the Go
-// port's setPaths (go/clone.go): assign every value in a freshly
-// instantiated template the path the PARSER would have given it at the
-// instance's destination. A deep instance clone (`dup`) copies values
-// whose stored parse paths are argument-shaped — a func argument has
-// no key of its own, a spread template lives under a '&' segment — and
-// Val.clone's ctx-cut cannot rebase those: it derives the child path
-// from the driving ctx alone and drops the segments in between, which
-// is how a nested list spread inside a close()d template lost its
-// parent key and every finding under it named the wrong path (the
-// 06-k8s use case's env findings). One canonical walk instead:
-// bag children descend by key (numeric for a list element, as the
-// parser records them), a spread constraint sits under '&' with its
-// content at the bag's own path, and junction members, operator
-// operands, function arguments and a preference's value all sit AT
-// their holder's path — exactly the parse-time shape.
 function repathInstance(v: any, path: string[]): void {
   if (true !== v?.isVal) {
     return
@@ -666,9 +488,6 @@ function repathInstance(v: any, path: string[]): void {
   if (true === v.isBag) {
     const spread = v.spread?.cj
     if (null != spread && true === spread.isVal) {
-      // The spread's CONTENT is pathed at the bag (its fields land on
-      // the bag's children); only its ROOT carries the '&' segment —
-      // the same two steps as the Go twin's setPaths.
       repathInstance(spread, path)
       spread.path = [...path, '&']
     }
@@ -704,7 +523,7 @@ function inspectpeg(peg: any, d: number) {
       '\n' + indent + ']') :
     ('{' +
       Object.entries(peg).map((n: any) =>
-        '\n  ' + indent + n[0] + ': ' + // n[1].inspect(d)
+        '\n  ' + indent + n[0] + ': ' +
         n[1].inspect(d)
       ).join(',') +
       '\n' + indent + '}')
@@ -720,16 +539,6 @@ function pretty(s: string) {
 }
 
 
-// THE STABLE IDENTITY OF A SPREAD TEMPLATE, across clones. Every Val
-// takes a fresh `id` when it is constructed, so the bag loops'
-// apply-once mark -- which records WHICH template has already been
-// merged into a value -- could never match after a clone: a reference
-// resolving to a templated bag clones the bag AND its template, and the
-// fresh template's id matched nothing, so the template was applied a
-// second time over the value the first application had produced
-// (use-cases/BUGS.md §50). The first call fixes the identity to the
-// original's own id; Val.clone carries `_sid`, so every clone of that
-// template answers with it.
 function spreadId(cj: any): number {
   return cj._sid ?? (cj._sid = cj.id)
 }

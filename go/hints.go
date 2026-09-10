@@ -7,14 +7,6 @@ import (
 	"strings"
 )
 
-// hints maps unification error codes to human-readable explanations.
-// Since the #29 message-parity work the non-parameterised entries are
-// VERBATIM copies of ts/src/hints.ts (worked examples included) --
-// regenerate from there when the TS table changes, do not hand-edit.
-// The parameterised entries at the end are ALSO verbatim TS text:
-// their {placeholders} are interpolated from NilVal.details by
-// strinject at render time (go/val.go), exactly as TS getHint does.
-// decimal_syntax stays Go-only (TS never raises it).
 var hints = map[string]string{
 	"scalar_value":      "Literal scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
 	"scalar_kind":       "Literal scalar values of different kinds cannot unify.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
@@ -136,8 +128,6 @@ var hints = map[string]string{
 	"required_listelem":        "Required list element is missing. A non-optional list element has no value.",
 	"empty":                    "Empty disjunction. The disjunction has no valid alternatives.",
 	"empty-dist":               "Empty disjunction distribution. All alternatives in the disjunction are invalid.",
-	// ADR-011 R2: two DEFAULTS of equal rank that cannot agree. The
-	// fix is a rank, so the hint names it.
 	"pref_rank_clash": "Two defaults of the same rank disagree." +
 		" Rank one of them (`**x`) to say which is the weaker layer," +
 		" or give them the same value.",
@@ -171,9 +161,6 @@ var hints = map[string]string{
 	"mapval_spread_required":  "The value for key {key} is required (defined in spread).",
 	"listval_spread_required": "The value for key {key} is required (defined in spread).",
 
-	// budget_passes mirrors the TS text ({limit}/{paths} injected); the
-	// "evaluation budget" substring is pinned per-port
-	// (TestBudgetPassesHint) until a shared row exists (issue #26).
 	"budget_passes": "The evaluation budget of {limit} fixpoint passes was spent before\nthe model converged; still refining: {paths}.\nThis is the evaluator giving up, not a contradiction in the model:\nraising the budget helps only a model that is still converging --\na genuine cycle never converges at any budget.",
 
 	// Go-only: TS never raises decimal_syntax.
@@ -183,15 +170,6 @@ var hints = map[string]string{
 	"format_check": "The formatted text is not the same document, so nothing was written.\nThis is a formatter defect: please report it, with the source.",
 }
 
-// codeClasses assigns every error code a CLASS: conflict | incomplete |
-// reference | parse | budget | internal. The contract lives in
-// test/spec/errcodes.tsv (mode `errcode`): the spec suite executes one
-// row per code against this table and asserts SET EQUALITY between the
-// file and these keys, in both implementations (ts/src/hints.ts mirrors
-// this map exactly). Codes are append-only and never renamed; a class
-// change is a breaking change. Class rulings (why decimal_budget and
-// lossy_integer_literal are conflict, not budget; why unknown_function
-// is reference) are documented in the tsv header.
 var codeClasses = map[string]string{
 	// parse -- the source text is malformed or unusable
 	"parse":             "parse",
@@ -202,10 +180,6 @@ var codeClasses = map[string]string{
 	"include_denied":    "parse",
 	"include_extension": "parse",
 
-	// G3 -- the subsumption query's report vocabulary (class compat):
-	// the compat_* codes are its findings, the sub_* codes its
-	// undecided reasons. Report-layer codes: no NilVal ever carries
-	// one, so they have no hint text.
 	"compat_narrowed":           "compat",
 	"compat_required_added":     "compat",
 	"compat_default_changed":    "compat",
@@ -217,66 +191,30 @@ var codeClasses = map[string]string{
 	"sub_default_indeterminate": "compat",
 	"deprecated":                "compat",
 	"pref_not_instance":         "compat",
-	// G8 phase 1 -- the generation combinators. All three are class
-	// `parse`: what is wrong is the CALL as written (data that is not a
-	// bag, a list element that is not a name), not any pair of values a
-	// meet brought together.
 	"pack_data": "parse",
 	"pack_key":  "parse",
 	"each_data": "parse",
 
-	// G8 phase 2 -- selection. `filter_data` is class `parse` for the
-	// same reason `pack_data` is: the CALL names something with no
-	// children. `match_none` is class `conflict` -- the value and every
-	// pattern written for it disagreed, which is an ordinary failed
-	// meet, reported once for the whole form.
 	"filter_data": "parse",
 	"match_none":  "conflict",
 
-	// G9 phase 6 -- the string builtins. All five are class `parse`:
-	// what is wrong is the CALL as written -- a variant that names no
-	// convention, a pattern outside the subset, a substitution naming a
-	// group that does not exist, a separator that is neither string nor
-	// pattern. usc_malformed is the odd one and still `parse`: the TEXT
-	// the call was given has no inverse, which is a fact about the
-	// argument rather than about any meet.
 	"esc_variant":   "parse",
 	"usc_malformed": "parse",
 	"rep_pattern":   "parse",
 	"rep_sub":       "parse",
 	"split_sep":     "parse",
-	// G9 phase 6 -- apply-templates. The four shape codes are class
-	// `parse`: what is wrong is the CALL as written -- a selection with
-	// no children, a table that is not one, a rule missing a half.
-	// `emit_none` and `emit_ref` are class `conflict` for `match_none`'s
-	// reason: the node and what was written for it disagreed.
 	"emit_data":     "parse",
 	"emit_table":    "parse",
 	"emit_template": "parse",
 	"emit_body":     "parse",
 	"emit_none":     "conflict",
 	"emit_ref":      "conflict",
-	// RENDER P6 -- `replace` on a template, and `form`. The two
-	// template checks are class `parse`: what is wrong is the TEMPLATE
-	// as written, before any node. `replace_value` is class `conflict`:
-	// the node's value and the body that wanted text disagreed.
-	// `form_data` is `each_data`'s retired twin (ADR-027).
 	"replace_overlap": "parse",
 	"replace_unused":  "parse",
 	"replace_value":   "conflict",
 	"form_data":       "parse",
-	// G8 phase 3 -- the placeholder. Class `conflict`: two values met
-	// and neither could answer for the other, which is what every
-	// conflict is.
 	"place_pair": "conflict",
 
-	// G6 phase 2 -- modules. `module_missing` and `module_integrity` are
-	// class `parse`: a module import is resolved while the source is
-	// READ, and neither an absent module nor one whose meaning
-	// disagrees with its pin can be repaired by any later pass.
-	// `module_depth` is class `budget`, for the reason unify_cycle is:
-	// a bound was reached, and reaching it is not a statement about the
-	// document.
 	"module_path":      "parse",
 	"module_missing":   "parse",
 	"module_integrity": "parse",
@@ -437,11 +375,6 @@ var codeClasses = map[string]string{
 // falls back to the registered prefix.
 var codePrefixes = []string{"func:", "op:", "op[", "var[", "ref["}
 
-// codeClass is the class of an error code: an exact registry entry,
-// else the registered dynamic prefix it extends, else `internal` -- an
-// unregistered code is an engine defect, not a user error. A why-less
-// nil classifies as its eventual gen-time code, nil_gen (mirrors the
-// NilVal.class getter in ts/src/val/NilVal.ts).
 func codeClass(code string) string {
 	if code == "" {
 		code = "nil_gen"
@@ -457,41 +390,12 @@ func codeClass(code string) string {
 	return "internal"
 }
 
-// THE EXPLAIN SURFACE (G11 phase 3, the Go side of
-// ts/src/hints.ts's exports).
-//
-// THE REGISTRY IS THE LIST, NOT THE HINT TABLE. test/spec/errcodes.tsv
-// registers 157 codes and the spec suite asserts set equality between
-// the file and codeClasses IN BOTH PORTS, so listing from codeClasses
-// is listing the shared contract. The hint table is smaller and is NOT
-// in parity -- 131 entries here against 130 in TypeScript, the extra
-// being decimal_syntax, which TS never raises -- so listing from it
-// would make `aontu explain --list` differ between ports over a
-// difference that is not about what either port can report.
-//
-// A REGISTERED CODE WITH NO HINT ANSWERS WITH ITS CLASS AND SAYS SO.
-// Twenty-six registered codes carry no explanation text here; before
-// this verb their absence was invisible, because a hint is only ever
-// seen beside the error that raises it.
 
-// ExplainCode returns the class for an error code, its hint text (empty
-// when this port registers none), and whether the code is in the shared
-// registry at all. An unregistered code still gets a class -- codeClass
-// falls back to a dynamic prefix, else `internal` -- which is what lets
-// a caller be told it is unknown rather than merely unexplained.
 func ExplainCode(code string) (class string, hint string, registered bool) {
 	class = codeClass(code)
 	hint = hints[code]
 	_, registered = codeClasses[code]
 	if !registered {
-		// A dynamic code (`func:upper`, `op[+]`) is registered through
-		// the prefix it extends, and carries that prefix's hint: the
-		// suffix names the operator, the explanation is the prefix's.
-		// No guard on `hint` here: every hint key is also a registry
-		// key (the spec suite asserts codeClasses set-equal with
-		// test/spec/errcodes.tsv, and hints is a subset of it), so a
-		// code that reaches this loop is unregistered and therefore has
-		// no hint of its own.
 		for _, prefix := range codePrefixes {
 			if strings.HasPrefix(code, prefix) {
 				registered = true

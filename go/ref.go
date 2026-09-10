@@ -22,13 +22,6 @@ type RefVal struct {
 	// expandAliases (go/alias.go) after unification (see Canon). Never
 	// read by unification: it is a rendering of the settled tree.
 	expansion Val
-	// rxc is THE RECURSION SEED (use-cases/BUGS.md §57). A reference
-	// that names a recursive definition IS the fixpoint reference; it
-	// mints a RecurseVal when it resolves. bumpRecurse stamps the
-	// expansion depth here, because a freshly cloned level holds the
-	// definition's references UNRESOLVED and so has no residual to
-	// stamp -- which is why the design's second termination bound read
-	// 0 at every expansion. The minted residual starts from this.
 	rxc int
 }
 
@@ -43,33 +36,9 @@ const (
 	walkDefer
 )
 
-// walkFrom walks refpath from one root. Split out of Unify so the
-// anchored-meet fallback can run the SAME walk against a second root
-// (ctx.fixroot) without duplicating the mark-wrapper and list-index
-// rules -- two copies of this walk is how the ports drift.
 func (rv *RefVal) walkFrom(root Val, refpath []string) (Val, walkOutcome) {
 	var node Val = root
 	for _, part := range refpath {
-		// A PENDING MARK WRAPPER IS TRANSPARENT TO THE WALK: hide()
-		// and type() only mark, and their argument is the structure
-		// the path names. Without this, two sibling schemas in one
-		// hide() bag deadlock -- the wrapper waits for its argument,
-		// the argument's members wait for references that walk into
-		// the unresolved wrapper (BUGS.md §53's family; the recursive
-		// Policy/Step pair found it again). Mirrors the walk arm in
-		// ts/src/val/RefVal.ts find.
-		//
-		// A LIST ARGUMENT IS TRANSPARENT TOO (BUGS.md §63). This arm
-		// admitted a map only, so `hide([{n: "a", o: .n}])` deadlocked
-		// where `hide({n: "a", o: .n})` did not: `.n` walks
-		// [rows, 0, n], the walk reached the wrapper at `rows`, could
-		// not take `0` through it, and the reference never resolved --
-		// so the list never settled, so the wrapper never settled, and
-		// the element's `o` stayed `.n` for ever. TypeScript admits
-		// both (`peg[0].isMap || peg[0].isList` in its twin) and
-		// resolved the same document, which is how a staged pipeline
-		// under hide() generated in one port and refused in the other.
-		// markedChild below has taken both since it was written.
 		if fv, ok := node.(*FuncVal); ok && DONE != fv.dc &&
 			("hide" == fv.name || "type" == fv.name) && 0 < len(fv.peg) {
 			switch inner := fv.peg[0].(type) {
@@ -80,27 +49,6 @@ func (rv *RefVal) walkFrom(root Val, refpath []string) (Val, walkOutcome) {
 			}
 		}
 
-		// AND SO IS A CONJUNCT THAT STILL CARRIES ONE (#164). Two
-		// statements for one key MEET, so a key written as
-		// `T: type({...})` twice is a conjunct of two wrappers -- and
-		// one written once beside a plain `T: {...}` is a conjunct
-		// too. The arm above sees a wrapper only when it is the whole
-		// node, so a reference into such a key stopped at the switch
-		// below: the wrapper waited for its argument, the argument
-		// waited for the reference, and neither moved. Generation then
-		// reported mapval_no_gen at the first referring child of every
-		// consumer -- a path that names none of this.
-		//
-		// The answer at a segment is the MEET of what each term
-		// supplies, so terms with no such member are skipped and the
-		// rest conjoined; one term answers as itself, and the ordinary
-		// map arm answers once the fold has happened.
-		//
-		// HERE rather than as a case in the switch, and it consumes
-		// the segment itself: a conjunct with no pending wrapper must
-		// still reach `default:` below, which is the one place that
-		// decides whether an undescendable node is a miss or a defer.
-		// Mirrors the same arm in ts/src/val/RefVal.ts find.
 		if cj, ok := node.(*ConjunctVal); ok && pendingMarkWrapper(cj) {
 			kids := []Val{}
 			for _, t := range cj.peg {
@@ -173,40 +121,8 @@ func (rv *RefVal) append(part any) {
 		case KindString:
 			rv.peg = append(rv.peg, p.peg.(string))
 		case KindInteger:
-			// A PATH SEGMENT IS SPELLED TEXT, not a value.
-			//
-			// Only a plain decimal integer is a numeric segment: `$.a.1`
-			// indexes a list and reaches the key `1`. Every other numeric
-			// spelling addresses the key spelled exactly that way, because
-			// that is what the spelling already produces on the KEY side --
-			// `a:{0x0:1}` generates {"0x0":1}, not {"0":1}, so a path
-			// spelled like its key is the whole point.
-			//
-			// Normalising here made `$.a.0x0` address `0`, `$.a.1_0`
-			// address `10` and `$.a.1e2` address `100` -- each of them a
-			// silently WRONG location rather than a miss.
-			//
-			// NO FALLBACK RENDERING. src is empty for a value with no
-			// literal behind it, and the value that reaches here that
-			// way is a NEGATION: `$.a.-0` is a minted integer 0, whose
-			// spelling the `negative-prefix` rule consumed. Rendering
-			// it made the segment "0", so `$.a.-0` addressed element 0
-			// -- a silently wrong location, the very thing the note
-			// above refuses for `0x0` and `1_0` (#67).
-			//
-			// TS pushes `part.src` and nothing else (RefVal.append,
-			// IntegerVal arm), so an unspelled segment is the EMPTY
-			// segment there, matching no key and no index. Mirrored:
-			// the reference misses, and the canon (`$.a.`) agrees
-			// byte for byte with the canonical port.
 			rv.peg = append(rv.peg, p.src)
 		case KindFloat:
-			// A float splits on its point, so `$.x.1.5` addresses two
-			// levels -- of the text, which is what makes `$.x.1e2` a
-			// single segment `1e2` rather than the expanded `100`.
-			// Unspelled, it is the empty segment, as the integer arm
-			// above (TS RefVal.append's NumberVal arm splits `part.src`
-			// with no fallback either).
 			for _, s := range strings.Split(p.src, ".") {
 				rv.peg = append(rv.peg, s)
 			}
@@ -241,14 +157,6 @@ func (rv *RefVal) append(part any) {
 		}
 		rv.peg = append(rv.peg, p.peg...)
 	default:
-		// A closed chain, deliberately. Every branch above ends in an
-		// append, so an unhandled value class used to fall through in
-		// SILENCE and shorten the path by one segment — which is how
-		// `**.true` built an EMPTY prefix path that resolved to its own
-		// container, leaving a PrefVal whose peg was itself and an
-		// unrecoverable stack overflow in Canon. A segment that cannot
-		// be spelled is pushed as one that cannot match, so the
-		// reference misses loudly instead of succeeding wrongly.
 		rv.peg = append(rv.peg, unspellableSegment)
 	}
 }
@@ -287,14 +195,6 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 			out = newConjunct([]Val{rv, peer})
 		}
 	} else if _, chain := found.(*RefVal); chain {
-		// The target is itself still a reference: defer a pass, so a
-		// chain of plain refs resolves ONE LINK PER PASS from the tail —
-		// the TS `resolved instanceof RefVal` branch, and the semantics
-		// the pass budget is defined over (issue #26). Driving the found
-		// ref here chased the whole chain within a single pass, which
-		// let Go resolve 10+-link chains the canonical engine's budget
-		// refuses. (A PROVEN mutual cycle never reaches this: find's
-		// detectRefCycle reports path_cycle before returning the ref.)
 		switch {
 		case isTop(peer):
 			out = rv
@@ -319,17 +219,6 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 	return out
 }
 
-// find resolves the reference against ctx.root. It returns the cloned
-// target, a NilVal (path not found / cycle), or nil when resolution
-// must be retried on a later pass.
-// listIndex reads a path segment as a list index. CANONICAL DECIMAL
-// ONLY: `0`, or a non-zero digit followed by digits. Atoi was too
-// generous -- it accepted a sign and leading zeros, so `$.a.01` and
-// `$.a.-0` resolved here while the canonical port refused them
-// (JavaScript array indexing is canonical too, which is what its
-// resolver leans on). docs/reference-language.md says a numeric segment
-// is recognised "only as a plain decimal integer"; this is that rule,
-// spelled out.
 func listIndex(part string) (int, bool) {
 	if "" == part {
 		return 0, false
@@ -351,11 +240,6 @@ func listIndex(part string) (int, bool) {
 	return idx, true
 }
 
-// markedChild is the child one term of the walk supplies for a path
-// segment, or nil when it has none. A map or a list answers from its
-// own members; a PENDING type()/hide() answers from its argument's,
-// because the wrapper only marks and its argument is the structure the
-// path names. Mirrors markedChild in ts/src/val/RefVal.ts.
 func markedChild(v Val, part string) Val {
 	if fv, ok := v.(*FuncVal); ok && DONE != fv.dc &&
 		("hide" == fv.name || "type" == fv.name) && 0 < len(fv.peg) {
@@ -392,21 +276,8 @@ func pendingMarkWrapper(v Val) bool {
 	return false
 }
 
-// `snap` is set by snapshotRefSpread (mapval.go): a SPREAD snapshot
-// wants the target's pre-resolution STRUCTURE — key()/path() still
-// unresolved, to be re-resolved per destination — so the
-// pending-mark-wrapper defer must not apply to it (deferring there
-// leaked the target's own resolved key() literal into every
-// destination — test/spec/spread-type.tsv, spread-type-key-ref).
 func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 	if rv.isPrefixPath() {
-		// THE DETECTOR'S ANSWER IS A RESIDUAL (RECURSION.0.md): a
-		// self-reference under a guarded shape is the fixpoint the
-		// author wrote, so the prefix hit mints the recursive
-		// residual instead of refusing -- except the degenerate
-		// all-empty spelling (path("")), which names nothing and
-		// keeps its path_cycle. Only all-string non-empty paths
-		// recurse; anything else keeps the conservative refusal.
 		degenerate := 0 == len(rv.path)
 		target := make([]string, 0, len(rv.peg))
 		for _, p := range rv.peg {
@@ -431,23 +302,10 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 
 	parts := make([]string, 0, len(rv.peg))
 	for _, p := range rv.peg {
-		// An unspellable segment MISSES BEFORE ANY LOOKUP. The marker is
-		// NUL-prefixed because no spelling produces one, but a document
-		// can still hold a key spelled with an escaped NUL
-		// (`a:{" unspellable":7}`), and matching it would turn the
-		// silent path-shortening this marker exists to prevent into a
-		// different silent wrong value. The marker is a marker, never a
-		// lookup key.
 		if s, ok := p.(string); ok && unspellableSegment == s {
 			return makeNilErr(ctx, "no_path", rv, nil)
 		}
 		if vv, ok := p.(*VarVal); ok {
-			// EVERY `$name` IN A PATH IS AN ORDINARY VARIABLE, resolved
-			// via the variable table (mirrors part.unify(top()) in ts
-			// RefVal.find); an unknown variable is an error (recorded by
-			// VarVal.Unify via makeNilErr). `$KEY`, `$SELF` and
-			// `$PARENT` used to be intercepted here by name; they are
-			// gone (ADR-009).
 			pv := vv.Unify(top(), ctx)
 			if pv.Nil() {
 				return pv
@@ -505,23 +363,6 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 
 	node, outcome := rv.walkFrom(ctx.root, refpath)
 
-	// THE ANCHORED-MEET FALLBACK (vet --at), the Go side of the block
-	// in ts/src/val/RefVal.ts find. An anchor is a SUBTREE lifted out
-	// of the schema, and an absolute reference inside it names the
-	// document root's namespace -- a `%alias` declaration
-	// (`[&: %U]`, whose target is `$.%U`), or a recursive residual's
-	// `$.spec.Step`. The meet's root is the lifted subtree, which has
-	// no such sibling, so the walk misses and the reference dies as
-	// no_path at the first element.
-	//
-	// ctx.fixroot is the SETTLED schema root the lifter kept for
-	// exactly this (vet.go, and RecurseVal.body in recurse.go, which
-	// already read it). TypeScript's copy of this comment used to say
-	// the Go port "answers the anchored meet from settled structures
-	// and never sees the gap"; it does see it -- an alias-heavy schema
-	// under `vet --at` was INVALID in Go and VALID in TypeScript, which
-	// for the verb whose purpose is to be a CI gate is the worst
-	// direction for a divergence to run (BUGS.md §59).
 	if walkMissed == outcome && rv.absolute && nil != ctx.fixroot &&
 		ctx.fixroot != ctx.root {
 		if fnode, fout := rv.walkFrom(ctx.fixroot, refpath); walkFound == fout {
@@ -536,18 +377,6 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 		return nil
 	}
 
-	// THE READ IS RECORDED, AND THE VALUE STAMPED WITH WHERE IT WAS
-	// FOUND (RENDER.0.md P7). A resolved reference clones its target
-	// into the referring position, so without the stamp a value that
-	// arrived by reference knows only where it came to rest -- and
-	// `render --coverage` has nothing to measure the model against. Off
-	// unless the run is instrumented; the first address wins, and every
-	// reference to one node names the same address anyway. AN ALIAS IS
-	// NOT A PATH: `%wire` names a value the document holds unevaluated
-	// and the tree never carries, so it is an address a rule can be
-	// reported AT and never a path coverage could call dead -- stamped,
-	// and not in the set the model is measured against. Mirrors the
-	// block in ts/src/val/RefVal.ts find.
 	if nil != ctx.reads && nil != node {
 		// The root's own address is `$`, as the coverage walk spells it:
 		// a dot with nothing after it would match no path there.
@@ -563,15 +392,6 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 		}
 	}
 
-	// A reference landing on another reference may be a PROVEN mutual
-	// cycle (a: $.b, b: $.a) -- follow the plain-ref chain and, if it
-	// revisits a node, report path_cycle now instead of deferring every
-	// pass and dying later as a generic ref error. No proof (chain
-	// leaves plain refs, or ends) defers as before. Mirrors the chase
-	// before the clone in TS RefVal.find.
-	// A reference landing on another reference -- or on a FUNCTION, whose
-	// arguments the chase now follows (issue #35) -- may be a PROVEN
-	// mutual cycle. Same guard as the TS RefVal.find branch.
 	switch node.(type) {
 	case *RefVal, *FuncVal:
 		if rv.detectRefCycle(ctx) {
@@ -579,44 +399,14 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 		}
 	}
 
-	// A PENDING MARK WRAPPER IS NOT YET A VALUE TO COPY (ADR-005). A
-	// type()/hide() call still waiting for its argument would be cloned
-	// here as the CALL, and the clone then resolves at the REFERENCE's
-	// site, stamping marks the mark-clearing walk below has already run
-	// too early to clear — a type-marked alias silently suppressed the
-	// referring field's emission (use-cases/BUGS.md §12), hide(pack(…))
-	// leaked its mark onto downstream packs (§11), hide() around a
-	// computed field swallowed the value into a silent [] (§35b).
-	// Defer instead: the reference residuates until the wrapper has
-	// resolved at its OWN field, and the marked-value path below then
-	// clears the marks on the clone as documented. The move() reference
-	// (hideFound) is exempt — a move TRANSPLANTS the pending call
-	// (test/spec/func.tsv ghost rows) — and so is the spread snapshot
-	// (snap), which WANTS the pre-resolution structure. Mirrors the
-	// same guard in ts/src/val/RefVal.ts.
 	if !snap && !rv.hideFound && pendingMarkWrapper(node) {
 		return nil
 	}
 
-	// A STAGED ARGUMENT SNAPSHOTS A SETTLED SOURCE (Ctx.argsnap, set by
-	// stagedDrive). A generator's data argument is a copy OUTSIDE the
-	// tree, so anything in the target still resolving against its own
-	// tree location — a spread-injected relative reference, a pending
-	// template — must finish there BEFORE the copy is taken: cloned
-	// earlier, the copy's rebased relative refs dangle under the
-	// generator and the model dies as *_no_gen with the generator never
-	// firing. Deferring is the documented staging rule: the generator
-	// waits for the source, then snapshots it whole. Mirrors the same
-	// guard in ts/src/val/RefVal.ts find.
 	if !snap && ctx.argsnap && node.Dc() != DONE {
 		return nil
 	}
 
-	// A REFERENCE TO A RECURSIVE DEFINITION IS THE FIXPOINT REFERENCE
-	// (RECURSION.0.md): resolving it to a clone unrolled the schema
-	// one level, and every reparse of a canon then unrolled one more
-	// -- canon never converged. The residual is the resolved form,
-	// exactly as at the prefix positions inside the definition.
 	if !snap {
 		target := make([]string, 0, len(rv.peg))
 		alls := true
@@ -653,39 +443,7 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 	if rv.hideFound {
 		node.setMarkHide(true)
 	}
-	// A REFERENCE LIFTS: the copy is concrete, its type and hide marks
-	// cleared to the leaves (mirrors the mark-clearing walk in TS
-	// RefVal.find; where the copy shares a call's args with the source
-	// -- the staged exception below -- the clearing reaches those
-	// innards too, as in TS). EXCEPT the snapshot a staged verb takes
-	// of its data (ctx.argsnap), when the
-	// target itself is not marked: a member marked inside an unmarked
-	// bag was hidden IN ITS OWN RIGHT, and the verb's enumeration
-	// (members.go, BUGS.md §79) needs the mark to leave the member out,
-	// as generation does. A marked target lifts even there, or
-	// each($.schema.entities, _) under schema: hide({...}) would see
-	// every entity as hidden, since hide() marks to the leaves.
 	lifted := !ctx.argsnap || node.markedType() || node.markedHide()
-	// A REFERENCE'S COPY OWNS ITS ARGUMENTS (ADR-025): the copy is a
-	// per-destination instance exactly as a spread's or a generator's
-	// is, so ADR-005's rule holds here too. The shallow clone shared a
-	// call's ARGUMENTS, so `items: [&: $.entities.User]` over a
-	// `close({...})` target gave every element the one inner map, whose
-	// path each element rebased in turn, and the constraint that failed
-	// at element 2 reported element 0's path (use-cases GAP 8).
-	//
-	// A STAGED CALL IS THE EXCEPTION, because it has not decided yet.
-	// Its arguments are still being driven AT ITS OWN SITE (the
-	// staging rule, G8 phase 0), and a copy that owned them would
-	// drive its own set at the referring position instead: the
-	// relative `.side_effect` in a `match()` would read the referring
-	// field's siblings (use-cases/09-agent-tools), and an alias naming
-	// an `emit` rule table -- a template, which is exactly a value
-	// copied before it resolves -- would read its recursive `%w` as a
-	// self-reference. A staged call ANYWHERE in the target counts:
-	// what is referenced is usually the conjunct the call sits in,
-	// not the call. The copy shares what the source is still
-	// settling, and owns the rest.
 	var out Val
 	if holdsStaged(node) {
 		out = clonePath(node, cp(rv.path))
@@ -695,55 +453,16 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 	if lifted {
 		walkMark(out, true, false, true, false)
 	}
-	// THE LINK IS NOT CLEARED (G4 phase 3): a link says what a value
-	// POINTS AT, and a copy of a link points at the same thing. An
-	// ABSOLUTE address still names the same node from the copy; a
-	// RELATIVE one is read from the copy's own position, which is what
-	// makes a referenced model resolve its internal links inside the
-	// copy (ADR-014).
-	// copy(): the copied root's path is fully replaced by the
-	// destination (TS FuncBaseVal sets out.path = this.path on the
-	// resolved copy), unlike the transplant overlay that keeps deeper
-	// source tails — `y:copy($.x.a.k)` resolves key() against the bare
-	// [y] path (""), not [y,a,k].
 	if rv.copyFound {
 		forceRootPath(out, cp(rv.path))
 	}
 	return out
 }
 
-// detectRefCycle follows the chain of plain references from rv; true
-// iff the chain returns to a node still open above it -- a PROVEN
-// reference cycle, distinct from a merely unresolved reference.
-// Detection is only on the resolution chain revisiting a node, never on
-// syntactic shape: a chain that passes through a variable segment, a
-// conjunct or any other non-ref value yields no proof and the ref defers
-// as before.
-//
-// A FUNCTION is followed, through its arguments (issue #35). A function
-// resolves only once every argument does, so a chain reaching
-// `b:upper($.a)` and leaving through `$.a` has proved the same
-// dependency a bare `b:$.a` proves. Mirrors detectRefCycle in TS RefVal,
-// arm for arm -- and matters here for WHERE the failure is reported, not
-// whether: this port already proved the shape one step later, through
-// the isprefixpath test, once clonePath had re-pathed the resolved clone
-// to the referring site. Proving it at the same point as TypeScript is
-// what makes both name the same path.
 func (rv *RefVal) detectRefCycle(ctx *Ctx) bool {
 	return rv.chaseRefCycle(ctx, map[string]bool{})
 }
 
-// chaseRefCycle is detectRefCycle's depth-first walk. Depth-first with an
-// explicit ANCESTOR set, because a function may carry several reference
-// arguments and the cycle can run through any one of them. The set holds
-// the chain currently being walked, not every node ever walked:
-// revisiting a node reached down a DIFFERENT branch is an ordinary shared
-// reference (two keys reading one third key), and only revisiting one
-// still open above us is a cycle.
-//
-// Identity is the RESOLVED PATH, not the *RefVal: the same target can be
-// reached through distinct ref instances, and it is returning to the same
-// place that closes a loop.
 func (rv *RefVal) chaseRefCycle(ctx *Ctx, ancestors map[string]bool) bool {
 	rp := rv.plainRefPath()
 	if rp == nil {
@@ -791,11 +510,6 @@ func (rv *RefVal) chaseRefCycle(ctx *Ctx, ancestors map[string]bool) bool {
 	return false
 }
 
-// plainRefPath is the resolved absolute path of a reference whose
-// segments are all plain strings; nil when the ref has variable
-// segments (no cycle proof is attempted for those). Mirrors find's
-// refpath computation for the plain case, with a conservative bail on
-// a parent step off the top of the path.
 func (rv *RefVal) plainRefPath() []string {
 	parts := make([]string, 0, len(rv.peg))
 	for _, p := range rv.peg {
@@ -833,11 +547,6 @@ func (rv *RefVal) plainRefPath() []string {
 // isPrefixPath reports whether the reference path is a prefix of this
 // node's own path (a self/ancestor cycle).
 func (rv *RefVal) isPrefixPath() bool {
-	// The degenerate spelling: every segment empty, so the reference names
-	// nothing and lands back where it started. No source spells it since
-	// path() became the capture (ADR-015) -- `path("")` used to -- but a
-	// caller building a RefVal by hand still can, and TS treats it as a
-	// cycle rather than a miss (issue #38): there is no key to be missing.
 	if len(rv.peg) > 0 {
 		allEmpty := true
 		for _, p := range rv.peg {
@@ -898,12 +607,6 @@ func refSpelling(v Val) string {
 	return v.Canon()
 }
 
-// aliasName is the name of the alias this reference names, and false
-// for a path reference. `%u` is spelled internally as the root
-// reference `$.%u` (docs/design/ALIASES.0.md: the name is a path into
-// the declaration), so an alias reference is an absolute reference of
-// one segment that is an alias name. Twin of RefVal.aliasName in
-// ts/src/val/RefVal.ts.
 func (rv *RefVal) aliasName() (string, bool) {
 	if rv.absolute && 1 == len(rv.peg) {
 		if s, ok := rv.peg[0].(string); ok && aliasRe.FindString(s) == s {
@@ -921,18 +624,6 @@ func refSnapKey(rv *RefVal) string {
 	return rv.spelling() + "~" + itoa(rv.sp)
 }
 
-// Canon renders an alias reference AS THE VALUE IT NAMES. A reference
-// left standing after unification is one inside a spread template
-// (`[&: %u]`, `{&: {a: %u}}`): the template applies to children that
-// have not arrived, so it is not resolved in place. Canon erases the
-// declaration (an alias is a name for a value, and nothing more --
-// ALIASES.0.md §4), so the name alone would not reparse, and the hash
-// of `t: {&: %u}` would differ from the hash of `t: {&: integer}`,
-// which is the same document. The expansion is attached by
-// expandAliases (go/alias.go) once the tree has settled; without one
-// -- a parse-only tree, an unresolved name, or the KNOT of a recursive
-// alias inside its own template -- the reference spells its name.
-// Twin of RefVal.canon in ts/src/val/RefVal.ts.
 func (rv *RefVal) Canon() string {
 	if nil != rv.expansion {
 		return rv.expansion.Canon()
@@ -940,11 +631,6 @@ func (rv *RefVal) Canon() string {
 	return rv.spelling()
 }
 
-// spelling is the reference's own spelling: the alias name, or the
-// path. This is the reference's identity (the snapshot key of a ref
-// spread, the same-path test in unify), which Canon is not once an
-// expansion is attached. Twin of RefVal.spelling in
-// ts/src/val/RefVal.ts.
 func (rv *RefVal) spelling() string {
 	if name, ok := rv.aliasName(); ok {
 		return name
@@ -982,7 +668,7 @@ func (rv *RefVal) Gen(ctx *Ctx) (any, error) {
 // is ported later; for now it resolves only via RefVal special names.
 type VarVal struct {
 	base
-	peg any // variable name (string) or a Val
+	peg any
 }
 
 func newVar(name any) *VarVal {

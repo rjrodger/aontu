@@ -6,40 +6,11 @@ exports.parseSigLine = parseSigLine;
 exports.parseSigText = parseSigText;
 exports.renderSig = renderSig;
 exports.renderSigArg = renderSigArg;
-// THE SIGNATURE REGISTRY (docs/design/SIGNATURES.0.md). The call
-// surface of the built-in functions is DECLARED, in the signature
-// syntax itself, in test/spec/signature.tsv; this module is the
-// TypeScript half of the pair that reads it. The declaration text is
-// inlined at build time (ts/src/sigdecl.ts, `make sig`) and parsed at
-// initialisation by the signature grammar -- a custom tabnas grammar,
-// the same engine the aontu grammar itself is built on -- into the
-// registry the runtime signature checker, the error-message builder,
-// the docs table and the LSP all consume. Neither port authors a
-// table: go/sig.go parses the same text with the same grammar, and
-// the shared suite round-trips every line (render(parse(line)) is the
-// line) so the two parsers cannot drift.
-//
-//   line = name '(' [ arg {',' arg} ] ')' ':' type
-//   arg  = [mode] name ['?'] ':' type
-//        | '...' name ':' ( type | '(' [mode] type {',' [mode] type} ')' )
-//   type = word {'|' word}
-//   mode = 'capture' | 'template' | 'trial' | 'projector' | 'text'
-//
-// `value` mode is unmarked; the five marked modes are the vocabulary
-// plain pseudo-TypeScript cannot say (a captured spelling is not a
-// string value). The grammar is line-oriented: the loader strips
-// comment and blank lines and parses each declaration line alone, so
-// the grammar never sees line structure.
 const parser_1 = require("@tabnas/parser");
 const sigdecl_1 = require("./sigdecl");
 const ARG_MODES = {
     capture: true, template: true, trial: true, projector: true, text: true,
 };
-// The signature grammar, as a tabnas grammar plugin. Rules: sig (the
-// line) -> args -> arg -> argtype -> type | group -> gmember. Alts
-// match at most two tokens, the engine's shape; lists loop the
-// json-grammar way (the element rule replaces itself on ',' and
-// backtracks the closer for its parent to consume).
 function sigGrammar(tn) {
     tn.options({
         fixed: {
@@ -266,12 +237,6 @@ function parseSigText(text) {
     }
     return reg;
 }
-// The parsed registry, built once from the inlined declaration -- the
-// one source every consumer (the arity tables, the runtime gate, the
-// hints, the docs table, the LSP) reads. A parse failure here throws
-// at module load: the inlined text is repository content whose parse
-// the round-trip suite gates, so a failure is a build defect, not a
-// runtime condition. Twin: funcSig in go/sig.go.
 const funcSig = parseSigText(sigdecl_1.SIGDECL); /* node:coverage ignore next 9 */
 exports.funcSig = funcSig;
 //# sourceMappingURL=sig.js.map

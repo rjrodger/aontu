@@ -11,16 +11,8 @@ import (
 	aontu "github.com/aontu-lang/aontu/go"
 )
 
-// Version is reported to the client in the initialize response. It is
-// the ENGINE's version, not a number of the server's own: a separately
-// maintained one drifts, and had -- the server answered 0.1.0 against
-// a module at 0.1.10, so a client could not tell which engine it was
-// talking to (status-2026-08-21.md section 10).
 const Version = aontu.VERSION
 
-// Message is an incoming JSON-RPC message (request or notification). ID
-// is kept raw because JSON-RPC ids may be either a number or a string;
-// notifications omit it.
 type Message struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
@@ -47,7 +39,7 @@ type RespError struct {
 }
 
 func newResponse(id json.RawMessage, result any) Out {
-	raw, err := json.Marshal(result) // nil result marshals to "null"
+	raw, err := json.Marshal(result)
 	if err != nil {
 		raw = []byte("null")
 	}
@@ -66,29 +58,13 @@ func newNotification(method string, params any) Out {
 	return Out{JSONRPC: "2.0", Method: method, Params: raw}
 }
 
-// Handler implements the Aontu LSP message flow without any transport: it
-// consumes decoded Messages and returns the Outs to send back. It tracks
-// open document text and recomputes diagnostics on open/change/close. A
-// single Handler is not safe for concurrent use; drive it from one
-// goroutine (as the stdio server does).
 type Handler struct {
 	docs       map[string]string
 	shutdownOK bool
 	exit       bool
 
-	// trust is the profile evaluation runs under (G5, docs/trust.md):
-	// workspace-root confinement by default, set from the initialize
-	// params. An initializationOptions.aontu.trust.include of "system",
-	// "none" or {root: dir} widens or narrows it explicitly. Nil — no
-	// workspace root and no explicit option — falls back to today's
-	// unconfined behaviour, which single-file sessions rely on. The
-	// same rule as the canonical port's LspHandler (ts/src/lsp.ts).
 	trust *aontu.TrustOptions
 
-	// provenance is hover provenance (G7 phase 7): off unless an
-	// editor asks for it with initializationOptions.aontu.provenance.
-	// It costs a second, instrumented evaluation per hover, which is a
-	// cost to opt into. The same rule as the canonical port.
 	provenance bool
 }
 
@@ -257,21 +233,7 @@ func provenanceFromInitialize(params json.RawMessage) bool {
 	return p.InitializationOptions.Aontu.Provenance
 }
 
-// trustFromInitialize reads the trust profile out of the initialize
-// params: an explicit initializationOptions.aontu.trust.include wins;
-// otherwise the workspace root (workspaceFolders[0], rootUri, rootPath,
-// in that order) confines evaluation below it; otherwise nil.
 func trustFromInitialize(raw json.RawMessage) *aontu.TrustOptions {
-	// EVERY FIELD IS READ ON ITS OWN, and that is the point. These were
-	// typed fields on one struct, so a single value of the wrong shape
-	// -- `"rootUri": 42` from a client that should know better --
-	// failed the whole Unmarshal and returned nil, which means
-	// UNCONFINED: one malformed field silently discarded the trust
-	// configuration and the session opened wider than the client asked
-	// for. The canonical port never had it, because it reads each field
-	// through an optional chain and a `typeof` guard, so a bad rootUri
-	// costs the rootUri and nothing else (ts/src/lsp.ts). Failing OPEN
-	// is the wrong direction for this surface in any case.
 	var p struct {
 		RootURI               json.RawMessage `json:"rootUri"`
 		RootPath              json.RawMessage `json:"rootPath"`
@@ -289,8 +251,6 @@ func trustFromInitialize(raw json.RawMessage) *aontu.TrustOptions {
 			} `json:"trust"`
 		} `json:"aontu"`
 	}
-	// Ignored deliberately: options this server does not understand are
-	// not this server's business, and must not cost the workspace root.
 	_ = json.Unmarshal(p.InitializationOptions, &opts)
 
 	if explicit := opts.Aontu.Trust.Include; 0 < len(explicit) {
@@ -344,42 +304,11 @@ func jsonString(raw json.RawMessage) string {
 	return s
 }
 
-// uriToPath is a file:// uri's filesystem path, percent-decoded; a
-// non-file uri (or none) yields "".
-//
-// THE DRIVE-LETTER SLASH. A file uri names an absolute path after the
-// authority, so on Windows the standard spelling every editor sends is
-// file:///C:/Users/me/project -- three slashes, and the third belongs
-// to the PATH. Stripping only "file://" leaves "/C:/Users/me/project",
-// which is not a Windows path at all: filepath.Abs turns it into
-// nonsense and the workspace-root confinement below then compares
-// real paths against that nonsense, so an editor on Windows got no
-// confinement it could rely on. Both ports carried the defect
-// identically (ts/src/lsp.ts uriToPath), and no test caught it because
-// both ports' tests built the uri as "file://" + path -- two slashes,
-// which is not what a client sends and which accidentally produced a
-// usable path.
-//
-// The leading slash is dropped only before a DRIVE LETTER, so a POSIX
-// path keeps the root it needs: file:///tmp/x stays /tmp/x.
 func uriToPath(uri string) string {
 	if !strings.HasPrefix(uri, "file://") {
 		return ""
 	}
 	path := uri[len("file://"):]
-	// DECODED ONLY IF THE RESULT IS TEXT. url.PathUnescape validates
-	// the two hex digits and nothing else, so `%FF` yields the raw byte
-	// 0xFF -- a perfectly good Linux filename, and something the
-	// canonical port CANNOT produce: a JavaScript string holds UTF-16
-	// code units, decodeURIComponent refuses a sequence that is not
-	// valid UTF-8, and ts/src/lsp.ts then keeps the text undecoded. So
-	// the two ports answered differently for a uri a byte-oriented
-	// client really sends (neovim percent-encodes path BYTES): Go
-	// derived a workspace root that exists and TypeScript one that does
-	// not, which is a confinement decision differing across the ports.
-	// ADR-001 does not allow that, and only one direction is reachable
-	// from both languages -- so an escape that does not decode to text
-	// is left alone HERE too, and both ports keep the raw form.
 	if decoded, err := url.PathUnescape(path); err == nil &&
 		utf8.ValidString(decoded) {
 		path = decoded
@@ -413,7 +342,6 @@ func publishDiagnosticsMsg(uri string, diags []Diagnostic) Out {
 func initializeResult() map[string]any {
 	return map[string]any{
 		"capabilities": map[string]any{
-			// 1 = TextDocumentSyncKind.Full
 			"textDocumentSync":   1,
 			"hoverProvider":      true,
 			"completionProvider": map[string]any{},

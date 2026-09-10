@@ -2,11 +2,6 @@
 
 package main
 
-// The Go twin of the cli-render cases in ts/test/cli.test.ts. What the
-// two ports must AGREE on -- the bytes, the loss report, the refusals
-// -- is pinned by test/spec/render.tsv; what each port owns (argument
-// handling, exit codes, which stream each half goes to, the write
-// confinement) is here.
 
 import (
 	"bytes"
@@ -58,9 +53,6 @@ func renderCode(t *testing.T, want int, args ...string) (string, string) {
 }
 
 func TestRenderSummary(t *testing.T) {
-	// THE SUMMARY: one line per unit -- path, language, size -- since
-	// several units have no one text to print; the loss report on the
-	// other stream, one line per entry.
 	dir := renderDir(t, map[string]string{"doc.aon": renderTwoUnits})
 	out, errw := renderCode(t, 0, filepath.Join(dir, "doc.aon"))
 	if "a.txt\ttext\t6 bytes\nsub/b.txt\ttext\t2 bytes\n" != out {
@@ -78,7 +70,6 @@ func TestRenderSummary(t *testing.T) {
 func TestRenderStdout(t *testing.T) {
 	dir := renderDir(t, map[string]string{"doc.aon": renderTwoUnits})
 	file := filepath.Join(dir, "doc.aon")
-	// Two units have no one text to print: --unit names it.
 	out, errw := renderCode(t, 2, "--stdout", file)
 	vetMatch(t, errw, `--stdout needs exactly one unit, and the instance has 2`)
 	if "" != out {
@@ -283,11 +274,9 @@ func TestRenderProfiles(t *testing.T) {
 	vetMatch(t, errw, `scalar_kind`)
 	_, errw = renderCode(t, 4, "--profile", filepath.Join(dir, "nil.aon"), file)
 	vetMatch(t, errw, `literal_nil`)
-	// Two profiles claiming one language: the fold could not choose.
 	_, errw = renderCode(t, 2, "--profile", filepath.Join(dir, "four.aon"),
 		"--profile", filepath.Join(dir, "two.aon"), file)
 	vetMatch(t, errw, `two profiles claim text`)
-	// An unreadable profile file is I/O.
 	_, errw = renderCode(t, 2, "--profile", filepath.Join(dir, "missing.aon"), file)
 	vetMatch(t, errw, `cannot read`)
 }
@@ -315,13 +304,6 @@ func TestRenderUsageErrorsExit2(t *testing.T) {
 	}
 }
 
-// P7: THE COVERAGE REPORT is its own output mode. It writes no files,
-// names the model paths no output consumed and the declarations no
-// rule produced, and counts both at the end. --coverage-at measures a
-// narrower model, and one that names nothing is the document's own
-// no_path refusal (exit 4), as --at already is. The shared rows pin the
-// report itself (test/spec/render.tsv); the lines and the flags are
-// this port's.
 func TestRenderCoverage(t *testing.T) {
 	const doc = `services: { a: { pin: "p1" } }
 spare: { x: 1 }

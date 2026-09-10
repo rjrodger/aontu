@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE CANON-HASH (G6 phase 1, the Go side of ts/src/cli.ts): the pin an
-// agent, a lockfile or a registry stores for "this module, this
-// meaning". The hash covers the module evaluated STANDALONE — its own
-// include closure resolved and unified at its own root, before any
-// consumer context — which is what makes the pin transitive: an edit
-// two includes deep changes the unified root, hence the hash.
 
 package main
 
@@ -68,11 +62,6 @@ func runHash(argv []string, stdout, stderr io.Writer) int {
 	// resolves a named file (vet's aontuForPath rule).
 	v, uerr := aontuForFileTrust(files[0], trust).Unify(string(src))
 	if nil != uerr || nil == v || v.Nil() {
-		// A document that does not stand up on its own has no meaning
-		// to pin, and a hash of a broken evaluation would be a pin that
-		// silently agrees with every other broken evaluation.
-		// WHY it does not stand up, not just that it does not: the same
-		// diagnosis `aontu <file>` prints (the review's finding F).
 		io.WriteString(stderr,
 			"aontu: "+files[0]+" does not evaluate on its own; nothing to hash\n"+
 				renderFinding(aontu.EvalFailure(uerr))+"\n")

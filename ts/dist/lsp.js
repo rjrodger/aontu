@@ -21,22 +21,9 @@ const SEVERITY_INFORMATION = 3;
 exports.SEVERITY_INFORMATION = SEVERITY_INFORMATION;
 const SEVERITY_HINT = 4;
 exports.SEVERITY_HINT = SEVERITY_HINT;
-// Reported to the client in the initialize response. It is the
-// ENGINE's version, not a number of the server's own: a separately
-// maintained one drifts, and had -- the server answered 0.1.0 against
-// a package at 0.52.1, so a client could not tell which engine it was
-// talking to (status-2026-08-21.md section 10).
 const LSP_VERSION = aontu_1.VERSION;
 exports.LSP_VERSION = LSP_VERSION;
-// Compute LSP diagnostics for a unit of Aontu source. A valid document —
-// including a non-concrete schema such as `a:string` — returns an empty
-// array; only genuine errors (conflicts, unresolved references, unknown
-// functions, syntax errors) produce diagnostics.
 function computeDiagnostics(src, opts) {
-    // The trust profile (G5, docs/trust.md): the LSP is the
-    // highest-exposure surface — merely OPENING a hostile .aon file in an
-    // editor performs its reads — so the handler confines evaluation to
-    // the workspace root and threads the profile through here.
     const aontu = new aontu_1.Aontu((0, utility_1.includeOpts)(opts ?? {}));
     let root;
     let ac;
@@ -56,12 +43,6 @@ function computeDiagnostics(src, opts) {
     // against the nils already found in the tree.
     const seen = new Set();
     const nils = (0, walk_1.collectNils)(root, seen);
-    // Errors recorded on the context but not present in the tree — e.g. a
-    // budget_passes exhaustion nil, which is about the whole evaluation
-    // rather than any node — would otherwise be invisible here, and the
-    // trust contract forbids silent truncation (docs/trust.md clause 2).
-    // Tree nils are already on ctx.err too, so dedup by identity; the
-    // transient disjunct-trial sentinel never surfaces.
     for (const e of ac.err) {
         if (e?.isNil && '|:trial-nil' !== e.why && !seen.has(e)) {
             seen.add(e);
@@ -69,11 +50,6 @@ function computeDiagnostics(src, opts) {
         }
     }
     const out = nils.map(nilToDiagnostic);
-    // Deprecation tags (G3 phase 4): every sited value carrying the
-    // deprecate() record — the declaration and, because the record rides
-    // meets and reference clones, every use resolving through it — gets
-    // the native Deprecated tag (2) at Hint severity, so editors strike
-    // it through without shouting.
     for (const { val } of (0, utility_1.collectDeprecations)(root)) {
         const v = val;
         if (1 > (v.site?.row ?? -1) || 1 > (v.site?.col ?? -1)) {
@@ -120,36 +96,14 @@ function nilToDiagnostic(nil) {
         message: nilMessage(nil),
     };
 }
-// Length (UTF-16 units, like LSP characters) of the offending value's
-// SOURCE TEXT, used to size the diagnostic range (minimum 1).
 function labelLength(nil) {
     return null == nil.primary ? 1 : siteExtent(nil.primary);
 }
-// The extent to underline for a value: its SOURCE TEXT's length, with
-// the canon as the fallback and 1 as the floor.
-//
-// CANON IS NOT SOURCE TEXT, which is the whole point of Site.len:
-// `0x1F` has canon `31`, so sizing by canon underlines two characters
-// of a four-character literal — hovering `0x1F` highlighted `0x` and
-// hovering `1F` answered nothing. The Go twin is the same fallback in
-// go/check.go (Problem.Len, ValueSpan.Len), in bytes there because it
-// is added to a byte offset before conversion.
-//
-// The fallback is for a value carrying no stamped span — one propagated
-// onto a result rather than written by a document — where canon is all
-// there is and an approximate underline beats none. A REPORT never
-// guesses this way: vet and why emit len only when it is known, because
-// there a wrong length is a corrupted document rather than a wonky
-// highlight.
 function siteExtent(v) {
     const len = v?.site?.len;
     if ('number' === typeof len && len > 0) {
         return len;
     }
-    // CANON IS READ DEFENSIVELY, as every other reader here does: it is a
-    // getter that unifies, and a host-supplied value can throw from it
-    // (hover-refuses-bad-input). A hover that cannot measure a value
-    // still has to answer for the rest of the document.
     let c = '';
     try {
         c = v?.canon;
@@ -198,7 +152,6 @@ function parseErrorDiagnostic(err) {
 function initializeResult() {
     return {
         capabilities: {
-            // 1 = TextDocumentSyncKind.Full
             textDocumentSync: 1,
             hoverProvider: true,
             completionProvider: {},
@@ -210,14 +163,6 @@ function initializeResult() {
         },
     };
 }
-// signatureHelp: the declared signature of the ENCLOSING call, served
-// from the registry (docs/design/SIGNATURES.0.md). The enclosing call
-// is found lexically -- scan back from the cursor for the nearest
-// unclosed '(' and read the word before it; commas at that depth
-// count the active parameter, capped at the last slot so a rest tail
-// stays active for every excess argument. Strings are skipped so a
-// paren or comma inside one does not miscount, and the scan stops at
-// the line start, a call being one line in practice.
 function computeSignatureHelp(text, pos) {
     // Position to offset, under the full-sync model: lines are exactly
     // the text's newlines.
@@ -283,15 +228,6 @@ function publishDiagnosticsMsg(uri, diagnostics) {
         params: { uri, diagnostics },
     };
 }
-// Resolve the value under the cursor and describe it. Returns null when
-// the position is not over a value with a known source location. Because
-// hover reads the *unified* tree, a literal shows its resolved value and
-// kind (e.g. a reference target resolves to the value it points at).
-// HOVER PROVENANCE (G7 phase 7) is CONFIG-GATED and off by default:
-// the contributions that met at the hovered path, appended to the
-// value's own hover. Hover already re-unifies the whole document per
-// request, so an editor that asks for this pays a second instrumented
-// evaluation knowingly, and one that does not pays nothing.
 function provenanceMarkdown(src, path, trust) {
     if (0 === path.length) {
         return '';
@@ -302,10 +238,6 @@ function provenanceMarkdown(src, path, trust) {
     const report = (0, query_1.why)(src, '$.' + path.join('.'), { trust });
     return contributionsMarkdown(report.record?.conjuncts ?? []);
 }
-// The contributions as hover markdown. Exported for the direct test
-// (ADR-002): a siteless contribution and a named file are both shapes
-// the record allows and no hover produces, hover evaluating one
-// unnamed document.
 function contributionsMarkdown(conjuncts) {
     if (0 === conjuncts.length) {
         return '';
@@ -315,12 +247,6 @@ function contributionsMarkdown(conjuncts) {
             ('' === c.site.file ? '' : c.site.file + ':') +
             c.site.row + ':' + c.site.col + ')')).join('\n');
 }
-// HOVER RUNS UNDER THE SAME CAPABILITY AS DIAGNOSTICS. It used to
-// evaluate through `new Aontu()` -- the full system resolver -- BESIDE
-// confined diagnostics in the same server, so a workspace-confined
-// session still resolved an escaping include the moment a cursor rested
-// on it (use-cases/REVIEW.md finding G). One document, two postures, is
-// not a confinement.
 function computeHover(src, position, provenance, trust) {
     let root;
     try {
@@ -374,16 +300,6 @@ function collectHoverCandidates(v, out, seen) {
     // one, canon otherwise. See siteExtent.
     const span = siteExtent(v);
     const spanSrc = 'string' === typeof v.site?.src ? v.site.src : '';
-    // Hover targets concrete values (scalars, kinds, refs, …), not
-    // containers: a map/list source span is not reliably reconstructable
-    // from a single site, and the same restriction in the Go port keeps
-    // hover behaviour identical across implementations. The walk still
-    // recurses into containers below to reach their leaf values. Canon is
-    // single-line, so its length approximates the on-line source span.
-    // Single-line is decided by the SOURCE TEXT when there is one: a
-    // multi-line token cannot be described by one line's start and end,
-    // and canon's newlines are not the token's. Falling back to canon
-    // keeps the old test for a value with no stamped span.
     const multiline = '' === spanSrc ? canon.includes('\n') : spanSrc.includes('\n');
     if (row >= 1 && col >= 1 && canon.length > 0 && !multiline &&
         !v.isMap && !v.isList) {
@@ -442,12 +358,6 @@ const COMPLETION_FUNCTION = 3;
 exports.COMPLETION_FUNCTION = COMPLETION_FUNCTION;
 const COMPLETION_KEYWORD = 14;
 exports.COMPLETION_KEYWORD = COMPLETION_KEYWORD;
-// The built-in functions. Kept in sync with the engine by
-// `lsp.test.ts`, which asserts each is recognised and no others are.
-// The Go port derives its list from the engine's own name set
-// (`BuiltinFuncNames`, go/func.go), which is why a name added there
-// and forgotten here diverges silently — as `id` and `refer` did
-// between G4 phases 1/2 and G8 phase 1.
 const BUILTIN_FUNCS = [
     'above', 'acyclic', 'add', 'below', 'close', 'copy', 'deprecate', 'div',
     'each', 'emit', 'esc',
@@ -486,68 +396,16 @@ function computeCompletions() {
     }
     return out;
 }
-// Transport-agnostic LSP message dispatcher. Consumes decoded JSON-RPC
-// messages and returns the messages to send back, tracking open document
-// text and recomputing diagnostics on open/change/close. Not safe for
-// concurrent use; drive it from a single loop (as the stdio server does).
-// A file:// uri's filesystem path, for the workspace-root confinement.
-// Percent-decoded; a non-file uri (or none) yields undefined.
-//
-// EXPORTED, inline as contributionsMarkdown is: part of the reusable
-// LSP library surface, and the twin of the package-visible uriToPath in
-// go/lsp/handler.go. Anything driving this module with its own
-// transport has to turn a client's uri into a path the same way the
-// confinement does, and the rules below are not guessable from outside.
-//
-// THE DRIVE-LETTER SLASH. A file uri names an absolute path after the
-// authority, so on Windows the standard spelling every editor sends is
-// file:///C:/Users/me/project — three slashes, and the third belongs to
-// the PATH. Stripping only `file://` leaves `/C:/Users/me/project`,
-// which is not a Windows path at all, so the workspace-root
-// confinement below compared real paths against nonsense and an editor
-// on Windows got no confinement it could rely on. Both ports carried
-// the defect identically (go/lsp/handler.go uriToPath), and no test
-// caught it because both ports' tests built the uri as `'file://' +
-// path` — two slashes, which is not what a client sends and which
-// accidentally produced a usable path.
-//
-// The leading slash is dropped only before a DRIVE LETTER, so a POSIX
-// path keeps the root it needs: file:///tmp/x stays /tmp/x.
 function uriToPath(uri) {
     if ('string' !== typeof uri || !uri.startsWith('file://')) {
         return undefined;
     }
     const path = percentDecode(uri.slice('file://'.length));
-    // AN EMPTY PATH IS NOT A ROOT. `file://` on its own yields '', and
-    // '' is not nullish — so it won the `??` chain below and arrived as
-    // `{ include: { root: '' } }`, a confinement root that then resolves
-    // against the process working directory: the same client params made
-    // the server allow or deny an include depending on where it was
-    // started from. The Go twin never had it, because its chain tests
-    // `"" != folder` explicitly (go/lsp/handler.go). Answering undefined
-    // is what makes the two chains agree.
     if ('' === path) {
         return undefined;
     }
     return driveLetterPath(path) ? path.slice(1) : path;
 }
-// Percent-decoding that CANNOT THROW. `decodeURIComponent` raises a
-// URIError on a malformed escape (`%ZZ`), and this runs on a uri a
-// CLIENT sent — so a stray percent in a workspace path took the
-// exception straight out of the initialize handler, where the Go twin
-// swallowed the same failure and used the raw text
-// (go/lsp/handler.go). Two ports, two behaviours, for an input neither
-// of them controls.
-//
-// The agreement runs the other way for the SECOND way an escape can
-// fail to decode. `%FF` is well-formed and names a raw byte — a
-// perfectly good Linux filename — which Go produced and a JavaScript
-// string cannot hold at all, so the ports derived different workspace
-// roots for a uri a byte-oriented client really sends. Only one
-// direction is reachable from both languages, so Go now declines to
-// unescape a result that is not valid UTF-8 and both ports keep the
-// raw text. An undecodable path is still a path, and refusing to serve
-// a session over it helps nobody.
 function percentDecode(text) {
     try {
         return decodeURIComponent(text);
@@ -568,12 +426,6 @@ class LspHandler {
         this.docs = new Map();
         this.shutdownOK = false;
         this.exited = false;
-        // The trust profile evaluation runs under (G5, docs/trust.md):
-        // workspace-root confinement by default, set from the initialize
-        // params. An `initializationOptions.aontu.trust.include` of 'system',
-        // 'none' or { root } widens or narrows it explicitly. Undefined —
-        // no workspace root and no explicit option — falls back to today's
-        // unconfined behaviour, which single-file sessions rely on.
         this.trust = undefined;
         // Hover provenance (G7 phase 7): off unless an editor asks for it
         // with `initializationOptions.aontu.provenance`. It costs a second,
@@ -596,10 +448,6 @@ class LspHandler {
                     true === params.initializationOptions?.aontu?.provenance;
                 const explicit = params.initializationOptions?.aontu?.trust?.include;
                 if (null != explicit) {
-                    // An explicit setting wins — validated, and an unrecognised
-                    // value confines to NOTHING rather than silently widening:
-                    // deny is the safe reading of a setting the server does not
-                    // understand. The same rule as the Go handler.
                     this.trust =
                         'system' === explicit ? undefined :
                             'none' === explicit ? { include: 'none' } :

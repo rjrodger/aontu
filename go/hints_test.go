@@ -8,11 +8,6 @@ import (
 	"testing"
 )
 
-// The budget_passes message substring and class. Since issue #26
-// closed (Go defers ref chains one link per pass, like TS), the
-// 10-link reproducer is pinned by SHARED rows (budget.tsv
-// budget-chain-*); this test keeps the hint-table and class guards as
-// the fast local twin of ts/test/unify.test.ts.
 func TestBudgetPassesHint(t *testing.T) {
 	hint, ok := hints["budget_passes"]
 	if !ok {
@@ -83,23 +78,6 @@ func TestLongRefCycleIsProven(t *testing.T) {
 	}
 }
 
-// TestFullMessageTwin asserts the FULL thrown-message literal -- marker,
-// headline, verbatim hint, and both ANSI-coloured source frames --
-// byte-for-byte. The TS twin with the SAME literal is
-// full-message-twin in ts/test/error.test.ts, so a change to either
-// port's rendering fails that side loudly. This is the completion pin
-// of issue #29: thrown error text is in cross-port parity. (Spec rows
-// still assert only probed substrings -- the twins are the byte-level
-// guard.)
-// TestFullMessageTwinFramed is the twin above with the two things its
-// one-line source could not show: a conflict BELOW row 1, so the
-// frame's two lines of leading context are rendered, and a multi-byte
-// character before the column, so the column is counted in UTF-16 code
-// units rather than bytes. Go got both wrong until the validation
-// verb's byte-parity probing found them (G2 phase 4) -- the existing
-// twin stayed green throughout, which is exactly why this one exists.
-// The TS twin with the SAME literal is full-message-twin-framed in
-// ts/test/error.test.ts.
 func TestFullMessageTwinFramed(t *testing.T) {
 	_, err := New().Generate("x: 0\ny: 0\n\"\u00e9\": 1\n\"\u00e9\": 2\nz: 0\n")
 	if err == nil {
@@ -111,15 +89,6 @@ func TestFullMessageTwinFramed(t *testing.T) {
 	}
 }
 
-// TestFrameGutterWidth pins the excerpt gutter: two spaces, then the
-// line number RIGHT-ALIGNED to the widest number the frame shows, which
-// is always the value's row plus two. A FIXED three-wide field agreed
-// with TypeScript only while every shown number had one digit, so from
-// row eight upward the two ports printed the same error with differently
-// indented excerpts -- and the caret, whose indent is the gutter's own
-// width, moved with it. Both literals below are the CANONICAL port's
-// output; the TS twin with the same literals is frame-gutter-width in
-// ts/test/error.test.ts.
 func TestFrameGutterWidth(t *testing.T) {
 	for _, c := range []struct {
 		name string
@@ -151,20 +120,6 @@ func TestFullMessageTwin(t *testing.T) {
 	}
 }
 
-// TestFullMessageBagTwin is the bag-operand twin (issue #34): a map
-// operand carries its real source position (its `{`), so it wins the
-// later-in-source primary rule and its frame points at column 7 --
-// byte-identical with full-message-bag-twin in ts/test/error.test.ts.
-// Before the parse recorded map/list positions, the MapVal read as
-// position 0: the frame said 1:1 and the operand order flipped.
-// TestFullMessageSpreadTwin is the twin of full-message-spread-twin in
-// ts/test/error.test.ts (issue #63): a spread-applied constraint that
-// the child's value refuses renders its two frames VALUE FIRST, the
-// later term in the source being the primary. This port emitted them
-// reversed, because makeNilErr compared a synthetic source id that put
-// a CLONE -- which every applied spread template is -- in a different
-// bucket from a parsed value, so the two were never ordered by
-// position at all. TS compares the site url, which a clone inherits.
 func TestFullMessageSpreadTwin(t *testing.T) {
 	a := New()
 	_, err := a.Generate("a:&:min(3) a:{x:2}")
@@ -188,12 +143,6 @@ func TestFullMessageBagTwin(t *testing.T) {
 	}
 }
 
-// TestFuncResidueFrame is the func-residue-frame twin in ts/test/error.test.ts.
-// A function that resolves to a FRESH value (`super(1)` answers a new
-// ScalarKindVal) must hand its own SITE to that value, or the residue --
-// and any conjunct built over it, which takes its site from its first
-// term -- has no position, and the frame points at the start of the
-// source instead of at the call (issue #41).
 func TestFuncResidueFrame(t *testing.T) {
 	_, err := New().Generate("a:super(1)&integer")
 	if err == nil {
@@ -205,12 +154,6 @@ func TestFuncResidueFrame(t *testing.T) {
 	}
 }
 
-// TestOperandlessNilFrame is the operandless-nil-frame twin in ts/test/error.test.ts.
-// A nil raised about a CONSTRUCT rather than a failed meet has no
-// operands, and still gets a located frame rendered about ITSELF, plus
-// the path where it sits. Reading both from the absent primary put every
-// such error at `$` with no frame at all (issue #39). The two blank lines
-// before the frame are TS's spacing for a code that carries no hint.
 func TestOperandlessNilFrame(t *testing.T) {
 	_, err := New().Generate("a:-0x_1")
 	if err == nil {
@@ -222,11 +165,6 @@ func TestOperandlessNilFrame(t *testing.T) {
 	}
 }
 
-// TestHintTrailingNewlineFrame is the hint-trailing-newline-frame twin in ts/test/error.test.ts.
-// `no_path` is the one hint whose text ends in a newline. That newline is
-// not extra spacing -- TS's closing `\n\n` -> `\n` pass absorbs it into
-// the single blank line before the frame -- so Go must trim it or the
-// message gains a blank line TS does not have (issue #39).
 func TestHintTrailingNewlineFrame(t *testing.T) {
 	_, err := New().Generate("a:{b?:$.zz9} c:1")
 	if err == nil {
@@ -238,11 +176,6 @@ func TestHintTrailingNewlineFrame(t *testing.T) {
 	}
 }
 
-// TestListIndexZeroPath is the list-index-zero-path twin in ts/test/error.test.ts.
-// The list index 0 SURVIVES into the headline path. TS filtered path
-// segments with `” != p`, and `” != 0` is false in JavaScript, so the
-// index a reader is most likely to meet was the one silently erased,
-// while `$.a.1` came through (issue #37).
 func TestListIndexZeroPath(t *testing.T) {
 	_, err := New().Generate("a:[1]&[2]")
 	if err == nil {
@@ -254,17 +187,6 @@ func TestListIndexZeroPath(t *testing.T) {
 	}
 }
 
-// TestMergeConflictCRLF is the merge-conflict-crlf twin in
-// ts/test/error.test.ts (issue #5).
-//
-// The \r sits on the end of the line and is not part of the marker run,
-// so it has to come off before the length is counted -- otherwise
-// "=======\r" is eight characters and the marker goes unnoticed on every
-// Windows checkout, which is exactly where an unresolved merge is most
-// likely to be sitting.
-//
-// Not a shared spec row: the spec's src column escapes \n, \t and \\, and
-// has no spelling for a carriage return.
 func TestMergeConflictCRLF(t *testing.T) {
 	_, err := New().Generate("<<<<<<< HEAD\r\na:1\r\n=======\r\na:2\r\n>>>>>>> other\r\n")
 	if err == nil {
@@ -286,12 +208,6 @@ func TestMergeConflictCRLF(t *testing.T) {
 	}
 }
 
-// THE EXPLAIN SURFACE (G11 phase 3). The verb in cmd/aontu is a thin
-// projection of these two, but coverage is measured per package, so
-// the engine's own exports need the engine's own cases. What they
-// assert is the CONTRACT the verb rests on: the registry is the list,
-// a registered code always resolves, a dynamic code resolves through
-// the prefix it extends, and nothing outside the registry does.
 func TestExplainCode(t *testing.T) {
 	// A registered code with text.
 	class, hint, registered := ExplainCode("no_scalar_unify")
@@ -341,9 +257,6 @@ func TestExplainCode(t *testing.T) {
 	}
 }
 
-// Codes is the REGISTRY, sorted, so both ports list in one order. It
-// is deliberately not the hint table: the registry is in cross-port
-// parity and the hint tables are not.
 func TestCodes(t *testing.T) {
 	codes := Codes()
 	if len(codeClasses) != len(codes) {

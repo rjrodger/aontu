@@ -2,34 +2,6 @@
 
 package aontu
 
-// The validation verb: check a data document against a schema document
-// and return a MACHINE-READABLE report. The Go port of ts/src/vet.ts
-// (G2 phase 4, docs/capability-review/g2-validation-verb.md), engine
-// only — the command line, its renderers and its exit codes live in
-// cmd/aontu, as they do in ts/src/cli.ts.
-//
-// Two properties of the engine shape everything here, and both are the
-// canonical implementation's, probed rather than assumed:
-//
-//   - A CONTRADICTION surfaces as a NilVal in the unified tree, so
-//     conflict findings come from a tree walk (walk.go), plus the nils
-//     that never made it into the tree.
-//   - INCOMPLETENESS does not. `{name:"auth"}` against
-//     `{name:string, port:integer}` unifies cleanly and leaves
-//     `port:integer` standing — no nil, no error. It surfaces only when
-//     something tries to GENERATE, which is why vet runs a generate
-//     check in an isolated collect context and reads the
-//     `incomplete`-class errors out of it. The two verdicts the report
-//     distinguishes therefore come from two different mechanisms.
-//
-// WHAT IS IN CROSS-PORT PARITY. Everything the report carries except
-// the message: verdict, truncation, and each finding's code, class,
-// severity, path, sites (file, row, column, role, value) and the
-// expected/actual/note the constraint algebra attaches. The message is
-// the nil's HEADLINE, which the two ports already hold to byte parity
-// (NilVal.Headline, val.go) — but it stays prose, and prose is not
-// contractual across the ports (test/spec/divergent.tsv), so the shared
-// suite's goldens exclude it.
 
 import (
 	"path/filepath"
@@ -39,8 +11,6 @@ import (
 	"strings"
 )
 
-// Verdicts. The report says which of four states the run reached, and
-// the caller maps them to exit codes (cmd/aontu).
 const (
 	VetValid      = "valid"
 	VetInvalid    = "invalid"
@@ -48,20 +18,11 @@ const (
 	VetError      = "error"
 )
 
-// Roles. A site is either in the data document or in the schema, and
-// which one it is comes from PROVENANCE — the url stamped on each tree
-// before they meet (walk.go) — not from the primary/secondary heuristic
-// NilVal uses, which is source-order reasoning within ONE document and
-// says nothing useful when one side is a schema and the other is data.
 const (
 	VetRoleData   = "data"
 	VetRoleSchema = "schema"
 )
 
-// VetMaxErrors is the default cap on a report's finding list. Exported
-// because the command applies it to the WHOLE report across several
-// data files and must not carry a second copy of the number
-// (cmd/aontu/vet.go).
 const VetMaxErrors = 20
 
 const (
@@ -69,11 +30,6 @@ const (
 	vetDataURL   = "data"
 )
 
-// VetSite locates one side of a finding. The JSON field order is
-// LEXICOGRAPHIC because the canonical emitter sorts object keys
-// (exactJSON, ts/src/exactjson.ts) while Go's encoder writes struct
-// fields in declaration order: the two agree only if the declaration is
-// already sorted.
 type VetSite struct {
 	Col int `json:"col"`
 	// File is ALWAYS present, and empty when the value belongs to
@@ -81,37 +37,9 @@ type VetSite struct {
 	// either document wrote. A consumer reads `file` without a presence
 	// check; the canonical port coerces the same way.
 	File string `json:"file"`
-	// Len is the extent in UTF-16 code units, or -1 when unknown -- the
-	// same "unknown" Row and Col already use.
-	//
-	// THIS IS WHAT MAKES A FINDING REPAIRABLE. Value is the CANON, not
-	// the source text: `port: 0x1F` reports canon `31` at column 7, so a
-	// consumer replacing (col, len(value)) writes `port: 5x1F` and
-	// corrupts the document. With Len the span is (col, 4) and the
-	// replacement is exact.
-	//
-	// NEVER GUESSED. Where the span is unknown this is -1 and a consumer
-	// must not edit -- unlike the LSP, which falls back to canon because
-	// a wonky highlight is cosmetic while a wrong edit is a lost file
-	// (Problem.Len, go/check.go). See ts/src/site.ts for what the extent
-	// covers, and note the LEXICOGRAPHIC field order this sits in.
 	Len  int    `json:"len"`
 	Role string `json:"role"`
 	Row  int    `json:"row"`
-	// Src is the SOURCE TEXT the span covers, empty when unknown.
-	//
-	// This is what makes the span SELF-VERIFYING, and it is not the same
-	// as Value. For a scalar the two differ by normalisation -- `0x1F`
-	// has Src `0x1F` and Value (canon) `31`. For a COMPOUND the span
-	// names the opening token only, exactly as Row and Col always have:
-	// a constraint `min(1)` reports Src `min`, and a reference `$.b`
-	// reports Src `$`.
-	//
-	// So a consumer must read the document at (Row, Col, Len), compare
-	// it to Src, and REFUSE when they differ -- and, seeing `min` where
-	// it expected `min(1)`, refuse rather than replace the name and
-	// orphan the arguments. Without this field that mistake is
-	// undetectable.
 	Src   string `json:"src"`
 	Value string `json:"value"`
 }
@@ -125,21 +53,6 @@ type VetFinding struct {
 	Class    string  `json:"class"`
 	Code     string  `json:"code"`
 	Expected *string `json:"expected,omitempty"`
-	// THE REPAIR, not just the diagnosis. Message is one line by design
-	// -- it is the headline, and the frames under it are for a human at
-	// a terminal -- but for several codes the part that says what to DO
-	// about the failure lived only in those frames, so a machine reader
-	// (an agent, a CI annotation, an editor) got the complaint and none
-	// of the cure. `0d` is the clearest case: the engine refuses a
-	// lossy integer literal and the hint names the exact-decimal escape
-	// that fixes it. Populated from the shared hints table (go/hints.go,
-	// mirroring ts/src/hints.ts) whenever the code has one; absent when
-	// it does not (the report-layer compat_* codes, notably, carry no
-	// hint text).
-	//
-	// Excluded from spec goldens for the same reason Message is: it is
-	// prose, it is long, and the two ports hold it to the byte through
-	// the message tests instead of through every vet row.
 	Hint *string `json:"hint,omitempty"`
 
 	Message  string    `json:"message"`
@@ -162,19 +75,10 @@ type VetReport struct {
 	Verdict   string       `json:"verdict"`
 }
 
-// VetOptions are the run's knobs. A zero value is the default run: the
-// whole schema as the anchor, open, strict about residue, capped at 20
-// findings, with the documents labelled "schema" and "data".
 type VetOptions struct {
 	At      string // validate against this path of the schema
 	Closed  bool   // close() the anchor for this run
 	Partial bool   // residue is not a failure
-	// MaxErrors caps the finding list; 0 (and anything below it) means
-	// the default of 20. The canonical engine can tell an EXPLICIT zero
-	// from an absent option and would report nothing for it; a Go zero
-	// value cannot, and a cap of zero is not a thing to ask for -- the
-	// command line refuses it too (`--max-errors 0` is a usage error in
-	// both ports).
 	MaxErrors int
 
 	// Coverage accounts for what the check examined (G11 phase 5). Off
@@ -187,21 +91,9 @@ type VetOptions struct {
 	// answered about the rest. Ignored unless Coverage is set.
 	CoverageAt string
 
-	SchemaURL string // provenance label for schema sites
+	SchemaURL string
 	DataURL   string // provenance label for data sites
 
-	// SchemaPath and DataPath are where each document CAME FROM, used
-	// to resolve its relative `@"file"` loads -- the FILE path, as the
-	// canonical port's `{path}` option takes it, not the directory
-	// (this side does the Dir() itself). Vet takes two documents from
-	// its caller rather than from the filesystem, so it cannot know
-	// this: without it a modular schema resolved its includes against
-	// the process working directory, which fails outside that
-	// directory and, worse, silently reads a same-named file that
-	// happens to sit there. The two documents get their OWN bases,
-	// because they need not live in the same place.
-	// The include capability both documents evaluate under (G5,
-	// docs/trust.md). Nil means today's default.
 	Trust *TrustOptions
 
 	// TextExt is the extensions additionally read as text (the CLI's
@@ -212,19 +104,6 @@ type VetOptions struct {
 	DataPath   string
 }
 
-// aontuForPathTrust builds an engine whose relative `@"file"` loads
-// resolve against the directory holding path, under an explicit include
-// capability. The twin of cmd/aontu's aontuForFileTrust, and of the
-// per-parse `path` option the canonical port hands to its parser. An
-// empty path means the process working directory, which is what New()
-// already does; a nil capability means today's default, so a caller
-// that has no profile to pass is unchanged.
-//
-// The capability is a PARAMETER rather than a later assignment because
-// G5 wired --trust to the bare command alone, so every verb ran the
-// full system resolver with no way to confine it (the review's finding
-// G) -- and a verb that forgets to set it afterwards is exactly how
-// that happened.
 func aontuForPathTrust(
 	path string, trust *TrustOptions, textExt []string) *Aontu {
 	a := New()
@@ -234,26 +113,12 @@ func aontuForPathTrust(
 	if nil != trust {
 		a.Trust = trust
 	}
-	// BOTH INCLUDE OPTIONS THROUGH ONE HELPER. `trust` was threaded by
-	// hand into every engine until there were two of them, and the one
-	// site that missed the second refused a `--text-ext` include under
-	// a flag the bare command honoured. Adding a third means editing
-	// here, not everywhere.
 	a.TextExt = textExt
 	return a
 }
 
-// vetSources maps a stamped url to the text its offsets index into.
-// Go carries a byte offset per value and computes row/column on demand
-// (rowCol, val.go), so a two-document run has to know WHICH document to
-// count newlines in — the one thing TypeScript gets for free by storing
-// row and column on every site at parse time.
 type vetSources map[string]string
 
-// vetProv is the provenance a report projects its sites through: which
-// urls belong to the DATA document, and how the caller reached each of
-// the two documents (which is what says how to NAME a third file either
-// of them included).
 type vetProv struct {
 	// data holds the urls the data walk reached. Roles are decided by
 	// membership, on the RAW url -- never by a name comparison.
@@ -264,12 +129,6 @@ type vetProv struct {
 	dataPath   string
 }
 
-// name answers what to print for a site, taken from the document the
-// site BELONGS to -- which is the role, already decided by url-set
-// membership. Doing it here rather than from a map built at stamping
-// time is not a shortcut: a nil's operands are off the tree by the time
-// the report is built, so a value first seen during the MEET (the
-// commonest schema site there is) would be missing from any such map.
 func (p vetProv) name(url, role string) string {
 	if VetRoleData == role {
 		return displayFile(url, orSelf(p.dataURL, url), p.dataPath)
@@ -286,21 +145,6 @@ func orSelf(label, url string) string {
 	return label
 }
 
-// displayFile names A FILE THE READER CAN OPEN. The parser resolves an
-// include to an absolute path, which is the right identity (two files
-// loading the same library by different relative spellings must be one
-// file) and the wrong NAME: a report whose entry reads `contract.aon`
-// and whose included site reads `/home/someone/checkout/types.aon` is
-// a report that cannot be uploaded as SARIF, diffed between machines,
-// or read beside the command that produced it.
-//
-// So an included file is named as the ENTRY'S OWN NAME reaches it:
-// relative to the entry's directory, then re-anchored on however the
-// caller spelled the entry. `vet contract.aon` names `types.aon`;
-// `vet a/b/contract.aon` names `a/b/types.aon`; an absolute entry keeps
-// absolute includes. A caller who passed no path at all has no base to
-// relativise against and gets the url unchanged. The TypeScript twin is
-// displayFile in ts/src/vet.ts.
 func displayFile(url, label, path string) string {
 	if url == label || "" == path || "" == url || !filepath.IsAbs(url) {
 		return url
@@ -310,12 +154,6 @@ func displayFile(url, label, path string) string {
 		return url
 	}
 	rel, err := filepath.Rel(filepath.Dir(base), url)
-	// Rel fails only when no relative path EXISTS between two absolute
-	// paths, which on this side of the guard means a Windows pair on
-	// different drives. The url is then already the shortest name for
-	// the file, and it is what TypeScript's path.relative answers for
-	// the same pair -- the ports agree by falling back to the same
-	// string rather than by sharing the branch.
 	if err != nil { //coverage:ignore needs two drives, so no test can reach it
 		return url
 	}
@@ -326,44 +164,20 @@ func displayFile(url, label, path string) string {
 	return filepath.Join(dir, rel)
 }
 
-// siteOf projects one operand into a report site. `secondary` is the
-// only operand that can be absent — a `closed` or an incomplete finding
-// has one side, a two-site conflict has both — so this is the one
-// nullable input, and every Val that does arrive carries a position and
-// a canon.
 func siteOf(v Val, prov vetProv, sources vetSources) *VetSite {
 	if v == nil {
 		return nil
 	}
 	file := v.srcurl()
-	// The ROLE of a site: which of the two documents it belongs to. Not
-	// a name comparison -- a data document may itself include another
-	// file, and that file's values are still data. Membership of the
-	// url set the stamping walk collected is the question.
 	role := VetRoleSchema
 	if prov.data[file] {
 		role = VetRoleData
 	}
-	// A value whose file the run has no TEXT for -- one read through an
-	// include, whose path is now named honestly rather than overwritten
-	// with the entry's -- has no coordinates to report: its offset
-	// indexes a text this report does not hold, and resolving it
-	// against the entry's text would name a real line that says
-	// something else. -1:-1, the same answer an unsited value gets.
 	src, haveSrc := sources[file]
-	// An UNSITED value reports -1:-1 rather than a coordinate it does
-	// not have. The parser gives no position to a junction (neither port
-	// does), so `a: 1|2` meeting `a: 3` has one operand that was never
-	// anywhere in particular; rowCol's own answer for that is row 1
-	// column 1, which is a place, and the wrong one. TypeScript says -1
-	// because an unset site starts there (ts/src/site.ts).
 	row, col := -1, -1
 	if haveSrc && 0 <= v.pos() {
 		row, col = rowCol(src, v.pos())
 	}
-	// NAMED for the reader, ROLED and SOURCED by the raw url: the three
-	// questions are different, and only the first is about how the file
-	// is spelled (see displayFile).
 	return &VetSite{
 		Col: col, File: prov.name(file, role), Len: v.srclen(), Role: role,
 		Row: row, Src: v.srctext(), Value: v.Canon(),
@@ -391,9 +205,6 @@ func sitesOf(n *NilVal, prov vetProv, sources vetSources) []VetSite {
 		sites = append(sites, *s)
 	}
 
-	// Partitioned rather than sorted: which of the two NilVal operands
-	// is primary follows source order within one document, which says
-	// nothing useful across two.
 	out := make([]VetSite, 0, len(sites))
 	for _, s := range sites {
 		if VetRoleData == s.Role {
@@ -408,13 +219,6 @@ func sitesOf(n *NilVal, prov vetProv, sources vetSources) []VetSite {
 	return out
 }
 
-// hintOf renders the shared hint text for a code, with its detail
-// placeholders filled in exactly as the terminal frame fills them, or
-// nil when the code has none. Trailing whitespace is dropped because it
-// is spacing for the frame that used to follow the hint, not part of
-// the text; the deliberate blank lines INSIDE a hint are "\n \n" and
-// survive. The TypeScript twin is getHint (ts/src/err.ts), trimmed the
-// same way by findingOf.
 func hintOf(why string, details map[string]string) *string {
 	hint := hints[why]
 	if "" == hint {
@@ -435,11 +239,6 @@ func findingOf(n *NilVal, prov vetProv, sources vetSources) VetFinding {
 		Sites:    sitesOf(n, prov, sources),
 	}
 
-	// expected/actual are the admissible-alternatives contract, and the
-	// constraint algebra already produces them: G1's atoms attach the
-	// normalised residual and the offending value, and `must` attaches
-	// the author's message. Read them where they are rather than
-	// re-deriving them here.
 	if v, ok := n.details["expected"]; ok {
 		f.Expected = &v
 	}
@@ -457,24 +256,6 @@ func findingOf(n *NilVal, prov vetProv, sources vetSources) VetFinding {
 // order.
 const vetOrderPad = 9
 
-// vetOrderKey sorts findings BY VET, not by the walk. The underlying walk
-// iterates a bag's keys and the two hosts disagree about their order —
-// `10:… 9:…` yields ["9","10"] in JavaScript, which hoists integer-like
-// keys, against Go's insertion order (ts/src/keyorder.ts exists for
-// exactly this) — so an unsorted report could never be in cross-port
-// parity.
-//
-// The order is by data site (file, row, column), then code, then path,
-// carried in ONE key string rather than a cascade of comparisons: a
-// cascade needs a test per tie-breaker to stay honest; a key needs
-// none, and cannot disagree with itself. NUL joins the fields because
-// no field can contain one.
-//
-// The walk index is the last field, which makes every key unique and
-// the sort total: two findings can otherwise share everything else the
-// key carries, and then the answer would come from the sort algorithm
-// rather than from the data. With the index appended, ties keep walk
-// order in both ports by construction.
 func vetOrderKey(f VetFinding, index int) string {
 	site := VetSite{}
 	if 0 < len(f.Sites) {
@@ -492,35 +273,7 @@ func vetOrderKey(f VetFinding, index int) string {
 	}, "\x00")
 }
 
-// failureFinding reports A DOCUMENT THAT DOES NOT STAND UP in the
-// finding shape (the review's finding F). TrimCheck and RelationCheck
-// answered an unusable document with an `error` verdict and an EMPTY
-// list: the caller learned that something was wrong and nothing about
-// what, which is the one thing a repair loop cannot work with. Both
-// verbs take ONE document, so there is no role to decide -- the
-// document is the thing being checked and the thing to edit, which is
-// what `data` means here.
-//
-// The engine's own first error IS the finding: these verbs add nothing
-// to a diagnosis the evaluator already made, and the FIRST is enough
-// because everything after it is a consequence.
-//
-// The TypeScript twin is failureFinding in ts/src/vet.ts.
 func failureFinding(ctx *Ctx, url, src string, failed ...Val) VetFinding {
-	// ctx.err IS SOMETIMES EMPTY, and the comment that used to stand
-	// here said otherwise (use-cases/BUGS.md §43). `&: id(root)` fails
-	// with a NIL ROOT and NO COLLECTED ERROR -- the id-spread refusal is
-	// the root itself -- and every verb that reports "this document does
-	// not stand up" then indexed err[0] and died: a panic here, a
-	// TypeError in TypeScript. The one shape where finding F's own
-	// invariant, that a document which does not stand up SAYS SO in the
-	// finding shape, was answered with a stack trace.
-	//
-	// `failed` is the caller's own root -- every caller has it, and its
-	// condition is `0 < len(ctx.err) || root.Nil()`, so when the first
-	// half is false the second holds and the root IS the reason.
-	// Variadic rather than required, so a future caller that reports a
-	// failure which always collects need not invent a value.
 	var n *NilVal
 	if 0 < len(ctx.err) {
 		n = ctx.err[0]
@@ -532,14 +285,6 @@ func failureFinding(ctx *Ctx, url, src string, failed ...Val) VetFinding {
 		n.primary = n
 	}
 
-	// STAMPED, as vet stamps both documents before they meet: siteOf
-	// reports whatever name a value carries, so a value that reached the
-	// report unstamped would carry an empty file for a document that
-	// does have one. The three Vals a finding can name are the nil and
-	// its two operands, and the url set collects whatever name each
-	// already had, so a value read from an included file keeps that
-	// file's name and still counts as part of the one document being
-	// checked.
 	urls := map[string]bool{url: true}
 	for _, v := range []Val{n, n.primary, n.secondary} {
 		if nil == v {
@@ -564,11 +309,6 @@ func anchorAt(root Val, at string) Val {
 		if "" == part {
 			continue
 		}
-		// A SIZING RESIDUE IS ITS CONTAINER, plus a note about what the
-		// container must still satisfy (use-cases/BUGS.md §16). The path
-		// steps through it, so `$.a.ports.0.port` names the same node
-		// whether or not `ports` still carries a `unique()`. Mirrors
-		// anchorAt in ts/src/vet.ts.
 		node = throughResidue(node)
 		switch n := node.(type) {
 		case *MapVal:
@@ -590,18 +330,9 @@ func anchorAt(root Val, at string) Val {
 			return nil
 		}
 	}
-	// THE ANCHOR KEEPS ITS ATOM. Stepping THROUGH a residue is right --
-	// `$.x.a` names a key of the container whatever the container still
-	// has to satisfy -- but ARRIVING at one and handing back the bare
-	// container drops a constraint the author wrote, so `--at $.x`
-	// vetted clean against a `length` the evaluator enforces. Mirrors
-	// anchorAt in ts/src/vet.ts.
 	return node
 }
 
-// anchorSegs is the `--at` spelling as path segments: `$.a.b` and the
-// bare `a.b` both give [a b], and the whole-schema anchor (empty, or
-// `$`) gives none. The walk above accepts the same three spellings.
 func anchorSegs(at string) []string {
 	out := []string{}
 	for _, part := range strings.Split(strings.TrimPrefix(at, "$"), ".") {
@@ -625,15 +356,6 @@ func throughResidue(v Val) Val {
 // message text. A machine-readable report is no place for them.
 var ansiRe = regexp.MustCompile("\u001b\\[[0-9;]*m")
 
-// parseFinding projects a document's parse failure as the one finding
-// the report carries. Built by hand rather than through a NilVal
-// because the parse never produced one: what Go has is the error, and
-// the error already knows the code, the position and the text (val.go,
-// AontuError).
-//
-// Both documents use it. The failure is the same failure whichever
-// document it is in -- only the url, the role, and the verdict the
-// caller returns with it differ.
 func parseFinding(url, role string, err error) VetFinding {
 	ae, ok := err.(*AontuError)
 	if !ok { //coverage:ignore every parse failure path returns an *AontuError (lang.go)
@@ -674,19 +396,6 @@ func parseFinding(url, role string, err error) VetFinding {
 	}
 }
 
-// Vet validates dataSrc against schemaSrc.
-//
-// Never fails for findings: a contradiction in the data is DATA, and
-// the caller gets a report. An unusable schema is a VERDICT (`error`)
-// rather than an error return for the same reason — "the schema is
-// broken" is a fact the agent loop needs to branch on, not an
-// exceptional condition — which leaves nothing for an error return to
-// carry, so there is none.
-//
-// A package-level function rather than a method, mirroring the
-// canonical export: vet takes its two documents from the caller, not
-// from the filesystem, so an Aontu's base directory has nothing to say
-// about them.
 func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	options := VetOptions{}
 	if opts != nil {
@@ -705,15 +414,7 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		maxErrors = options.MaxErrors
 	}
 
-	// No bare `error` report is built here any more, and the absence is
-	// the point: every way this function can answer `error` -- a schema
-	// that will not parse, a schema that does not stand up, an `--at`
-	// that names nothing -- now carries the finding that says what and
-	// where. There is nothing left for an empty-finding constant to be
-	// used by.
 
-	// TWO instances, because the two documents may live in different
-	// directories and each one's includes resolve from its own.
 	schemaA := aontuForPathTrust(
 		options.SchemaPath, options.Trust, options.TextExt)
 	dataA := aontuForPathTrust(
@@ -723,11 +424,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	//    is never blamed for it.
 	schemaParsed, perr := schemaA.Parse(schemaSrc)
 	if perr != nil {
-		// A SCHEMA THAT WILL NOT PARSE reports, exactly as unparseable
-		// data does one branch further down -- same finding, same
-		// parser code, the role and the verdict being the only
-		// difference. It used to return an empty finding list, so a
-		// caller was told the schema was broken and never where.
 		return VetReport{
 			Verdict:   VetError,
 			Truncated: false,
@@ -738,36 +434,10 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	schemaVal := unifyRoot(schemaParsed, schemaCtx)
 	schemaCtx.root = schemaVal
 	if 0 < len(schemaCtx.err) || schemaVal.Nil() {
-		// A broken schema REPORTS, exactly as broken data does. It used
-		// to answer an empty finding list with exit 4 and nothing else,
-		// in both ports: the engine had collected the fault and vet threw
-		// it away, so a caller was told the schema was broken and not
-		// what or where. The verdict stays `error` -- the fault is in the
-		// truth rather than in the data, and that distinction is what the
-		// class is for -- but the finding travels with it.
-		//
-		// The FIRST error only, for the reason the data path gives: later
-		// errors in a document that does not stand up are consequences of
-		// the first rather than separate things to fix.
-		// Mirrors the same branch in ts/src/vet.ts.
-		//
-		// ONE OF THE TWO IS ALWAYS THERE, and both are nils: the branch
-		// condition admits a collected error or a nil root, `Nil()` is
-		// true for *NilVal and for nothing else (val.go), and every
-		// value on schemaCtx.err is one. There is no third case, so
-		// there is no guard here -- a guard that cannot fire is dead
-		// code, and dead code is what ADR-002 exists to keep out.
 		failure, _ := schemaVal.(*NilVal)
 		if 0 < len(schemaCtx.err) {
 			failure = schemaCtx.err[0]
 		}
-		// The normal path stamps both documents before they meet
-		// (stampURL(anchor...) below), and this early return never
-		// reaches it, so it stamps what it is about to report: the
-		// unified root, and the failure itself -- a COLLECTED error is
-		// minted during unification and hangs off no tree, so nothing
-		// else would name it. The walk reaches a failure's operands
-		// (walk.go), which is what makes the sites say which file.
 		stampURL(schemaVal, schemaURL)
 		stampURL(failure, schemaURL)
 		return VetReport{
@@ -785,13 +455,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	if "" != options.At {
 		anchor = anchorAt(schemaVal, options.At)
 		if nil == anchor {
-			// AND IT SAYS WHICH SEGMENT. `--at` naming nothing is an
-			// error verdict for the same reason a broken schema is --
-			// the run could not be set up from the truth's side -- and
-			// it reports for the same reason too: a caller handed exit
-			// 4 and an empty list has nothing to act on. The refusal is
-			// the SAME one Get and Why give for a path that names
-			// nothing, down to the "did you mean" (query.go).
 			return VetReport{
 				Verdict:   VetError,
 				Truncated: false,
@@ -800,19 +463,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		}
 	}
 
-	// Default-validity lint (G3 phase 5, re-examined under ADR-004):
-	// for every disjunction in the SCHEMA carrying a preference, warn
-	// when the effective default is not an instance of any REMAINING
-	// alternative (code `pref_not_instance`, class compat, severity
-	// warning). What the finding MEANS changed with the admission gate:
-	// a preferred branch now contributes exactly its own value to the
-	// admitted set, so a default can no longer be "invalid against its
-	// own disjunct" — the lint is KEPT as an advisory, because a
-	// default admitted only by being the default is also the exact
-	// shape of a typo'd default (`level:*wran|info|warn|debug`), and
-	// the repeated-branch spelling now both silences it and enforces
-	// the same admitted set. The full decision note is on the canonical
-	// port (ts/src/vet.ts). Mirrors the lintDefaults pass there.
 	lintFindings := []VetFinding{}
 	walkBagVals(anchor, func(v Val, path []string) {
 		if d, ok := v.(*DisjunctVal); ok {
@@ -865,36 +515,12 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	//    so every site in the result knows which document it came from.
 	dataVal, derr := dataA.Parse(dataSrc)
 	if derr != nil {
-		// A DATA DOCUMENT THAT WILL NOT PARSE IS THE DATA'S FAULT, and
-		// the report says so: verdict `invalid`, with a finding
-		// carrying the parser's own code and a site in the data.
-		// `error` is left to mean what the exit table says it means --
-		// the run could not be set up from the SCHEMA side.
-		//
-		// The engine already answered it this way one character
-		// earlier: a refused CONSTRUCT (`a: 9007199254740993`) reaches
-		// the tree as an ordinary nil and is reported as an invalid
-		// data finding. A stray `]` took the throwing path instead and
-		// came back as a broken SCHEMA -- the same fault, classified
-		// two opposite ways by which branch the parser happened to
-		// take.
 		return VetReport{
 			Verdict:   VetInvalid,
 			Truncated: false,
 			Findings:  []VetFinding{parseFinding(dataURL, VetRoleData, derr)},
 		}
 	}
-	// STAMP THE WHOLE SETTLED SCHEMA, not just the lifted anchor.
-	// Without `--at` these are the same tree. With it, the anchor is a
-	// subtree and the rest of the schema is still REACHABLE from inside
-	// it -- a `%alias` declaration or a recursive residual's target, both
-	// of which the meet resolves through ctx.fixroot (ref.go, recurse.go).
-	// A node reached that way but never stamped carries no url, and the
-	// report's own rule is that a site whose file the run holds no text
-	// for answers -1:-1 -- so the finding named the right path and could
-	// not point at the schema text it came from (BUGS.md §59).
-	// stampURL only fills a url that is EMPTY, so stamping the superset
-	// never renames a value that came through an include.
 	stampURL(schemaVal, schemaURL)
 	dataURLs := stampURL(dataVal, dataURL)
 	// The projection every site in this report goes through: roles by
@@ -907,16 +533,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		dataPath:   options.DataPath,
 	}
 
-	// COVERAGE IS MEASURED BEFORE THE MEET (G11 phase 5), because the
-	// meet CONSUMES its operands: parsed trees are single-use, and
-	// under --at the anchor itself is the left operand. Measuring after
-	// would read a tree the fixpoint had already rewritten.
-	//
-	// The data side is its own evaluation rather than the parse above,
-	// so a document that reaches its values through `@"..."` or a
-	// reference is measured on the paths it actually has. It is one
-	// more evaluation of one document, and it happens only when asked
-	// for. Mirrors ts/src/vet.ts.
 	var coverage *VetCoverage
 	if options.Coverage {
 		measured := dataVal
@@ -937,11 +553,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		coverage = &got
 	}
 
-	// `--closed` sets the flag close() itself sets, rather than wrapping
-	// the anchor in a close() call: the anchor is an already-evaluated
-	// tree, and a func value would have to resolve again to have any
-	// effect. A scalar anchor has no keys to close, so the flag is only
-	// meaningful on a bag.
 	if options.Closed {
 		switch n := anchor.(type) {
 		case *MapVal:
@@ -951,25 +562,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		}
 	}
 
-	// THE MEET IS FROM A FRESH PARSE, NOT THE SETTLED SCHEMA (the
-	// review's finding C, use-cases/BUGS.md §15). The full note is on
-	// the twin in ts/src/vet.ts; the short of it: step 1 evaluated the
-	// schema ALONE to decide whether it stands up, and that settled tree
-	// was also the left side of the meet -- so every reference in the
-	// schema had already resolved against the schema's own values and
-	// been replaced by them. `a:integer b:$.a` settled to
-	// `a:integer b:integer`, and data {a:3,b:4} then vetted VALID, while
-	// the same four lines as one document refuse with scalar_value.
-	// Parsing again is what makes vet(S,D) and eval(S u D) the same
-	// question. Parsed trees are single-use, hence a second parse.
-	//
-	// ONLY WHEN THERE IS NO --at. An anchor is a SUBTREE lifted out of
-	// the schema, and an absolute reference inside it ($.OrderPlaced,
-	// the discriminated-union idiom) names a sibling of the document
-	// root -- which the lifted subtree no longer has. The settled tree
-	// is where those references have already been resolved and
-	// substituted, so an anchored run keeps meeting that, exactly as it
-	// always has.
 	meetAnchor := anchor
 	if "" == options.At {
 		if freshSchema, ferr := schemaA.Parse(schemaSrc); nil == ferr {
@@ -987,32 +579,14 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	}
 
 	pair := newConjunct([]Val{meetAnchor, dataVal})
-	// AND THE MEET STANDS AT THE ANCHOR'S OWN PATH, so a finding minted
-	// on the meet itself sits in the schema's namespace ($.Event)
-	// rather than at the lifted root ($) -- the findings carried on
-	// the settled anchor's stored paths already do. Mirrors the
-	// `ctx.path = options.at...` assignment in ts/src/vet.ts.
 	pair.path = anchorSegs(options.At)
 	ctx := &Ctx{root: pair, src: dataSrc, collect: true}
 	if "" != options.At {
-		// A RECURSIVE residual inside the lifted anchor still names its
-		// definition by absolute path (`then?: $.spec.Step` -- the
-		// fixpoint, RECURSION.0.md), and the meet's root is the anchored
-		// subtree, which does not contain `$.spec`. Without a tree to
-		// walk, the residual held its peer forever and everything under
-		// a recursive field vetted VALID unchecked. The settled schema
-		// root is kept on the meet context for exactly that walk
-		// (Ctx.fixroot; RecurseVal.body falls back to it).
 		ctx.fixroot = schemaVal
 	}
 	unified := unifyRoot(pair, ctx)
 	ctx.root = unified
 
-	// The two entry texts, plus the text of every source either side
-	// READ through an include. A site now names the file it came from
-	// (finding F), and the row and column are offsets into THAT file's
-	// text -- so a report that held only the two entry texts could
-	// answer -1:-1 for every included value, which is honest but useless.
 	sources := vetSources{schemaURL: schemaSrc, dataURL: dataSrc}
 	for _, a := range []*Aontu{schemaA, dataA} {
 		for path, text := range a.IncludeText {
@@ -1020,15 +594,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		}
 	}
 
-	// 4. Contradictions: every NilVal standing in the result, PLUS the
-	//    ones that never made it into the tree.
-	//
-	// The second half is not belt-and-braces. When a parent collapses to
-	// a nil the whole subtree goes with it, so `service: close({...})`
-	// meeting a typo AND a kind conflict leaves ONE nil in the tree and
-	// reports the other only on the context — the verb's own motivating
-	// example, reporting half of what it found. Check does the same
-	// union for the same reason (check.go); dedup is by identity.
 	var nils []*NilVal
 	seen := map[Val]bool{}
 	collectNils(unified, &nils, seen)
@@ -1044,41 +609,16 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		findings = append(findings, findingOf(n, prov, sources))
 	}
 
-	// 5. Incompleteness: what is left standing that cannot generate. The
-	//    generate check runs in its own collect context so nothing it
-	//    raises reaches the caller's error list, and so a schema that is
-	//    merely unsatisfied does not look like one that is contradicted.
-	//    The returned error is deliberately dropped: under collect the
-	//    reasons are recorded on the context, which is the whole point
-	//    of the mode.
-	// Under --at the probe descends through the OUTPUT marks: the
-	// caller named this node as the truth to validate against, so a
-	// type() or hide() on it (or propagated into it) is not a reason
-	// to check nothing. See Ctx.probe.
 	genCtx := &Ctx{root: unified, src: dataSrc, collect: true,
 		probe: "" != options.At}
 	_, _ = unified.Gen(genCtx)
 	for _, e := range genCtx.err {
-		// A CONFLICT RAISED AT GENERATION COUNTS TOO (the review's
-		// finding C, use-cases/BUGS.md §16). The filter used to keep the
-		// `incomplete` class alone, on the reading that the meet had
-		// already found every contradiction -- true while every conflict
-		// was decided during the meet, and untrue since a sizing atom or
-		// a container `must` may hold a PROVISIONAL reading until
-		// generation, which is where no more members can arrive.
-		// Mirrors ts/src/vet.ts.
 		if "incomplete" == e.Class() || "conflict" == e.Class() {
 			findings = append(findings, findingOf(e, prov, sources))
 		}
 	}
 	findings = append(findings, lintFindings...)
 
-	// 5b. Deprecation warnings (G3 phase 4): a value that carries the
-	//     deprecate() record after the meet was USED — the data met a
-	//     deprecated schema value, or the schema's own default will
-	//     generate one. Severity `warning` (the slot G2 reserved for
-	//     exactly this mark), and warnings never touch the verdict
-	//     below. Mirrors the walkDeprecated pass in ts/src/vet.ts.
 	for _, d := range collectDeprecatedVals(unified) {
 		rec := d.v.deprecRec()
 		msg := "deprecated"
@@ -1114,27 +654,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		ordered = append(ordered, findings[j])
 	}
 
-	// ONE CAUSE, ONE FINDING. A reference resolves by CLONING its
-	// target, so a target that later fails can fail once per referrer —
-	// same code, same two source sites, a different path each time.
-	// Multi-pass collection (G2 phase 6) made this reachable: the pass
-	// loop now continues past the erroring pass, so the clones' own
-	// folds run too. The dedup key is the CODE plus the SITES (file,
-	// row, col, role, value): two findings that name the same meet of
-	// the same two source positions are one contradiction observed from
-	// two paths. The key is NOT (code, path) — the design's sketch —
-	// because the paths are exactly what differ. Sorted order makes the
-	// kept finding the first by data site then path, deterministically
-	// in both ports. NUL-joined, like the order key: no field can
-	// contain one, so the key cannot collide across field boundaries.
-	//
-	// THE KEPT PATH IS THE DEEPEST one (use-cases/BUGS.md §41). A meet
-	// that fails inside a REFERENCED map is recorded twice: once at the
-	// key that actually conflicts, and once at the enclosing map, which
-	// collapsed as a consequence and carries the child's two sites. Both
-	// are the same cause; only the deeper one names the field an author
-	// or an agent has to edit. Depth first, then the sort order above,
-	// so the choice stays deterministic in both ports.
 	causeOf := func(f VetFinding) string {
 		cause := f.Code
 		for _, s := range f.Sites {
@@ -1171,21 +690,6 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		kept = ordered[:maxErrors]
 	}
 
-	// 6. The verdict derives from finding CLASSES, never from codes, so
-	//    a new code can never change exit behaviour.
-	//
-	// BY CLASS, NOT BY STAGE. The split used to be positional --
-	// whatever step 4 found counted as contradiction and whatever step 5
-	// added counted as incompleteness -- which stopped being true when a
-	// sizing atom or a container `must` began holding a provisional
-	// reading until generation (the review's finding C,
-	// use-cases/BUGS.md §16). A CONTRADICTION found at generation is
-	// still a contradiction.
-	//
-	// So: an error-severity finding that is not INCOMPLETENESS makes the
-	// document invalid, wherever it was found. Warnings (the `compat`
-	// class: lint and deprecation) never touch the verdict. Mirrors vet
-	// in ts/src/vet.ts.
 	errors := 0
 	unmet := 0
 	for _, f := range ordered {

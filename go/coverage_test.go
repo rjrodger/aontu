@@ -2,13 +2,6 @@
 
 package aontu
 
-// Direct unit tests for engine paths a shared spec row cannot reach:
-// comparison-internal branches (binary64 infinities never constructible
-// from source), defensive contracts (ExpectVal.Gen's deliberate
-// silence), tooling walks (Check/Spans over every Val kind), and small
-// plumbing helpers. Everything reachable FROM SOURCE is pinned by
-// shared rows instead (test/spec/*.tsv, edge.tsv in particular); these
-// tests exist for the remainder, per docs/test-coverage.md.
 
 import (
 	"math"
@@ -20,10 +13,6 @@ import (
 	jsonic "github.com/tabnas/jsonic/go"
 )
 
-// The binary64 infinities order below/above everything finite and are
-// equal to themselves. No aontu source constructs an infinite float
-// (1e999 is a not_number error), so the scaled-comparison branches are
-// pinned here, not by rows.
 func TestScaledInfinities(t *testing.T) {
 	pinf := scaledOfFloat(math.Inf(1))
 	ninf := scaledOfFloat(math.Inf(-1))
@@ -50,7 +39,6 @@ func TestScaledSubnormalAndAlignment(t *testing.T) {
 	if s.inf != 0 || s.unscaled.Sign() != 1 || s.scale != 1074 {
 		t.Fatalf("subnormal conversion: %+v", s)
 	}
-	// 0.5 (scale 1) vs 0.25 (scale 2): alignment in both directions.
 	a, b := scaledOfFloat(0.5), scaledOfFloat(0.25)
 	if cmpScaled(a, b) != 1 || cmpScaled(b, a) != -1 {
 		t.Fatalf("scale alignment broken")
@@ -66,10 +54,6 @@ func TestTowerRankDirect(t *testing.T) {
 	}
 }
 
-// ExpectVal.Gen is deliberately silent dead code (the bag-level Gen
-// intercepts expect children first, in both ports); the contract that
-// it stays silent is pinned here. superior() is TOP, like every
-// residual feature.
 func TestExpectValContracts(t *testing.T) {
 	e := &ExpectVal{peg: newScalarKind(KindString)}
 	v, err := e.Gen(nil)
@@ -82,16 +66,12 @@ func TestExpectValContracts(t *testing.T) {
 	if isExpect(newTop()) {
 		t.Fatalf("isExpect(top) must be false")
 	}
-	// A TOP peer leaves the expect pending-but-done.
 	out := e.Unify(top(), nil)
 	if out != Val(e) || out.Dc() != DONE {
 		t.Fatalf("top peer must keep the expect, done")
 	}
 }
 
-// listval_spread_required is registered vocabulary with NO source-level
-// raise site in either port (only maps create expects). The branch is
-// the mirrored BagVal.gen shape; pin its message contract directly.
 func TestListSpreadRequiredBranch(t *testing.T) {
 	parent := newMap()
 	parent.sp = 3
@@ -181,7 +161,6 @@ func TestPlumbingHelpers(t *testing.T) {
 	if d.String() != "1.5" {
 		t.Fatalf("Decimal.String: %q", d.String())
 	}
-	// codeClass prefix families: op[ is conflict, var[/ref[ reference.
 	if codeClass("op[+]") != "conflict" || codeClass("var[x") != "reference" ||
 		codeClass("ref[x") != "reference" {
 		t.Fatalf("codeClass prefixes")
@@ -209,9 +188,6 @@ func TestTopAndNilContracts(t *testing.T) {
 	}
 }
 
-// The parse-depth bound: >10000 nested lists is a clean max_depth
-// error at parse — the iterative valTreeDepth guard (the recursive
-// walkers rely on it; see maxNodeDepth).
 func TestMaxDepthGuard(t *testing.T) {
 	n := maxNodeDepth + 2
 	src := "a:" + strings.Repeat("[", n) + "1" + strings.Repeat("]", n)
@@ -283,8 +259,6 @@ func TestResidualUnifyIdentity(t *testing.T) {
 	}
 }
 
-// A deferring reference meeting a NIL peer or its own spelling (the
-// found==nil and found-is-ref defer arms).
 func TestRefDeferPeers(t *testing.T) {
 	// A pending (not-done) node mid-path makes find defer (return nil),
 	// reaching the defer arms.
@@ -340,9 +314,6 @@ func TestRefAppendAndVarPlumbing(t *testing.T) {
 	}
 }
 
-// pathEq, direct. (keyArgVal went with G8 phase 1: the residuation
-// twin check compares canon, which the two ports already agree on,
-// rather than a key()-specific argument comparison.)
 func TestFuncHelpers(t *testing.T) {
 	if pathEq([]string{"a"}, []string{"a", "b"}) || !pathEq([]string{"a"}, []string{"a"}) ||
 		pathEq([]string{"a"}, []string{"b"}) {
@@ -350,15 +321,10 @@ func TestFuncHelpers(t *testing.T) {
 	}
 }
 
-// PlusOpVal.Gen is the no_gen residue contract (a root-level `1+$.x`
-// that never resolves reports differently per port — the Gen itself is
-// the Go classification site).
 func TestPlusOpGen(t *testing.T) {
 	o := newPlusOp(numberVal(1, "1", -1), numberVal(2, "2", -1))
 	_, err := o.Gen(nil)
 	ae, ok := err.(*AontuError)
-	// `op`, not `no_gen`: a residual operator is what TS's OpBaseVal.gen
-	// raises, and only the root position reaches this method (issue #38).
 	if !ok || ae.Code != "op" {
 		t.Fatalf("PlusOp.Gen: %v", err)
 	}
@@ -413,9 +379,6 @@ func TestCheckParseError(t *testing.T) {
 	}
 }
 
-// Constraint internals no source reaches: the NaN guard (no literal
-// spells NaN), mixed-domain scalar identity, direct nil/top peers on a
-// residual, and tighterBound's one-sided arms.
 func TestConstraintInternals(t *testing.T) {
 	nan := numberVal(math.NaN(), "", -1).(*ScalarVal)
 	if sv, d := orderableScalar(nan); sv != nil || d != "" {
@@ -459,9 +422,6 @@ func TestClonePrefAndRefFlags(t *testing.T) {
 	}
 }
 
-// PrefVal.Unify's direct nil-peer arm (unite short-circuits nils
-// before PrefVal sees them, so only a direct call reaches it), and
-// Gen of an unresolved pref.
 func TestPrefDirectArms(t *testing.T) {
 	p := &PrefVal{peg: numberVal(1, "1", -1)}
 	if out := p.Unify(newNil("x"), &Ctx{}); !out.Nil() {
@@ -488,9 +448,6 @@ func TestConjunctDirectArms(t *testing.T) {
 	}
 }
 
-// Kind.String's fallback, formatNumber's non-finite renderings (only
-// the exported NewNumber constructor can build them), and the sprOf
-// default.
 func TestScalarRenderingEdges(t *testing.T) {
 	if Kind(99).String() != "top" || KindNil.String() != "nil" {
 		t.Fatalf("kind string fallbacks")
@@ -552,9 +509,6 @@ func TestExpectSecondPeer(t *testing.T) {
 	e := &ExpectVal{peg: newScalarKind(KindInteger)}
 	ctx := &Ctx{root: newMap()}
 	out1 := e.Unify(newScalarKind(KindNumber), ctx)
-	// Unify is PURE (the unequal-spread crosswire, BUGS.md §6-§7): a
-	// non-escaping peer rides a NEW expectation while the met node —
-	// possibly a shared spread template's child — stays untouched.
 	e1, ok := out1.(*ExpectVal)
 	if !ok || e1 == e || e1.peer == nil {
 		t.Fatalf("kind peer must not escape, and its state must ride a new node: %v", out1.Canon())
@@ -598,9 +552,6 @@ func TestPlusAddArms(t *testing.T) {
 	}
 }
 
-// resolve's unknown-name fallback (every funcSet name has a resolve
-// case; the fallback guards a registry/resolve drift, reachable only
-// directly).
 func TestKeyArgAndResolveFallback(t *testing.T) {
 	bad := newFunc("min", []Val{})
 	ctx := &Ctx{root: newMap()}
@@ -699,11 +650,6 @@ func TestAsValExprWrappers(t *testing.T) {
 	}
 }
 
-// frameFile's two degenerate answers. A frame names a file a reader
-// can open, which means the working directory's own prefix comes off
-// -- and when nothing is left of the path but that prefix, there is no
-// file to name. Both arms are TypeScript's, in resolveFile
-// (ts/src/err.ts): `out === cwd || ” === out ? '<no-file>' : out`.
 func TestFrameFileDegenerate(t *testing.T) {
 	cwd, err := os.Getwd()
 	if nil != err {

@@ -7,20 +7,15 @@ const lower_1 = require("../lower");
 const MapVal_1 = require("./MapVal");
 const StringVal_1 = require("./StringVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
-// The styles, and the map's keys. The first five are `caseName`'s --
-// `aontu:profile`'s `%case` vocabulary, shared with the renderer --
-// and the last four are nom's own (see the note above). `as-is` is
-// not among them: it is the profile's way of saying "do nothing",
-// which is not a spelling anyone asks a namer for.
 const NOM_STYLES = [
     'camel', // userId
-    'dot', // user.id
-    'kebab', // user-id
+    'dot',
+    'kebab',
     'pascal', // UserId
-    'path', // user/id
-    'snake', // user_id
-    'text', // User id
-    'title', // User Id
+    'path',
+    'snake',
+    'text',
+    'title',
     'upper', // USER_ID
 ];
 exports.NOM_STYLES = NOM_STYLES;
@@ -38,18 +33,7 @@ const CASENAME_STYLES = {
 // One name in one style, or undefined when the style is not one, or
 // when the name holds no words at all.
 function styleName(name, style, acronyms) {
-    // `.` and `/` are nom's separators, folded before the shared
-    // splitter is asked (see the note above). Everything else that is
-    // not a separator is word content: a `$` or a `@` rides into the
-    // word it sits in, which is why `nom` renames a spelled path's
-    // text and does not tidy it.
     const src = name.replace(/[./]/g, '_');
-    // A NAME WITH NO WORDS IS NOT A NAME, and it is refused in every
-    // style. `caseName` answers its INPUT for one (it is lowering a
-    // declaration, where the name has already been vetted), so
-    // `nom("_", pascal)` came back as `"_"` while `nom("_")`
-    // refused -- the same argument, accepted by one spelling of the
-    // call and refused by the other.
     const words = (0, lower_1.splitWords)(src);
     if (0 === words.length) {
         return undefined;
@@ -68,14 +52,6 @@ function styleName(name, style, acronyms) {
         return words.map((w) => (0, lower_1.capitalise)(w, acronyms)).join(' ');
     }
     if ('text' === style) {
-        // Sentence case: the first word capitalised, the rest lower --
-        // EXCEPT an acronym, which stays one, because `ledger id` loses
-        // what `ID` was. Membership in the set decides that, not how the
-        // input happened to spell the word: asking whether `capitalise`
-        // changed it made `nom("ledgerId", text, [ID])` answer
-        // `Ledger id` while `nom("ledgerID", text, [ID])` answered
-        // `Ledger ID` -- the same name, two answers, decided by its
-        // source spelling, which is the one thing a namer must not do.
         const isAcronym = (w) => acronyms.some((a) => (0, lower_1.lowerASCII)(a) === (0, lower_1.lowerASCII)(w));
         return [(0, lower_1.capitalise)(words[0], acronyms)]
             .concat(words.slice(1).map((w) => isAcronym(w) ? (0, lower_1.capitalise)(w, acronyms) : (0, lower_1.lowerASCII)(w)))
@@ -126,11 +102,6 @@ class NomFuncVal extends FuncBaseVal_1.FuncBaseVal {
         if (undefined === name || '' === name) {
             return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[0], 'name');
         }
-        // THE SECOND ARGUMENT SAYS WHICH OF THE FOUR CALLS THIS IS, by
-        // its shape rather than by its position: a STRING is the style, a
-        // LIST is the acronym set. The same rule the component primitives
-        // read their spec by, and it is what keeps the acronym set
-        // reachable from the map form without a placeholder argument.
         let style;
         let acronyms = [];
         if (2 <= args.length) {
@@ -167,9 +138,6 @@ class NomFuncVal extends FuncBaseVal_1.FuncBaseVal {
             }
             return this.place(new StringVal_1.StringVal({ peg: out }, ctx));
         }
-        // Every style: the map. Closed, because the nine keys ARE the
-        // vocabulary and a tenth is a typo -- `nom($.n).pascel` is
-        // refused where every other mistake in an aontu document is.
         const peg = {};
         for (const s of NOM_STYLES) {
             const out = styleName(name, s, acronyms);

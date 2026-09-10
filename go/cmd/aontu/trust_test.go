@@ -133,14 +133,6 @@ func TestTrustCliStdinNone(t *testing.T) {
 	}
 }
 
-// EVERY VERB, not just the bare command. The capability flags were
-// wired to `aontu <file>` alone, so `aontu vet schema.aon data.json`
-// -- the surface an agent scripts -- ran the full system resolver with
-// no way to confine it (use-cases/REVIEW.md finding G). Each verb is
-// asserted twice: the escape resolves under today's default and is
-// DENIED under --trust none, so a verb that quietly dropped the flag
-// again would fail here. Twin: every-verb-honours-the-capability in
-// ts/test/trust.test.ts.
 func TestTrustCliEveryVerbHonoursTheCapability(t *testing.T) {
 	dir, root, _ := trustCliWorld(t)
 	entry := filepath.Join(root, "leak.aon")
@@ -164,18 +156,6 @@ func TestTrustCliEveryVerbHonoursTheCapability(t *testing.T) {
 		if openCode == shutCode && openOut == shutOut && openErr == shutErr {
 			t.Fatalf("the verb ignored --trust: %s", strings.Join(args, " "))
 		}
-		// The denial itself is named where the verb's report carries a
-		// reason. `relations`, `trim` and `subsume`/`breaking` answer
-		// an `error` verdict whose cause the report shape has nowhere
-		// to put -- the review's finding F, open in both ports
-		// (use-cases/BUGS.md, "relations and trim report verdict:error
-		// with zero findings"). What every verb MUST do is honour the
-		// capability, which the difference above asserts.
-		//
-		// `hash` was exempt here too, on the same grounds, and it no
-		// longer is: it now prints the engine's diagnosis under its
-		// headline in both ports, so it can be held to naming the
-		// denial like everything else.
 		both := shutOut + shutErr
 		if strings.Contains(both, "verdict: error") {
 			return
@@ -202,24 +182,6 @@ func TestTrustCliEveryVerbHonoursTheCapability(t *testing.T) {
 	denied("set", "$.z=1", "--entry", entry, "--overlay", overlay)
 }
 
-// THE OTHER HALF OF THE SAME QUESTION, verb by verb. `--text-ext` is
-// the include option that rides WITH the capability, and it was tested
-// on ONE representative verb -- `get`. That is what let three verbs
-// ship with it dropped: this port's `breaking` refused a `.md` include
-// the canonical port honoured, and the canonical port's `view` and
-// `set` refused one this port read. A representative test proves the
-// road the flag travels, not the engine at the end of it, and every
-// verb has its own engine.
-//
-// Each verb is asserted twice, as above: it REFUSES the include with
-// no flag, and does not refuse it with the flag. The pair is what
-// matters -- an assertion that the flag works, on a verb that never
-// reads the include at all, passes for the wrong reason.
-//
-// `fmt` is absent because it takes neither include option, in either
-// port: it formats source text and self-checks the result, and
-// resolves nothing. `mod` reads a directory rather than a document.
-// Twin: every-verb-honours-the-text-extensions in ts/test/trust.test.ts.
 func TestTrustCliEveryVerbHonoursTheTextExtensions(t *testing.T) {
 	dir := t.TempDir()
 	write := func(path, src string) {
@@ -268,10 +230,6 @@ func TestTrustCliEveryVerbHonoursTheTextExtensions(t *testing.T) {
 	both("agentsmd", entry)
 	both("set", "$.z=1", "--entry", entry, "--overlay", overlay)
 
-	// subsume and breaking answer `verdict: error` for a document that
-	// does not stand up and have nowhere in the report to say why
-	// (use-cases/BUGS.md, the review's finding F), so the refusal is
-	// the verdict rather than a named code.
 	for _, args := range [][]string{
 		{"subsume", schema, entry},
 		{"breaking", "--against", entry, entry},
@@ -397,12 +355,6 @@ func TestTrustCliUsageErrorsExit2(t *testing.T) {
 	}
 }
 
-// A bad spelling is the usage class FROM EVERY VERB, not only from the
-// bare command: each verb strips the flags before parsing its own tail,
-// so each has its own refusal to exercise. Checked against a verb tail
-// that would otherwise be valid, so the exit code is the flag's and not
-// the tail's. Twin: the last two assertions of verbs-take-include-root
-// in ts/test/trust.test.ts.
 func TestTrustCliEveryVerbRefusesABadSpelling(t *testing.T) {
 	_, root, _ := trustCliWorld(t)
 	entry := filepath.Join(root, "main.aon")

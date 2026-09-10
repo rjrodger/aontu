@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The query API around the shared rows (G7 phase 1). What the two
-// ports must AGREE on -- every view, every projection, every refusal
-// code -- is pinned by test/spec/query.tsv, and the PROJECTION
-// PROPERTY (a view subsumes the truth) is asserted there for each of
-// those rows. What is left here is the API's own surface: the finding
-// shape a caller destructures, the option defaults, and the walk's
-// answers for inputs no CLI can produce.
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -53,9 +46,6 @@ describe('query', () => {
       get('a: @"part.aon"', '$.a.k', { path: doc, view: 'canon' }).out, '7')
   })
 
-  // The nearest-key suggestion: close enough to help, or nothing at
-  // all. A wrong suggestion costs more than none, which is why the
-  // cutoff is half the name rather than "the closest sibling wins".
   test('nearest-key-suggests-only-when-close', () => {
     Assert.equal(nearestKey('imag', ['image', 'ports']), 'image')
     Assert.equal(nearestKey('image', []), undefined)

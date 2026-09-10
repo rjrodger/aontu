@@ -45,15 +45,6 @@ const relation_1 = require("../dist/relation");
 const subsume_1 = require("../dist/subsume");
 const aontu_1 = require("../dist/aontu");
 const SCHEMA = 'service: { name: string, port: integer }';
-// THE REPAIR THE REPORT SAYS IS UNSAFE, made safe. A finding's site
-// used to carry a point and no extent, so the only length available to
-// a consumer was the CANON — and canon is not source text. Both halves
-// are asserted here: the span-driven edit is exact, and the
-// canon-driven one corrupts, so the test states what it prevents rather
-// than only that it passes.
-//
-// Status report 2026-08-21 §5, "the manual fallback corrupts files".
-// Twin: TestVetSiteSpanIsSafeToReplace in go/vet_test.go.
 (0, node_test_1.describe)('vet-site-span', () => {
     const DATA = 'port: 0x1F\n';
     const siteOfFirstDataFinding = () => {
@@ -78,23 +69,9 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(replaceAt(site.col, site.len, '9000'), 'port: 9000\n');
     });
     (0, node_test_1.test)('replacing-by-the-canon-length-corrupts', () => {
-        // What a consumer had to do before, and what it produced: the canon
-        // is two characters long, so the edit lands inside the literal and
-        // leaves the rest of it behind.
         const site = siteOfFirstDataFinding();
         Assert.equal(replaceAt(site.col, String(site.value).length, '9000'), 'port: 90001F\n');
     });
-    // THE INVARIANT, over the whole shared suite rather than one case:
-    // a site that carries a span must describe the text at it. Reading
-    // the document at (row, col, len) has to yield exactly `src`.
-    //
-    // This is not decoration. A site whose position and text disagree is
-    // WORSE than a coarse one — a consumer following the verification
-    // contract refuses every repair, and one skipping it edits the wrong
-    // token. The first version of this change shipped exactly that
-    // defect: `close({...})` reported the call's column beside the map's
-    // `{`, so the document at the span read `c`. Found in review of the
-    // pull request, and this is what stops it returning.
     (0, node_test_1.test)('every-span-in-the-suite-describes-its-own-text', () => {
         const specDir = Path.join(__dirname, '..', '..', 'test', 'spec');
         const rows = ['vet.tsv', 'subsume.tsv', 'deprecate.tsv'].flatMap((f) => Fs.readFileSync(Path.join(specDir, f), 'utf8')
@@ -121,9 +98,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
                 continue;
             const schema = unesc(p[2]), data = unesc(p[3]);
             const opts = (JSON.parse(unesc(p[4])) ?? {}).opts;
-            // `subsume` roles the two documents general/specific; `vet` roles
-            // them schema/data. Either way the FIRST column is the first
-            // argument, which is what the role has to select between.
             const report = 'vet' === p[1]
                 ? (0, vet_1.vet)(schema, data, opts)
                 : (0, subsume_1.subsume)(schema, data, opts);
@@ -167,9 +141,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(r.findings[0].class, 'conflict');
         Assert.equal(r.findings[0].path, '$.service.port');
     });
-    // The two negative verdicts are the mechanical answer to error.tsv's
-    // conflation: a contradiction can never be satisfied, incompleteness
-    // merely is not satisfied YET.
     (0, node_test_1.test)('residue-is-incomplete-not-invalid', () => {
         const r = (0, vet_1.vet)(SCHEMA, 'service: { name: "auth" }');
         Assert.equal(r.verdict, 'incomplete');
@@ -188,12 +159,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         const r = (0, vet_1.vet)(SCHEMA, 'service: { name: 1 }');
         Assert.equal(r.verdict, 'invalid');
     });
-    // A broken schema is never blamed on the data — verdict `error`, not
-    // `invalid` — and it is not a bare verdict either: the finding says
-    // what did not stand up and where, and BOTH sites name the schema.
-    // The sites are the failure's OPERANDS, which the provenance walk
-    // reaches only because it descends into a nil (ts/src/walk.ts);
-    // without that the report named no file at all.
     (0, node_test_1.test)('broken-schema-is-never-blamed-on-data', () => {
         const r = (0, vet_1.vet)('a: 1\na: 2', 'a: 1');
         Assert.equal(r.verdict, 'error');
@@ -213,11 +178,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(f.sites[1].row, 1);
         Assert.equal(f.sites[1].col, 4);
     });
-    // A data document that will not parse is the DATA's fault: `invalid`
-    // with a finding carrying the parser's own code, not `error`, which
-    // is the schema's verdict. The engine already answered it this way
-    // one character earlier — a refused CONSTRUCT reaches the tree as an
-    // ordinary nil (see an-operandless-nil-reports-about-itself).
     (0, node_test_1.test)('unparseable-data-is-invalid-not-an-error-verdict', () => {
         const r = (0, vet_1.vet)(SCHEMA, 'a: ]');
         Assert.equal(r.verdict, 'invalid');
@@ -229,9 +189,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(f.sites.length, 1);
         Assert.equal(f.sites[0].role, 'data');
         Assert.equal(f.sites[0].value, 'nil');
-        // No terminal escapes in a machine-readable report: the parser
-        // colours its own marker, and this is the one finding family whose
-        // text comes from there.
         Assert.ok(!f.message.includes('\u001b'));
         Assert.ok(f.message.startsWith('[aontu/'));
     });
@@ -243,10 +200,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(r.findings[0].sites[0].row, 2);
         Assert.equal(r.findings[0].sites[0].col, 1);
     });
-    // The SCHEMA side keeps the error verdict: exit 4 means the run
-    // could not be set up from the truth's side, and nothing else. It
-    // reports through the same projection unparseable data does, with
-    // the role and the verdict as the only difference.
     (0, node_test_1.test)('unparseable-schema-is-still-an-error-verdict', () => {
         const r = (0, vet_1.vet)('a: ]', 'a: 1');
         Assert.equal(r.verdict, 'error');
@@ -310,10 +263,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(f.expected, '"gold"|"silver"');
         Assert.equal(f.actual, '"lead"');
     });
-    // A nil built during the PARSE of a document has no operands and
-    // never passes through the unify error path, so both of its report
-    // fields have to be filled in by vet itself: the site (about the nil
-    // itself) and the message (materialised on demand).
     (0, node_test_1.test)('an-operandless-nil-reports-about-itself', () => {
         const r = (0, vet_1.vet)('a: integer', 'a: 9007199254740993');
         Assert.equal(r.verdict, 'invalid');
@@ -324,10 +273,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(f.sites[0].value, 'nil');
         Assert.ok(f.message.startsWith('[aontu/lossy_integer_literal]'));
     });
-    // The incomplete half of a report comes from the generate check,
-    // which never renders its own text: without materialisation these
-    // findings carried an empty message while the conflicts carried a
-    // headline.
     (0, node_test_1.test)('an-incomplete-finding-carries-its-message', () => {
         const r = (0, vet_1.vet)(SCHEMA, 'service: { name: "auth" }');
         Assert.equal(r.findings[0].message, '[aontu/mapval_no_gen]: Cannot resolve value at path $.service.port');
@@ -348,12 +293,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(r.verdict, 'invalid');
         Assert.equal(r.findings[0].path, '$');
     });
-    // The spread constraint lives off-peg, so this is only reachable by
-    // following it. The finding lands on the INSTANCE -- `$.services.auth.port`,
-    // the field a repair loop has to edit -- and not on the template the
-    // conflict nil was created against. It named the template until the
-    // meet-path fix (ADR-030): a meet of two operands is attributed to the
-    // slot it was driven at, which for a spread is the instance position.
     (0, node_test_1.test)('conflict-inside-a-spread-template-is-found', () => {
         const r = (0, vet_1.vet)('services: &: { port: integer }', 'services: { auth: { port: "80" } }');
         Assert.equal(r.verdict, 'invalid');
@@ -363,8 +302,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
     });
 });
 (0, node_test_1.describe)('vet-ordering-and-limits', () => {
-    // Two independent conflicts DO collect in one pass, so ordering is
-    // observable without waiting for phase 6.
     (0, node_test_1.test)('findings-are-sorted-by-data-site-then-code', () => {
         const r = (0, vet_1.vet)('a: integer\nb: integer\nc: integer', 'c: "z"\na: "x"\nb: "y"');
         Assert.equal(r.findings.length, 3);
@@ -401,13 +338,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         const r = (0, vet_1.vet)(SCHEMA, 'service: { name: "auth", port: 8080 }', { at: '$' });
         Assert.equal(r.verdict, 'valid');
     });
-    // A recursive residual inside the lifted anchor names its
-    // definition by ABSOLUTE path (`next?: $.spec.Node`,
-    // RECURSION.0.md), and the anchored meet's root is the subtree --
-    // which holds no `$.spec`. Before the meet context kept the settled
-    // schema root for the residual's walk (_fixroot), the residual held
-    // its peer forever and BAD DATA AT DEPTH VETTED VALID; the depth-0
-    // fields were checked, everything under `next` was not.
     (0, node_test_1.test)('at-expands-a-recursive-schema-at-depth', () => {
         const schema = 'spec: hide({ Node: { v: integer, next?: $.spec.Node } })';
         const good = (0, vet_1.vet)(schema, '{"v":1,"next":{"v":2,"next":{"v":3}}}', { at: '$.spec.Node' });
@@ -415,16 +345,8 @@ const SCHEMA = 'service: { name: string, port: integer }';
         const bad = (0, vet_1.vet)(schema, '{"v":1,"next":{"v":"x"}}', { at: '$.spec.Node' });
         Assert.equal(bad.verdict, 'invalid');
         Assert.equal(bad.findings[0].code, 'no_scalar_unify');
-        // In the schema's own namespace, as every anchored finding is --
-        // the expansion clone is rebased to the residual's slot, so no
-        // definition segment leaks into the middle of the path (the
-        // default rebase reported `$.next.Node.v` here).
         Assert.equal(bad.findings[0].path, '$.spec.Node.next.v');
     });
-    // …AND IT SAYS WHICH SEGMENT. The verdict alone left a caller
-    // holding exit 4 and an empty finding list, which is nothing to act
-    // on; the refusal is the one `get` and `why` already give for a path
-    // that names nothing, "did you mean" included.
     (0, node_test_1.test)('an-anchor-that-does-not-exist-is-an-error-verdict', () => {
         const r = (0, vet_1.vet)(SCHEMA, 'a: 1', { at: '$.nope' });
         Assert.equal(r.verdict, 'error');
@@ -439,11 +361,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         const r = (0, vet_1.vet)(SCHEMA, 'a: 1', { at: '$.servce' });
         Assert.equal(r.findings[0].note, 'did you mean service?');
     });
-    // An anchor is a STRUCTURAL path: map keys and list indices. Reading
-    // it off whatever a value's peg held walked into a junction's
-    // branches, a constraint's own arguments and an array's `length` —
-    // the last handing back a JavaScript number, after which everything
-    // validated.
     (0, node_test_1.test)('an-anchor-descends-only-through-bags', () => {
         Assert.equal((0, vet_1.vet)('a: 1|2', '1', { at: '$.a.0' }).verdict, 'error');
         Assert.equal((0, vet_1.vet)('a: min(2)', '3', { at: '$.a.0' }).verdict, 'error');
@@ -457,9 +374,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         const r = (0, vet_1.vet)('a: 1', 'x: 1', { at: '$.a.b' });
         Assert.equal(r.verdict, 'error');
     });
-    // `--closed` closes the ANCHOR, so a surplus key is only refused at
-    // the level the run is anchored on: an unanchored run closes the
-    // root, which says nothing about keys nested below it.
     (0, node_test_1.test)('closed-closes-the-anchor-for-this-run', () => {
         const open = (0, vet_1.vet)('service: { name: string }', 'service: { name: "auth" }\nextra: 1');
         Assert.equal(open.verdict, 'valid');
@@ -487,35 +401,16 @@ const SCHEMA = 'service: { name: string, port: integer }';
         const r = (0, aontu_1.vet)('a: integer', 'a: 1');
         Assert.equal(r.verdict, 'valid');
     });
-    // `schemaPath` and `dataPath` are the two documents' OWN bases: a
-    // relative `@"file"` load inside either resolves from the directory
-    // holding it, not from the process working directory -- which is
-    // neither document's home, and may hold a same-named decoy. The two
-    // paths are separate because the documents need not live together.
     (0, node_test_1.test)('each-document-resolves-its-own-includes', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-base-'));
         Fs.writeFileSync(Path.join(dir, 'part.aon'), 'port: integer');
-        // The document is passed as TEXT and its path only says where it
-        // came from -- but the loader resolves the base against a real
-        // directory, so the file has to be there, which for every caller
-        // that read the text out of it already is.
         const src = '@"part.aon"\nname: string';
         const data = 'name: "auth"\nport: 8080';
         const schemaPath = Path.join(dir, 'schema.aon');
         Fs.writeFileSync(schemaPath, src);
         Assert.equal((0, vet_1.vet)(src, data, { schemaPath }).verdict, 'valid');
-        // Without the base the include is looked for beside the test
-        // process instead, where there is no part.aon: a schema that will
-        // not stand up is an `error` verdict, never the data's fault.
         Assert.equal((0, vet_1.vet)(src, data).verdict, 'error');
     });
-    // EVERY SITE NAMES THE FILE WHOSE TEXT IT EXCERPTS (the review's
-    // finding F, use-cases/BUGS.md §25). Vet stamped the ENTRY document's
-    // name over every value of both trees, so a constraint written in an
-    // included library was reported at the entry file, with the LIBRARY's
-    // row and column -- a line the entry may not even have. A repair
-    // agent that follows the site edits the wrong file. Twin:
-    // TestVetSiteNamesTheIncludedFile in go/vet_test.go.
     (0, node_test_1.test)('a-site-names-the-file-its-text-lives-in', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-site-'));
         Fs.mkdirSync(Path.join(dir, 'lib'));
@@ -543,10 +438,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.ok(null != dataSite, JSON.stringify(r.findings[0]));
         Assert.equal(dataSite.file, dataPath);
     });
-    // An INCLUDED DATA file is still data. The role used to be a string
-    // comparison against the data entry's name, so a value read through
-    // an include of the data document would have read `schema` the
-    // moment its site named the file it really came from.
     (0, node_test_1.test)('an-included-data-file-is-still-data', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-drole-'));
         const part = Path.join(dir, 'part.aon');
@@ -577,12 +468,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
     });
 });
 (0, node_test_1.describe)('vet-hint', () => {
-    // THE REPAIR, NOT JUST THE DIAGNOSIS (the review's finding F). The
-    // message is the headline and nothing else -- that is what makes it
-    // one line and comparable -- so everything the engine knows about
-    // how to FIX the failure reached a terminal reader in the frames and
-    // a machine reader not at all. The Go twin is TestVetFindingCarries
-    // TheHint.
     (0, node_test_1.test)('a-finding-carries-the-repair-hint', () => {
         // The clearest case in the language: the literal is refused
         // BECAUSE binary64 would round it, and the fix is a one-character
@@ -596,9 +481,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.ok(null != hint, 'no hint on ' + JSON.stringify(f));
         Assert.ok(hint.includes('0d'), 'hint does not name the escape:\n' + hint);
         Assert.ok(hint.includes('\n'), 'hint was truncated to one line:\n' + hint);
-        // Trailing whitespace was spacing for the frame that used to
-        // follow the hint; the deliberate blank lines inside it are
-        // `\n \n` and must survive.
         Assert.equal(hint, hint.replace(/\s+$/, ''));
         Assert.ok(hint.includes('\n \n'), 'hint lost its internal spacing');
     });
@@ -613,14 +495,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
     });
 });
 (0, node_test_1.describe)('vet-display-file', () => {
-    // A FILE THE READER CAN OPEN (the review's finding F). The parser
-    // resolves an include to an absolute path -- the right identity (two
-    // documents loading one library by different spellings are one file)
-    // and the wrong name -- so a site prints it as the entry's own
-    // spelling reaches it. Without this a report could not be uploaded as
-    // SARIF, diffed between machines, or read beside the command that
-    // produced it. The Go twin is
-    // TestDisplayFileNamesTheIncludeAsTheEntryReachesIt.
     (0, node_test_1.test)('an-included-file-is-named-as-the-entry-reaches-it', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-name-'));
         Fs.mkdirSync(Path.join(dir, 'lib'));
@@ -655,11 +529,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
     // reach: a caller who passed no path, a url that is not a path, and
     // a document's own name.
     (0, node_test_1.test)('a-name-with-no-base-to-relativise-against-is-left-alone', () => {
-        // A REAL absolute path, from the OS rather than assembled: on
-        // Windows a rooted path is not an absolute one without its drive
-        // letter, so an assembled `\w\proj\lib.aon` would exercise a
-        // different arm of the rule there than here. The Go twin says the
-        // same, and learned it from a Windows CI run.
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-name2-'));
         const abs = Path.join(dir, 'lib.aon');
         const entry = Path.join(dir, 'entry.aon');
@@ -681,10 +550,6 @@ const SCHEMA = 'service: { name: string, port: integer }';
     });
 });
 (0, node_test_1.describe)('verb-errors', () => {
-    // AN `error` VERDICT SAYS WHY (the review's finding F). Both
-    // single-document verbs used to answer an unusable document with an
-    // empty report, which is the one answer a repair loop cannot act on.
-    // The Go twin is TestSingleDocumentVerbsReportWhy.
     (0, node_test_1.test)('trim-and-relations-report-why-they-could-not-run', () => {
         // A document that PARSES and then contradicts itself: the finding
         // is the engine's own, with both operands sited.

@@ -56,13 +56,6 @@ func TestRenderSourceHasNoFilesystemAccess(t *testing.T) {
 	}
 }
 
-// RenderProfile, the library form of --profile <file> (RENDER.0.md D5,
-// §9 item 17): a profile document evaluated as Render evaluates its
-// own, the defaults filled by the vocabulary, and each refusal a
-// finding -- the document that does not parse, does not stand up, is
-// nil outright, or is not a profile. Twin of the renderProfile cases in
-// ts/test/render.test.ts; the verb's own tests drive the same code
-// through the CLI (go/cmd/aontu/render_test.go).
 func TestRenderProfile(t *testing.T) {
 	profile, findings := New().RenderProfile(`aontu: Profile: lang: "text"`)
 	if nil != findings {

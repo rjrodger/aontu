@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The recorder's own surface (ADR-002; the Go side of the
-// coverage3-provenance cases in ts/test/coverage3.test.ts). What the
-// two ports must AGREE on is pinned by test/spec/why.tsv; what is left
-// here is the ordering's last tiebreaks — which no document produces,
-// because a source position holds one value — and the entry-file and
-// trust wiring, which cross-package CLI runs do not count toward this
-// package's coverage.
 
 package aontu
 
@@ -23,9 +16,6 @@ func siteVal(canon, file string, row, col int) Val {
 	return v
 }
 
-// The contribution order has to be TOTAL: a partial one would leave
-// the record's tail in meet order, which is the fixpoint's business
-// and differs between the ports.
 func TestProvenanceOrdersByFileThenCanon(t *testing.T) {
 	prov := newProvenance("", nil)
 	a := siteVal("z", "two.aon", 1, 1)
@@ -70,9 +60,6 @@ func TestProvenanceWrittenFromIsIdempotent(t *testing.T) {
 	prov.writtenFrom(nil)
 }
 
-// Why through an Aontu carrying an entry file name and a trust
-// profile: the file reaches the contribution's site, and the budgets
-// reach the run.
 func TestWhyStampsEntryFileAndCarriesTrust(t *testing.T) {
 	a := New()
 	a.File = "doc.aon"
@@ -88,18 +75,9 @@ func TestWhyStampsEntryFileAndCarriesTrust(t *testing.T) {
 	}
 }
 
-// ONE WRITTEN TOKEN IS ONE CONTRIBUTION (the review's finding E). The
-// same written value reaches a path more than once now that provenance
-// travels through clones -- as the template application and as the
-// value written at the key, or at two stages of narrowing -- and the
-// SITE is what says they are one thing. The role is not part of that
-// identity, so the more informative one survives. The TypeScript twin
-// is `one-written-token-is-one-contribution` in ts/test/why.test.ts.
 func TestProvenanceDeduplicatesBySite(t *testing.T) {
 	prov := newProvenance("", map[string]string{"one.aon": "a: \"x\"\n"})
 
-	// Two values at the SAME token: the written form and a narrowed
-	// one, arriving with different roles.
 	lit := newString("x")
 	lit.surl = "one.aon"
 	lit.sp = 3
@@ -151,16 +129,10 @@ func TestProvenanceRoleRank(t *testing.T) {
 	}
 }
 
-// samePathKids is the containment fact the record is built on, and a
-// PrefVal with no inner value has no children to claim -- a shape no
-// source produces (the parser refuses a bare `*`), so it is asserted
-// here rather than through a row.
 func TestSamePathKidsOfAnEmptyPref(t *testing.T) {
 	if nil != samePathKids(&PrefVal{}) {
 		t.Fatal("an empty pref has no same-path children")
 	}
-	// And a bag's children are NOT same-path: they stand at their own,
-	// deeper paths, which is why containment does not swallow them.
 	m := newMap()
 	m.set("a", newInteger(1))
 	if nil != samePathKids(m) {

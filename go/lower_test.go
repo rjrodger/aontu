@@ -6,14 +6,6 @@ import (
 	"testing"
 )
 
-// The lowering's own arms (docs/design/RENDER.0.md P5): what the
-// vocabulary keeps a spec row from reaching -- a non-ASCII name (the
-// vocabulary's %name is ASCII), a container of a container (a
-// container takes leaves only, so the paren rule has no row), a
-// profile with a lowering and no type forms -- and the word splitter
-// and case styles at their edges. Twin of ts/test/lower.test.ts; what
-// both ports must agree on through the vocabulary is
-// test/spec/render.tsv.
 
 func lowerTestCtx(family string, profile map[string]any) *lowerCtx {
 	p := map[string]any{"lang": family}
@@ -168,9 +160,6 @@ func TestLowerParenRule(t *testing.T) {
 }
 
 func TestLowerBodyPieceWithoutDepth(t *testing.T) {
-	// RenderValue takes an instance the caller built, where the
-	// vocabulary's `at: *0` default has not been filled: a line piece
-	// with no `at` in a function body nests as a line at depth 0 does.
 	profile := bundledProfile("typescript")
 	unit := func(piece any) map[string]any {
 		return map[string]any{"aontu": map[string]any{"Code": map[string]any{"units": []any{map[string]any{

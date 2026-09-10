@@ -19,77 +19,6 @@ import (
 // semverRe matches the since-version column of test/spec/errcodes.tsv.
 var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
-// TestSpec runs the shared, data-driven conformance suite. The test
-// cases live in the top-level test/spec/*.tsv files and are the single
-// source of truth shared with the TypeScript implementation (see
-// ts/test/spec.test.ts). Both implementations must produce identical
-// results.
-//
-// TSV columns (tab-separated): name <TAB> mode <TAB> src <TAB> expect
-//
-//	mode=canon : Unify(src).Canon() must equal expect
-//	mode=gen   : Generate(src) must deep-equal JSON(expect)
-//	mode=gens  : Generate(src) serialised as compact JSON must equal
-//	             expect BYTE FOR BYTE
-//	mode=err   : Generate(src) must error, message must contain expect
-//	mode=errc  : Generate(src) must error, and the FIRST failure's
-//	             why-code (AontuError.Code) must EQUAL expect (message
-//	             text is not in parity; codes are -- see
-//	             test/spec/errcodes.tsv)
-//	mode=errcode : registry row -- name is a code, src its class,
-//	             expect its since-version; asserted against the engine's
-//	             codeClasses table (go/hints.go)
-//	mode=vet   : FIVE columns -- name, vet, schema, data, expect. The
-//	             report of Vet(schema, data) must equal the expect
-//	             object, MINUS each finding's message and hint (prose
-//	             is not in parity; see test/spec/vet.tsv for the whole encoding,
-//	             including the `opts` key)
-//	mode=subsume : FIVE columns -- name, subsume, general, specific,
-//	             expect. The report of Subsume(general, specific) must
-//	             equal the expect object (verdict + findings), MINUS
-//	             each finding's message; see test/spec/subsume.tsv
-//	mode=trim  : TrimCheck(src) must equal the expect object
-//	             ({redundant, verdict}); see test/spec/trim.tsv
-//	mode=jsonschema : JSONSchema(src, "") must equal the expect object
-//	             ({lossy, schema, verdict}) -- the schema AND the loss
-//	             report, because a schema that silently dropped a
-//	             construct would look identical to one that carried it;
-//	             see test/spec/jsonschema.tsv
-//	mode=hcanon : Hcanon(Unify(src)) -- the HASH FORM, canon plus the
-//	             close()/type()/hide() wrappers -- must equal expect,
-//	             and the hash form must round-trip (G6, hcanon.tsv)
-//	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
-//	             `aon1-...` pin, byte-identical across the ports
-//	mode=agentsmd : FIVE columns -- name, agentsmd, src,
-//	             document-name, expect. The stanza of AgentsMd(src,
-//	             {Name}) must match BYTE FOR BYTE; see
-//	             test/spec/agentsmd.tsv
-//	mode=diff  : FIVE columns -- name, diff, left, input, expect. The
-//	             report of Diff(left, right) must match the expect
-//	             object ({changes, same} plus `codes`); the input is
-//	             {right, at?}. See test/spec/diff.tsv
-//	mode=patch : FIVE columns -- name, patch, entry, input, expect.
-//	             The report of Patch(entry, overlay, set) must match
-//	             the expect object ({appended, overlay, verdict} plus
-//	             `codes`); see test/spec/patch.tsv
-//	mode=why   : FIVE columns -- name, why, src, path, expect. The
-//	             record of Why(src, path) must match the expect object
-//	             ({value, conjuncts} or {code, note}); see
-//	             test/spec/why.tsv
-//	mode=query : FIVE columns -- name, query, src, path, expect. The
-//	             report of Get(src, path) must match the expect object
-//	             ({out?, code?, note?}, options riding `opts`), and a
-//	             canon-shaped VIEW must additionally SUBSUME the truth
-//	             it summarises; see test/spec/query.tsv
-//
-// gen vs gens: gen normalises both sides through a JSON decode, which
-// collapses every number to a float64 — so two distinct exact integers
-// above 2^53 compare EQUAL and exactness is unassertable. gens compares
-// the serialised text instead, and is the mode the number tower's exact
-// leaves need (docs/design/number-tower.md, D10). See specGens for the
-// serialisation contract the two runners share.
-//
-// Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
 func TestSpec(t *testing.T) {
 	specDir := filepath.Join("..", "test", "spec")
 	entries, err := os.ReadDir(specDir)
@@ -103,12 +32,6 @@ func TestSpec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fixtures dir: %v", err)
 	}
-	// Use forward slashes even on Windows: this path is spliced into Aontu
-	// source as a quoted @"..." load target, where backslashes would be parsed
-	// as string escapes (\t -> tab, \a -> a, ...) and corrupt the path.
-	// srcPath rather than filepath.ToSlash, so the package has one
-	// spelling of the rule and one that is exercised off Windows too
-	// (trust_test.go, where the full note lives).
 	fixturesDir = srcPath(fixturesDir)
 
 	var files []string
@@ -148,26 +71,10 @@ func TestSpec(t *testing.T) {
 			if 1 < len(parts) {
 				mode = parts[1]
 			}
-			// A vet or subsume row carries TWO documents, so its expect
-			// is the fifth column; every other mode reads four and
-			// ignores any extra (see test/spec/vet.tsv and
-			// test/spec/subsume.tsv for the encodings).
 			vetRow := "vet" == mode || "subsume" == mode || "query" == mode ||
 				"why" == mode || "patch" == mode || "diff" == mode ||
 				"agentsmd" == mode || "fmt-template" == mode ||
 				"fmt-template-lint" == mode
-			// MALFORMED IS LOUD, not skipped. A row short by a column --
-			// a vet row whose expected report was left off, say -- would
-			// otherwise be dropped in silence, and a suite that quietly
-			// runs one row fewer stays green while the behaviour it
-			// claims to pin goes unpinned. The TS runner refuses the
-			// same shapes.
-			//
-			// This, and not a row COUNT, is the guard: a count would
-			// have to be edited by every change that adds a row, and a
-			// number nobody trusts is a number nobody updates honestly.
-			// The only count asserted is that the files were found at
-			// all (the total check after the loop).
 			want := 4
 			if vetRow {
 				want = 5
@@ -188,17 +95,6 @@ func TestSpec(t *testing.T) {
 
 			t.Run(file+":"+name, func(t *testing.T) {
 				a := New()
-				// Files whose rows evaluate under a fixed trust profile
-				// (G5, docs/trust.md): root-confined to the fixtures
-				// directory, the var.tsv precedent of runner-side
-				// configuration. This is also what makes the shared
-				// suite itself HERMETIC: no row may read outside the
-				// repository, in either runner (ts/test/spec.test.ts
-				// applies the same profile to the same files).
-				// Module resolution reads the filesystem (G6 phase 2),
-				// so mod.tsv's rows run under the same fixture root for
-				// the same reason file.tsv's do, and alias.tsv's two
-				// include rows for the same reason again.
 				if "include-trust.tsv" == file || "file.tsv" == file ||
 					"mod.tsv" == file || "alias.tsv" == file || "fmt.tsv" == file {
 					a.Trust = &TrustOptions{IncludeRoot: fixturesDir}
@@ -255,10 +151,6 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("error mismatch\n src:  %q\n want contains: %s\n got:          %s", src, expect, err.Error())
 					}
 				case "errc":
-					// Code parity: the FIRST failure's why-code must EQUAL
-					// expect. Message text is deliberately not in parity
-					// between the ports; the codes in test/spec/errcodes.tsv
-					// are.
 					_, err := a.GenerateVars(src, vars)
 					if err == nil {
 						t.Fatalf("expected error with code %q, got none\n src: %q", expect, src)
@@ -348,14 +240,6 @@ func TestSpec(t *testing.T) {
 					}
 
 				case "fmt-template":
-					// THE FORMATTER OVER A GENERATOR (FMT.0.md §3.14):
-					// the source is a template, `data` is its marker,
-					// and what comes back is a template. Not the
-					// canon-hash leg of `fmt`, which unifies the row's
-					// two sides -- a template is not a document until
-					// it is desugared, and the surface's own rows
-					// (template.tsv) hold that transform. Mirrors the
-					// fmt-template mode of ts/test/spec.test.ts.
 					report := a.FormatWith(src, FormatOptions{Template: data})
 					if "formatted" != report.Verdict {
 						t.Fatalf("does not format: %v\n src: %q", report.Errors, src)
@@ -370,13 +254,6 @@ func TestSpec(t *testing.T) {
 					}
 
 				case "fmt-template-lint":
-					// THE LINT OVER A GENERATOR (§3.14): the findings
-					// of --lint, in the shape the fmt-lint rows pin
-					// them, over a template whose marker is `data`.
-					// What this row is here for is the COLUMN: a site
-					// is in the template, not in the document it
-					// carries. Mirrors the fmt-template-lint mode of
-					// ts/test/spec.test.ts.
 					report := a.FormatWith(src, FormatOptions{Template: data, Lint: true})
 					if "formatted" != report.Verdict {
 						t.Fatalf("does not format: %v\n src: %q", report.Errors, src)
@@ -392,14 +269,6 @@ func TestSpec(t *testing.T) {
 					}
 
 				case "fmt-refuse":
-					// A SOURCE THE FORMATTER REFUSES, pinned so the
-					// refusal is the same one in both ports. The
-					// self-check compares the document written against
-					// the document read and writes NOTHING when they
-					// differ, so a refusal corrupts no file -- but
-					// which sources it refuses is behaviour, and
-					// behaviour is shared. Mirrors the fmt-refuse mode
-					// of ts/test/spec.test.ts.
 					report := a.Format(src)
 					codes := make([]string, 0, len(report.Errors))
 					for _, f := range report.Errors {
@@ -412,14 +281,6 @@ func TestSpec(t *testing.T) {
 					}
 
 				case "fmt-lint":
-					// THE LINT (docs/design/FMT.0.md §4): the style
-					// findings of --lint, each as `line:col: rule:
-					// message` -- the CLI's line without the file name
-					// -- joined by newlines, and empty when there is
-					// none. The formatter never acts on a finding, so
-					// the text is the fmt rows' business, not this
-					// row's. Mirrors the fmt-lint mode of
-					// ts/test/spec.test.ts.
 					report := a.FormatWith(src, FormatOptions{Lint: true})
 					if "formatted" != report.Verdict {
 						t.Fatalf("does not format: %v\n src: %q", report.Errors, src)
@@ -520,10 +381,6 @@ func TestSpec(t *testing.T) {
 					if jerr := json.Unmarshal([]byte(data), &input); jerr != nil {
 						t.Fatalf("bad patch input: %v\n %s", jerr, data)
 					}
-					// inPlace rides the input object, as opts does for
-					// the five-column modes: the overlay and the
-					// assignments are the same two inputs either way,
-					// and the flag is the third.
 					var popts *PatchOptions
 					if input.InPlace {
 						popts = &PatchOptions{InPlace: true}
@@ -553,23 +410,6 @@ func TestSpec(t *testing.T) {
 							specJSON(t, golden), specJSON(t, got))
 					}
 
-					// ORDER-INDEPENDENCE, the property the whole verb
-					// rests on: an overlay entry is just another
-					// conjunct, so entry-against-overlay is the same as
-					// overlay-against-entry.
-					//
-					// IT IS CONDITIONAL ON THE OVERLAY STANDING UP ON
-					// ITS OWN, and the guard used to be `verdict !=
-					// error`, which is not the same test and passed only
-					// because no row had reached the difference.
-					// APPENDING A CONFLICTING VALUE MAKES THE OVERLAY
-					// SELF-CONTRADICTORY -- `a: 1` plus an appended
-					// `"a": 5` is a document that contradicts itself --
-					// and Vet reports a schema that does not stand up as
-					// `error` whatever the data says. That is not a
-					// disagreement about the value: it is the overlay no
-					// longer being a document you could hand to Vet as a
-					// truth. (ts/test/spec.test.ts asserts the same.)
 					_, gerr := New().Generate(pr.Overlay)
 					overlayStandsAlone := nil == gerr
 					if VetError != pr.Verdict && overlayStandsAlone {
@@ -579,22 +419,10 @@ func TestSpec(t *testing.T) {
 						}
 					}
 
-					// AND THE STRONGER PROPERTY IN-PLACE BUYS: a
-					// replacement leaves an overlay that still stands
-					// up, where appending the same value leaves one that
-					// contradicts itself. That is the difference between
-					// repairing a document and layering a correction
-					// over it, and it is why the mode exists.
 					if 0 < len(pr.Replaced) && !overlayStandsAlone {
 						t.Fatalf("in-place left a self-contradicting overlay: %s", name)
 					}
 
-					// IN-PLACE IS NEVER WORSE THAN APPEND. Every
-					// in-place row is run again WITHOUT the flag and
-					// must reach a verdict at least as good -- the whole
-					// safety claim of the mode is that asking for it
-					// cannot turn a run that would have held into one
-					// that does not.
 					if input.InPlace {
 						rank := map[string]int{
 							VetValid: 0, VetIncomplete: 1, VetInvalid: 2, VetError: 3,
@@ -705,13 +533,6 @@ func TestSpec(t *testing.T) {
 							src, want, got)
 					}
 				case "jsonschema":
-					// JSON SCHEMA EXPORT (the review's finding I): the
-					// schema AND the loss report together, because a
-					// schema that silently dropped a construct would look
-					// identical to one that carried it. The envelope
-					// (version, verb) is the CLI's, not the export's, and
-					// is not compared -- the same carve-out every other
-					// report mode takes.
 					var golden map[string]any
 					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
 						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
@@ -733,13 +554,6 @@ func TestSpec(t *testing.T) {
 							src, want, got)
 					}
 				case "reaches":
-					// REACHABILITY OVER THE ENTITY GRAPH (the review's
-					// finding J). The endpoints ride the expect object
-					// under `ask`, because the row's other columns are
-					// already spoken for and the question is part of what
-					// the row pins: the same document answers differently
-					// for different pairs, and for the same pair under a
-					// `relation` filter.
 					var golden map[string]any
 					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
 						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
@@ -758,12 +572,6 @@ func TestSpec(t *testing.T) {
 							src, want, got)
 					}
 				case "view":
-					// THE VIEWS (docs/design/VIEWS.0.md): the drawn text,
-					// byte for byte, the loss report, or the refusal. The
-					// options ride `expect.ask` -- the whole ViewOptions
-					// object, `kind` included -- for the reason reaches'
-					// endpoints do: the same document draws differently
-					// under a relation filter or from a named root.
 					var golden map[string]any
 					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
 						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
@@ -779,15 +587,6 @@ func TestSpec(t *testing.T) {
 							src, want, got)
 					}
 				case "template":
-					// THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md;
-					// RENDER.0.md P8). src is a generator file in the
-					// target's own syntax; `out` is its canonical aontu
-					// form, and `back` the template the round trip
-					// answers -- which is src itself wherever the sugar
-					// is already the fixpoint, and the normalised
-					// spelling where it is not. Both directions in one
-					// row, because a transform pinned in one direction
-					// only is half a transform.
 					var golden map[string]any
 					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
 						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
@@ -847,13 +646,6 @@ func TestSpec(t *testing.T) {
 							src, want, got)
 					}
 				case "relation":
-					// RELATION GRAPH CHECKS (G4 phase 5): acyclicity and
-					// inverse consistency over the edge set, compared as
-					// the whole report. Both are GLOBAL and NON-MONOTONE,
-					// which is why they are checked after unification and
-					// never by it — a lattice citizen may not be falsified
-					// by more information, and one more edge is more
-					// information.
 					var golden map[string]any
 					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
 						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
@@ -866,13 +658,6 @@ func TestSpec(t *testing.T) {
 							src, want, got)
 					}
 				case "graph":
-					// THE DERIVED STRUCTURES (G4 phase 3): the entity index
-					// and the edge set of the unified document, compared
-					// whole. Both are deterministic by construction — ids
-					// and paths in code-point order, edges by the position
-					// they are written at — which is what makes a
-					// byte-comparable golden possible at all, Go map order
-					// being random.
 					var golden map[string]any
 					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
 						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
@@ -927,18 +712,6 @@ func TestSpec(t *testing.T) {
 	}
 }
 
-// specJSON serialises a value the way the vet goldens are compared:
-// COMPACT, HTML escaping off (as specGens turned it off, so `<`, `>`
-// and `&` stay literal in both ports), keys sorted -- which Go's
-// encoder does for a map and the canonical emitter does for every
-// object, so a golden cell may be written in any key order.
-// specAsMap round-trips a value through JSON into a plain map, so a
-// struct golden and a literal golden are compared by the same encoding.
-// specStripProse removes each finding's message and hint from a report
-// map, in place, the same carve-out the vet and subsume goldens apply:
-// prose is per-port, codes and shapes are not. Used by the `trim` and
-// `relation` modes for their `errors` list -- WHY the document could
-// not be evaluated, in the finding shape (the review's finding F).
 func specStripProse(out map[string]any, key string) map[string]any {
 	findings, _ := out[key].([]any)
 	for _, f := range findings {
@@ -987,10 +760,6 @@ func specJSON(t *testing.T, v any) string {
 	return strings.TrimSuffix(buf.String(), "\n")
 }
 
-// specVetGolden is the report as a vet golden spells it: the MESSAGE is
-// excluded (prose is per-port, codes are not -- the same split the errc
-// mode makes), and the rest is round-tripped through the map form so
-// the two sides of the comparison are serialised by the same code.
 func specVetGolden(t *testing.T, report VetReport) string {
 	t.Helper()
 	raw, err := json.Marshal(report)
@@ -1092,24 +861,8 @@ func specSubsumeOpts(t *testing.T, raw any) *SubsumeOptions {
 	return opts
 }
 
-// canonNoReparse lists canon rows whose expected canon cannot be
-// reparsed. Each entry needs a reason and an issue; entries are DELETED,
-// not amended, when fixed (AGENTS.md ledger discipline). Currently
-// EMPTY: every canon row in the shared suite reparses. The TypeScript
-// runner carries the same list (ts/test/spec.test.ts CANON_NO_REPARSE).
 var canonNoReparse = map[string]string{}
 
-// assertCanonConverges is the guard the G1/G2/G5 implementation plans
-// call for. Those plans word it `parse(canon(v)) == v`, which is too
-// strong and was never enforced: canon deliberately PRESERVES
-// unevaluated ghost applications (`key()`, `pref(...)`, an unexpanded
-// `&:` template), so reparsing a canon runs one more evaluation round
-// and legitimately resolves them.
-//
-// What does hold, for every row, is convergence: canon reaches a
-// fixpoint immediately after that one round, so it can never oscillate
-// or drift. That is what makes canon safe as the seed of semantic
-// hashing (G6). The TypeScript runner asserts the same property.
 func assertCanonConverges(t *testing.T, name, expect string, vars map[string]Val) {
 	t.Helper()
 	if _, skip := canonNoReparse[name]; skip {
@@ -1129,17 +882,6 @@ func assertCanonConverges(t *testing.T, name, expect string, vars map[string]Val
 	}
 }
 
-// assertViewSubsumes pins THE PROJECTION PROPERTY (G7 phase 1): a
-// canon-shaped view is a valid Aontu document that SUBSUMES the truth
-// it summarises -- generalisation, never distortion. G3 made that
-// mechanically checkable, so every projection row asserts it instead of
-// trusting the renderer.
-//
-// Under the `values` profile, deliberately: a shape view ERASES
-// defaults (`*8080|integer` becomes `*integer|integer`), which the
-// `defaults` profile correctly calls a compatibility break. The claim
-// projections make is about the values admitted, not about which one is
-// generated.
 func assertViewSubsumes(
 	t *testing.T, name, src, path string, report QueryReport, view string) {
 	t.Helper()
@@ -1170,13 +912,6 @@ func assertHcanonRoundTrips(t *testing.T, name, expect string, vars map[string]V
 	}
 }
 
-// TestErrCodesRegistry asserts the registry (test/spec/errcodes.tsv)
-// and the engine's codeClasses table agree as SETS. The errcode rows in
-// TestSpec assert "every registered code exists in the engine with the
-// registered class"; this asserts the reverse -- an engine code missing
-// from the registry (or a stale registry entry) fails here. The
-// TypeScript runner performs the same check against ts/src/hints.ts
-// (spec-errcodes-registry).
 func TestErrCodesRegistry(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "test", "spec", "errcodes.tsv"))
 	if err != nil {
@@ -1241,14 +976,6 @@ func specVars() map[string]Val {
 		"bigi": newBigInteger(big.NewInt(5)),
 		"bigd": newBigDecimal(newDecimal(big.NewInt(15), 1)),
 		"nul":  newNull(),
-		// A FORMERLY RESERVED NAME, BOUND LIKE ANY OTHER. `$PARENT` was
-		// intercepted by name in find() before the variable table was
-		// ever consulted (ADR-009); removing that interception did not
-		// merely stop the interception, it FREED THE NAME, and
-		// edge.tsv's edge-parent-name-resolves is the row that says so.
-		// `KEY` and `SELF` are deliberately left unbound so their rows
-		// can pin the other half: an unbound one is `unknown_var`,
-		// exactly like any other.
 		"PARENT": newString("q"),
 	}
 }
@@ -1274,25 +1001,6 @@ func unescapeSpec(s string) string {
 	return b.String()
 }
 
-// specGens serialises a generated value the way the `gens` spec mode
-// defines it: COMPACT JSON (no indentation, no spaces), keys in the
-// order the engine generates them, compared byte for byte.
-//
-// Two deliberate choices make the Go and TypeScript runners agree on the
-// same bytes:
-//
-//   - HTML escaping is OFF. Go's encoder rewrites <, > and & as their
-//     \u00xx escapes by default; JavaScript's JSON.stringify — which the
-//     TypeScript runner uses — leaves them as-is. Byte-exactness is the
-//     whole point of this mode, so Go must not add escapes of its own.
-//   - Key order needs no work here: MapVal.Gen already emits keys
-//     alphabetically in BOTH ports (see the entries sort in TS
-//     BagVal.gen), and Go's encoder sorts map keys, so the two agree.
-//
-// Number rendering also agrees: encoding/json switches to exponent form
-// outside [1e-6, 1e21) and writes an unpadded, always-signed exponent
-// ("1e+21", "1e-7"), which is exactly what JS Number.toString does — the
-// same rule formatNumber implements for canon.
 func specGens(v any) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -1304,11 +1012,6 @@ func specGens(v any) (string, error) {
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-// TestSpecGensMode proves the gens mode itself, ahead of the exact
-// number leaves that will rely on it. Each row is run through exactly
-// the code path TestSpec's "gens" case uses, and each expectation is the
-// byte-for-byte output of JSON.stringify on the same document, so the
-// two runners are pinned to the same text.
 func TestSpecGensMode(t *testing.T) {
 	rows := []struct{ name, src, expect string }{
 		{"scalar-int", "a:1", `{"a":1}`},
@@ -1331,8 +1034,6 @@ func TestSpecGensMode(t *testing.T) {
 		{"fixed-edge", "a:1e20", `{"a":100000000000000000000}`},
 		// R2: negative zero never reaches output.
 		{"neg-zero", "a:-0.0", `{"a":0}`},
-		// gens distinguishes what gen cannot: these two documents decode
-		// to the same float64, so `gen` would call them equal.
 		{"exact-below-pow53", "a:9007199254740992", `{"a":9007199254740992}`},
 		{"plus", "a:1+2", `{"a":3}`},
 	}

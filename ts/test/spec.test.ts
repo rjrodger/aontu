@@ -1,101 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-/*
- * Shared, data-driven conformance tests.
- *
- * The test cases live in the top-level `test/spec/*.tsv` files and are
- * the single source of truth shared with the Go port (see
- * `go/spec_test.go`). Both implementations load the same TSV rows and
- * must produce identical results.
- *
- * TSV columns (tab-separated): name <TAB> mode <TAB> src <TAB> expect
- *   mode=canon : unify(src).canon must equal expect
- *   mode=gen   : generate(src) must deep-equal JSON.parse(expect)
- *   mode=gens  : generate(src), serialised to COMPACT JSON, must equal
- *                expect BYTE-FOR-BYTE
- *   mode=err   : generate(src) must throw, message must contain expect
- *   mode=errc  : generate(src) must throw, and the FIRST collected
- *                error's why-code must EQUAL expect (message text is
- *                not in parity; codes are -- see test/spec/errcodes.tsv)
- *   mode=errcode : registry row -- name is a code, src its class,
- *                expect its since-version; asserted against the
- *                engine's codeClasses table (ts/src/hints.ts)
- *   mode=vet   : FIVE columns -- name, vet, schema, data, expect. The
- *                report of vet(schema, data) must equal the expect
- *                object, MINUS each finding's message and hint (prose
- *                is not in parity; see test/spec/vet.tsv for the whole encoding,
- *                including the `opts` key)
- *   mode=subsume : FIVE columns -- name, subsume, general, specific,
- *                expect. The report of subsume(general, specific) must
- *                equal the expect object (verdict + findings), MINUS
- *                each finding's message; see test/spec/subsume.tsv
- *   mode=trim  : trimCheck(src) must equal the expect object
- *                ({redundant, verdict}); see test/spec/trim.tsv
- *   mode=jsonschema : jsonSchema(src) must equal the expect object
- *                ({lossy, schema, verdict}) -- the schema AND the loss
- *                report, because a schema that silently dropped a
- *                construct would look identical to one that carried
- *                it; see test/spec/jsonschema.tsv
- *   mode=hcanon : hcanon(unify(src)) -- the HASH FORM, canon plus the
- *                close()/type()/hide() wrappers -- must equal expect,
- *                and the hash form must round-trip (G6, hcanon.tsv)
- *   mode=hash  : canonHash(unify(src)) must equal expect, the full
- *                `aon1-...` pin, byte-identical across the ports
- *   mode=agentsmd : FIVE columns -- name, agentsmd, src,
- *                document-name, expect. The stanza of agentsMd(src,
- *                {name}) must match BYTE FOR BYTE; see
- *                test/spec/agentsmd.tsv
- *   mode=diff  : FIVE columns -- name, diff, left, input, expect. The
- *                report of diff(left, right) must match the expect
- *                object ({changes, same} plus `codes`); the input is
- *                {right, at?}. See test/spec/diff.tsv
- *   mode=patch : FIVE columns -- name, patch, entry, input, expect.
- *                The report of patch(entry, overlay, set) must match
- *                the expect object ({appended, overlay, verdict} plus
- *                `codes`); see test/spec/patch.tsv
- *   mode=why   : FIVE columns -- name, why, src, path, expect. The
- *                record of why(src, path) must match the expect object
- *                ({value, conjuncts} or {code, note}); see
- *                test/spec/why.tsv
- *   mode=query : FIVE columns -- name, query, src, path, expect. The
- *                report of get(src, path) must match the expect
- *                object ({out?, code?, note?}, options riding `opts`),
- *                and a canon-shaped VIEW must additionally SUBSUME the
- *                truth it summarises; see test/spec/query.tsv
- *   mode=view  : view(src, {relation?, roots?}) must equal the
- *                expect object ({kind, text} or {kind, errors}); the
- *                options ride `expect.ask` as reaches' do. See
- *                test/spec/view.tsv
- *   mode=views : viewSet(src, {views}) -- the figures a VIEW DOCUMENT
- *                declares -- must equal the expect object ({verdict,
- *                views} or {verdict, views, errors}); see
- *                test/spec/views.tsv
- *   mode=fmt   : format(src) must write expect BYTE FOR BYTE; expect
- *                must be a fixed point, format(expect) == expect; and
- *                where src evaluates, the canon-hash of src and of
- *                expect must agree -- the same document (FMT.0.md,
- *                docs/design). See test/spec/fmt.tsv
- *   mode=fmt-template : FIVE columns -- name, fmt-template, src, the
- *                marker, expect. format(src, {template: marker}) must
- *                write expect BYTE FOR BYTE, and expect must be a
- *                fixed point. The source is a GENERATOR, so the two
- *                transforms of the template surface stand either side
- *                of the formatter and expect is a generator too.
- *   mode=fmt-template-lint : FIVE columns -- name,
- *                fmt-template-lint, src, the marker, expect. The
- *                findings of --lint over a generator, in the shape
- *                fmt-lint pins them: a site is in the TEMPLATE, so the
- *                marker and its space stand before the aontu.
- * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
- *
- * gen vs gens: `gen` compares through a JSON decode, so both sides land
- * in float64 and two distinct exact integers above 2^53 compare EQUAL.
- * `gens` compares the serialised text instead, so it can pin exactness
- * (and key order, and integer-vs-float rendering) that `gen` cannot see.
- * The two runners must agree byte-for-byte on the same row: compact
- * output (no indentation, no spaces), keys in the engine's existing
- * generated order.
- */
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -123,7 +27,6 @@ import { BigDecimalVal } from '../dist/val/BigDecimalVal'
 import { Decimal } from '../dist/val/Decimal'
 
 
-// test/spec lives at the repo root, two levels up from ts/dist-test.
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec')
 
 
@@ -164,10 +67,6 @@ function loadRows(): Row[] {
   const rows: Row[] = []
   const files = Fs.readdirSync(SPEC_DIR)
     .filter((f) => f.endsWith('.tsv'))
-    // signature.tsv is the DECLARATION, not rows (its lines are the
-    // signature syntax, docs/design/SIGNATURES.0.md); its own gate is
-    // the round-trip in sig.test.ts, as go/sig_test.go is for the Go
-    // port.
     .filter((f) => 'signature.tsv' !== f)
     .sort()
 
@@ -182,17 +81,6 @@ function loadRows(): Row[] {
         continue
       }
       const parts = line.split('\t')
-      // MALFORMED IS LOUD, not skipped. A row that is short by a column
-      // -- a `vet` row whose expected report was left off, say -- would
-      // otherwise be dropped in silence, and a suite that quietly runs
-      // one row fewer stays green while the behaviour it claims to pin
-      // goes unpinned. The Go runner refuses the same shapes.
-      //
-      // This, and not a row COUNT, is the guard: a count would have to
-      // be edited by every change that adds a row, and a number nobody
-      // trusts is a number nobody updates honestly. The only count
-      // asserted is that the files were found at all
-      // (spec-files-present below).
       const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
         'query' === parts[1] || 'why' === parts[1] || 'patch' === parts[1] ||
         'diff' === parts[1] || 'agentsmd' === parts[1] ||
@@ -234,24 +122,9 @@ describe('spec', () => {
 })
 
 
-// Canon rows whose expected canon cannot be reparsed. Each entry needs a
-// reason and an issue; entries are DELETED, not amended, when fixed
-// (AGENTS.md ledger discipline). Currently EMPTY: every canon row in the
-// shared suite reparses.
 const CANON_NO_REPARSE: Record<string, string> = {}
 
 
-// CANON CONVERGENCE -- the guard the G1/G2/G5 implementation plans call
-// for. Those plans word it `parse(canon(v)) == v`, which is too strong
-// and was never enforced: canon deliberately PRESERVES unevaluated ghost
-// applications (`key()`, `pref(...)`, an unexpanded `&:` template), so
-// reparsing a canon runs one more evaluation round and legitimately
-// resolves them -- 15 of the 491 canon rows move on that first reparse.
-//
-// What does hold, for every row, is convergence: canon reaches a
-// fixpoint immediately after that one round, so it can never oscillate
-// or drift. That is the property worth pinning, and it is what makes
-// canon safe as the seed of semantic hashing (G6).
 function assertCanonConverges(row: Omit<Row, 'file'> & { file?: string }): void {
   if (row.name in CANON_NO_REPARSE) {
     return
@@ -264,16 +137,6 @@ function assertCanonConverges(row: Omit<Row, 'file'> & { file?: string }): void 
 }
 
 
-// The hash form's defining property (G6 phase 0): it is valid Aontu
-// source, and re-evaluating it reproduces itself --
-// hcanon(unify(parse(hcanon(v)))) == hcanon(v). A hash over a rendering
-// that drifted on re-parse would pin nothing, so every hcanon row
-// asserts it, exactly as every canon row asserts convergence.
-// THE SAME DOCUMENT (FMT.0.md P2): where the source evaluates, its
-// formatted form evaluates to the same canon-hash. A source that does
-// not stand up on its own -- an include of a file that is not there,
-// a value that never resolves -- has no hash to compare, and the
-// fixed-point assertion above is what holds it.
 function assertFormatSameDocument(
   row: Omit<Row, 'file'> & { file?: string }): void {
   const a1 = rowAontu(row)
@@ -311,16 +174,6 @@ function assertHcanonRoundTrips(
 }
 
 
-// THE PROJECTION PROPERTY (G7 phase 1): a canon-shaped view is a valid
-// Aontu document that SUBSUMES the truth it summarises -- generalisation,
-// never distortion. G3 made that mechanically checkable, so every
-// projection row asserts it instead of trusting the renderer.
-//
-// Under the `values` profile, deliberately: a shape view ERASES
-// defaults (`*8080|integer` becomes `*integer|integer`), which the
-// `defaults` profile correctly calls a compatibility break. The claim
-// projections make is about the values admitted, not about which one
-// is generated.
 function assertViewSubsumes(
   row: Omit<Row, 'file'> & { file?: string },
   report: { ok: boolean; out: string },
@@ -337,14 +190,6 @@ function assertViewSubsumes(
 }
 
 
-// The report as a vet golden spells it: the message and the hint are
-// EXCLUDED (prose is per-port, codes are not), and the rest goes
-// through the emitter the two ports hold to byte parity -- which also
-// sorts keys, so the golden cell may be written in any order.
-// Each finding's message and hint, removed: prose is per-port, codes
-// and shapes are not. The `trim` and `relation` modes apply it to their
-// `errors` list -- WHY the document could not be evaluated, in the
-// finding shape (the review's finding F).
 function stripProse(findings: any[]): any[] {
   return findings.map(({ message, hint, ...rest }: any) => rest)
 }
@@ -363,12 +208,6 @@ function vetGolden(report: any): string {
 }
 
 
-// Files whose rows evaluate under a fixed trust profile (G5,
-// docs/trust.md): root-confined to the fixtures directory, the
-// var.tsv precedent of runner-side configuration. This is also what
-// makes the shared suite itself HERMETIC: no row may read outside the
-// repository or resolve through installed packages, in either runner
-// (go/spec_test.go applies the same profile to the same files).
 const TRUST_FILES: Record<string, boolean> = {
   'include-trust.tsv': true,
   'file.tsv': true,
@@ -376,7 +215,6 @@ const TRUST_FILES: Record<string, boolean> = {
   // rows run under the same fixture root for the same reason file.tsv's
   // do: no row may read outside the repository.
   'mod.tsv': true,
-  // alias.tsv's two include rows load a fixture, for the same reason.
   'alias.tsv': true,
   // fmt.tsv's include rows name files that are not there, so that the
   // hash comparison is skipped for them rather than made through a
@@ -409,10 +247,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
   else if ('gens' === row.mode) {
     Assert.strictEqual(genJSON(a0.generate(row.src, undefined, ctx)), row.expect)
 
-    // REPEATABILITY (G5 determinism clause, docs/trust.md): the same
-    // source under the same bindings must serialise to the same bytes on
-    // a fresh engine. Re-running every gens row here pins that over the
-    // whole byte-exact corpus rather than a handful of dedicated rows.
     const a1 = rowAontu(row)
     Assert.strictEqual(
       genJSON(a1.generate(row.src, undefined, makeVarsCtx(a1))),
@@ -433,9 +267,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
     )
   }
   else if ('errc' === row.mode) {
-    // Code parity: the FIRST collected error's why-code must EQUAL
-    // expect. Message text is deliberately not in parity between the
-    // ports; the codes in test/spec/errcodes.tsv are.
     Assert.throws(
       () => a0.generate(row.src, undefined, makeVarsCtx(a0)),
       (err: any) => {
@@ -492,11 +323,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       `trim report mismatch: ${row.name}`)
   }
   else if ('jsonschema' === row.mode) {
-    // JSON SCHEMA EXPORT (the review's finding I): the schema AND the
-    // loss report together, because a schema that silently dropped a
-    // construct would look identical to one that carried it. The
-    // envelope (version, verb) is the CLI's, not the export's, and is
-    // not compared -- the same carve-out every other report mode takes.
     const report = jsonSchema(row.src)
     Assert.strictEqual(
       exactJSON({
@@ -510,11 +336,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       `jsonschema report mismatch: ${row.name}`)
   }
   else if ('reaches' === row.mode) {
-    // REACHABILITY OVER THE ENTITY GRAPH (the review's finding J). The
-    // endpoints ride the expect object under `ask`, because the row's
-    // other columns are already spoken for and the question is part of
-    // what the row pins: the same document answers differently for
-    // different pairs, and for the same pair under a `relation` filter.
     const golden = JSON.parse(row.expect)
     const ask = golden.ask
     delete golden.ask
@@ -528,11 +349,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       `reach report mismatch: ${row.name}`)
   }
   else if ('view' === row.mode) {
-    // THE VIEWS (docs/design/VIEWS.0.md): the drawn text, byte for
-    // byte, the loss report, or the refusal. The options ride
-    // `expect.ask` -- the whole ViewOptions object, `kind` included --
-    // for the reason reaches' endpoints do: the same document draws
-    // differently under a relation filter or from a named root.
     const golden = JSON.parse(row.expect)
     const ask = golden.ask ?? {}
     delete golden.ask
@@ -545,10 +361,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       `view report mismatch: ${row.name}`)
   }
   else if ('render' === row.mode) {
-    // THE RENDERER (docs/design/RENDER.0.md D10): every unit's bytes,
-    // the loss report, or the refusal. The options ride `expect.ask`
-    // as view's do, since the same document renders differently under
-    // a profile, a unit filter or strict.
     const golden = JSON.parse(row.expect)
     const ask = golden.ask ?? {}
     delete golden.ask
@@ -561,13 +373,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       `render report mismatch: ${row.name}`)
   }
   else if ('template' === row.mode) {
-    // THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md; RENDER.0.md P8).
-    // `src` is a generator file in the target's own syntax; `out` is
-    // its canonical aontu form, and `back` the template the round trip
-    // answers -- which is `src` itself wherever the sugar is already
-    // the fixpoint, and the normalised spelling where it is not. Both
-    // directions in one row, because a transform pinned in one
-    // direction only is half a transform.
     const golden = JSON.parse(row.expect)
     const marker = golden.ask?.marker
     const out = desugarTemplate(row.src, marker)
@@ -596,12 +401,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       `view set report mismatch: ${row.name}`)
   }
   else if ('relation' === row.mode) {
-    // RELATION GRAPH CHECKS (G4 phase 5): acyclicity and inverse
-    // consistency over the edge set, compared as the whole report.
-    // Both are GLOBAL and NON-MONOTONE, which is why they are checked
-    // after unification and never by it — a lattice citizen may not be
-    // falsified by more information, and one more edge is more
-    // information.
     const report = relationCheck(row.src)
     Assert.strictEqual(
       exactJSON(null == report.errors
@@ -610,12 +409,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       `relation report mismatch: ${row.name}`)
   }
   else if ('graph' === row.mode) {
-    // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
-    // edge set of the unified document, compared whole. Both are
-    // deterministic by construction — ids and paths in code-point
-    // order, edges by the position they are written at — which is what
-    // makes a byte-comparable golden possible at all, Go map order
-    // being random.
     const graph = graphOf(a0.unify(row.src, undefined, ctx))
     Assert.strictEqual(
       exactJSON(graph),
@@ -642,18 +435,11 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
     Assert.strictEqual(report.verdict, 'formatted',
       `does not format: ${row.name}: ${JSON.stringify(report.errors)}`)
     Assert.strictEqual(report.text, row.expect)
-    // THE AGREED FORM IS A FIXED POINT: formatting it again changes
-    // nothing, or there would be two agreed forms.
     Assert.strictEqual((format(row.expect) as any).text, row.expect,
       `not a fixed point: ${row.name}`)
     assertFormatSameDocument(row)
   }
   else if ('fmt-template' === row.mode) {
-    // THE FORMATTER OVER A GENERATOR (FMT.0.md §3.14): the source is a
-    // template, `data` is its marker, and what comes back is a
-    // template. Not `assertFormatSameDocument`, which unifies the row's
-    // two sides -- a template is not a document until it is desugared,
-    // and the surface's own rows (template.tsv) hold that transform.
     const report: any = format(row.src, { template: row.data as string })
     Assert.strictEqual(report.verdict, 'formatted',
       `does not format: ${row.name}: ${JSON.stringify(report.errors)}`)
@@ -675,13 +461,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       row.expect, `fmt lint: ${row.name}`)
   }
   else if ('fmt-refuse' === row.mode) {
-    // A SOURCE THE FORMATTER REFUSES, pinned so the refusal is the
-    // same one in both ports. The formatter's own self-check compares
-    // the document it wrote against the document it read and writes
-    // NOTHING when they differ, so a refusal here corrupts no file --
-    // but which sources it refuses is behaviour, and behaviour is
-    // shared. `expect` is the verdict and the finding codes, joined by
-    // a colon and commas.
     const report: any = format(row.src)
     Assert.strictEqual(
       report.verdict + ':' +
@@ -689,11 +468,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       row.expect, `fmt refusal: ${row.name}`)
   }
   else if ('fmt-lint' === row.mode) {
-    // THE LINT (docs/design/FMT.0.md §4): the style findings of
-    // --lint, each as `line:col: rule: message` -- the CLI's line
-    // without the file name -- joined by newlines, and empty when
-    // there is none. The formatter never acts on a finding, so the
-    // text is the fmt rows' business, not this row's.
     const report: any = format(row.src, { lint: true })
     Assert.strictEqual(report.verdict, 'formatted',
       `does not format: ${row.name}: ${JSON.stringify(report.errors)}`)
@@ -751,9 +525,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
   else if ('patch' === row.mode) {
     const input = JSON.parse(row.data as string)
     const golden = JSON.parse(row.expect)
-    // `inPlace` rides the input object, as `opts` does for the
-    // five-column modes: the overlay and the assignments are the same
-    // two inputs either way, and the flag is the third.
     const report = patch(row.src, input.overlay, input.set,
       true === input.inPlace ? { inPlace: true } : undefined)
 
@@ -782,23 +553,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
         `(${report.verdict} vs ${plain.verdict})`)
     }
 
-    // ORDER-INDEPENDENCE, the property the whole verb rests on: an
-    // overlay entry is just another conjunct, so evaluating the entry
-    // against the overlay is the same as evaluating the overlay
-    // against the entry.
-    //
-    // IT IS CONDITIONAL ON THE OVERLAY STANDING UP ON ITS OWN, and the
-    // guard used to be `verdict !== error`, which is not the same test
-    // and passed only because no row had reached the difference.
-    // APPENDING A CONFLICTING VALUE MAKES THE OVERLAY SELF-
-    // CONTRADICTORY -- `a: 1` plus an appended `"a": 5` is a document
-    // that contradicts itself -- and vet reports a schema that does not
-    // stand up as `error` whatever the data says. So the reverse run
-    // answers `error` where the forward run answered `invalid`, and
-    // that is not a disagreement about the value: it is the overlay no
-    // longer being a document you could hand to vet as a truth. The
-    // property is asserted where it is meaningful and skipped where the
-    // input to the reverse direction is not a coherent document.
     let overlayStandsAlone = true
     try {
       new Aontu().generate(report.overlay)
@@ -812,11 +566,6 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
         `patch is not order-independent: ${row.name}`)
     }
 
-    // AND THE STRONGER PROPERTY IN-PLACE BUYS: a replacement leaves an
-    // overlay that still stands up, where appending the same value
-    // leaves one that contradicts itself. This is the difference
-    // between repairing a document and layering a correction over it,
-    // and it is why the mode exists rather than a side effect of it.
     if (0 < report.replaced.length) {
       Assert.ok(overlayStandsAlone,
         `in-place left a self-contradicting overlay: ${row.name}`)
@@ -925,12 +674,6 @@ describe('spec-gens-mode', () => {
 })
 
 
-// The registry (test/spec/errcodes.tsv) and the engine's codeClasses
-// table must agree as SETS. The errcode rows above assert "every
-// registered code exists in the engine with the registered class"; this
-// asserts the reverse -- an engine code missing from the registry (or a
-// stale registry entry) fails here. The Go runner performs the same
-// check against go/hints.go (TestErrCodesRegistry).
 describe('spec-errcodes-registry', () => {
 
   test('registry-and-engine-agree', () => {
@@ -949,20 +692,6 @@ describe('spec-errcodes-registry', () => {
 })
 
 
-// Serialise a generated value for `gens` rows: compact JSON (no
-// indentation, no spaces), keys in the order generate() produced them.
-// Go's encoding/json Marshal is compact for the same reason, so the two
-// runners produce the same bytes for the same value.
-//
-// The emitter is aontu's own public `exactJSON` export (D9), not
-// JSON.stringify: the exact leaves generate a bigint (which
-// JSON.stringify throws on) and a Decimal, and writing their digits as
-// raw JSON numbers is the whole reason `gens` exists. Called with no
-// indent argument, which is exactJSON's compact form -- the same bytes
-// Go's compact encoder produces.
-//
-// The CLI calls the same export with an indent, so a `gens` row and the
-// command line cannot disagree about anything but whitespace.
 function genJSON(v: any): string {
   return exactJSON(v)
 }
@@ -975,11 +704,6 @@ function makeVarsCtx(a0: Aontu): any {
   ctx.vars.bar = new StringVal({ peg: 'hello' })
   ctx.vars.flag = new BooleanVal({ peg: true })
   ctx.vars.obj = new MapVal({ peg: { x: new IntegerVal({ peg: 1 }) } })
-  // 2^60: an integer-kind value ABOVE the safe-integer range, so it renders
-  // differently under `'' + peg` (the shortest round-tripping form,
-  // 1152921504606847000) than under its exact digits. Every other binding
-  // here renders identically either way, which is why no shared row could
-  // reach the variable-as-path-segment rendering site until this existed.
   ctx.vars.big = new IntegerVal({ peg: 1152921504606846976 })
   // One variable per remaining scalar kind, so shared rows can reach
   // every variable-as-path-segment rendering branch (coverage drive;
@@ -989,13 +713,6 @@ function makeVarsCtx(a0: Aontu): any {
   ctx.vars.bigi = new BigIntegerVal({ peg: 5n })
   ctx.vars.bigd = new BigDecimalVal({ peg: new Decimal(15n, 1) })
   ctx.vars.nul = new NullVal({ peg: null })
-  // A FORMERLY RESERVED NAME, BOUND LIKE ANY OTHER. `$PARENT` was
-  // intercepted by name in RefVal.find before the variable table was
-  // ever consulted (ADR-009); removing that interception did not merely
-  // stop the interception, it FREED THE NAME, and edge.tsv's
-  // edge-parent-name-resolves is the row that says so. `KEY` and `SELF`
-  // are deliberately left unbound so their rows can pin the other half:
-  // an unbound one is `unknown_var`, exactly like any other.
   ctx.vars.PARENT = new StringVal({ peg: 'q' })
   return ctx
 }

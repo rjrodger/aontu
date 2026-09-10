@@ -2,11 +2,6 @@
 
 package aontu
 
-// The differential regex corpus (ADR-003) — the Go twin of
-// ts/test/regex-corpus.test.ts. Read that file for the rationale; in
-// brief, `re()` enforces its subset by NORMALISATION, that only works if
-// the two ports rewrite identically, and this asserts it against a
-// committed corpus rather than against a claim in a comment.
 
 import (
 	"bufio"
@@ -43,9 +38,6 @@ func loadRegexCorpus(t *testing.T) []regexCorpusRow {
 		if "" == raw || strings.HasPrefix(raw, "#") {
 			continue
 		}
-		// The FIRST tab separates pattern from verdict. No unescaping --
-		// unlike the spec runner, this file is read verbatim, because the
-		// subject under test is backslash handling.
 		tab := strings.Index(raw, "\t")
 		rows = append(rows, regexCorpusRow{
 			pattern: raw[:tab], verdict: raw[tab+1:], line: line})
@@ -128,20 +120,6 @@ func TestRegexCorpusIdempotent(t *testing.T) {
 	}
 }
 
-// A LONG REPEAT BOUND IS REFUSED IN LINEAR TIME. The normaliser runs
-// over a pattern the caller supplies and is counted by no evaluator
-// budget (docs/trust.md, clause 2), so the cost of REJECTING one is a
-// reachable cost. The scan used to build the digit run into a Go
-// string one character at a time -- rebuilding the whole immutable
-// string per digit -- which made this input quadratic: 200 000 digits
-// took eight seconds and several gigabytes of transient copying before
-// `Atoi` was ever reached. Folding the digits as they are read makes
-// it linear (the same input now takes milliseconds).
-//
-// The assertion here is the VERDICT, not a duration: a timing
-// assertion is a flake generator on a shared runner. The guard against
-// a re-regression is the test's own runtime — restore the quadratic
-// scan and this case alone runs for seconds.
 func TestLongRepeatBoundIsRefusedCheaply(t *testing.T) {
 	for _, n := range []int{1000, 100000} {
 		pattern := "x{" + strings.Repeat("1", n) + "}"

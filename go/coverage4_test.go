@@ -1,9 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Coverage round 5 (ADR-002): the last blocks in package aontu that no
-// source input reaches but a test can. What remains after this file is
-// marked `//coverage:ignore` in the source with its justification, and
-// listed in docs/test-coverage.md.
 
 package aontu
 
@@ -12,10 +8,6 @@ import (
 	"testing"
 )
 
-// stubVal is a Val the engine never builds: it refines forever without
-// ever settling, and it is neither a map nor a list. Both properties
-// are needed below — the first to spend the pass budget, the second so
-// the residue walk has no path to name.
 type stubVal struct {
 	base
 	n int
@@ -69,12 +61,6 @@ func TestLossyBasedLiteralDoubleSign(t *testing.T) {
 	}
 }
 
-// TestContainerKindApiOnlyArms reaches the arms the dispatcher hides
-// from source (docs/design/PATHS.0.md). A DONE kind meeting TOP is
-// absorbed by uniteRaw's fast path before Unify runs, so the top arms
-// are API-only; they stay, mirrored with the TS twins, for callers
-// driving Vals directly. The twin is container-kind-api-only-arms in
-// ts/test/coverage3.test.ts.
 func TestContainerKindApiOnlyArms(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	mk := newMapKind()
@@ -87,11 +73,6 @@ func TestContainerKindApiOnlyArms(t *testing.T) {
 	}
 }
 
-// TestRefDegenerateEmptySegments pins the all-empty-segment reference:
-// no source spells it since path() became the capture (ADR-015), but a
-// constructed RefVal still reaches the cycle verdict rather than a
-// miss (issue #38), and deleting the arms would move that refusal to a
-// panic for anyone building Vals.
 func TestRefDegenerateEmptySegments(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	rv := newRef([]any{""}, false)
@@ -106,17 +87,6 @@ func TestRefDegenerateEmptySegments(t *testing.T) {
 	}
 }
 
-// TestFuncNoArgGuardsViaAPI reaches every built-in's missing-argument
-// guard the only way that is left: through the programmatic API
-// (issue #51). The twin is func-no-arg-guards-via-api in
-// ts/test/coverage3.test.ts.
-//
-// A wrong argument count is refused at PARSE now, so no source can reach
-// these guards -- but a caller building a FuncVal by hand still can, and
-// they are what keeps that a clean nil rather than an index panic. The
-// value of the test is that surface, not the counter: deleting the
-// guards would have moved the failure from a refusal to a crash for
-// anyone constructing Vals.
 func TestFuncNoArgGuardsViaAPI(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	for _, tc := range []struct{ name, why string }{
@@ -155,14 +125,6 @@ func TestFuncNoArgGuardsViaAPI(t *testing.T) {
 	}
 }
 
-// keyFunc's driver-deeper arm: a key() whose stored path is SHALLOWER
-// than the driving base answers for the base — the transplant contract
-// for a shared, never-placed argument (see the comment in keyFunc). No
-// source spelling reaches it any more now that template instantiation
-// deep-clones arguments with placed paths (ADR-005), but the arm is
-// the port of the TS `positioned` fallback (KeyFuncVal.resolve), which
-// TS still takes for parse-time argument paths; the contract is pinned
-// directly so the two ports cannot drift.
 func TestKeyFuncDriverDeeper(t *testing.T) {
 	f := newFunc("key", nil)
 	f.path = []string{"x"}
@@ -173,11 +135,6 @@ func TestKeyFuncDriverDeeper(t *testing.T) {
 	}
 }
 
-// The case family's kind-default arm: the signature gate refuses
-// every concrete non-string/number BEFORE resolve, so the arm is
-// reachable only through a direct call with an exotic argument -- an
-// API shape, pinned here as ts/test/coverage3.test.ts pins the TS
-// twins ('case-func-fallback-arm').
 func TestUpperLowerKindDefaultArm(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	barg := newScalar(KindBoolean, true)

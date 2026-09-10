@@ -7,13 +7,7 @@ import (
 	"testing"
 )
 
-// The number tower's Phase 1 invariants that the shared TSV suite cannot
-// express, because they are about the internal Kind lattice rather than
-// about observable canon/gen text. See docs/design/number-tower.md.
 
-// TestKindStringNeverEmpty guards the exhaustive Kind.String switch: a
-// kind that falls off the end would render as the empty string and
-// silently produce, for example, `{"a":}` from a canon.
 func TestKindStringNeverEmpty(t *testing.T) {
 	want := map[Kind]string{
 		KindTop:        "top",
@@ -42,9 +36,6 @@ func TestKindStringNeverEmpty(t *testing.T) {
 	}
 }
 
-// TestKindLattice pins the parent/subsumption relations the tower rests
-// on: `number` is a pure supertype of the numeric leaves, the leaves are
-// pairwise disjoint, and non-numeric kinds sit directly under top.
 func TestKindLattice(t *testing.T) {
 	leaves := []Kind{KindInteger, KindFloat, KindBigInteger, KindBigDecimal}
 	for _, leaf := range leaves {
@@ -81,10 +72,6 @@ func TestKindLattice(t *testing.T) {
 	if kindSubsumes(KindPath, KindString) {
 		t.Error("path must not subsume string")
 	}
-	// Distinct leaves are disjoint sets: no common lower bound. This is
-	// the whole of D2 at the kind level — integer/float/biginteger/
-	// bigdecimal never subsume one another, so `5 & 0d5` can only be an
-	// error.
 	for _, a := range leaves {
 		for _, b := range leaves {
 			if a != b && kindSubsumes(a, b) {
@@ -94,11 +81,6 @@ func TestKindLattice(t *testing.T) {
 	}
 }
 
-// TestConcreteValuesCarryLeafKinds is the invariant behind every Kind
-// switch in the port: KindNumber is a SUPERTYPE, carried only by a
-// ScalarKindVal. A ScalarVal tagged KindNumber would fall off the end of
-// ScalarVal.Canon (empty string), negate (a `negative` nil) and
-// upperLower (an invalid-arg nil).
 func TestConcreteValuesCarryLeafKinds(t *testing.T) {
 	if sv := newFloat(1.5); sv.kind != KindFloat {
 		t.Errorf("newFloat kind = %s, want float", sv.kind)
@@ -107,9 +89,6 @@ func TestConcreteValuesCarryLeafKinds(t *testing.T) {
 		t.Errorf("newInteger kind = %s, want integer", sv.kind)
 	}
 
-	// Every construction route the language has for a numeric value:
-	// literals of both kinds, base prefixes, exponents at both ends of
-	// the int64 window, unary minus, `+`, and upper/lower.
 	src := strings.Join([]string{
 		"a:1", "b:1.5", "c:1e3", "d:1e21", "e:0x1f", "f:0b1010",
 		"g:-2.5", "h:-3", "i:1+2", "j:1.5+1.5", "k:1+2.0",

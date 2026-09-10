@@ -1,26 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// OVERLAY PATCH (G7 phase 5, the Go side of ts/src/patch.ts): change a
-// document by APPENDING to an overlay, not by rewriting the file.
-//
-// An overlay entry is just another conjunct, and unification is
-// order-independent, so appending `services: auth: owner: "x"` to a
-// second file and evaluating both is exactly the same value as writing
-// it into the first — with no parsing of the target and no comment or
-// layout damage. What an overlay CANNOT do is change a PINNED value:
-// the lattice refuses 5 against 3 and the report says so, which `why`
-// then locates.
-//
-// IN-PLACE REPLACE (InPlace) closes that last step. The full note is on
-// the canonical port (ts/src/patch.ts); the two things this file has to
-// get right on its own are that Go strings are BYTES where a site's
-// column counts UTF-16 code units (offsetAt converts, as rowCol does in
-// the other direction), and that the round-trip check below is what
-// makes the splice safe — NOT the `literal` role, which a compound
-// value also carries while its site names only its opening token.
-//
-// The verdict is G2's, unchanged: Vet(entry, overlay) already asks
-// exactly the right question, so `set` adds a writer, not a report.
 
 package aontu
 
@@ -49,13 +28,6 @@ type PatchOptions struct {
 	InPlace bool
 }
 
-// PatchReplacement is one literal rewritten where it was written. From
-// and To are SOURCE TEXT, not values: replacing `0x1F` with `31` is a
-// different edit from replacing it with `0x1F`, and only the spelling
-// says which.
-//
-// LEXICOGRAPHIC field order, as everywhere the two emitters must agree
-// byte for byte.
 type PatchReplacement struct {
 	Col  int    `json:"col"`
 	File string `json:"file"`
@@ -73,18 +45,10 @@ type PatchReport struct {
 	// assignments. The caller writes it — an engine that touched the
 	// filesystem could not be used by a server.
 	Overlay string `json:"overlay"`
-	// Replaced is the in-place replacements made, in the order the
-	// assignments were given (NOT the order they were applied to the
-	// text, which is back-to-front so earlier offsets stay valid).
-	// Empty unless InPlace was asked for.
 	Replaced []PatchReplacement `json:"replaced"`
 	Verdict  string             `json:"verdict"`
 }
 
-// ParseAssignment splits `<path>=<value>` at the FIRST `=`: a path
-// segment is a name, and the value is arbitrary Aontu source, which
-// may itself contain `=`. ok is false when the text is not an
-// assignment at all.
 func ParseAssignment(text string) (path, value string, ok bool) {
 	eq := strings.Index(text, "=")
 	if eq < 1 {
@@ -98,10 +62,6 @@ func ParseAssignment(text string) (path, value string, ok bool) {
 	return path, value, true
 }
 
-// overlayLine is the path-flattened conjunct one assignment becomes:
-// `$.a.b = 1` is `"a": "b": 1`. Keys are QUOTED — a segment may be a
-// word the grammar spells otherwise, a number, or a name with a space
-// in it.
 func overlayLine(path, value string) string {
 	parts := queryPathParts(path)
 	quoted := make([]string, len(parts))
@@ -155,10 +115,6 @@ func Patch(
 				notes = append(notes, *finding)
 			}
 			if nil != site {
-				// Two assignments naming the same path would splice the
-				// same span twice. The second is the one the author
-				// wrote last, so it wins — and the first is dropped
-				// rather than layered.
 				at := offsetAt(overlaySrc, site.Row, site.Col)
 				dup := -1
 				for i, e := range edits {
@@ -185,10 +141,6 @@ func Patch(
 
 	overlay := joinOverlay(applyEdits(overlaySrc, edits), appended)
 
-	// The file names ride as URLs as well as base paths, so a finding
-	// names the entry and the overlay rather than Vet's generic
-	// `schema`/`data` labels — with two documents that both belong to
-	// the caller, "which file" is the whole question.
 	report := Vet(entrySrc, overlay, &VetOptions{
 		Trust:      options.Trust,
 		TextExt:    options.TextExt,
@@ -212,10 +164,6 @@ func Patch(
 	}
 }
 
-// joinOverlay writes one line per assignment, after whatever the
-// overlay already said. A trailing newline is kept when the file had
-// one and added when it did not: appending must not join two entries
-// into one line.
 func joinOverlay(overlaySrc string, appended []string) string {
 	if 0 == len(appended) {
 		return overlaySrc
@@ -227,15 +175,6 @@ func joinOverlay(overlaySrc string, appended []string) string {
 	return head + strings.Join(appended, "\n") + "\n"
 }
 
-// offsetAt maps a 1-based (row, col) to a BYTE offset into src, or -1
-// when the text has no such position.
-//
-// COLUMNS COUNT UTF-16 CODE UNITS and Go strings are bytes, so this is
-// not `off + col - 1`: it is the inverse of rowCol (go/val.go), which
-// converts the same way in the other direction. Adding the column as a
-// byte count would land past the character on every line holding a
-// multi-byte one — which is the same class of defect as counting the
-// column in bytes when reporting it, caught once already.
 func offsetAt(src string, row, col int) int {
 	if row < 1 || col < 1 {
 		return -1
@@ -248,8 +187,6 @@ func offsetAt(src string, row, col int) int {
 		}
 		off += nl + 1
 	}
-	// Walk the line by runes, counting UTF-16 units, until the column
-	// is reached. A column PAST the end of the line is not a position.
 	units := 1
 	for i, r := range src[off:] {
 		if units == col {
@@ -269,13 +206,6 @@ func offsetAt(src string, row, col int) int {
 	return -1
 }
 
-// spanAt is the text a site covers, or "" when the site does not
-// describe a position in this text at all.
-//
-// The site's Len counts UTF-16 UNITS and Go strings are BYTES, so the
-// span is taken by the expected text's own byte length rather than by
-// Len -- reading Len as a byte count here would slice mid-character on
-// any line holding one.
 func spanAt(src string, site WhySite, want string) string {
 	off := offsetAt(src, site.Row, site.Col)
 	if off < 0 || len(src) < off+len(want) {
@@ -284,44 +214,14 @@ func spanAt(src string, site WhySite, want string) string {
 	return src[off : off+len(want)]
 }
 
-// spanHolds reports whether the text at this site says what the site
-// claims it says.
-//
-// The last check before a splice, and the one that makes the write
-// PROVABLE rather than argued. Exercised in the tests with a site the
-// engine would never produce -- an out-of-range position, a span over
-// different text -- which is the only way to test a guard whose whole
-// purpose is to catch a state the rest of the code says cannot happen.
-// (ts/src/patch.ts has the twin, tested the same way.)
 func spanHolds(src string, site WhySite, expect string) bool {
-	// THE SITE'S OWN LENGTH IS PART OF ITS CLAIM, and is checked before
-	// the text is. A site whose Len disagrees with the text it says it
-	// covers CONTRADICTS ITSELF, which is exactly the state this guard
-	// exists to catch -- and a zero-length span would otherwise compare
-	// equal against nothing and then splice nothing, INSERTING the new
-	// value rather than replacing anything.
-	//
-	// Len counts UTF-16 CODE UNITS and a Go string is BYTES, so the
-	// comparison converts. Reading Len as a byte count would accept a
-	// site that disagrees with itself on any line holding a multi-byte
-	// character -- and reject one that agrees.
 	if "" == expect || site.Len != utf16Len(expect) {
 		return false
 	}
 	return spanAt(src, site, expect) == expect
 }
 
-// spanValue answers what this source text means ON ITS OWN, and whether
-// it is a value rather than a constraint. ok is false when it does not
-// stand alone at all (`$` from a path, an unbalanced `{`).
-//
-// The wrapper key is arbitrary and the document it makes is thrown
-// away; what is wanted is the unifier's own reading of the fragment.
 func spanValue(src string) (canon string, concrete, ok bool) {
-	// Unify reports a source it cannot read as an ERROR, so that is the
-	// path a bad fragment takes. What the nil test still earns is the
-	// fragment that PARSES and means nothing: `$` is a path with no
-	// target, and answers a nil rather than an error.
 	v, err := New().Unify("v: " + src)
 	if nil != err {
 		return "", false, false
@@ -345,11 +245,6 @@ func spanValue(src string) (canon string, concrete, ok bool) {
 	return canon, true, true
 }
 
-// notEditable is a refusal to replace, as a WARNING: the assignment
-// still appends, so nothing about the run got worse and the verdict
-// must not move (go/vet.go — warnings never touch the verdict). What
-// the finding adds is the reason, which is the whole value of asking
-// for InPlace over a plain append.
 func notEditable(code, path, why string, from []WhyConjunct) VetFinding {
 	sites := make([]VetSite, len(from))
 	for i, c := range from {
@@ -384,33 +279,11 @@ func notEditable(code, path, why string, from []WhyConjunct) VetFinding {
 func editableLiteral(
 	overlaySrc, path, overlayPath string,
 ) (*PatchReplacement, *VetFinding) {
-	// THE OVERLAY'S OWN DIRECTORY, not the process working directory:
-	// a relative `@"file"` inside the overlay resolves from where the
-	// overlay lives, which is the same rule Vet applies through
-	// DataPath and the CLI through aontuForFile. Setting only File
-	// names the document without telling the loader where it is, and an
-	// include that then fails to resolve makes Why answer "nothing here"
-	// — so the foreign-file refusal never fires and the assignment is
-	// appended instead. The canonical port passes the path as a parse
-	// option, which does both at once.
-	// THE AUTHORITY IS THE OVERLAY TEXT ALONE, WITH INCLUDES DENIED.
-	// The full note is on the canonical port; the short of it is that
-	// the site's file cannot establish which document a literal came
-	// from -- this port names the ENTRY document for an included value
-	// (issue #66), and a library caller need not pass OverlayPath at all
-	// -- so an included literal's (row, col, len, src) can COINCIDE with
-	// different text at the same coordinates here, and the span
-	// verification cannot tell them apart because the text really does
-	// match. Denying includes removes the ambiguity at its source.
 	alone := overlayAontu(overlayPath)
 	alone.Trust = &TrustOptions{IncludeNone: true}
 	report := alone.Why(overlaySrc, path)
 
 	if !report.OK || nil == report.Record {
-		// Nothing here BY ITSELF. Two very different reasons: the path
-		// may simply not be in this overlay, in which case appending is
-		// the whole of the answer -- or it may be here only because
-		// something was loaded, which has to say so.
 		withLoads := overlayAontu(overlayPath).Why(overlaySrc, path)
 		if !withLoads.OK || nil == withLoads.Record {
 			return nil, nil
@@ -437,14 +310,6 @@ func editableLiteral(
 		}
 	}
 
-	// A VALUE REACHED THROUGH A REFERENCE IS NOT THIS PATH'S TO EDIT.
-	// Provenance travels through clones now, so `n: $.base` against
-	// `base: 7` reports the literal `7` -- correctly, and at the site
-	// where it was written, which is `base`'s line and not `n`'s. A
-	// splice there would rewrite the REFERENT: every other reader of
-	// `$.base` changes with it, and the path the caller named does not
-	// move at all. The reference is what stands here, so the reference
-	// is what has to be edited, wherever it points.
 	if 0 < len(refs) {
 		f := notEditable("patch_not_editable", path,
 			"the value here is reached through a reference (ref), so the "+
@@ -481,17 +346,6 @@ func editableLiteral(
 	return verifiedSite(overlaySrc, path, literals[0])
 }
 
-// verifiedSite: THE SPAN MUST CHECK OUT before anything splices. The
-// refusal arm is unreachable through patch since ADR-018 removed the
-// pipe -- the one spelling that synthesised a contribution the parser
-// never sited -- and every WRITTEN contribution's coordinates describe
-// this text by construction. The verification is kept rather than
-// deleted (splicing without it would corrupt the file: a contribution
-// with no Src would splice ZERO bytes, INSERTING the new value into
-// the middle of a line), and this last step is its own seam so the
-// refusal is tested directly, against conjuncts the engine would never
-// produce, on the same footing as spanHolds itself. Full note on the
-// canonical port.
 func verifiedSite(
 	overlaySrc, path string, one WhyConjunct,
 ) (*PatchReplacement, *VetFinding) {
@@ -508,9 +362,8 @@ func verifiedSite(
 		return nil, &f
 	}
 
-	// DOES THE SPAN MEAN THE WHOLE CONTRIBUTION? The check the
-	// `literal` role looks like it makes and does not -- see the note on
-	// the canonical port.
+	// The recorded span must cover the whole value: a site naming only
+	// its opening token would rewrite past it.
 	canon, concrete, ok := spanValue(one.Src)
 	if !ok || canon != one.Canon {
 		f := notEditable("patch_not_editable", path,
@@ -540,11 +393,6 @@ func verifiedSite(
 	}, nil
 }
 
-// overlayAontu is an engine that reads the overlay from the overlay's
-// OWN directory: a relative `@"file"` inside it resolves from where the
-// overlay lives, the rule Vet applies through DataPath and the CLI
-// through aontuForFile. Setting only File names the document without
-// telling the loader where it is.
 func overlayAontu(overlayPath string) *Aontu {
 	if "" == overlayPath {
 		return New()
@@ -557,8 +405,6 @@ func overlayAontu(overlayPath string) *Aontu {
 	return a
 }
 
-// applyEdits splices back to front, so an earlier edit's offset is
-// never invalidated by a later one having already run.
 func applyEdits(src string, edits []patchEdit) string {
 	if 0 == len(edits) {
 		return src

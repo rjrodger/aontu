@@ -7,8 +7,6 @@ const lang_1 = require("../dist/lang");
 const __1 = require("..");
 let lang = new lang_1.Lang();
 const N = (x, _ctx) => new unify_1.Unify(x, lang).res.canon;
-// const G = (x: string, ctx?: any) => new Unify(x, lang)
-//  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
 const A = new __1.Aontu();
 const G = (s) => A.generate(s);
 (0, node_test_1.describe)('unify', function () {
@@ -125,9 +123,6 @@ const G = (s) => A.generate(s);
     (0, node_test_1.test)('condis-different', () => {
         (0, expect_1.expect)(G('a')).equal('a');
         (0, expect_1.expect)(N('a|b')).equal('"a"|"b"');
-        // ADR-007: an unresolved disjunction is INCOMPLETE residue, not the
-        // scalar CONFLICT the old generation fold reported by unifying the
-        // members with each other.
         (0, expect_1.expect)(() => G('a|b')).throws(/aontu\/disjunct_no_gen/);
         (0, expect_1.expect)(N('a&b')).equal('nil');
         (0, expect_1.expect)(() => G('a&b')).throws(/aontu\/scalar/);
@@ -196,26 +191,16 @@ const G = (s) => A.generate(s);
         (0, expect_1.expect)(G('a:&:k:string a:x:{} a:x:k:*$.v v:K')).equal({ v: 'K', a: { x: { k: 'K' } } });
     });
     (0, node_test_1.test)('multi-pass-ref-chain', () => {
-        // A forward ref chain of length N requires N-1 fixpoint passes.
-        // Each pass resolves one link in the chain.
-        // 2-chain: 1 pass
         (0, expect_1.expect)(G('a:$.b b:1')).equal({ a: 1, b: 1 });
-        // 4-chain: 3 passes
         (0, expect_1.expect)(G('a:$.b b:$.c c:$.d d:1')).equal({ a: 1, b: 1, c: 1, d: 1 });
-        // 8-chain: 7 passes (exercises most of the 9-pass limit)
         (0, expect_1.expect)(G('a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:1')).equal({ a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1 });
-        // Verify via Unify that 8-chain actually needs 7 passes
         const u8 = new unify_1.Unify('a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:1', lang);
         (0, expect_1.expect)(u8.cc).equal(7);
         (0, expect_1.expect)(u8.res.done).equal(true);
-        // 10-chain: 9 passes (hits the maximum, still converges)
         (0, expect_1.expect)(G('a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:1')).equal({ a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1, i: 1, j: 1 });
     });
     (0, node_test_1.test)('multi-pass-nested-ref-chain', () => {
-        // Forward ref chain through nested map paths also requires N-1 passes.
-        // 4-chain through nested paths: 3 passes
         (0, expect_1.expect)(G('a:{v:$.b.v} b:{v:$.c.v} c:{v:$.d.v} d:{v:1}')).equal({ a: { v: 1 }, b: { v: 1 }, c: { v: 1 }, d: { v: 1 } });
-        // 8-chain through nested paths: 7 passes
         const src8 = [
             'a:{v:$.b.v}', 'b:{v:$.c.v}', 'c:{v:$.d.v}', 'd:{v:$.e.v}',
             'e:{v:$.f.v}', 'f:{v:$.g.v}', 'g:{v:$.h.v}', 'h:{v:1}',
@@ -241,12 +226,6 @@ const G = (s) => A.generate(s);
         (0, expect_1.expect)(u4.cc).greaterThan(2);
         (0, expect_1.expect)(u4.res.done).equal(true);
     });
-    // budget_passes: the pass budget spent while the final pass was still
-    // making progress (docs/trust.md clause 2). Since issue #26 closed
-    // (both engines defer ref chains one link per pass), the 10-link
-    // reproducer is pinned by SHARED rows (budget.tsv budget-chain-*);
-    // this test keeps the end-to-end err-shape guards (errs()[0].class,
-    // the stable-residue non-firing) that a spec row cannot express.
     (0, node_test_1.test)('budget-passes', () => {
         const chain = 'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1';
         let err = undefined;

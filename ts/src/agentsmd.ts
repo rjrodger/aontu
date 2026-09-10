@@ -1,16 +1,6 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 import { includeOpts } from './utility'
 
-// THE AGENTS.md STANZA (G7 phase 6,
-// docs/capability-review/g7-machine-access.md): generated FROM the
-// definition, so the prose entrypoint cannot drift from the formal
-// source it points at.
-//
-// A hand-written "here is where the config lives" paragraph is stale
-// the first time a key is renamed. This one is derived: the root keys
-// come from the document, the pin comes from G6's canon-hash, and the
-// commands are spelled with paths that exist. Re-running the verb
-// after an edit produces the stanza that edit implies.
 
 import { Aontu } from './aontu'
 import type { TrustOptions } from './type'
@@ -34,11 +24,6 @@ export type AgentsMdReport = {
 }
 
 export type AgentsMdOptions = {
-  // How deep the SHAPE line projects, default 2 (G11 phase 7). Two
-  // levels name the root keys and say `top` under them, which tells an
-  // agent what the document is ABOUT and nothing it can act on; a
-  // caller that wants the fields asks for them. The default is
-  // unchanged, because the stanza is spliced into a file people read.
   depth?: number
   // The name the stanza should call the document. The engine never
   // reads a file; the CLI passes what the author typed.
@@ -48,9 +33,6 @@ export type AgentsMdOptions = {
   // (G5, docs/trust.md); vet's precedent.
   trust?: TrustOptions
 
-  // Extensions additionally read as text (the CLI's `--text-ext`).
-  // Rides beside `trust` because it is the other half of what an
-  // include may read.
   textExt?: string[]
 }
 
@@ -70,12 +52,6 @@ export function agentsMd(
   }
 
   const keys = true === v.isMap ? Object.keys(v.peg).sort(cmpCodePoint) : []
-  // THE SHAPE IS A SECOND EVALUATION, and it runs under the same
-  // include options as the first. Taking `path` alone made it a
-  // narrower reader than the stanza around it: a document whose keys
-  // arrive through a `--text-ext` include listed those keys and then
-  // reported an EMPTY shape, because the read the shape came from
-  // refused the include the read above it had just honoured.
   const shape = get(src, '$', {
     view: 'types', depth: options.depth ?? 2,
     path: options.path, ...includeOpts(options),
@@ -128,11 +104,6 @@ export function agentsMd(
 }
 
 
-// Splice the stanza into an existing document: replace what stands
-// between the markers, or append when there is nothing to replace. A
-// document is otherwise LEFT ALONE — the rest of an AGENTS.md is
-// someone's prose, and a generator that rewrote it would be a
-// generator nobody dared run twice.
 export function agentsMdSplice(existing: string, stanza: string): string {
   const from = existing.indexOf(AGENTSMD_BEGIN)
   const to = existing.indexOf(AGENTSMD_END)
@@ -141,12 +112,6 @@ export function agentsMdSplice(existing: string, stanza: string): string {
       ? existing : existing + '\n'
     return head + ('' === existing ? '' : '\n') + stanza
   }
-  // Skip the end marker's line terminator, whatever it is, and only if
-  // it is there. The full note is on the Go twin (go/agentsmd.go): `+1`
-  // assumed one byte and got the CR of a CRLF document, leaving the LF
-  // to become a blank line on every regeneration -- and past the end of
-  // a document whose marker is its last content, where Go panicked and
-  // this side quietly did not.
   let end = to + AGENTSMD_END.length
   if ('\r' === existing[end]) {
     end++

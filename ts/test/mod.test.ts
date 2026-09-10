@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// MODULES (G6 phase 2, docs/capability-review/g6-distribution.md). The
-// shared contract rows are test/spec/mod.tsv (both runners,
-// root-confined to the fixtures directory, which is also why they never
-// reach the user cache); what is per-port — the cache location, the
-// host-injected filesystem, the verification depth bound — is here,
-// with go/mod_test.go as the twin.
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -28,21 +22,11 @@ function writeLock(dir: string, text: string): void {
 }
 
 
-
-
 const MODULE = 'name: string\nport: *8080 | integer\n'
 
-// The canon-hash of `nil`, which is what EVERY module that fails to
-// evaluate would pin if the lockfile were written from one -- the same
-// string for all of them, so a pin that carries no information while
-// looking exactly like one that does (use-cases/BUGS.md §31).
 const NIL_PIN = 'aon1-XaOkx_EXlEJ1tMhinEkWQDYl1aSmVzoB7LA_Dp0u2-Y'
 
 
-// A project whose main.aon imports one module, and the module itself,
-// placed wherever the caller says. Answers the paths and the module's
-// canon-hash — which is what a pin IS, so a test that wants to pin
-// something has to compute it the same way `aontu hash` does.
 function world(store: 'vendor' | 'cache'): {
   dir: string, main: string, hash: string, cache: string
 } {
@@ -70,12 +54,6 @@ function world(store: 'vendor' | 'cache'): {
 
 describe('mod', () => {
 
-  // THE EMPTY-ELEMENT ARM, which no document can reach: MODULE_RE's
-  // element class is `[A-Za-z0-9._-]+`, one character minimum, so a
-  // routed path never carries an empty element and the shared rows
-  // cannot drive this branch. The rule is still the right one to state
-  // -- the next caller of validateModulePath may not come through the
-  // regex -- so it is pinned here instead (ADR-002 rule 2b).
   test('an-empty-path-element-is-refused', () => {
     Assert.equal(validateModulePath('corp.example//x'), 'an element is empty')
     Assert.equal(validateModulePath(''), 'an element is empty')
@@ -92,10 +70,6 @@ describe('mod', () => {
   })
 
   test('cache-is-content-addressed', () => {
-    // No vendor copy at all: the module is in the user cache, under its
-    // OWN HASH. That is what content-addressed means — a cache hit is
-    // already the right meaning before anything is read from it, which
-    // is also why the cache is consulted only when a pin is known.
     const w = world('cache')
     const a0 = new Aontu({ mod: { cache: w.cache } } as any)
     Assert.deepEqual(
@@ -105,10 +79,6 @@ describe('mod', () => {
 
 
   test('cache-is-not-consulted-under-a-root', () => {
-    // A confined evaluation sees the project's own aontu_meta/vendor/ and
-    // nothing else: the cache lives outside any root, so a rooted
-    // profile that would have to reach it reports the module missing
-    // instead. (docs/trust.md: confinement is about what may be READ.)
     const w = world('cache')
     const a0 = new Aontu({
       mod: { cache: w.cache },
@@ -121,10 +91,6 @@ describe('mod', () => {
 
 
   test('cache-defaults-to-the-platform-location', () => {
-    // With no host-named cache the platform's own is used. Pointed at a
-    // temporary directory through XDG_CACHE_HOME so the test never
-    // reads the developer's real cache — the point is the LOOKUP, not
-    // where a particular machine keeps it.
     const w = world('cache')
     const xdg = Path.join(w.dir, 'xdg')
     Fs.mkdirSync(Path.join(xdg, 'aontu'), { recursive: true })
@@ -180,11 +146,6 @@ describe('mod', () => {
   })
 
 
-  // THE PLATFORM RULE, WITH THE PLATFORM PASSED IN. A Windows arm
-  // cannot be reached from a suite that never runs on Windows, so it is
-  // exercised here rather than trusted — which is the whole reason
-  // modCacheDir splits into modCacheDirFor. Twin: TestModCacheDirRule
-  // in go/mod_test.go.
   test('cache-dir-rule', () => {
     const at = (...p: string[]) => Path.join(...p)
 
@@ -196,10 +157,6 @@ describe('mod', () => {
       modCacheDirFor('win32', { XDG_CACHE_HOME: '/x', LOCALAPPDATA: 'C:/L' }),
       at('/x', 'aontu', 'mod'))
 
-    // HOME is next, and is honoured ON WINDOWS TOO. This is the case
-    // CI caught: LOCALAPPDATA above HOME made an explicitly set HOME
-    // unreachable there, and the platform default silently won over
-    // what the environment was told.
     Assert.equal(
       modCacheDirFor('win32', { LOCALAPPDATA: 'C:/L', HOME: '/h' }),
       at('/h', '.cache', 'aontu', 'mod'))
@@ -261,10 +218,6 @@ describe('mod', () => {
 
 
   test('host-filesystem-is-the-one-modules-are-read-from', () => {
-    // An injected `fs` is the filesystem the host gave this evaluation,
-    // and a module store read through any other one would escape it.
-    // Injecting the real fs proves the channel: the module leg reads
-    // through the host's handle rather than importing its own.
     const w = world('vendor')
     const a0 = new Aontu({ fs: Fs } as any)
     Assert.deepEqual(
@@ -274,10 +227,6 @@ describe('mod', () => {
 
 
   test('a-vendor-store-outside-the-root-is-denied', () => {
-    // Confinement is about what may be READ (docs/trust.md), and a
-    // project root found by walking UP can sit above the confinement
-    // root — so the vendor store it names is outside, and reading it
-    // would be the escape the root exists to refuse.
     const w = world('vendor')
     const sub = Path.join(w.dir, 'sub')
     Fs.mkdirSync(sub)
@@ -292,14 +241,6 @@ describe('mod', () => {
 
 
   test('verification-depth-is-bounded', () => {
-    // A pinned module is verified by EVALUATING it, and that evaluation
-    // resolves the module's own imports — so a vendor tree that led
-    // back to itself would recurse until the host's stack gave out. The
-    // bound makes it a stated refusal instead, exactly as unify_cycle
-    // does, because a verdict that depends on the machine is what
-    // docs/trust.md forbids. Entered at the bound directly: building a
-    // sixteen-deep vendor tree would prove the same thing and nothing
-    // more.
     const w = world('vendor')
     const a0 = new Aontu({ mod: { depth: 16 } } as any)
     Assert.throws(
@@ -310,13 +251,6 @@ describe('mod', () => {
 })
 
 
-// THE MODULE TOOLING (G6 phase 3, ts/src/mod-tool.ts). Both
-// subcommands are LOCAL, and both are file operations, so they are
-// proved here rather than in the shared suite — which has no mode for
-// "run a command in a directory". The two ports were diffed over the
-// same sixteen invocations (text and JSON, every usage error, the
-// lockfile bytes and the vendor tree): identical but for the version
-// field, G2 phase 3's standing carve-out.
 describe('mod-tool', () => {
 
   function capture(fn: () => void): { out: string, err: string, code: number } {
@@ -360,14 +294,6 @@ describe('mod-tool', () => {
   }
 
 
-  // A VENDORED MODULE IS A PROJECT INSIDE A PROJECT (the review's
-  // finding H, use-cases/BUGS.md §31). `mod vendor` produces a FLAT
-  // tree, so a module's own dependency sits beside it in the
-  // consumer's `aontu_meta/vendor/` -- but the module carries its own
-  // `mod.aon`, which used to stop the upward walk there, and the
-  // nested import answered `module not fetched` for a module sitting
-  // one directory away. The Go twin is
-  // TestModTransitiveVendorResolves.
   test('a-nested-import-reaches-the-consumers-vendor-tree', () => {
     const dir = project(
       '"corp.example/schemas/service@1": {v: "1.4.2"},' +
@@ -404,11 +330,6 @@ describe('mod-tool', () => {
   })
 
 
-  // A NIL PIN IS WORSE THAN NO PIN: every module that fails to
-  // evaluate hashes to the same string, so a lockfile written from one
-  // looks exactly like a real pin and carries nothing (§31). `aontu
-  // hash` already refuses such a file; tidy refuses it too. The Go twin
-  // is TestModTidyRefusesAnUnevaluableModule.
   test('tidy-refuses-to-pin-a-module-that-does-not-evaluate', () => {
     const dir = project('"corp.example/schemas/service@1": {v: "1.4.2"}', (d) =>
       vendor(d, 'corp.example/schemas/service@1', {
@@ -428,20 +349,6 @@ describe('mod-tool', () => {
   })
 
 
-  // THE REGRESSION TEST FOR THE DEFECT THE PATH GATE EXISTS TO CLOSE:
-  // `vendor` copied a module tree OUTSIDE the project entirely and
-  // reported `verdict: ok`, exit 0.
-  //
-  // The path routes -- it is domain-shaped and carries a major -- and
-  // then `..` elements walked the store path up out of `aontu_meta/vendor/`,
-  // because pathJoin CLEANS `..` rather than refusing it. The lockfile
-  // is the delivery vehicle: a hostile repository ships one, and
-  // vendoring it writes wherever the path points.
-  //
-  // Asserted on the FILESYSTEM, not on the message. A report that says
-  // the right thing while the write still happened is the failure this
-  // test exists to catch. The Go twin is
-  // TestModVendorRefusesAnEscapingPath.
   test('vendor-refuses-an-escaping-path', () => {
     const escaping = 'corp.example/../../../outside/pwned@1'
     const hash = canonHash(new Aontu().unify(MODULE))
@@ -489,11 +396,6 @@ describe('mod-tool', () => {
   })
 
 
-  // VERIFICATION IS A QUESTION; ANSWERING IT MUST NOT BE AN EDIT
-  // (§32). Tidy recomputes and rewrites by design, so a CI job that
-  // tidies before evaluating has no integrity protection at all: the
-  // lockfile simply agrees with whatever the store now holds. The Go
-  // twin is TestModVerify.
   test('verify-catches-a-tampered-store-and-changes-nothing', () => {
     const dir = project('"corp.example/schemas/service@1": {v: "1.4.2"}', (d) =>
       vendor(d, 'corp.example/schemas/service@1', {
@@ -524,8 +426,6 @@ describe('mod-tool', () => {
     // time.
     Assert.equal(Fs.readFileSync(Path.join(dir, 'aontu_meta', 'mod-lock.aon'), 'utf8'), lock)
 
-    // A module that no longer stands up at all says so, rather than
-    // reporting the hash of nil as though it were a meaning.
     Fs.writeFileSync(svc, 'a: 1\na: 2\n')
     const broken = cli(['mod', 'verify', dir])
     Assert.equal(broken.code, 1, broken.out)
@@ -533,13 +433,6 @@ describe('mod-tool', () => {
   })
 
 
-  // NOTHING TO CHECK IS NOT A PASS. The gate walks what is LOCKED, so
-  // a project whose lockfile was never committed -- or whose lockfile
-  // predates a dependency someone added -- would verify clean over an
-  // empty set: absence reading as agreement, which is the shape of the
-  // defect this verb exists to close. The repair is a tidy, not a
-  // fetch, and the verdict says which. The Go twin is
-  // TestModVerifyRefusesAnUncoveredProject.
   test('verify-refuses-a-project-the-lockfile-does-not-cover', () => {
     const dir = project('"corp.example/schemas/service@1": {v: "1.4.2"}', (d) =>
       vendor(d, 'corp.example/schemas/service@1', {
@@ -559,9 +452,6 @@ describe('mod-tool', () => {
     Assert.equal(cli(['mod', 'tidy', dir]).code, 0)
     Assert.equal(cli(['mod', 'verify', dir]).code, 0)
 
-    // A dependency added to mod.aon after the lockfile was written is
-    // the same hole one edit later: the pins that ARE there still
-    // verify, and the lockfile no longer covers the project.
     Fs.writeFileSync(Path.join(dir, 'mod.aon'),
       'mod: {path: "corp.example/app"}\ndep: {' +
       '"corp.example/schemas/service@1": {v: "1.4.2"}, ' +
@@ -575,14 +465,6 @@ describe('mod-tool', () => {
   })
 
 
-  // A pin cannot be compared against a store that has nothing to
-  // compare, and there are three ways to have nothing: a key that does
-  // not route as a module path, one that routes to a module no store
-  // holds, and one whose store directory exists but whose entry file
-  // does not. All three are `missing` -- the repair is a fetch, not an
-  // edit to the lockfile -- and none of them is a mismatch, which would
-  // claim the store means something else. The Go twin is
-  // TestModVerifyReportsWhatNoStoreHolds.
   test('verify-reports-what-no-store-holds', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-mod-'))
     writeLock(dir,
@@ -641,10 +523,6 @@ describe('mod-tool', () => {
 
 
   test('tidy-selects-the-maximum-of-the-minima', () => {
-    // MINIMUM VERSION SELECTION: the project asks for 1.2.0 of geo and
-    // the module it depends on asks for 1.10.0, so 1.10.0 is selected —
-    // and 1.10.0 is above 1.2.0 by NUMBER, which string order gets
-    // wrong. That is the whole reason versionCompare exists.
     const dir = project(
       '"corp.example/s@1": {v: "1.2.0"}, "corp.example/geo@1": {v: "1.2.0"}',
       (d) => {
@@ -709,12 +587,6 @@ describe('mod-tool', () => {
 
 
   test('tidy-keeps-the-highest-bid-and-ignores-a-later-lower-one', () => {
-    // The two ways MVS discards a bid. WITHIN a round: `s` and `t` both
-    // ask for geo, and the higher ask wins. ACROSS rounds: the project
-    // itself asks for geo at 2.0.0, so the 1.x asks that arrive in the
-    // next round are already below what is selected and change nothing.
-    // Selected versions only rise, which is why this terminates without
-    // a cycle check.
     const dir = project(
       '"corp.example/s@1": {v: "1.0.0"}, "corp.example/t@1": {v: "1.0.0"}, ' +
       '"corp.example/geo@1": {v: "2.0.0"}',
@@ -744,11 +616,6 @@ describe('mod-tool', () => {
 
 
   test('tidy-recomputes-the-canon-pin-and-carries-the-oci-over', () => {
-    // The two pins have different owners. `canon` is what the module in
-    // the store MEANS, so it is recomputed — a tidy that carried the old
-    // one forward would pin what the module used to mean. `oci` is the
-    // registry's word about the bytes it served, which nothing local can
-    // hear, so it survives untouched.
     const dir = project('"corp.example/schemas/service@1": {v: "1.4.2"}', (d) => {
       vendor(d, 'corp.example/schemas/service@1', {
         'mod.aon':
@@ -784,9 +651,6 @@ describe('mod-tool', () => {
 
 
   test('an-unreadable-lockfile-locks-nothing', () => {
-    // Three ways a lockfile can fail to say anything, all answered the
-    // same way: it pins nothing. A lockfile is generated, so a file that
-    // is not what the generator writes is not a file to guess at.
     for (const text of [
       'this is not the canonical line\n',
       '{"other":{}}\n',
@@ -941,12 +805,6 @@ describe('mod-tool', () => {
   })
 
 
-  // THE PUBLISH BOUNDARY (G6 phase 4). What a publish would push is a
-  // manifest, and everything it ASSERTS is local: the annotations, the
-  // layer's contents, and the gate that decides whether the version may
-  // be minted at all. The push itself needs a registry this build does
-  // not have; the assertions do not.
-
   // A module in its own right: it declares its path, its version and
   // its entry, which is what a publish needs and a dependency does not.
   function publishable(version: string, src: string,
@@ -997,10 +855,6 @@ describe('mod-tool', () => {
 
 
   test('the-layer-is-the-source-tree-without-the-vendor-copy', () => {
-    // A module is a TREE, so nested directories are in the layer. A
-    // published module carries its own sources and not a copy of
-    // everyone else's, so `aontu_meta/vendor/` is not: a consumer resolves the
-    // closure itself, and vendoring it here would publish the world.
     const dir = publishable('1.1.0', MODULE, (d) => {
       Fs.mkdirSync(Path.join(d, 'part'))
       Fs.writeFileSync(Path.join(d, 'part', 'extra.aon'), 'extra: true\n')
@@ -1012,10 +866,6 @@ describe('mod-tool', () => {
 
 
   test('a-manifest-needs-a-version-and-an-entry', () => {
-    // A version is what a publish assigns, and the major an import
-    // spells lives inside it — a module that declares none has nothing
-    // to publish under. An entry file that is not there has no meaning
-    // to pin. Neither is a fetch away, so neither is reported as one.
     const noVersion = manifestOf(publishable('', MODULE))
     Assert.equal(noVersion.code, 4)
     Assert.equal(noVersion.report.verdict, 'error')
@@ -1031,10 +881,6 @@ describe('mod-tool', () => {
 
 
   test('the-gate-refuses-a-breaking-version', () => {
-    // THE PUBLISH-TIME BREAKING GATE. The semantics belong wholly to G3
-    // — this is the wiring, at the one place versions are minted — so
-    // the verdict, the findings and the exit class are `aontu
-    // breaking`'s, unchanged.
     const prior = publishable('1.0.0', MODULE)
     const next = publishable('1.1.0', MODULE + 'region: *"eu" | string\n')
 
@@ -1076,10 +922,6 @@ describe('mod-tool', () => {
 
 
   test('the-gate-can-be-undecided', () => {
-    // Subsumption is THREE-valued plus error, and the gate passes all
-    // four through: a question it cannot decide is not a pass, and its
-    // own exit class is what tells a caller so. `must` carries a
-    // message the checker cannot reason about.
     const { code, report } = manifestOf(
       publishable('1.1.0', 'a: must(min(1), "m")\n'),
       publishable('1.0.0', 'a: min(1)\n'))
@@ -1115,8 +957,6 @@ describe('mod-tool', () => {
     Assert.ok(out.includes('config: application/vnd.aontu.module.v1+json'), out)
     Assert.ok(out.includes('layer: service.aon'), out)
 
-    // A refused gate names what broke, in text as well as in JSON: the
-    // exit code says a publish must not follow, and the body says why.
     const refused = cli(['mod', 'manifest',
       '--against', publishable('1.0.0', MODULE),
       publishable('1.1.0', MODULE + 'region: *"eu" | string\n')])

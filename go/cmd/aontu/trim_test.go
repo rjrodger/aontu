@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the cli trim cases in ts/test/cli.test.ts. What the
-// two ports must AGREE on (the report itself) is pinned by
-// test/spec/trim.tsv; what each port owns (argument handling, exit
-// codes, the text rendering) is here.
 
 import (
 	"bytes"

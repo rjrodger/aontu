@@ -25,11 +25,6 @@ function variantOf(v) {
     const s = textOf(v);
     return undefined !== s && (0, escape_1.isEscVariant)(s) ? s : undefined;
 }
-// The number of CAPTURING groups in a normalised pattern. Counted by
-// scanning rather than by asking either host, because the count decides
-// whether a substitution is refused and the two ports must refuse the
-// same ones. The subset admits no named groups, so a capturing group is
-// exactly `(` that is not `(?`.
 function reGroupCount(norm) {
     let count = 0;
     let inClass = false;
@@ -55,8 +50,6 @@ function reGroupCount(norm) {
     }
     return count;
 }
-// One code point at `at`, as a count of UTF-16 units: the "advance by
-// one rune" Go's matching loop performs after an empty match.
 function stepAt(src, at) {
     const c = src.codePointAt(at);
     return undefined === c ? 1 : (0xFFFF < c ? 2 : 1);
@@ -98,12 +91,6 @@ function allMatches(src, re) {
     }
     return out;
 }
-// A substitution template expanded against one match. `$1`..`$9` are
-// the numbered groups, `$&` the whole match and `$$` a literal `$`;
-// anything else after a `$` names nothing, and naming nothing is a
-// REFUSAL rather than a silent literal. A group the pattern does not
-// have is the same refusal -- a generator that expands it to the empty
-// string writes a file with a hole in it and says nothing.
 function expandSub(sub, m, groups) {
     let out = '';
     for (let i = 0; i < sub.length; i++) {
@@ -153,8 +140,6 @@ function splitRe(src, re) {
     }
     return out;
 }
-// An EMPTY separator yields the CODE POINTS, not the UTF-16 units a
-// host split would give: `split("é", "")` is one field in both ports.
 function splitLiteral(src, sep) {
     if ('' === sep) {
         return [...src];
@@ -169,9 +154,6 @@ function compileRe(src) {
         return 'rep_pattern';
     }
     try {
-        // The `u` flag is REQUIRED for parity, exactly as it is for `re()`:
-        // without it JavaScript counts UTF-16 units where Go counts code
-        // points.
         return new RegExp(norm, 'gu');
     }
     catch (e) {

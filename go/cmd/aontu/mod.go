@@ -1,17 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE MODULE TOOLING (G6 phase 3, the Go side of ts/src/cli.ts's
-// runMod). Three subcommands, all LOCAL: `tidy` resolves the closure
-// from what is in the stores and rewrites the lockfile, `vendor`
-// materialises the locked closure into the project, and `manifest`
-// prints the OCI artifact a publish would push — gated on the breaking
-// check against a prior version.
-//
-// `get` and `publish` are the NETWORK half of the design and are not in
-// this build. They are named here rather than left to fall out as an
-// unknown subcommand, because a reader of the design will type them and
-// deserves to be told which half is missing rather than that the word
-// is wrong.
 
 package main
 
@@ -89,10 +77,6 @@ func runMod(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	// THE OLD LAYOUT IS NAMED, NOT READ. The lockfile and the vendored
-	// closure moved under aontu_meta/; a project that still carries them
-	// at its root would otherwise look untouched by any of these verbs,
-	// which is the one silence worth breaking.
 	if _, err := os.Stat(filepath.Join(dir, "aon_vendor")); nil == err {
 		io.WriteString(stderr, legacyLayoutHint)
 	} else if _, err := os.Stat(filepath.Join(dir, "mod-lock.aon")); nil == err {
@@ -150,12 +134,6 @@ func modExit(verdict string) int {
 	return 1
 }
 
-// The manifest's text body. `missing` is rendered here rather than by
-// modRender's shared tail: what a manifest lacks is a declaration the
-// module does not make or an entry file that is not there, and neither
-// is something a fetch would supply. The name says which — `mod.version`
-// is a declaration, `service.aon` is a file — so the line does not
-// guess.
 func modManifestLines(report aontu.ModManifestReport) []string {
 	out := []string{}
 	if "" != report.Mod {
@@ -203,8 +181,6 @@ func modVerifyLines(report aontu.ModVerifyReport) []string {
 	for _, mod := range report.Verified {
 		out = append(out, mod+": verified")
 	}
-	// BOTH HASHES, because the useful question is which way it moved: an
-	// empty Got is a module that no longer stands up at all.
 	for _, m := range report.Mismatched {
 		means := m.Got
 		if "" == means {
@@ -243,10 +219,6 @@ func modRender(sub, format, verdict string,
 	return strings.Join(lines, "\n")
 }
 
-// The machine-readable form. The report's own fields are spread into
-// the envelope by the encoder, which is why it is embedded rather than
-// nested: `{aontu:{…}, lock:[…], missing:[…], verdict:"…"}` is the
-// shape the TypeScript port prints.
 type modReportJSON struct {
 	Aontu  subsumeProducerJSON `json:"aontu"`
 	Report any                 `json:"-"`

@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the cli jsonschema cases in ts/test/cli.test.ts. What
-// the two ports must AGREE on (the schema and the loss report) is
-// pinned by test/spec/jsonschema.tsv; what each port owns (argument
-// handling, exit codes, which stream each half goes to) is here.
 
 import (
 	"bytes"
@@ -78,10 +74,6 @@ func TestJsonSchemaVerb(t *testing.T) {
 }
 
 func TestJsonSchemaLossGoesToStderrAndStrictRefuses(t *testing.T) {
-	// A LOSS IS NEVER SILENT. The schema still goes to stdout, because
-	// a weaker schema is still a usable one -- but the reader is told
-	// what it cannot say, on the other stream, so a redirect keeps the
-	// schema clean and the warning visible.
 	file := jsonSchemaFile(t, "a: integer & must(min(2), \"two\")\n")
 
 	out, errw, code := jsonSchemaRun(file)

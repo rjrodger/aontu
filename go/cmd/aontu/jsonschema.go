@@ -1,17 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// JSON SCHEMA EXPORT (the Go side of runJsonSchema in ts/src/cli.ts):
-// the bridge to every structured-output API, which constrains
-// generation to JSON Schema and nothing else. Export the model, let the
-// provider generate under it, then vet the result against the model
-// itself -- the hybrid an enterprise actually deploys, and impossible
-// without this verb.
-//
-// THE SCHEMA GOES TO STDOUT AND THE LOSSES TO STDERR, so
-// `aontu jsonschema x.aon > schema.json` writes a schema and still tells
-// the reader what it could not carry. --strict makes a loss a refusal,
-// for the CI job that would rather fail than ship a schema weaker than
-// its model.
 
 package main
 
@@ -108,9 +96,6 @@ func runJsonSchema(argv []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// encodeSchema renders the schema alone, which is what a caller
-// redirects into a file. HTML escaping OFF and two-space indent, the
-// same choices render() makes, so the two CLIs emit the same bytes.
 func encodeSchema(schema map[string]any) string {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

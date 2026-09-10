@@ -34,24 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// THE vet ≡ eval INVARIANT (ADR-007, use-cases/REVIEW.md finding C).
-//
-// For every schema S and data D, `vet(S, D)` and `eval(S ∪ D)` must
-// AGREE ON ACCEPT/REJECT. Their reports legitimately differ — vet
-// names roles and sites across two documents, eval raises the first
-// failure — but a document the gate accepts must evaluate, and one it
-// refuses must not. The review found five ways they disagreed, each of
-// which passed a green suite, because nothing anywhere asserted the
-// pair.
-//
-// The corpus is the SHARED SPEC's own vet rows, so this grows with
-// every row anyone adds rather than with a fixture list someone has to
-// remember to extend. That is the point of putting it here: the
-// differential check is standing infrastructure beside the parity
-// probe, not a one-off audit.
-//
-// The Go twin is TestVetEqualsEval in go/veteval_test.go, reading the
-// same rows.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
@@ -73,13 +55,6 @@ function unescape(s) {
     }
     return out;
 }
-// Only `vet` rows, and only the ones with a single-document analogue.
-// `--at` anchors a SUBTREE and `--closed` seals the anchor, and
-// neither is anything one document spells -- they are options that
-// change the TRUTH, so a union of the two texts is a different
-// question. `partial` deliberately calls residue acceptable, which
-// eval never does, and `maxErrors` changes the report rather than the
-// verdict's meaning.
 function loadVetRows() {
     const rows = [];
     for (const file of Fs.readdirSync(SPEC_DIR).filter((f) => f.endsWith('.tsv')).sort()) {
@@ -127,21 +102,6 @@ function evalAccepts(src) {
     }
     return 0 === ctx.err.length && undefined !== out;
 }
-// S ∪ D as ONE document, and undefined when the pair has no
-// single-document spelling.
-//
-// The usual case is two documents written as KEY STATEMENTS, and there
-// concatenating the texts IS the union: a key stated twice is the
-// meet, which is exactly what vet computes across the pair. It also
-// keeps absolute references (`$.a`) pointing where they point, which
-// matters -- those are the rows that catch a schema settling before
-// the data arrives.
-//
-// A rootless value -- a braced/bracketed literal, a bare scalar -- has
-// no keys to merge, and pasting `{"a":1}` after a statement is a
-// syntax error rather than a meet. Those are met under a shared key
-// instead. That reparents everything, so a source carrying an absolute
-// reference has no honest wrapped form and the row is skipped.
 function union(schema, data) {
     if (statementForm(schema) && statementForm(data)) {
         return schema + '\n' + data + '\n';

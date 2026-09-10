@@ -2,11 +2,6 @@
 
 package aontu
 
-// THE VIEWS -- the Go twin of ts/src/view.ts. See that file for what
-// each kind draws, why a report and never the Val tree is the only
-// input, and the loss report; what the two ports must agree on -- the
-// rendered text, the loss report and the refusals -- is
-// test/spec/view.tsv.
 
 import (
 	"path/filepath"
@@ -508,9 +503,6 @@ type treeFrame struct {
 	at, row      int
 }
 
-// drawTree is THE DEPENDENCY TREE: the drawn edges, walked from each
-// root, indented. See drawTree in ts/src/view.ts for the two marks and
-// the root rule.
 func drawTree(all []drawnEdge, relation string, roots []string, max int, as, style string) (string, []VetFinding) {
 	paint := newPainter(style)
 	kept := all
@@ -1292,9 +1284,6 @@ func drawLayer(triples []viewTriple, root Val, relation, groupBy string, layers 
 			" -> "+byPath[c.edge.to].label)
 	}
 	if "svg" == as {
-		// The description says WHAT WAS DRAWN, because two layer figures
-		// of one model on one page differ by exactly that, and a reader
-		// who cannot see them has only this to tell them apart.
 		drew := strconv.Itoa(up) + " upward edges"
 		if "all" == edges {
 			drew = strconv.Itoa(len(shown)) + " edges drawn, " + strconv.Itoa(up) + " of them upward"
@@ -2184,12 +2173,6 @@ func (a *Aontu) View(src string, opts *ViewOptions) ViewReport {
 			"The "+kind+" figure does not render as "+as+".",
 			"profiles: "+strings.Join(profiles, ", "))})
 	}
-	// ONE MECHANISM PER PROFILE (VIEWS.0.md, "7. Styling"). `ansi` is
-	// the text profile's and `css` the SVG's; asking for one on a
-	// profile that has no way to carry it is a usage error rather than
-	// a silent no-op, so a script that asks for colour and gets none is
-	// told why. `none` is always available -- it is the absence of a
-	// mechanism.
 	style := viewStyleOf(options.Style, as)
 	carrier, mechanism := viewStyleCarrier[style]
 	if mechanism && carrier != as {

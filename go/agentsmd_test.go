@@ -1,9 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The splice around the shared rows (G7 phase 6). The stanza itself is
-// pinned byte for byte by test/spec/agentsmd.tsv in both ports; the
-// splice is what each port's CLI calls, and cross-package runs do not
-// count toward this package's coverage.
 
 package aontu
 
@@ -20,8 +16,6 @@ func TestAgentsMdSplice(t *testing.T) {
 		t.Fatalf("empty: %q", got)
 	}
 
-	// Prose WITHOUT a trailing newline gets one, so appending never
-	// joins the stanza onto someone's last line.
 	if got := AgentsMdSplice("prose", stanza); "prose\n\n"+stanza != got {
 		t.Fatalf("no newline: %q", got)
 	}
@@ -31,8 +25,6 @@ func TestAgentsMdSplice(t *testing.T) {
 		t.Fatalf("newline: %q", got)
 	}
 
-	// Markers present: what is BETWEEN them is replaced, and what is
-	// outside them is not.
 	existing := "head\n\n" + AgentsMdBegin + "\nOLD\n" + AgentsMdEnd + "\ntail\n"
 	got := AgentsMdSplice(existing, stanza)
 	if !strings.HasPrefix(got, "head\n\n") || !strings.HasSuffix(got, "tail\n") ||
@@ -44,10 +36,6 @@ func TestAgentsMdSplice(t *testing.T) {
 		t.Fatalf("not idempotent:\n%q\n%q", got, again)
 	}
 
-	// A CRLF DOCUMENT keeps its own endings outside the markers, and
-	// gains NOTHING between the end marker and the text after it. The
-	// old `+1` skipped the CR and left the LF, so every regeneration
-	// added a blank line.
 	crlf := "head\r\n\r\n" + AgentsMdBegin + "\r\nOLD\r\n" + AgentsMdEnd + "\r\ntail\r\n"
 	got = AgentsMdSplice(crlf, stanza)
 	if !strings.HasSuffix(got, AgentsMdEnd+"\ntail\r\n") {
@@ -57,10 +45,6 @@ func TestAgentsMdSplice(t *testing.T) {
 		t.Fatalf("crlf not idempotent:\n%q\n%q", got, again)
 	}
 
-	// The end marker as the LAST content, under every terminator and
-	// none. `+1` indexed PAST THE END here and panicked, while the
-	// canonical port's slice() clamped and returned -- a crash on one
-	// port and a result on the other (ADR-001).
 	for _, term := range []string{"", "\n", "\r\n"} {
 		doc := "head\n\n" + AgentsMdBegin + "\nOLD\n" + AgentsMdEnd + term
 		if got := AgentsMdSplice(doc, stanza); "head\n\n"+stanza != got {
@@ -76,11 +60,6 @@ func TestAgentsMdSplice(t *testing.T) {
 	}
 }
 
-// The SHAPE's depth (G11 phase 7). Two levels name the root keys and
-// say `top` under them; a caller that wants the fields asks for them.
-// Here rather than only in the command suite for the reason the header
-// above states: cross-package runs do not count toward this package's
-// coverage.
 func TestAgentsMdDepthOption(t *testing.T) {
 	src := "entity: { &: { table: string, fields: { &: { type: string } } } }\n"
 

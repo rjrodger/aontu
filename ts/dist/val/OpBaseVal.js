@@ -40,10 +40,6 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             return (0, PlaceVal_1.fillPlace)(this, peer, ctx).unify((0, top_1.top)(), ctx);
         }
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Op:' + this.opname(), this, peer);
-        // Declared without an initial value: every arm below assigns it, and
-        // seeding it with `this` made the two arms that stand the op read as
-        // redundant self-assignments. The arms themselves stay as they are —
-        // they mirror the dispatch switch in go/op.go arm for arm (ADR-001).
         let out;
         if (this.id == peer.id) {
             return this;
@@ -52,9 +48,6 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         let newpeg = [];
         for (let arg of this.peg) {
             if (!arg.done) {
-                // Charged to the depth budget: this recurses without going
-                // through `unite`, so the counter would otherwise stay flat
-                // while the stack grows (see withDepth in unify.ts).
                 const a = arg;
                 arg = (0, unify_1.withDepth)(ctx, a, (0, top_1.top)(), () => a.unify((0, top_1.top)(), ctx, (0, utility_1.ec)(te, 'ARG')));
             }
@@ -66,12 +59,10 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             // `|| this` makes result truthy, so an op that cannot compute yet
             // takes the OpBaseVal arm below rather than a separate null arm.
             let result = this.operate(ctx, newpeg) || this;
-            // TODO: should be result.isOp
             if (result instanceof OpBaseVal) {
                 if (peer.isTop) {
                     out = this;
                 }
-                // TODO: should peer.isNil
                 else if (peer.isNil) {
                     out = (0, err_1.makeNilErr)(ctx, 'op[' + this.peg + ']', this, peer);
                 }
@@ -92,22 +83,18 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         else if (peer.isTop) {
             this.notdone();
             out = this.make(ctx, { peg: newpeg });
-            // TODO: make should handle this using ctx?
             out.site.row = this.site.row;
             out.site.col = this.site.col;
             out.site.url = this.site.url;
             out.path = this.path;
-            // why += 'top'
         }
         else if (peer.isNil) {
             this.notdone();
             out = peer;
-            //why += 'nil'
         }
         else {
             this.notdone();
             out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
-            // TODO: make should handle this using ctx?
             out.site.row = this.site.row;
             out.site.col = this.site.col;
             out.site.url = this.site.url;
@@ -156,14 +143,12 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
     gen(ctx) {
         // Unresolved op cannot be generated, so always an error.
         let nil = (0, err_1.makeNilErr)(ctx, 'op', this, undefined);
-        // TODO: refactor to use Site
         nil.path = this.path;
         nil.site.url = this.site.url;
         nil.site.row = this.site.row;
         nil.site.col = this.site.col;
         (0, err_1.descErr)(nil, ctx);
         if (ctx) {
-            // ctx.err.push(nil)
             ctx.adderr(nil);
         }
         else {

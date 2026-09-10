@@ -26,12 +26,6 @@ class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // internal error.
         const arg = args?.[0];
         const oldpeg = arg?.peg;
-        // THE RANGE (ts/src/val/caserange.ts): `start` names the first
-        // character of the run when it is zero or positive and the last
-        // when it is negative; `len` of -1, and the absent argument, are
-        // the source's length. Refused on a NUMBER, where a run of
-        // characters means nothing -- the numeric arm below is a ceiling,
-        // not a case mapping.
         const start = (0, caserange_1.rangeArg)(args?.[1]);
         const len = (0, caserange_1.rangeArg)(args?.[2]);
         const ranged = undefined !== start || undefined !== len;
@@ -43,11 +37,6 @@ class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
         const peg = 'string' === typeof oldpeg ?
             (0, caserange_1.caseRange)(oldpeg, start ?? 0, len ?? -1, true) :
             'number' === typeof oldpeg ? Math.ceil(oldpeg) :
-                // The exact leaves take an EXACT ceiling and keep their kind: a
-                // biginteger is already integral so it is its own ceiling, and a
-                // bigdecimal ceils by coefficient arithmetic. Math.ceil is not
-                // an option for either — it would round the value into binary64
-                // first, which is the loss the `0d` leaves exist to refuse.
                 'bigint' === typeof oldpeg ? oldpeg :
                     oldpeg instanceof Decimal_1.Decimal ? oldpeg.ceil() :
                         undefined;

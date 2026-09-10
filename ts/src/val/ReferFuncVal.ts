@@ -1,24 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// CHECKED, TYPED, LINK-SHAPED REFERENCES (G4 phase 2,
-// docs/capability-review/g4-identity-relations.md): `refer(t)` is a
-// constraint on a string-valued field. The string must be an ENTITY
-// ADDRESS, the addressed node must exist in the evaluation, and — when
-// `t` is given — `t` is unified INTO the target. The field's own value
-// stays the address string: a LINK, not an embedding.
-//
-// This is the piece a plain reference cannot be. `$.a.b` resolves by
-// CLONING its target into place, so `dependsOn: [$.services.auth]`
-// generates a full copy of the auth node where the author meant a
-// name. `refer` leaves the name and checks it.
-//
-// Constraint FLOW rather than a check: `refer(t)` does not merely test
-// the target against `t`, it unifies `t` into it. Referring to
-// something as a Service MAKES it one, and if it cannot be, the
-// conflict is an ordinary located error. Check-only semantics would be
-// non-monotone — true, then false as the target grows — and the
-// lattice guarantee is that more information never falsifies what has
-// been observed.
 
 import type {
   Val,
@@ -49,16 +30,9 @@ import { top } from './top'
 import { propagateMarks, walk } from '../utility'
 
 
-// A RELATION PREDICATE is still a declared D-1 name
-// (docs/design/RELATIONS.0.md §3.2). Entity names are gone with
-// ADR-014; predicate names are not -- a relation is a vocabulary term,
-// not an address.
 const PREDICATE_NAME = /^[_a-zA-Z][-_a-zA-Z0-9]*$/
 
 
-// The tree path an address resolves to from `at` -- the position of
-// the link itself -- or undefined when a relative address climbs off
-// the top of the tree.
 export function addressPath(
   addr: Address, at: (string | number)[]
 ): string[] | undefined {
@@ -75,10 +49,6 @@ export function addressPath(
 }
 
 
-// The node a tree path names, with the parent and key that hold it so
-// a type flow can be written back. Pending is not failure: the target
-// may be introduced by a later conjunct, include or spread, so `refer`
-// residuates exactly as a forward reference does.
 export function findAt(
   root: Val | undefined, path: string[]
 ): { parent?: any, key?: string, val: Val } | undefined {
@@ -104,10 +74,6 @@ export function findAt(
 }
 
 
-// concreteFlow is `t` as it enters the target: a copy with the
-// type/hide marks cleared at every depth. The clone matters as much as
-// the clearing — `t` is shared by every position that refers to the
-// same thing, and clearing in place would unmark the schema itself.
 function concreteFlow(ctx: AontuContext, t: Val): Val {
   let marked = false
   walk(t, (_key: string | number | undefined, v: Val) => {
@@ -130,20 +96,9 @@ function concreteFlow(ctx: AontuContext, t: Val): Val {
 }
 
 
-// ReferVal is what `refer(t)` RESOLVES to: the residual constraint,
-// carrying the type to flow and — once it has met a string — the
-// address to flow it into. A separate value from the function for the
-// reason every residual is: the function is written once and the
-// constraint is met many times, and only the constraint has state
-// worth carrying.
 class ReferVal extends FeatureVal {
   isRefer = true
   isGenable = true
-  // AFTER the plain values (base 99999), BEFORE the sizing atoms
-  // (LATE_CJO): sibling path values fold together first under the
-  // prefix rule, and the residual then meets ONE merged address --
-  // without this, `refer() & path($.a) & path($.a.b)` settled on the
-  // first path and the second met the finished link too late.
   cjo = 120000
 
   // The type to flow into the target; TOP when `refer()` was written
@@ -156,10 +111,6 @@ class ReferVal extends FeatureVal {
   // Constraints met while the address was still pending — a kind, a
   // regex, a preference. They meet the LINK once there is one.
   held?: Val
-  // The PREDICATE the produced link belongs to, when this residual was
-  // minted by `rel()` on a field: the field's key, stamped onto the
-  // link so the graph reports the edge under a DECLARED relation
-  // rather than inferring one from the path (RELATIONS.0.md §3.2).
   relkey?: string
   // The codes this residual refuses with: refer() keeps its own,
   // rel()-minted residuals carry rel_address/rel_unresolved.
@@ -175,16 +126,6 @@ class ReferVal extends FeatureVal {
     this.dc = 0
   }
 
-  // The residual's own state — the type to flow, the address it has
-  // met, the constraints it holds — TRAVELS with the clone. A spread
-  // template holds the FUNCTION, so a template never needs this; a
-  // REFERENCE to a value that already contains a resolved link does
-  // (`z: {u: refer() & "$.a"}` then `s: $.z`). Without it the
-  // clone came back as a bare `refer()` — the address silently
-  // dropped, and the copied link resolving to nothing.
-  //
-  // No path-dependence hook, though: a residual is minted at its
-  // destination, so `key()` inside a template resolves there already.
   clone(ctx: AontuContext, spec?: ValSpec): Val {
     const out: any = super.clone(ctx, spec)
     out.tval = this.tval
@@ -221,20 +162,11 @@ class ReferVal extends FeatureVal {
       return peer
     }
 
-    // A PATH VALUE is the ADDRESS, when there is not one yet. Only a
-    // path value can be one (PATHS.0.md, amended): a bare string is
-    // never a path -- `path("...")` is the one string conversion, and
-    // it happens at the call, not here. The peg is pre-validated by
-    // the capture, so no parse can fail.
     if (undefined === this.addr && true === p.isPath) {
       const addr = parseAddress(p.peg) as Address
       return this.with(ctx, { addr, addrsrc: p.peg }, peer)
     }
 
-    // A SECOND path peer refines the address by the prefix rule: the
-    // longer of the two when one opens the other, exactly as two path
-    // values meet on their own. Two incomparable addresses are the
-    // same conflict two unequal scalars are.
     if (undefined !== this.addr && true === p.isPath) {
       const merged = prefixMeet(this.addrsrc as string, p.peg)
       if (undefined === merged) {
@@ -244,24 +176,11 @@ class ReferVal extends FeatureVal {
         { addr: parseAddress(merged) as Address, addrsrc: merged }, peer)
     }
 
-    // A value that can never BE a path cannot be the address, and no
-    // later pass can repair it — so this arm refuses rather than
-    // defers. A bare STRING is in it now (PATHS.0.md, amended):
-    // `path("...")` is the one conversion, at the call. A KIND or a
-    // constraint is not in it: `string`, `re("^svc_")` and the like
-    // are perfectly good constraints on an address, and are held
-    // below until there is one to apply them to.
     if ((true === p.isScalar && true !== p.isPath)
       || true === p.isMap || true === p.isList) {
       return makeNilErr(ctx, this.addrcode, this, peer, 'refer')
     }
 
-    // HELD: everything else waits for the address. Carried on the
-    // residual rather than parked in a conjunct, because a conjunct
-    // rebuilt every pass grows a level every pass; the held constraint
-    // meets the link the moment the address resolves, so
-    // `refer() & re("a") & re("b") & path($.z)` still applies both and
-    // `refer() & string & path($.z)` still passes.
     return this.with(ctx, {
       held: null == this.held ? peer : unite(ctx, this.held, peer, 'refer-held'),
     }, this)
@@ -290,24 +209,6 @@ class ReferVal extends FeatureVal {
   // resolved string should take.
   settle(ctx: AontuContext, site: Val): Val {
     if (undefined === this.addr) {
-      // DONE while unmet, as `string` and `min(1)` are, and as RelVal
-      // has been since it was written (see its constructor). An
-      // ADDRESS-LESS refer has nothing to check yet and nothing to
-      // refuse: it is its own settled residual, and the meet
-      // re-activates it the moment a value arrives, because map
-      // merges build the conjunct regardless.
-      //
-      // NOT-DONE here used to be justified as keeping the pass loop
-      // offering the refer a chance -- but that is the job of the
-      // OTHER pending branch below, where an address exists and its
-      // target has not appeared. This branch has no address to
-      // resolve, so staying not-done bought nothing and cost the
-      // schema idiom: a `type()` body holding a link never settled,
-      // so its mark never transferred, so generation could not skip
-      // the marked subtree and raised `mapval_no_gen` naming the
-      // definition. `type({p: integer})`, `type({p: path()})` and
-      // `type({p: min(1)})` all settled; only a link did not
-      // (aontu-lang/aontu#172, G4 phase 4's recorded cost).
       this.dc = DONE
       return this
     }
@@ -321,13 +222,6 @@ class ReferVal extends FeatureVal {
     }
     const found = findAt(ctx?.root, target)
     if (undefined === found) {
-      // PENDING, not failed — until the last pass. The target may be
-      // introduced by a later conjunct, include or spread, so `refer`
-      // residuates as a forward reference does; but within ONE
-      // evaluation the document-set is fixed, so existence IS
-      // decidable, and the final pass is where it is decided. A
-      // pending refer keeps the tree not-done, so the pass loop always
-      // reaches that pass when there is one to decide.
       if (ctx.cc + 1 >= ctx.budget.passes) {
         return makeNilErr(ctx, this.unresolvedcode, this, undefined, 'refer',
           { addr: this.addrsrc as string })
@@ -336,58 +230,13 @@ class ReferVal extends FeatureVal {
       return this
     }
 
-    // THE FLOW. `t` is unified into the target and written back at the
-    // target's own position — one position, because the tree is the
-    // namespace and a path names exactly one node.
-    //
-    // RE-ENTRANT ONLY ONCE PER TARGET (use-cases/BUGS.md §19). Uniting
-    // the target drives the target's OWN subtree, and if the target
-    // links back — `a` typed-refers `b`, `b` typed-refers `a`, the
-    // shape every inverse pair has — that drives this target again,
-    // and the two flow into each other until the depth budget or the
-    // host stack ends it. `unify_cycle` on a model whose meet plainly
-    // converges: `{k:1}` meeting `{k:1}` is a fixpoint, and the
-    // evaluator never got far enough to notice.
-    //
-    // The guard is the set of paths a flow is currently inside, on the
-    // context. A flow that would re-enter one has its MEET skipped:
-    // the outer flow it is nested in is already uniting that node, and
-    // re-entering is what runs the host stack out.
-    //
-    // ITS RECORD IS STILL WRITTEN. The skip used to take the record
-    // with it, on the reasoning that "the same information arrives by
-    // the same channel one frame up" -- true of the outer flow's TYPE,
-    // and false of a nested flow carrying a DIFFERENT one. The outer
-    // flow delivers only its own type, the residual is consumed into a
-    // settled link in the same breath, and nothing re-offers it: the
-    // nested type was lost for good, and which of two flows was the
-    // nested one depended on which link the evaluator happened to
-    // reach first. A layering rule declared on one field and reached
-    // through another module's mirror therefore held in one
-    // declaration order and not in the other (BUGS.md 69).
-    //
-    // Recording it DEFERS the meet to `applyFlows`, which runs at the
-    // top of the tree with no flow in flight and so cannot re-enter
-    // anything -- the channel this record already exists to be.
     const guard = target.join('.')
     // Seeded on the unify root (ts/src/unify.ts): a `??=` here would
     // make a fresh set on whichever descended context asked first.
     const flowing: Set<string> = (ctx as any)._referflow ?? new Set<string>()
     if (!this.tval.isTop) {
-      // The flowed type is CONCRETE at the target: a schema flowing
-      // into a value must not make the value a schema. Same reasoning
-      // as a reference's clone clearing marks — `refer($.std.Service)`
-      // says the target IS a Service, not that it is the definition
-      // of one — and without it the target silently stopped
-      // generating.
       const flow = concreteFlow(ctx, this.tval)
 
-      // THE RECORD, keyed by the target's path, replayed onto every
-      // later pass by applyFlows in ts/src/unify.ts. A pass rebuilds
-      // subtrees, so the write below does not survive one when the
-      // link sits inside its own target or two nodes link at each
-      // other; the record is what makes the flow reach the result
-      // rather than the tree it was computed from.
       const flows: Map<string, Val> = (ctx as any).referflows ??
         new Map<string, Val>()
       const key = target.join('\x00')
@@ -402,18 +251,6 @@ class ReferVal extends FeatureVal {
           if (true === (merged as any).isNil) {
             return merged
           }
-          // The write into THIS pass's view, so the rest of the pass
-          // sees it. findAt refuses the empty path, so a resolved
-          // target always has a parent holding it.
-          //
-          // NOT FROM INSIDE A TRIAL. A disjunction member is a
-          // HYPOTHESIS, and writing its flow into the live tree
-          // asserts the member's type on another node before the
-          // member is known to survive. The `unite` above still runs:
-          // its nil is how a member legitimately fails. Only the
-          // COMMIT waits, and the surviving member's flow reaches the
-          // tree on the next pass, from the record DisjunctVal stages
-          // and merges for survivors alone.
           if (true !== (ctx as any)._trialMode) {
             found.parent.peg[found.key as string] = merged
           }
@@ -424,24 +261,8 @@ class ReferVal extends FeatureVal {
       }
     }
 
-    // The value IS the address, as a PATH VALUE (ADR-016): a link,
-    // not an embedding -- and re-stating or refining the address
-    // still meets it, which a string link could not do under the
-    // strict rules.
     const out: any = new PathVal({ peg: this.addrsrc as string }, ctx)
     out.dc = DONE
-    // STAMPED as a link (G4 phase 3): the value is the address string,
-    // so without this nothing downstream could tell a checked link from
-    // a literal that happens to look like one. The edge set is exactly
-    // the set of these stamps. A rel()-minted link also carries its
-    // PREDICATE (the rel field's key), so the graph reports a declared
-    // relation rather than inferring one from the path.
-    //
-    // The stamp is the RESOLVED path, not the written one: a relative
-    // address means a different node from each position it is written
-    // at, and an edge set whose far ends were spellings rather than
-    // nodes could not be traversed. The VALUE stays what the author
-    // wrote --- the link is what it says, the edge is where it goes.
     out.link = '$.' + target.join('.')
     if (undefined !== this.relkey) {
       out.relkey = this.relkey
@@ -456,23 +277,12 @@ class ReferVal extends FeatureVal {
     const t = this.tval.isTop ? '' : this.tval.canon
     const call = 'refer(' + t + ')' +
       (null == this.held ? '' : '&' + this.held.canon)
-    // The address renders as the path call: a bare string address no
-    // longer reparses (PATHS.0.md, amended), and canon must.
     return undefined === this.addrsrc
       ? call : call + '&path(' + this.addrsrc + ')'
   }
 }
 
 
-// RelVal is what `rel(t?)` RESOLVES to (RELATIONS.0.md §3.2): the
-// relation constraint, sited on the FIELD the way the sizing atoms sit
-// on containers. Its value may be one address, a LIST of addresses, or
-// a MAP whose string leaves are addresses -- the container shapes are
-// rewritten leaf by leaf through the refer machinery, so pending
-// resolution, type flow and link stamping are the one battle-tested
-// path, and the data side stays plain strings. The PREDICATE of every
-// edge produced is the key the rel() sits on -- declared once, in the
-// schema, never inferred from the path.
 class RelVal extends FeatureVal {
   isRel = true
   isGenable = true
@@ -489,15 +299,6 @@ class RelVal extends FeatureVal {
     super(spec, ctx)
     this.tval = (spec as any).tval ?? top()
     this.held = (spec as any).held
-    // DONE while unmet, deliberately: a type() body holding a rel()
-    // must SETTLE, or the schema idiom (`dependsOn?: rel($.T)` inside
-    // a vocabulary) leaves the type unresolved and every reference to
-    // it deferring forever. This was the property refer() lacked --
-    // G4 phase 4 recorded the cost -- until 2026-09-07, when an
-    // address-less refer was given it too (#172); the two now settle
-    // by the same rule, which is what the shared reasoning below is. An unmet rel is its own settled residual,
-    // like `min(1)`; the meet re-activates it whenever a value
-    // arrives, because map merges build the conjunct regardless.
     this.dc = DONE
   }
 
@@ -508,32 +309,12 @@ class RelVal extends FeatureVal {
     return out
   }
 
-  // The predicate: the last segment of the field path the constraint
-  // is being APPLIED at -- when that segment is a D-1 NAME. A relation
-  // predicate is a declared name (RELATIONS.0.md §3.2), so a list
-  // index or a key outside the name grammar produces unlabelled
-  // links, and the graph falls back to its old inference. The D-1
-  // test is also what keeps the two ports' edges identical: a list
-  // index is a number here and a string in Go.
-  //
-  // THE PATH COMES FROM THE CONTEXT, not from `this.path`. The val's
-  // own path records where this constraint was CLONED FROM, and the
-  // two part company the moment a second document merges into an
-  // entity: the field's constraint is then driven at the ENTITY, and
-  // `this.path` names the entity while the context names the field.
-  // The predicate became the entity's own key, every link under it
-  // minted an edge starting one level too high, and `inverse(n)`
-  // reported a mirror that was written as missing.
   fieldkey(ctx: AontuContext): string | undefined {
     const path: any[] = (ctx as any).path
     const seg = path[path.length - 1]
     return 'string' === typeof seg && PREDICATE_NAME.test(seg) ? seg : undefined
   }
 
-  // One leaf's residual: the refer machinery carrying rel's codes,
-  // predicate and type. The predicate is passed IN, because the field
-  // it names is decided where the rewrite starts and must not be
-  // re-read on the way down (see `rewriteUnder`).
   leafRefer(ctx: AontuContext, relkey: string | undefined): ReferVal {
     const rv = new ReferVal({ tval: this.tval } as any, ctx)
     rv.addrcode = 'rel_address'
@@ -544,20 +325,10 @@ class RelVal extends FeatureVal {
     return rv
   }
 
-  // The container, every string leaf wrapped as a link. Nested
-  // containers descend; a leaf already STAMPED as a link is left
-  // alone, which is what makes a second application (a template
-  // re-applied, a later pass) a no-op.
   rewrite(ctx: AontuContext, container: any): Val {
     return this.rewriteUnder(ctx, container, this.fieldkey(ctx))
   }
 
-  // The rewrite proper, carrying the predicate decided at the field.
-  // It is decided ONCE, at the top: a map-valued relation
-  // (`dependsOn: {primary: [...]}`) descends through the inner label
-  // and must still report `dependsOn`, which is the whole reason a
-  // link carries a declared predicate rather than letting the graph
-  // infer one from its position.
   rewriteUnder(
     ctx: AontuContext, container: any, relkey: string | undefined
   ): Val {
@@ -581,10 +352,6 @@ class RelVal extends FeatureVal {
       else if (undefined === child.link) {
         let leaf = unite(ctx.descend('' + k), this.leafRefer(ctx, relkey),
           child, 'rel-leaf')
-        // The held constraints apply PER LEAF: a re() on the relation
-        // constrains every address, never the container that holds
-        // them (found by the service catalog, whose re("^svc_") met
-        // the whole list and refused it).
         if (null != this.held) {
           leaf = unite(ctx.descend('' + k), leaf, this.held, 'rel-held')
         }
@@ -592,26 +359,9 @@ class RelVal extends FeatureVal {
         pending = pending || true !== leaf.done
       }
     }
-    // The rewrite holds its PENDING leaves open (an address whose
-    // entity a later statement declares), so the pass loop keeps
-    // driving the container until every link settles. A rewrite that
-    // minted NOTHING pending -- every leaf already linked or settled
-    // in place -- keeps the clone's doneness: re-applying a template
-    // over a settled value must converge in the same pass, or the
-    // enclosing bags reopen forever (the service catalog, where the
-    // entity merge drops the spread stamp each pass).
     if (pending) {
       out.dc = 0
     }
-    // Elements that arrive AFTER this rewrite -- another statement of
-    // the list, a patch position of the entity -- must convert too, so
-    // the rewrite installs its own leaf constraint as the container's
-    // ELEMENT SPREAD, exactly the machinery the old per-element
-    // `[&: refer()]` idiom used. Only on a FLAT address container (a
-    // labelled map's sub-containers get their own spread from the
-    // recursion above; a leaf template meeting a map child would
-    // refuse it), and only where no spread already stands: a schema's
-    // own template is not this rewrite's to clobber.
     if (!nested && null == (out as any).spread.cj) {
       let tmpl: Val = this.leafRefer(ctx, relkey)
       if (null != this.held) {
@@ -638,11 +388,6 @@ class RelVal extends FeatureVal {
       return out
     }
 
-    // No null/top/nil arms: unite's dispatch ladder absorbs those
-    // peers before any Val's own unify is consulted (a null or top
-    // peer returns this side; a nil peer returns the nil), and unite
-    // is the only entrance -- the container hand-offs pass the
-    // container itself.
 
     // ONE ADDRESS: the scalar-valued field, refer's own shape. A path
     // value only -- a bare string is never an address (PATHS.0.md,

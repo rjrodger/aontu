@@ -1,37 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE DOCUMENTATION, HELD TO THE ENGINE. Every fenced snippet in the
-// Diátaxis pages is either executed here or carries a visible,
-// reasoned skip — the rule docs/STYLE-GUIDE.md states and this file
-// enforces. The failure mode this exists for is silent and slow: an
-// example that was right when it was written stays in the page after
-// the surface moves under it, and the reader who trusts it is the one
-// who finds out.
-//
-// Four layers of checking, from oldest to newest:
-//
-//   1. EVERY self-contained example PARSES. A block that does not
-//      parse is always a bug, in a way that a block which does not
-//      unify is not — the teaching documents deliberately show
-//      conflicts (`port: 8080` meeting `port: 9090`), and refusing
-//      those would be refusing the lesson.
-//   2. EVERY example that STATES its result is checked against it:
-//      an `aontu` fence immediately followed by a `json` fence is a
-//      generate claim, compared structurally — the page's whitespace
-//      and key order are the page's business.
-//   3. MULTI-FILE examples and CLI TRANSCRIPTS are executed through
-//      the directive vocabulary (scenario / file / run / skip — see
-//      docs/STYLE-GUIDE.md, "Code snippets"). A directive is an HTML
-//      comment on its own line immediately before a fence; the sync
-//      to aontu.dev passes comments through and the site renders
-//      them as nothing. What the reader sees is exactly what ran.
-//   4. EVERY tagged fence is ACCOUNTED FOR: covered by one of the
-//      mechanisms above, or skipped with a non-empty reason. What
-//      used to be a silent exclusion (an `@"` include) is now a
-//      failure unless the page scaffolds it or owns the skip.
-//
-// Plus the style gate: the enforceable subset of the banned-phrase
-// list in docs/STYLE-GUIDE.md, applied to prose (never to fences).
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -46,15 +14,6 @@ import { Aontu, format } from '../dist/aontu'
 const DOCS_DIR = Path.join(__dirname, '..', '..', 'docs')
 const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js')
 
-// The executed page set: the Diátaxis documents whose fences face the
-// four layers above. `explanation.md` writes its blocks
-// unfenced-by-language (diagrams and quoted transcripts), so it
-// contributes nothing here — but it does face the style gate below.
-// `docs/how-to/` is a directory of per-guide pages; the glob keeps
-// the list current as guides are added or renamed.
-// DOCS_PAGES=<comma-list> narrows a run to named pages — the tight
-// loop for writing one page — and suspends the corpus-wide floors,
-// which only mean anything over the whole set.
 function narrowed(): string[] | undefined {
   const v = process.env.DOCS_PAGES
   return null == v || '' === v ? undefined : v.split(',')
@@ -101,11 +60,6 @@ function stylePages(): string[] {
     .filter((f) => Fs.existsSync(Path.join(DOCS_DIR, f)))
 }
 
-// The PUBLISHED page set: what a reader who has the tool and not the
-// repository sees. It is stylePages() minus the three contributor
-// documents, and it is the set the internal-reference gate applies to
-// — `shared-spec.md`, `test-coverage.md` and `release-and-tag.md` are
-// written FOR contributors and may cite the records freely.
 function publishedPages(): string[] {
   const only = narrowed()
   if (only) {
@@ -145,25 +99,11 @@ type Item =
   | { kind: 'block'; block: Block }
 
 
-// LINE ENDINGS ARE THE CHECKOUT'S BUSINESS, not this file's. git on
-// Windows checks out with CRLF by default, and every pattern below
-// anchors on "\n" — so on a Windows runner the extractor matched ZERO
-// blocks and the suite reported a documentation file with no examples
-// in it rather than a failure. (.gitattributes pins these files to LF
-// as well; this is the half that still holds when the file arrives
-// from a tarball, an editor that rewrote it, or a copy-paste.)
 function lf(text: string): string {
   return text.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
 }
 
 
-// One pass, in document order, collecting scenario-opens and fences,
-// binding each file/run/skip directive to the fence that follows it.
-// A directive with no following fence, or an unknown verb, is a page
-// defect and fails loudly rather than being ignored. A `scenario`
-// directive is a standalone statement — it opens a scenario at its
-// position and may sit directly above the fence directives that
-// populate it.
 function extract(file: string, md: string): Item[] {
   const lines = md.split('\n')
   const out: Item[] = []
@@ -255,17 +195,6 @@ function selfContained(b: Block): boolean {
     && 'file' !== b.directive?.verb
 }
 
-
-// ---------------------------------------------------------------------
-// The transcript runner.
-//
-// Grammar (docs/STYLE-GUIDE.md): lines starting `$ ` are commands;
-// the non-command lines after each are its expected stdout+stderr;
-// `$ echo $?` pins the PREVIOUS command's exit code (nothing is
-// echoed); a line holding only `...` matches any run of lines.
-// Commands are spawned directly — no shell — so the vocabulary is
-// `aontu …` (rewritten to this repo's CLI, or $AONTU) and the one
-// stdin form `echo '<text>' | aontu …`.
 
 type Step = { cmd: string; expect: string[]; line: number; exitOf?: Step }
 
@@ -524,7 +453,7 @@ describe('docs', () => {
   // The accounting layer: every tagged fence is covered or skipped.
   // Untagged fences make no language claim and are exempt.
   test('every-snippet-is-tested-or-owns-its-skip', () => {
-    // Re-derive coverage exactly as the layers above assign it, then
+    // Re-derive coverage exactly as the checks above assign it, then
     // demand a disposition for what remains — reported as one census,
     // so a page's whole debt is visible in one failure.
     const untested: string[] = []
@@ -555,14 +484,6 @@ describe('docs', () => {
   })
 
 
-  // THE FORMATTER OVER THE FENCES (docs/design/FMT.0.md §7.5, P3):
-  // every Aontu fence that parses is in the agreed form -- what
-  // `aontu fmt` writes is what the page shows -- or keeps its spelling
-  // under an `fmt: keep` directive whose reason a reviewer can weigh:
-  // two statements meeting, a split document, a conflict between two
-  // writers, the input a transcript formats. A kept fence still formats
-  // to a fixed point. The failure names the fences, and `aontu fmt`
-  // over the fence body is the fix.
   test('every-source-fence-is-in-the-agreed-form-or-keeps-its-spelling', () => {
     const failures: string[] = []
     let checked = 0
@@ -574,7 +495,7 @@ describe('docs', () => {
         }
         const r: any = format(b.body)
         if ('error' === r.verdict) {
-          continue          // does not parse: the parse gate's business
+          continue
         }
         checked++
         if (undefined !== b.keep) {
@@ -602,9 +523,6 @@ describe('docs', () => {
   })
 
 
-  // The prose channel names scenario files too: a file directive's
-  // name must appear in a code span in the three lines above it, so
-  // the human channel and the machine channel cannot drift.
   test('function-signatures-match-the-registry', () => {
     // THE DRIFT GATE (docs/design/SIGNATURES.0.md): the reference's
     // function headings and constraint table use the same signatures
@@ -655,33 +573,6 @@ describe('docs', () => {
 })
 
 
-// ---------------------------------------------------------------------
-// THE STYLE GATE: docs/STYLE-GUIDE.md, in the half a linter cannot
-// carry. Vale runs the other half in .github/workflows/docs.yml, and
-// the two divide the work deliberately:
-//
-//   Vale         spelling, Google's conventions, the banned list
-//   this file    the banned list again, plus every rule that needs to
-//                know WHICH PAGE it is looking at (first person is
-//                allowed in tutorials only), or that needs a fence
-//                stripper Vale does not have.
-//
-// The banned list is checked TWICE on purpose. Vale matches within a
-// line; this file joins each paragraph first, and these pages wrap near
-// 72 columns, so `worth\nnoting` passes Vale and fails here. Deferring
-// to Vale would make where a line happens to break a way through the
-// gate.
-//
-// That second clause is not a preference. Vale stops skipping fenced
-// blocks part-way through several of these pages -- a list item with an
-// indented continuation reproduces it -- so a rule that must never fire
-// inside a code fence cannot be left to Vale. `Google.EmDash` was
-// measured at 11 findings, all 11 false, and is a warning there and an
-// error here for exactly that reason.
-//
-// Prose only, in both gates: fences are code, and quoted engine output
-// inside them is the engine's business.
-
 import { createRequire } from 'node:module'
 
 const REPO = Path.join(__dirname, '..', '..')
@@ -692,10 +583,6 @@ const REPO = Path.join(__dirname, '..', '..')
 const REJECT_FILE = Path.join(
   REPO, '.vale', 'styles', 'config', 'vocabularies', 'Aontu', 'reject.txt')
 
-// Vale matches reject.txt entries case-insensitively on word
-// boundaries; mirror exactly that, so a phrase cannot pass one gate and
-// fail the other. Global, because the scan uses matchAll: a paragraph
-// can carry two banned phrases and both should be reported.
 function loadBanned(): [RegExp, string][] {
   return Fs.readFileSync(REJECT_FILE, 'utf8')
     .split('\n')
@@ -707,11 +594,6 @@ function loadBanned(): [RegExp, string][] {
 const BANNED: [RegExp, string][] = loadBanned()
 
 
-// CommonMark fence opener: up to three spaces of indent, then three or
-// more backticks or tildes, then an optional info string. A block opened
-// with ~~~ or with four backticks is an ordinary fence, and a stripper
-// that cannot see one reports a banned phrase inside a code block --
-// failing a page the fence exemption says is fine.
 const FENCE_OPEN = /^(\s{0,3})(`{3,}|~{3,})[ \t]*([^`\s]*)[^`]*$/
 
 function fenceCloser(fence: string): RegExp {
@@ -746,13 +628,6 @@ function fenceless(md: string): string {
 }
 
 
-// Strip frontmatter, fenced blocks, HTML comments and inline code
-// spans; what remains is prose.
-//
-// The comments matter: every `<!-- test: run -->` directive carries an
-// exclamation mark inside `<!`, which is how the first draft of
-// `exclamation-marks-are-rationed` reported 77 of them on one reference
-// page. A directive is machinery, and the site renders it as nothing.
 function prose(md: string): string {
   return fenceless(md)
     .replace(/^---\n[\s\S]*?\n---\n/, '')
@@ -771,15 +646,6 @@ type Logical = {
 }
 
 
-// Markdown treats a newline inside a paragraph as whitespace, and these
-// pages are hard-wrapped near 72 columns -- so "the right\nanswer" is
-// the ORDINARY shape of a multiword phrase here, not an exotic one. A
-// gate matching physical lines misses most of them, which makes where a
-// line happens to wrap a way through it.
-//
-// Lines are trimmed, whitespace-collapsed and joined per paragraph;
-// `starts` maps a match offset back to the physical line, so a hit
-// still names a line the reader can open.
 function logical(text: string): Logical[] {
   const out: Logical[] = []
   let pieces: string[] = []
@@ -828,13 +694,6 @@ function lineAt(para: Logical, index: number): {
 }
 
 
-// THE GATED SET, from the module the Vale invocation reads. Two gates
-// covering different files is two gates that disagree in silence: a
-// page in one and not the other is a page half-checked, and nothing
-// announces it. `ts/scripts/gated-docs.cjs` is the single answer.
-//
-// A narrowed run (DOCS_PAGES=<comma-list>) reports on those pages only,
-// the tight loop for writing one page.
 function stylePaths(): { file: string, abs: string }[] {
   const only = narrowed()
   if (only) {
@@ -852,10 +711,6 @@ function stylePaths(): { file: string, abs: string }[] {
 
 describe('docs-style', () => {
 
-  // The gated set is not empty and did not quietly shrink to the docs
-  // directory: the READMEs and the eighteen published use cases carry
-  // the same rules, and a refactor that dropped them would otherwise
-  // leave every check below passing over less.
   test('the-gated-set-covers-more-than-docs', () => {
     if (narrowed()) {
       return
@@ -870,12 +725,6 @@ describe('docs-style', () => {
   })
 
 
-  // Logical lines, for the reason in logical(): the list is mostly
-  // MULTIWORD and the pages wrap near 72 columns, so a physical-line
-  // scan misses any phrase a wrap happens to split.
-  //
-  // The tests below stay on physical lines on purpose: `we` and `I` are
-  // single tokens no wrap can split.
   test('no-banned-phrases-in-prose', () => {
     const hits: string[] = []
     for (const { file, abs } of stylePaths()) {
@@ -917,15 +766,6 @@ describe('docs-style', () => {
   })
 
 
-  // First person, the house rule that .vale.ini switches Google.We and
-  // Google.FirstPerson OFF in favour of. Vale cannot express "only in
-  // tutorials", which is why the rule lives here: switching a Google
-  // rule off in favour of a house rule means the house rule has to be
-  // real, and this test is the receipt.
-  //
-  // STYLE-GUIDE.md voice rule 7: talk to the reader as "you". "We"
-  // appears only in tutorials, walking through code together. "I"
-  // appears nowhere.
   const TUTORIAL_PAGES = ['docs/tutorial.md', 'docs/tutorial-graph.md']
 
   test('we-appears-only-in-tutorials', () => {
@@ -970,13 +810,6 @@ describe('docs-style', () => {
   })
 
 
-  // THE NAME IS "aontu": lowercase, no fada. Not a house-style whim —
-  // "Aontú" is the Irish word the name came from and kept coming back
-  // in prose as though it were the name, so the pages disagreed with
-  // the command, the package and each other. `prose()` strips fences
-  // and code spans, which is what leaves the exported API (`Aontu`,
-  // `AontuError`, Go's `aontu.Aontu`) alone: those are identifiers and
-  // renaming them would break code rather than fix prose.
   test('the-name-is-spelled-aontu', () => {
     const hits: string[] = []
     for (const { file, abs } of stylePaths()) {
@@ -995,9 +828,6 @@ describe('docs-style', () => {
   })
 
 
-  // At most one per page, tutorials only, on a genuine payoff. Google
-  // bans them outright, which is why `Google.Exclamation` is a warning
-  // in .vale.ini: it cannot know which page is a tutorial.
   test('exclamation-marks-are-rationed', () => {
     const hits: string[] = []
     for (const { file, abs } of stylePaths()) {
@@ -1037,19 +867,6 @@ describe('docs-style', () => {
   })
 
 
-  // INTERNAL RECORDS ARE NOT A READER'S BUSINESS (docs/STYLE-GUIDE.md,
-  // "The published set cites nothing internal"). A decision record
-  // argues a choice already made; the rule it decided is what the page
-  // states. A design note and a gap document are proposals, and half of
-  // what they propose does not exist. A reader who has the tool and not
-  // the repository cannot open any of them.
-  //
-  // Applied to the whole file rather than to prose alone -- code fences
-  // AND inline code spans included. A CLI transcript naming an internal
-  // path is the same defect one paragraph up, and it means the ENGINE
-  // prints one; a path in a code span is the same defect wearing
-  // monospace, which is how `use-cases/BUGS.md` sat in the API
-  // reference through a gate that stripped spans first.
   const INTERNAL_REFS: [RegExp, string][] = [
     [/\bADR-\d+\b/g, 'a decision record'],
     // The bare prose form. `ADR` names a record the reader cannot
@@ -1072,18 +889,6 @@ describe('docs-style', () => {
     [/\]\([^)]*AGENTS\.md[^)]*\)/g, 'a link to AGENTS.md'],
   ]
 
-  // Written FOR contributors, and free to cite the records: they are
-  // in the style set (the voice is the voice) and out of the citation
-  // set. Everything else stylePaths() returns is published prose --
-  // the site renders each use-case README at /use-cases/<dir>, which is
-  // how three of them once carried a decision-record number.
-  //
-  // The ROOT README is one of them, and `ts/README.md` is not. The root
-  // README is the repository's front page: its reader is looking at the
-  // source, and pointing them at AGENTS.md and the contributor
-  // references is the job. `ts/README.md` is what npm renders to
-  // somebody who has the package and not the repository, so it is held
-  // to the published rule.
   const CONTRIB = [
     'docs/shared-spec.md',
     'docs/test-coverage.md',
@@ -1097,9 +902,6 @@ describe('docs-style', () => {
       if (CONTRIB.includes(file)) {
         continue
       }
-      // Paragraph-joined, like the banned list and for the same reason:
-      // "the\nADR" is the ordinary shape of a two-word phrase on pages
-      // wrapped at 72 columns.
       for (const para of logical(Fs.readFileSync(abs, 'utf8'))) {
         for (const [re, name] of INTERNAL_REFS) {
           for (const m of para.text.matchAll(re)) {
@@ -1121,12 +923,6 @@ describe('docs-style', () => {
   })
 
 
-  // A FIGURE IS DRAWN BY THE ENGINE, NEVER BY HAND. A picture of the
-  // value lattice written in box characters is a second source of
-  // truth for the one thing the language is built on, and the one that
-  // used to be here was wrong about `path()` and the numeric leaves.
-  // `ts/scripts/figures.cjs` draws the committed files, `make build-ts`
-  // runs it, and this is the gate that catches a stale commit.
   test('the-committed-figures-are-what-the-engine-draws', () => {
     const { FIGURES, OUT, draw } = require('../scripts/figures.cjs')
     for (const name of Object.keys(FIGURES)) {

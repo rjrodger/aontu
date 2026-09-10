@@ -1,10 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The Go twin of ts/test/query.test.ts (G7 phase 2). What the two
-// ports must AGREE on is pinned by test/spec/query.tsv; what is left
-// here is the API's own surface and the walk's answers for inputs no
-// CLI can produce. Cross-package runs (the CLI tests) do not count
-// toward this package's coverage, so those arms are exercised here.
 
 package aontu
 
@@ -50,9 +45,6 @@ func TestQueryRelativeLoadResolvesFromDocumentDir(t *testing.T) {
 	}
 }
 
-// The nearest-key suggestion: close enough to help, or nothing at all.
-// A wrong suggestion costs more than none, which is why the cutoff is
-// half the name rather than "the closest sibling wins".
 func TestQueryNearestKey(t *testing.T) {
 	cases := []struct {
 		want string
@@ -106,12 +98,6 @@ func TestQueryUnparseableDocument(t *testing.T) {
 	}
 }
 
-// The projection arm no SOURCE reaches (G7 phase 2): a junction member
-// that is itself a junction of more than one term. Post-unification
-// junctions are flattened by norm, so only a constructed tree still
-// nests one — and the rule has to hold anyway, because a view is a
-// DOCUMENT: rendering `(1|2)&3` as the differently-parsing `1|2&3`
-// would be a view that no longer subsumes what it summarises.
 func TestQueryNestedJunctionKeepsItsParens(t *testing.T) {
 	root := newMap()
 	root.set("j", newConjunct([]Val{
@@ -139,10 +125,6 @@ func TestQueryNestedConjunctKeepsItsParens(t *testing.T) {
 	}
 }
 
-// EvalFailure is the exported spelling of the one finding a document
-// that does not stand up answers with, and its only caller lives in
-// another package (cmd/aontu's `hash`), so nothing here would reach it
-// otherwise. Twin: the evalFailure cases in ts/test/query.test.ts.
 func TestEvalFailureIsTheEnginesOwnDiagnosis(t *testing.T) {
 	a := New()
 	if _, err := a.Unify("a:1 a:2"); nil != err {

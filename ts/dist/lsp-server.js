@@ -3,20 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FrameCodec = void 0;
 exports.main = main;
-// Aontu Language Server (stdio).
-//
-//   aontu-lsp
-//
-// Speaks LSP over stdio (JSON-RPC with Content-Length framing) and
-// publishes unification diagnostics as `.aontu` files are edited. This
-// binary is intentionally thin: all protocol logic lives in the reusable
-// library ./lsp (LspHandler + computeDiagnostics). See docs/lsp.md for
-// editor configuration.
 const lsp_1 = require("./lsp");
-// A byte-level LSP framing codec: feed it incoming chunks, give it a
-// handler, and it decodes Content-Length frames, dispatches them, and
-// writes framed replies. Kept transport-injectable (write/onExit) so it
-// can be unit-tested without real stdio.
 class FrameCodec {
     constructor(handler, write, onExit) {
         this.handler = handler;
@@ -74,9 +61,6 @@ class FrameCodec {
     }
 }
 exports.FrameCodec = FrameCodec;
-// The streams and exit are injectable (defaulting to real stdio) so the
-// full wiring is unit-testable — the same shape as the Go server's
-// serve(in, out, logw).
 function main(stdin = process.stdin, write = (chunk) => void process.stdout.write(chunk), exit = (code) => process.exit(code)) {
     const handler = new lsp_1.LspHandler();
     const codec = new FrameCodec(handler, write, exit);

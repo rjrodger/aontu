@@ -10,14 +10,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 const Val_1 = require("./Val");
 const PlaceVal_1 = require("./PlaceVal");
 const members_1 = require("./members");
-// The keys a data bag names, in the order the result must carry them,
-// or a code naming what is wrong with it. `each` asks the same
-// question of the same argument and answers it with the values rather
-// than the keys (members.ts).
 function dataKeys(data, ctx) {
-    // The candidates are the bag's MEMBERS -- what generation would
-    // emit (./members.ts, BUGS.md §79) -- so a hidden key, or a hidden
-    // name in a list of names, packs nothing.
     const members = (0, members_1.bagMembers)(data, ctx);
     if (undefined === members) {
         return 'pack_data';
@@ -42,21 +35,11 @@ class PackFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isPackFunc = true;
-        // THE STAGING RULE (G8 phase 0, see AontuContext.settle). A
-        // generator's data argument is not settled merely by being `done`
-        // once: a sibling conjunct, an include or a spread can still merge
-        // keys into it, and children generated from the half-merged bag
-        // would be missing. It fires on the settle pass and only then.
         this.staged = true;
     }
     funcname() {
         return 'pack';
     }
-    // The TEMPLATE IS NOT AN ARGUMENT TO DRIVE. Driving it would resolve
-    // its `key()` at the CALL SITE -- the one position the template is
-    // never used at -- and freeze whatever else in it is path-dependent
-    // there too. The data argument is driven by `unify` below instead,
-    // one argument by hand rather than all of them by the base.
     prepare(_ctx, _args) {
         return null;
     }
@@ -80,24 +63,7 @@ class PackFuncVal extends FuncBaseVal_1.FuncBaseVal {
         const src = args[0];
         for (const key of keys) {
             const keyctx = ctx.descend(key);
-            // THE PLACEHOLDER BINDS THE SOURCE CHILD (G8 phase 3): inside a
-            // generator's template `_` is the datum this child is being made
-            // FROM. For a map that is the child's value; for a list of names
-            // it is the name, which is also the key -- so `_` and `key()`
-            // agree there, and differ the moment the data is a map.
             const source = true === src?.isMap ? src.peg[key] : src.peg[keys.indexOf(key)];
-            // CLONED, never shared. A spread may share a template that holds
-            // nothing path-dependent (MapVal.spreadClone), because a spread
-            // CONSTRAINS a child that exists; a generator's template IS the
-            // child, and a child is a position. Sharing left every generated
-            // child pointing at the template's own parse-time location, which
-            // is the position the template is never used at -- visible as the
-            // site an error inside a generated child reports.
-            //
-            // A FULL INSTANCE, to the leaves (`dup`, ADR-005): a bare clone
-            // shares the inner structure of any call, preference or
-            // operation in the template, so the first child's resolution of
-            // a shared key()/ref answered for every child (BUGS.md §8, §9).
             const inst = tmpl.clone(keyctx, { dup: true });
             (0, Val_1.repathInstance)(inst, inst.path);
             const child = (0, PlaceVal_1.fillPlace)(inst, source, keyctx);

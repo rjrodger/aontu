@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the cli relations cases in ts/test/cli.test.ts. What
-// the two ports must AGREE on (the report itself) is pinned by
-// test/spec/relation.tsv; what each port owns (argument handling, exit
-// codes, the text rendering) is here.
 
 import (
 	"bytes"
@@ -40,9 +36,6 @@ const relClean = `a: {dependsOn: rel() & inverse(usedBy) & acyclic() & [path($.b
 b: {usedBy: rel() & [path($.a)]}
 `
 
-// (The old declared-target rendering is gone with the code: rel(t)
-// flows at the site and its refusal is the engine's own, pinned in
-// test/spec/relation.tsv.)
 
 func TestRelationsVerb(t *testing.T) {
 	// A cycle AND a missing inverse: both are reported, and the exit

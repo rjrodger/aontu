@@ -34,13 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// The query API around the shared rows (G7 phase 1). What the two
-// ports must AGREE on -- every view, every projection, every refusal
-// code -- is pinned by test/spec/query.tsv, and the PROJECTION
-// PROPERTY (a view subsumes the truth) is asserted there for each of
-// those rows. What is left here is the API's own surface: the finding
-// shape a caller destructures, the option defaults, and the walk's
-// answers for inputs no CLI can produce.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
@@ -78,9 +71,6 @@ const query_1 = require("../dist/query");
         Fs.writeFileSync(doc, 'a: @"part.aon"');
         Assert.equal((0, aontu_1.get)('a: @"part.aon"', '$.a.k', { path: doc, view: 'canon' }).out, '7');
     });
-    // The nearest-key suggestion: close enough to help, or nothing at
-    // all. A wrong suggestion costs more than none, which is why the
-    // cutoff is half the name rather than "the closest sibling wins".
     (0, node_test_1.test)('nearest-key-suggests-only-when-close', () => {
         Assert.equal((0, query_1.nearestKey)('imag', ['image', 'ports']), 'image');
         Assert.equal((0, query_1.nearestKey)('image', []), undefined);

@@ -1,18 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Package lsp is the Aontu Language Server library. It is deliberately
-// split into two layers:
-//
-//   - the analysis library (this file): Diagnostics turns Aontu source
-//     text into LSP diagnostics, and Handler implements the
-//     transport-agnostic LSP message dispatch (document sync ->
-//     publishDiagnostics). Neither touches stdin/stdout, so both are
-//     unit-testable and embeddable in any host.
-//   - the server (../cmd/aontu-lsp): a thin stdio JSON-RPC loop that
-//     frames bytes and feeds decoded messages to a Handler.
-//
-// The TypeScript port mirrors this split in ts/src/lsp.ts (library) and
-// ts/src/lsp-server.ts (server).
 package lsp
 
 import (
@@ -45,7 +32,6 @@ type Range struct {
 	End   Position `json:"end"`
 }
 
-// Diagnostic is a single LSP diagnostic.
 type Diagnostic struct {
 	Range    Range  `json:"range"`
 	Severity int    `json:"severity"`
@@ -57,10 +43,6 @@ type Diagnostic struct {
 	Tags []int `json:"tags,omitempty"`
 }
 
-// Diagnostics analyses Aontu source and returns LSP diagnostics for every
-// problem found. A valid document — including a non-concrete schema such
-// as `a:string` — yields an empty (non-nil) slice. Variables, if any, are
-// resolved from vars (may be nil).
 func Diagnostics(src string) []Diagnostic {
 	return DiagnosticsVars(src, nil)
 }
@@ -70,12 +52,6 @@ func DiagnosticsVars(src string, vars map[string]aontu.Val) []Diagnostic {
 	return DiagnosticsTrust(src, vars, nil)
 }
 
-// DiagnosticsTrust is DiagnosticsVars under a trust profile (G5,
-// docs/trust.md). The LSP is the highest-exposure surface — merely
-// OPENING a hostile .aon file in an editor performs its reads — so the
-// Handler confines evaluation to the workspace root and threads the
-// profile through here. Nil means today's unconfined behaviour, which
-// single-file sessions rely on.
 func DiagnosticsTrust(src string, vars map[string]aontu.Val, trust *aontu.TrustOptions) []Diagnostic {
 	a := aontu.New()
 	a.Trust = trust
@@ -102,10 +78,6 @@ func DiagnosticsTrust(src string, vars map[string]aontu.Val, trust *aontu.TrustO
 		})
 	}
 
-	// Deprecation tags (G3 phase 4): every sited value carrying the
-	// deprecate() record gets the native Deprecated tag (2) at Hint
-	// severity, so editors strike it through without shouting. Mirrors
-	// the walkDep pass in ts/src/lsp.ts.
 	for _, d := range a.DeprecationsVars(src, vars) {
 		start := idx.position(d.Pos)
 		end := idx.position(d.Pos + d.Len)
@@ -133,7 +105,6 @@ func DiagnosticsTrust(src string, vars map[string]aontu.Val, trust *aontu.TrustO
 
 // --- Hover ------------------------------------------------------------
 
-// MarkupContent is LSP markdown/plaintext content.
 type MarkupContent struct {
 	Kind  string `json:"kind"` // "markdown" | "plaintext"
 	Value string `json:"value"`
@@ -152,15 +123,6 @@ func Hover(src string, line, character int, provenance bool) *HoverResult {
 	return HoverTrust(src, line, character, provenance, nil)
 }
 
-// HoverTrust is Hover under a trust profile (G5, docs/trust.md),
-// following the DiagnosticsTrust precedent above.
-//
-// HOVER RUNS UNDER THE SAME CAPABILITY AS DIAGNOSTICS. It used to
-// evaluate through a bare engine -- the full system resolver -- BESIDE
-// confined diagnostics in the same server, so a workspace-confined
-// session still resolved an escaping include the moment a cursor rested
-// on it (use-cases/REVIEW.md finding G). One document, two postures, is
-// not a confinement.
 func HoverTrust(
 	src string, line, character int, provenance bool,
 	trust *aontu.TrustOptions,
@@ -208,12 +170,6 @@ func hoverMarkdown(s aontu.ValueSpan) string {
 	return "```aontu\n" + s.Canon + "\n```\n\n*" + s.Kind + "*"
 }
 
-// provenanceMarkdown is HOVER PROVENANCE (G7 phase 7), config-gated
-// and off by default: the contributions that met at the hovered path,
-// appended to the value's own hover. Hover already re-unifies the
-// whole document per request, so an editor that asks for this pays a
-// second instrumented evaluation knowingly. Mirrors
-// provenanceMarkdown in ts/src/lsp.ts.
 func provenanceMarkdown(
 	src string, path []string, trust *aontu.TrustOptions,
 ) string {
@@ -256,7 +212,6 @@ func contributionsMarkdown(conjuncts []aontu.WhyConjunct) string {
 	return "\n\n---\n\nContributions:\n" + strings.Join(lines, "\n")
 }
 
-// --- Completion -------------------------------------------------------
 
 // LSP CompletionItemKind subset.
 const (
@@ -282,11 +237,6 @@ func Completions() []CompletionItem {
 		// declaration.
 		out = append(out, CompletionItem{Label: f, Kind: CompletionFunction, Detail: aontu.FuncSignature(f)})
 	}
-	// Kind keywords: `number` is the numeric supertype, with `integer`,
-	// `float`, `biginteger` and `bigdecimal` as its leaves (see the Kind
-	// lattice in go/scalar.go). The two exact leaves are reached only by
-	// the `0d` literal syntax, so their keywords are the only way a
-	// schema can name them.
 	for _, k := range []string{"string", "number", "integer", "float",
 		"biginteger", "bigdecimal", "boolean"} {
 		out = append(out, CompletionItem{Label: k, Kind: CompletionKeyword, Detail: "scalar kind"})
@@ -316,16 +266,6 @@ type SignatureHelpResult struct {
 	ActiveParameter int             `json:"activeParameter"`
 }
 
-// SignatureHelp answers the declared signature of the ENCLOSING call,
-// served from the registry (docs/design/SIGNATURES.0.md), or nil when
-// the cursor is not inside a builtin's argument list. The enclosing
-// call is found lexically -- scan back from the cursor for the
-// nearest unclosed '(' and read the word before it; commas at that
-// depth count the active parameter, capped at the last slot so a rest
-// tail stays active for every excess argument. Strings are skipped so
-// a paren or comma inside one does not miscount, and the scan stops
-// at the line start, a call being one line in practice. Mirrors
-// computeSignatureHelp in ts/src/lsp.ts.
 func SignatureHelp(text string, line, character int) *SignatureHelpResult {
 	lines := strings.Split(text, "\n")
 	if line < 0 {
@@ -407,10 +347,6 @@ func isWordByte(c byte) bool {
 		('0' <= c && c <= '9') || '_' == c
 }
 
-// lineIndex maps a byte offset to an LSP Position. Line starts are
-// precomputed so each lookup is O(log lines); the character column is the
-// number of UTF-16 code units from the line start, per the LSP default
-// position encoding.
 type lineIndex struct {
 	src        string
 	lineStarts []int // byte offset of the start of each line
@@ -465,8 +401,6 @@ func (li *lineIndex) offsetAt(line, character int) int {
 	return off
 }
 
-// utf16Len returns the number of UTF-16 code units in s, matching how LSP
-// clients count characters by default.
 func utf16Len(s string) int {
 	n := 0
 	for _, r := range s {

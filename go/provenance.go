@@ -1,16 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE PROVENANCE RECORDER (G7 phase 4, the Go side of
-// ts/src/provenance.ts): what CONTRIBUTED to the value at a path, in
-// order, with the site each contribution was written at. `why` is the
-// positive twin of G2's error report — errors explain what failed to
-// unify, this explains what did.
-//
-// The recorder rides the CONTEXT and is off by default: unite pays one
-// nil check on the normal path, and an instrumented run pays site
-// materialisation knowingly. It records at unite and nowhere else,
-// because that is the one place every meet passes through — the same
-// reason G3's deprecation rider lives there.
 
 package aontu
 
@@ -31,38 +20,15 @@ const (
 type WhySite struct {
 	Col  int    `json:"col"`
 	File string `json:"file"`
-	// Len is the extent in UTF-16 code units, or -1 when unknown. The
-	// same field, and the same meaning, as VetSite.Len (go/vet.go).
 	Len int `json:"len"`
 	Row int `json:"row"`
 }
 
 type WhyConjunct struct {
 	Canon string `json:"canon"`
-	// Rank is the PREFERENCE RANK, 0-based, when the contribution is
-	// one: `*x` is 0, `**x` is 1. Nil for anything else. The engine's
-	// own number (PrefVal.rank), so a reader arbitrating between ranked
-	// contributions -- the meet ladder -- need not count stars in a
-	// canon string.
 	Rank *int    `json:"rank,omitempty"`
 	Role string  `json:"role"`
 	Site WhySite `json:"site"`
-	// Src is the SOURCE TEXT this contribution was written as.
-	//
-	// Canon is the value; Src is the spelling. They are not the same
-	// thing, and the difference is the whole reason this record exists:
-	// `port: 0x1F` contributes canon `31` from source `0x1F`, so a
-	// reader told only the canon cannot find, verify or replace what was
-	// actually written. Empty when the contribution occupies no source
-	// -- a value unification minted rather than a document wrote.
-	//
-	// LEXICOGRAPHIC FIELD ORDER, as everywhere the two emitters must
-	// agree byte for byte. TypeScript emits every report through one
-	// emitter that sorts keys by code point (ts/src/exactjson.ts); Go
-	// writes struct fields in DECLARATION order, so on this side the
-	// declaration IS the sort. `src` sorts after `site`, and `rank`
-	// before `role` -- a new field goes in its sorted place, never at
-	// the end.
 	Src string `json:"src"`
 }
 
@@ -74,9 +40,6 @@ type WhyRecord struct {
 
 type whyContribution struct {
 	WhyConjunct
-	// The value itself: Go has no per-Val id (TypeScript's Val.id),
-	// and pointer identity says the same thing here — every Val is a
-	// pointer, and one run never reuses an address for two values.
 	val Val
 }
 
@@ -94,13 +57,6 @@ type Provenance struct {
 	paths map[string]*whyPathRecord
 	// The entry source, for turning a byte offset into row and column.
 	src string
-	// The text of every file the parse READ, by the name a site
-	// carries. A value's position is an offset into the source it was
-	// parsed from, so a contribution written in an included file has to
-	// be counted in THAT file -- counting it in the entry names a real
-	// line that says something else (the review's finding F, applied to
-	// this surface). Vet solves the same problem the same way, with
-	// vetSources; Aontu.IncludeText is where both get the map.
 	texts map[string]string
 }
 
@@ -112,12 +68,6 @@ func newProvenance(src string, texts map[string]string) *Provenance {
 	}
 }
 
-// writtenFrom stamps the parsed tree with the AUTHORED mark: everything
-// the author wrote, before unification starts. A value minted during
-// unification is the engine's own work, not a contribution the author
-// can be pointed at; a CLONE of a marked value keeps the mark, because
-// it is the same written value somewhere else (base.fwrt). Called once,
-// before unify, by Why.
 func (p *Provenance) writtenFrom(v Val) {
 	if nil == v || v.written() {
 		return
@@ -136,11 +86,6 @@ func (p *Provenance) writtenFrom(v Val) {
 	}
 }
 
-// samePathKids are the children that stand at the SAME path as v: a
-// junction's members, a preference's inner value, a function's
-// arguments. NOT a bag's children (they stand at their own, deeper
-// paths) and NOT a conjunct's terms (a conjunct is the statement that
-// several things must all hold, and each term is one of them).
 func samePathKids(v Val) []Val {
 	switch b := v.(type) {
 	case *DisjunctVal:
@@ -243,9 +188,6 @@ func (p *Provenance) record(path []string, a, b, out Val) {
 }
 
 func (p *Provenance) contribute(rec *whyPathRecord, v Val) {
-	// TOP is the unit element and a nil is a failure, neither of which
-	// is information the author wrote. A value an earlier meet MADE is
-	// an intermediate; the source that made it is already recorded.
 	if nil == v || isTop(v) || v.Nil() ||
 		rec.made[v] || rec.seen[v] {
 		return
@@ -281,10 +223,6 @@ func (p *Provenance) contribute(rec *whyPathRecord, v Val) {
 
 	rec.seen[v] = true
 
-	// COUNTED IN THE FILE THE VALUE CAME FROM, and -1:-1 when this run
-	// holds no text for that file: an offset resolved against another
-	// document names a real line that says something else, which is
-	// worse than saying nothing (see Provenance.texts).
 	row, col := -1, -1
 	if 0 <= v.pos() {
 		text, have := p.src, true
@@ -313,18 +251,6 @@ func (p *Provenance) contribute(rec *whyPathRecord, v Val) {
 	rec.conjuncts = append(rec.conjuncts, c)
 }
 
-// stands records THE VALUE THAT STANDS at a path as a contribution when
-// nothing met there and the author wrote it. A meet is where
-// information vanishes, so a meet is what the recorder watches -- but a
-// generator PLACES a value without meeting anything, and `why` then
-// answered "(no contributions: nothing met at this path)" over a value
-// it had just printed. That is literally true and practically false:
-// the author is asking where the value came from, and it came from
-// somewhere they can be shown (use-cases/BUGS.md §23).
-//
-// Only when the record is otherwise EMPTY. Where something did meet,
-// the standing value is that meet's result -- an intermediate, and the
-// recorder's oldest rule is that a result is not a source.
 func (p *Provenance) stands(path []string, v Val) {
 	rec, ok := p.paths[strings.Join(path, ".")]
 	if ok && 0 < len(rec.conjuncts) {
@@ -333,52 +259,11 @@ func (p *Provenance) stands(path []string, v Val) {
 	p.record(path, v, nil, nil)
 }
 
-// at answers the record at one path. Empty when nothing met there and
-// nothing the author wrote stands there either — which is a true and
-// useful answer rather than an error.
-//
-// ONLY WHOLE WRITTEN VALUES are contributions: a Val's own Unify
-// re-enters unite at the same path (a disjunct trials each member
-// there), and those members are PARTS OF one written value. That is
-// settled BEFORE a member is ever pushed, by the base.finner fact
-// stamped over the document (see contribute), which is why no filter
-// runs here: a per-path "inside" set used to do it, and it could only
-// work where the container itself happened to meet something at the
-// same path -- the order-dependence finding E records.
-//
-// SOURCE ORDER, not meet order: the two are the same in simple cases
-// and diverge with the fixpoint's fold order, which is an engine detail
-// and a parity risk. Sites are parse data, identical in both ports.
 func (p *Provenance) at(path []string) []WhyConjunct {
 	rec, ok := p.paths[strings.Join(path, ".")]
 	if !ok {
 		return []WhyConjunct{}
 	}
-	// ONE WRITTEN TOKEN IS ONE CONTRIBUTION, and the SITE is what
-	// identifies it -- not the value's identity, and not the canon.
-	//
-	// Not the identity, because provenance travels through clones now:
-	// a written value and a clone of it are the same statement in the
-	// same place, and a path that met both would list it twice.
-	//
-	// Not the canon, because the same written value reaches a path at
-	// different stages of narrowing -- `3|(1|2)` as the author wrote it
-	// and `3|1|2` after a fold -- and both name one token.
-	//
-	// Not the role either: the role says how the value REACHED this
-	// path, not which value it is, and one written value can reach a
-	// path both ways (a template applied to a key whose value is also
-	// written there). Keeping the literal would throw away the more
-	// informative half, so the roles have a precedence.
-	//
-	// ONLY WHERE THE SITE IS REAL. An unsited contribution (row -1)
-	// cannot be told apart from another unsited one, so those are kept
-	// as they come rather than collapsed into whichever arrived first.
-	// SORTED FIRST, so which of two contributions at one site survives
-	// the deduplication is decided by the order the record is READ in
-	// -- source order, with the canon breaking a tie -- and not by the
-	// order the fixpoint happened to meet them, which is an engine
-	// detail and would put the two ports on different answers.
 	sorted := append([]whyContribution{}, rec.conjuncts...)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		a, b := sorted[i].WhyConjunct, sorted[j].WhyConjunct

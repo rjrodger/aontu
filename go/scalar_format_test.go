@@ -2,12 +2,6 @@ package aontu
 
 import "testing"
 
-// TestFormatNumberJSParity pins formatNumber to JavaScript's
-// Number.toString output (the TS implementation's canon formatting) at
-// every magnitude, including the exponential-notation thresholds
-// (fixed for exponents in [-6, 20], exponential outside) and the
-// unpadded signed exponent style. Expected strings are the output of
-// String(v) in Node for the same values.
 func TestFormatNumberJSParity(t *testing.T) {
 	cases := []struct {
 		in   float64

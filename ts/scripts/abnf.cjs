@@ -1,36 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// AN ABNF READER (RFC 5234, plus RFC 7405's `%s`), producing the same
-// expression tree ts/test/grammar.test.ts already interprets for the
-// GBNF file. One shape, two notations: the matcher, the reachability
-// check and the corpus test in that file work on grammar/aontu.abnf
-// without a second interpreter, and ts/scripts/figures.cjs renders the
-// railroad diagram from the same tree.
-//
-// PLAIN CJS, and here rather than in the test, because two callers need
-// it and only one of them is a test. It reads a file; it does not
-// execute one.
-//
-// The expression tree, identical to the GBNF reader's:
-//
-//   { t: 'lit',   v: string }
-//   { t: 'class', neg: boolean, set: [lo, hi][] }
-//   { t: 'ref',   v: string }
-//   { t: 'seq',   v: Expr[] }
-//   { t: 'alt',   v: Expr[] }
-//   { t: 'rep',   v: Expr, min: number, max: number }
-//
-// `neg` is always false here: ABNF has no negated class, and every
-// exclusion in grammar/aontu.abnf is written as the ranges that remain.
-
-// The subset this reads, which is the subset the published file uses:
-// `=` definitions with indented continuation, `;` comments, `/`
-// alternation, concatenation, `( )` groups, `[ ]` options, the
-// `*` / `n*` / `*m` / `n*m` / `n` repetitions, `%s"..."` literals,
-// `%xHH` and `%xHH-HH` character values, and rule references. NOT
-// read: `=/` incremental alternatives, `%d` / `%b` radices, `%x` dot
-// concatenation, and `<prose>` --- none of which the file needs, and
-// each of which would be a silent misreading if it appeared.
 
 class AbnfError extends Error { }
 
@@ -99,9 +68,6 @@ class AbnfReader {
     }
   }
 
-  // ABNF puts the repetition BEFORE its element, and the four
-  // spellings are one production: `*e`, `n*e`, `*m e`, `n*m e`, plus
-  // the bare `n e` that is exactly n.
   repeat() {
     const m = /^(?:([0-9]*)\*([0-9]*)|([0-9]+))/.exec(this.text.slice(this.at))
     if (null == m || '' === m[0]) {
@@ -139,9 +105,6 @@ class AbnfReader {
       return this.value()
     }
     if ('"' === c) {
-      // RFC 5234's bare literal is CASE-INSENSITIVE, and Aontu is not:
-      // `TRUE` is a bare word where `true` is a boolean. Refusing is
-      // the only reading that cannot be wrong.
       throw new AbnfError(
         'abnf: a case-insensitive literal at ' +
         JSON.stringify(this.text.slice(this.at, this.at + 20)) +

@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The graph walk's guards (ADR-002; G4 phase 3). The walk visits
-// POSITIONS rather than values — two positions of one entity share a
-// value object after the merge — so its termination guard is the
-// ANCESTOR chain, which is what a cycle actually is. No document
-// produces one (a self-prefix reference is refused as `path_cycle`
-// long before), so the guard is pinned here, as its TypeScript twin is
-// in ts/test/coverage3.test.ts.
 
 package aontu
 

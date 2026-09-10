@@ -2,13 +2,6 @@
 
 package main
 
-// The Go twin of the help/explain cases in ts/test/helpdoc.test.ts
-// (G11 phases 1-3). What the two ports must AGREE on -- the corpus
-// bytes, the topic list and its order, the index text, every exit
-// class -- is asserted in both suites against the same repository
-// sources, which is what makes the agreement checkable without a
-// shared spec mode: these are CLI-level messages, and the shared suite
-// runs the engine.
 
 import (
 	"bytes"
@@ -37,16 +30,12 @@ func cliRun(args ...string) (string, string, int) {
 	return out.String(), errw.String(), code
 }
 
-// repoFile reads a repository file relative to the repository root,
-// which is three directories above this package (go/cmd/aontu).
 func repoFile(t *testing.T, rel string) string {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", rel))
 	if nil != err {
 		t.Fatalf("cannot read %s: %v", rel, err)
 	}
-	// LINE ENDINGS ARE THE CHECKOUT'S BUSINESS, the rule every other
-	// gate in this repository states.
 	return strings.ReplaceAll(strings.ReplaceAll(
 		string(raw), "\r\n", "\n"), "\r", "\n")
 }
@@ -209,9 +198,6 @@ func TestHelpVerbTakesTheToolHelp(t *testing.T) {
 	}
 }
 
-// G11 PHASE 2. `aontu help` used to answer `cannot read help: open
-// help: no such file or directory` and exit 1 -- the bare word read as
-// a file name, with the good hint gated behind a SECOND argument.
 func TestBareWordIsDiagnosedAsAMistypedVerb(t *testing.T) {
 	for _, tc := range []struct{ arg, near string }{
 		{"vett", "vet"},
@@ -285,11 +271,6 @@ func TestAnExistingFileNamedLikeAVerbIsRead(t *testing.T) {
 	}
 }
 
-// knownVerbs feeds the suggestion, and is a SEPARATE list from the
-// if-chain in run() because the chain's arms have three signatures.
-// This is what stops the two drifting: every listed name must be
-// dispatched, which is to say must NOT fall through to the bare
-// command's mistyped-verb refusal.
 func TestKnownVerbsAllDispatch(t *testing.T) {
 	for _, verb := range knownVerbs {
 		// `--help` is accepted by every verb and exits 0 without doing
@@ -304,12 +285,6 @@ func TestKnownVerbsAllDispatch(t *testing.T) {
 	}
 }
 
-// AND THE OTHER DIRECTION, which is the one that actually drifts: a
-// verb added to the dispatch and not to the list is invisible until
-// somebody mistypes it and gets no suggestion. main gained a
-// TypeScript-only `allow` verb while this branch was open, and this is
-// the case that would have caught it had it been a Go verb. Read from
-// the source, because a dispatch arm is not enumerable at run time.
 func TestEveryDispatchedVerbIsInKnownVerbs(t *testing.T) {
 	src, err := os.ReadFile("main.go")
 	if nil != err {
@@ -386,8 +361,6 @@ func TestEditDistance(t *testing.T) {
 	}
 }
 
-// The help text advertises the two verbs, and says the one thing an
-// agent has to know before writing a document.
 func TestHelpTextAdvertisesTheLanguageDoor(t *testing.T) {
 	for _, want := range []string{
 		"aontu help [topic]", "aontu explain <code>",

@@ -1,9 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The patch API around the shared rows (G7 phase 5). The report itself
-// is pinned by test/spec/patch.tsv; what is left here is the options,
-// which cross-package CLI runs do not count toward this package's
-// coverage.
 
 package aontu
 
@@ -14,9 +10,6 @@ import (
 	"testing"
 )
 
-// With EntryPath and OverlayPath given, a finding names those files
-// rather than Vet's generic schema/data labels: with two documents
-// that both belong to the caller, "which file" is the whole question.
 func TestPatchLabelsFindingsWithTheirFiles(t *testing.T) {
 	r := Patch("port: 3", "", []string{"$.port=5"}, &PatchOptions{
 		EntryPath:   "sys.aon",
@@ -35,10 +28,6 @@ func TestPatchLabelsFindingsWithTheirFiles(t *testing.T) {
 	}
 }
 
-// OFFSET ARITHMETIC, at its edges. Every one of these is a position that
-// does not exist, and the answer to a position that does not exist is -1
-// -- never an offset that happens to be in range. The TS twin is
-// ts/test/patch.test.ts, offsetat-refuses-positions-that-do-not-exist.
 func TestOffsetAtRefusesPositionsThatDoNotExist(t *testing.T) {
 	src := "ab\ncd\n"
 	cases := []struct {
@@ -73,12 +62,7 @@ func TestOffsetAtRefusesPositionsThatDoNotExist(t *testing.T) {
 	}
 }
 
-// COLUMNS COUNT UTF-16 CODE UNITS AND GO STRINGS ARE BYTES, so the
-// conversion is the whole job: an astral character before the value is
-// TWO columns and FOUR bytes, and reading the column as a byte count
-// would land inside it.
 func TestOffsetAtConvertsUTF16ColumnsToBytes(t *testing.T) {
-	// "a🎉b" is 4 UTF-16 units (a, the surrogate pair, b) and 6 bytes.
 	src := "a\U0001F389b=x\n"
 	// Column 5 is `=`, which is byte 6.
 	if got := offsetAt(src, 1, 5); 6 != got {
@@ -94,21 +78,6 @@ func TestOffsetAtConvertsUTF16ColumnsToBytes(t *testing.T) {
 	}
 }
 
-// AN OVERLAY THAT LOADS ANOTHER DOCUMENT CANNOT BE EDITED IN PLACE, and
-// this is the case that makes it necessary rather than tidy.
-//
-// The include holds `a: 42` at row 1 column 4; the overlay holds
-// `x: 42` at row 1 column 4. The site is a real site, the text at the
-// span really is `42`, and the span verification therefore PASSES -- so
-// a splice that trusted it would rewrite `x` while reporting a
-// replacement of `$.a`, with a valid verdict and no findings. The site's
-// File cannot save it: this port names the ENTRY document for an
-// included value (issue #66), so the comparison is the overlay against
-// itself, and a library caller need not pass OverlayPath at all.
-//
-// Denying includes removes the ambiguity at its source: what resolves is
-// what this text says by itself. The TS twin is
-// refuses-an-overlay-that-loads-another-document.
 func TestPatchRefusesAnOverlayThatLoadsAnotherDocument(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); nil != err {
@@ -155,10 +124,6 @@ func TestPatchRefusesAnOverlayThatLoadsAnotherDocument(t *testing.T) {
 	}
 }
 
-// TWO ASSIGNMENTS AT ONE PATH. The second is the one the author wrote
-// last, so it wins -- and the first is DROPPED rather than layered,
-// because splicing the same span twice would write one value inside the
-// other.
 func TestPatchLastAssignmentAtAPathWins(t *testing.T) {
 	r := Patch("a: integer", "a: 1\n", []string{"$.a=2", "$.a=3"},
 		&PatchOptions{InPlace: true})
@@ -173,9 +138,6 @@ func TestPatchLastAssignmentAtAPathWins(t *testing.T) {
 	}
 }
 
-// A malformed assignment is refused before anything is written, and the
-// report says which one. Replaced is EMPTY rather than nil: an emitter
-// that dropped the field would make the two ports differ.
 func TestPatchMalformedAssignmentRefusesTheWholeRun(t *testing.T) {
 	r := Patch("a: integer", "a: 1\n", []string{"$.a=2", "nonsense"},
 		&PatchOptions{InPlace: true})
@@ -245,9 +207,6 @@ func TestSpanHoldsRefusesWhatItCannotAccountFor(t *testing.T) {
 		t.Fatal("the site that describes the text must hold")
 	}
 
-	// THE TEXT IS DIFFERENT. An included literal's coordinates applied
-	// to this file used to reach here; nothing does now, and it still
-	// must refuse.
 	if spanHolds(src, at(2, 4, 2), "42") {
 		t.Fatal("held over different text")
 	}
@@ -263,25 +222,16 @@ func TestSpanHoldsRefusesWhatItCannotAccountFor(t *testing.T) {
 		t.Fatal("the unsited site must never hold, even against empty text")
 	}
 
-	// A ZERO-LENGTH SPAN never holds against real text.
 	if spanHolds(src, at(1, 4, 0), "42") {
 		t.Fatal("held with a zero-length span")
 	}
 
-	// AND THE UTF-16 CONVERSION, at the one place it decides a write:
-	// the astral character is two columns and four bytes.
 	utf := "\"a\U0001F389b\": \"old\"\n"
 	if !spanHolds(utf, at(1, 9, 5), "\"old\"") {
 		t.Fatalf("utf-16 column did not resolve: %q", spanAt(utf, at(1, 9, 5), "\"old\""))
 	}
 }
 
-// THE LAST STEP BEFORE A SPLICE, taken as a whole: verifiedSite either
-// refuses or names the replacement span. The refusal cannot be reached
-// through patch since ADR-018 — no source spelling leaves a conjunct
-// unsited any more — so it is exercised here the way spanHolds is:
-// with a conjunct the engine would never produce. The TS twin is
-// verifiedsite-refuses-the-span-that-does-not-hold.
 func TestVerifiedSiteRefusesTheSpanThatDoesNotHold(t *testing.T) {
 	src := "a: 42\n"
 

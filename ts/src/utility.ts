@@ -1,18 +1,9 @@
 /* Copyright (c) 2023-2025 Richard Rodger, MIT License */
 
 
-
 import type { AontuOptions, TrustOptions, Val } from './type'
 
 
-// THE INCLUDE OPTIONS AN ENGINE HANDS ITS Aontu INSTANCE. Every verb
-// engine builds one, and until there were two such options each did it
-// inline -- `null == options.trust ? undefined : { trust: options.trust }`,
-// written out twelve times. That is fine while there is one option and
-// a latent bug the moment there are two: `textExt` had to reach the
-// same twelve places, and the one it missed refused a `.md` include
-// under a flag the bare command honoured. One function now, so a third
-// include option is threaded once.
 type IncludeOptions = {
   trust?: TrustOptions
   textExt?: string[]
@@ -27,11 +18,6 @@ function includeOpts(options: IncludeOptions): Partial<AontuOptions> {
 }
 
 
-// Default walk() depth limit. High enough that real configs are never
-// silently truncated (the old default of 32 dropped marks on deeply
-// nested refs/funcs → wrong output), while still bounding runaway or
-// accidentally-cyclic walks (walk has no cycle detection). Pass null for
-// truly unbounded.
 const WALK_DEFAULT_MAXDEPTH = 9999
 
 
@@ -47,12 +33,6 @@ function propagateMarks(source: Val, target: Val): void {
 }
 
 
-// Collect every value in the tree carrying the deprecation record (G3
-// phase 4), with its path — the one walk behind vet's `deprecated`
-// warnings and the LSP's Deprecated tags. The record travels on meets
-// (the unite rider) and clones, so this sees the declaration and every
-// use resolving through it. The non-Val guard is for a bag's raw peg
-// entries, which degenerate parses can leave behind.
 function collectDeprecations(
   root: Val): Array<{ val: Val, path: string[] }> {
   const out: Array<{ val: Val, path: string[] }> = []
@@ -97,17 +77,6 @@ function deprecationMessage(d: Record<string, string>): string {
 }
 
 
-// The canonical form of a value, wrapped in the RIDER it carries —
-// the deprecation record (G3 phase 4) — reparseably, so
-// `deprecate(x, m)` survives canon. Bags render their children through
-// this (MapVal/ListVal canon), which is where a marked FIELD — the
-// realistic case — lives.
-//
-// The rider renders HERE and not in the value's own `canon` for the
-// same reason the guard at the MapVal call site tests the isVal flag:
-// a bag's canon recursion visits each child once, and a child that
-// wrapped itself as well would render its subtree twice per level —
-// 2^depth on a nested document.
 function canonRiders(v: Val): string {
   const c = v.canon
   const d = v.deprecation

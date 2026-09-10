@@ -1,15 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The deprecation mark (G3 phase 4,
-// docs/capability-review/g3-subsumption-evolution.md): a function-form
-// builtin, `deprecate(x, m)`, that unifies EXACTLY as `x` while the
-// record `m` rides the result through meets. The record's keys are
-// msg, use and since — all optional, all strings; `use` is a path
-// spelled as a STRING, because a live reference would resolve and
-// unify, which is not wanted. Boolean ValMarks cannot hold a record,
-// so the Val carries one optional field (Val.deprecation), propagated
-// by the same channel as the marks (propagateMarks) and rendered back
-// reparseably by canon (canonRiders).
 
 import type {
   Val,

@@ -34,11 +34,6 @@ func TestRunHelpVersionAndBadOption(t *testing.T) {
 	}
 }
 
-// A MISTYPED VERB IS NOT A SUCCESS. `vet2` matches no subcommand, so it
-// falls through to the bare form as a file name; the last name used to
-// win, and the command answered about the DATA file with exit 0 -- a
-// plausible pass, in the one place a tool loop is reading the exit code
-// to decide whether the data is good.
 func TestRunMistypedVerbIsAUsageError(t *testing.T) {
 	var out, errw bytes.Buffer
 	code := run([]string{"vet2", "schema.aon", "data.json"},
@@ -116,8 +111,6 @@ func TestRunReplPath(t *testing.T) {
 	}
 }
 
-// The REPL's :help and :json commands, an evaluation error, and a
-// failing input reader.
 func TestReplCommandsAndErrors(t *testing.T) {
 	var out bytes.Buffer
 	in := strings.NewReader(":help\n:json\na:1 a:2\n:quit\n")
@@ -136,18 +129,12 @@ func TestReplCommandsAndErrors(t *testing.T) {
 	}
 }
 
-// render: a canon-mode parse error surfaces as an error.
 func TestRenderCanonError(t *testing.T) {
 	if _, err := render(aontu.New(), "a:number > 0", "canon"); err == nil {
 		t.Fatalf("canon parse error must surface")
 	}
 }
 
-// stdinIsPipe: the live probe, and an UNANSWERABLE stdin, which counts
-// as piped. Node reports `process.stdin.isTTY` as undefined for a
-// descriptor it cannot classify, so TypeScript reads the source rather
-// than opening a REPL; this port now does the same. A closed file is
-// the unanswerable case.
 func TestStdinIsPipe(t *testing.T) {
 	_ = stdinIsPipe()
 	f, err := os.Open(os.DevNull)
@@ -196,14 +183,6 @@ func TestAontuForFileAbsFailure(t *testing.T) {
 	}
 }
 
-// The `--jsonl` flag through the REAL argument parser, over a PIPE
-// (tty=false). Both halves of this were broken and the suite was green
-// anyway: the switch had no case for the flag, so `aontu --jsonl` exited
-// 2 with "unknown option"; and the TTY gate read piped stdin as Aontu
-// SOURCE, so even once the flag parsed, the mode a harness drives was
-// reachable only through a pty. TestReplJSONLAnswersInOneLine builds
-// replState directly and so passed over both defects — which is why
-// this test drives run() instead (register, G7.7).
 func TestReplJSONLIsReachableOverAPipe(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "m.aon")
@@ -220,13 +199,6 @@ func TestReplJSONLIsReachableOverAPipe(t *testing.T) {
 		t.Fatalf("exit %d, stderr %q", code, errw.String())
 	}
 
-	// NO TrimSpace. The contract is one JSON object per line, so EVERY
-	// line the stream produced has to be one -- and trimming first is
-	// exactly what let a bare closing newline sit at the end of the
-	// stream unnoticed, where a harness parsing each line as it arrived
-	// would fail after every command had succeeded. The final newline
-	// terminates the last record and is not a record itself, so it is
-	// stripped once, deliberately, and nothing else is.
 	text := out.String()
 	if !strings.HasSuffix(text, "\n") {
 		t.Fatalf("stream does not end in a newline: %q", text)
@@ -252,10 +224,6 @@ func TestReplJSONLIsReachableOverAPipe(t *testing.T) {
 	}
 }
 
-// THE --text-ext FLAG ON THE BARE COMMAND. takeTrust covers the verb
-// road; the bare form parses its own flags, so its arm needs its own
-// case -- the same split that let --trust reach the verbs and not the
-// bare command once.
 func TestRunTextExtFlag(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "doc.md"),
@@ -349,7 +317,6 @@ func TestRunTextExtOnVerbs(t *testing.T) {
 	}
 }
 
-// --- G11 phase 7: the bare command's machine-readable report ---
 
 // evalReportOf drives the bare command in json mode and reads the
 // envelope back, so the assertions are about the SHAPE rather than
@@ -478,14 +445,7 @@ func TestEmitJSONWithoutAFinding(t *testing.T) {
 	}
 }
 
-// --- G11 phase 4: the vacuity signals ---
 
-// A VERB THAT DID NOTHING AND A VERB THAT SUCCEEDED ANSWERED THE SAME.
-// The signal is on STDERR, so no `--format json` stdout contract
-// changes and no exit code moves: what changes is that the caller is
-// told. The repository already ruled this for `trim` in G8 phase 6 --
-// doing something else silently is worse than refusing. The Go twin of
-// vacuity-signals-on-view-render-relations in ts/test/cli.test.ts.
 func TestVacuitySignals(t *testing.T) {
 	dir := t.TempDir()
 	plain := filepath.Join(dir, "plain.aon")

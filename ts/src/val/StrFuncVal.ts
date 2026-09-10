@@ -1,31 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE STRING BUILTINS the rule layer needs (G9 phase 6,
-// docs/design/TEMPLATE.0.md D4 and D5).
-//
-//   esc(s, variant?)      make `s` safe inside a literal
-//   usc(s, variant?)      read it back out
-//   rep(s, pattern, sub)  replace every match
-//   split(s, sep)         a list of fields
-//
-// All four are ORDINARY string builtins beside `upper` and `lower`:
-// they return values, compose with `+`, and know nothing about
-// generation, which is why they can land before the renderer does.
-// They are not staged -- a scalar argument that is `done` is done.
-//
-// WHY `rep` AND `split` CARRY THEIR OWN MATCHING LOOPS. The host
-// engines disagree about every part of this. `String.replace` reads
-// `$1x` as group 1 then `x` while Go's Expand reads the name `1x`;
-// `String.split` INSERTS a pattern's capture groups into the result
-// and Go's Split does not; and the two disagree about empty matches at
-// the ends. So the loops below are written once, in the semantics Go's
-// regexp package defines, and go/strfunc.go is their twin -- the same
-// discipline ADR-003 applies to the pattern language itself.
-//
-// THE PATTERN IS THE PORTABLE SUBSET `re()` TAKES, normalised before
-// either engine compiles it. One regexp language in the document, not
-// two -- and the subset's linear-time guarantee matters more here than
-// in a constraint, because a generator runs this over model data.
 
 import type {
   Val,
@@ -63,11 +37,6 @@ function variantOf(v: Val | undefined): string | undefined {
 }
 
 
-// The number of CAPTURING groups in a normalised pattern. Counted by
-// scanning rather than by asking either host, because the count decides
-// whether a substitution is refused and the two ports must refuse the
-// same ones. The subset admits no named groups, so a capturing group is
-// exactly `(` that is not `(?`.
 function reGroupCount(norm: string): number {
   let count = 0
   let inClass = false
@@ -85,8 +54,6 @@ function reGroupCount(norm: string): number {
 }
 
 
-// One code point at `at`, as a count of UTF-16 units: the "advance by
-// one rune" Go's matching loop performs after an empty match.
 function stepAt(src: string, at: number): number {
   const c = src.codePointAt(at)
   return undefined === c ? 1 : (0xFFFF < c ? 2 : 1)
@@ -131,12 +98,6 @@ function allMatches(src: string, re: RegExp): RegExpExecArray[] {
 }
 
 
-// A substitution template expanded against one match. `$1`..`$9` are
-// the numbered groups, `$&` the whole match and `$$` a literal `$`;
-// anything else after a `$` names nothing, and naming nothing is a
-// REFUSAL rather than a silent literal. A group the pattern does not
-// have is the same refusal -- a generator that expands it to the empty
-// string writes a file with a hole in it and says nothing.
 function expandSub(sub: string, m: RegExpExecArray, groups: number)
   : string | undefined {
   let out = ''
@@ -176,8 +137,6 @@ function splitRe(src: string, re: RegExp): string[] {
 }
 
 
-// An EMPTY separator yields the CODE POINTS, not the UTF-16 units a
-// host split would give: `split("é", "")` is one field in both ports.
 function splitLiteral(src: string, sep: string): string[] {
   if ('' === sep) { return [...src] }
   return src.split(sep)
@@ -190,9 +149,6 @@ function compileRe(src: string): RegExp | string {
   const [norm, why] = normaliseRe(src)
   if ('' !== why) { return 'rep_pattern' }
   try {
-    // The `u` flag is REQUIRED for parity, exactly as it is for `re()`:
-    // without it JavaScript counts UTF-16 units where Go counts code
-    // points.
     return new RegExp(norm, 'gu')
   }
   catch (e: any) {

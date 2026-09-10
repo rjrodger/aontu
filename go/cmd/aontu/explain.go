@@ -1,24 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// `aontu explain <code>` (G11 phase 3,
-// docs/capability-review/g11-agent-onramp.md) -- `rustc --explain`,
-// over the code registry this repository already maintains.
-//
-// test/spec/errcodes.tsv registers 157 codes across seven classes, and
-// both ports' hint tables carry an explanation for most of them. Every
-// one of those explanations was reachable only by TRIGGERING the error
-// that carries it: a caller handed `[aontu/mapval_no_gen]` in a report
-// had no way to ask what it meant.
-//
-// THE REGISTRY IS THE LIST. It is the shared contract -- 157 rows,
-// asserted set-equal with codeClasses in both ports -- while the hint
-// tables are smaller and not themselves in parity (131 entries in Go
-// against 130 in TypeScript, the extra being decimal_syntax, which TS
-// never raises). Listing from the registry keeps the two ports
-// identical over a difference that is not about what either can
-// report, and makes the twenty-seven registered codes carrying no
-// explanation text VISIBLE, where before this verb their absence could
-// only be met beside the error that raises them.
 
 package main
 

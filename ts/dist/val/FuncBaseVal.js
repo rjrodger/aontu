@@ -12,16 +12,6 @@ const top_1 = require("./top");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const FeatureVal_1 = require("../val/FeatureVal");
 const PlaceVal_1 = require("../val/PlaceVal");
-// A TRIAL meet: does `a` unify with `b`, and if so as what? Failure is
-// an ANSWER here rather than an error, which is exactly what
-// DisjunctVal already needs when it tries each member against a peer —
-// so this is that mechanism (`ctx._trialMode`, which makes makeNilErr
-// return the shared TRIAL_NIL instead of allocating and recording),
-// lent to the combinators that select by unifiability.
-//
-// The error list and the trial flag are saved and restored in a
-// `finally`: a trial that throws must not leave the surrounding
-// evaluation collapsing every later error into the sentinel.
 function trialUnify(ctx, a, b) {
     const savedErr = ctx.err;
     const savedTrial = ctx._trialMode;
@@ -60,19 +50,10 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         super(spec, ctx);
         this.isFunc = true;
         this.isGenable = true;
-        // THE STAGING RULE (G8 phase 0, see AontuContext.settle). A func
-        // whose answer depends on WHERE IT IS -- `key()`, whose answer is a
-        // segment of its own path, and the generation combinators, whose
-        // data argument can still be merged into by a sibling -- sets this
-        // and residuates until the model stops moving. Everything else
-        // resolves as soon as its arguments are done, which is the rule that
-        // has always been here.
         this.staged = false;
-        // console.log('FBV', this.id, this.constructor.name, this.peg?.[0]?.canon)
     }
     validateArgs(args, min) {
         if (min < args.length) {
-            // TODO: this is an error as as a parse error, needs to be handled same way
             throw new err_1.AontuError('The ' + this.funcname() + ' function needs at least ' +
                 min + ' argument' + (1 === min ? '' : 's') + '.');
         }
@@ -80,27 +61,9 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     make(ctx, _spec) {
         return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'make');
     }
-    // Drive the first `count` arguments IN PLACE, every pass — not only
-    // on the settle pass. A staged func waits for the model to settle,
-    // and its own arguments are part of that model: leaving them
-    // standing until settle would guarantee the model was still moving
-    // when settle arrived. Answers whether they are all done, which is
-    // the other half of "ready to fire".
     driveStagedArgs(ctx, count) {
         const TOP = (0, top_1.top)();
         let alldone = true;
-        // THE SNAPSHOT WAITS FOR THE SOURCE (the spread-then-pack defect,
-        // use-cases/BUGS.md pack-refs family). A reference resolving inside
-        // a staged argument is this argument's SNAPSHOT of its source, and
-        // the snapshot is not part of the tree: a spread-injected relative
-        // reference inside a too-early copy dangles at the argument's
-        // location (`.containerPort` rebased under the generator, where no
-        // root traversal reaches it) and the generator never fires. The
-        // `argsnap` flag makes RefVal.find defer until the target has
-        // finished resolving IN THE TREE — where its own spreads and
-        // relative references answer at their real location — and only then
-        // take the copy. Inherited by every descended ctx, so a reference
-        // anywhere in the argument subtree waits the same way.
         const actx = ctx.clone({});
         actx.argsnap = true;
         for (let i = 0; i < count && i < this.peg.length; i++) {
@@ -114,45 +77,13 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         }
         return alldone;
     }
-    // THE STAGED READINESS GATE, stated once for the generators that
-    // drive their own data argument. Such a func fires when the model
-    // has settled AND that argument is done -- EXCEPT when the argument
-    // is a HOLE and a PEER has arrived to fill it. `_` is never done: it
-    // is FILLED, and the peer is what fills it, so gating on doneness
-    // alone held every placeheld generator residual for ever and the
-    // fill in `unify` below was never reached (`["a"] & pack(_, {x:1})`
-    // was `*_no_gen`, while the unstaged `"hello" & upper(_)` filled as
-    // documented -- an undriven `_` makes an ordinary call's `pegdone`
-    // false, and a generator's prepare() forces it true). Against TOP
-    // there is nothing to fill with, so a placeheld generator waits
-    // exactly as the hole itself does.
     stagedReady(peer, ctx, count) {
         const ready = this.driveStagedArgs(ctx, count);
         return (ready || (!peer.isTop && (0, PlaceVal_1.hasPlace)(this))) && true === ctx.settle;
     }
-    // THE PER-DESTINATION INSTANTIATION RULE (ADR-005). The default
-    // clone shares the argument array AND the argument Vals — the
-    // residuation clone, which stays at one position and wants the
-    // sharing, and the reference copy of a target that still holds a
-    // staged call, which pins the move()/copy() ghost artifacts
-    // (test/spec/func.tsv, ghost-*-innard-canon; ADR-025) — but a clone
-    // that is an INSTANCE must own the full inner structure: with the
-    // args shared, `pack($.names, close({name: key()}))` resolved key()
-    // once inside the one shared inner map and stamped the FIRST
-    // child's key on every child (use-cases/BUGS.md §8). The `dup` spec
-    // flag asks for that depth; everything else keeps the sharing it
-    // has always had.
     clone(ctx, spec) {
         const out = super.clone(ctx, spec);
         if (true === spec?.dup && Array.isArray(this.peg)) {
-            // Every argument is a Val by construction (the parser builds
-            // them; make() rebuilds from driven Vals), as the Go twin's
-            // []Val typing states outright. The generator and spread
-            // instantiation sites then normalise every path in the clone
-            // (repathInstance), so the argument-shaped parse paths never
-            // leak into an instance; the reference copy takes the paths
-            // this rebasing gives, which is what an absolute address in a
-            // copied model already expects (ADR-014).
             out.peg = this.peg.map((a) => a.clone(ctx, { dup: true }));
         }
         return out;
@@ -184,16 +115,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         if (this.staged && !ctx.settle) {
             return this.residuate(peer, ctx);
         }
-        // THE PLACEHOLDER (G8 phase 3, see PlaceVal). A call holding a hole
-        // waits for a peer, and the peer is what fills it: the call is
-        // rebuilt with the hole replaced and resolved on the spot, so
-        // `upper(_) & hello` is `"HELLO"` and not `"HELLO" & "hello"` --
-        // the peer went INTO the call, it is not also a constraint on the
-        // way out.
         if (!peer.isTop && !peer.isNil && this.id !== peer.id && (0, PlaceVal_1.hasPlace)(this)) {
-            // TWO HOLES AND NOTHING TO FILL THEM. `upper(_) & lower(_)` has
-            // no value on either side, and picking one call to be the other's
-            // filling would be inventing an order the language does not have.
             if ((0, PlaceVal_1.hasPlace)(peer)) {
                 return (0, err_1.makeNilErr)(ctx, 'place_pair', this, peer);
             }
@@ -201,11 +123,8 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         }
         const TOP = (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer);
-        // const sc = this.id + '=' + this.canon
-        // const pc = peer.id + '=' + peer.canon
         let why = '';
         let out = this;
-        // console.log('FBV', this.id, this.constructor.name, this.mark.type, this.peg?.canon, 'PEER', peer.id, peer.canon)
         let pegdone = true;
         if (this.id !== peer.id) {
             if (peer.isTop && (this.mark.type || this.mark.hide)) {
@@ -223,19 +142,12 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                 else {
                     this.peg = pegprep;
                     for (let arg of this.peg) {
-                        // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
                         let newarg = arg;
                         if (!arg.done) {
-                            // Charged to the depth budget: this recurses without going
-                            // through `unite`, so the counter would otherwise stay flat
-                            // while the stack grows (see withDepth in unify.ts). The
-                            // arg context is built OUTSIDE the closure so its explain
-                            // ternary stays one branch rather than one per call.
                             const argctx = te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'ARG') }) : ctx;
                             newarg = (0, unify_1.withDepth)(ctx, arg, TOP, () => arg.unify(TOP, argctx));
                             newtype = newtype || newarg.mark.type;
                             newhide = newhide || newarg.mark.hide;
-                            // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, arg.done, '->', newarg.canon, newarg.done)
                         }
                         // pegdone &&= arg.done
                         pegdone &&= newarg.done;
@@ -250,24 +162,13 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     // what the gate owns and what stays with the builtins.
                     const resolved = (0, siggate_1.sigRefuse)(ctx, this, newpeg) ??
                         this.resolve(ctx, newpeg);
-                    // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
                     // The TOP peer is DROPPED as the unit it is.
                     out = resolved.done && peer.isTop ? resolved :
                         (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }) : ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id);
                     (0, utility_1.propagateMarks)(this, out);
-                    // TODO: make should handle this using ctx?
                     out.site.row = this.site.row;
                     out.site.col = this.site.col;
                     out.site.url = this.site.url;
-                    // THE SPAN COMES WITH THE POSITION, always. Moving row and
-                    // col onto the result while leaving its own text behind
-                    // produced a site that contradicted itself: `close({...})`
-                    // reported the call's column and the map's `{`, so reading
-                    // the document at (row, col, len) found `c` where `src` said
-                    // `{`. A consumer following the verification contract would
-                    // refuse every such repair; one skipping it would edit the
-                    // wrong token. Whatever the position names, the text names
-                    // too. Twin: the same assignment in go/func.go.
                     out.site.len = this.site.len;
                     out.site.src = this.site.src;
                     out.path = this.path;
@@ -276,19 +177,9 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                 else if (peer.isTop) {
                     this.notdone();
                     out = this.make(ctx, { peg: newpeg, mark: { type: newtype, hide: newhide } });
-                    // TODO: make should handle this using ctx?
                     out.site.row = this.site.row;
                     out.site.col = this.site.col;
                     out.site.url = this.site.url;
-                    // THE SPAN COMES WITH THE POSITION, always. Moving row and
-                    // col onto the result while leaving its own text behind
-                    // produced a site that contradicted itself: `close({...})`
-                    // reported the call's column and the map's `{`, so reading
-                    // the document at (row, col, len) found `c` where `src` said
-                    // `{`. A consumer following the verification contract would
-                    // refuse every such repair; one skipping it would edit the
-                    // wrong token. Whatever the position names, the text names
-                    // too. Twin: the same assignment in go/func.go.
                     out.site.len = this.site.len;
                     out.site.src = this.site.src;
                     out.path = this.path;
@@ -304,19 +195,9 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     out = new ConjunctVal_1.ConjunctVal({
                         peg: [this, peer], mark: { type: newtype, hide: newhide }
                     }, ctx);
-                    // TODO: make should handle this using ctx?
                     out.site.row = this.site.row;
                     out.site.col = this.site.col;
                     out.site.url = this.site.url;
-                    // THE SPAN COMES WITH THE POSITION, always. Moving row and
-                    // col onto the result while leaving its own text behind
-                    // produced a site that contradicted itself: `close({...})`
-                    // reported the call's column and the map's `{`, so reading
-                    // the document at (row, col, len) found `c` where `src` said
-                    // `{`. A consumer following the verification contract would
-                    // refuse every such repair; one skipping it would edit the
-                    // wrong token. Whatever the position names, the text names
-                    // too. Twin: the same assignment in go/func.go.
                     out.site.len = this.site.len;
                     out.site.src = this.site.src;
                     out.path = this.path;
@@ -344,12 +225,6 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     resolve(ctx, _args) {
         return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
     }
-    // A function may hold its resolution for a later pass even with its
-    // arguments settled -- it then rides the ordinary args-not-done
-    // path, residuating as any unresolved call does. super() defers on a
-    // recursion residual argument (SuperFuncVal), which is why the DRIVEN
-    // arguments are passed: this.peg still holds the undriven originals
-    // at the decision point.
     deferResolve(_ctx, _args) {
         return false;
     }

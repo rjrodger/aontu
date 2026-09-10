@@ -16,11 +16,9 @@ import {
 import { MapVal } from '../dist/val/MapVal'
 
 
-
 import {
   unite,
 } from '../dist/unify'
-
 
 
 let lang = new Lang()
@@ -32,7 +30,6 @@ describe('op', () => {
     expect(unite.name).equal('unite')
     // expect(disjunct.name).equal('disjunct')
   })
-
 
 
   it('unite-conjunct', () => {
@@ -49,15 +46,12 @@ function makeCtx(r?: any) {
 }
 
 
-
 function makeUnite(r?: any) {
   let ctx = makeCtx(r)
   return (s: string) => {
     let terms: any[] = s.trim().split(/\s+/).map(x => 'undef' === x ? undefined : x)
     let pterms: any = PA(terms)
-    // console.log(pterms)
     let u = unite(ctx, pterms[0], pterms[1], 'op-test')
-    // console.log(u)
     return u.canon
   }
 }

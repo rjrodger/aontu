@@ -2,11 +2,6 @@
 
 package main
 
-// The Go twin of the cli-template cases in ts/test/cli.test.ts. The two
-// TRANSFORMS are pinned by test/spec/template.tsv, which both runners
-// execute; what each port owns -- argument handling, exit codes, which
-// stream carries what, and the entry a render reads as a template -- is
-// here.
 
 import (
 	"bytes"
@@ -16,8 +11,6 @@ import (
 	"testing"
 )
 
-// A generator in the target's own syntax: two marked lines carrying
-// aontu, and one line of output between them.
 const templateGen = "//- of: [\nexport const N = 1\n//- ]\n"
 
 const templateCanon = "of: [\n`export const N = 1`\n]\n"
@@ -73,10 +66,6 @@ func TestTemplatePrintsTheCanonicalFormAndResugarsIt(t *testing.T) {
 		t.Fatalf("--marker: code %d out %q", code, out)
 	}
 
-	// A FILE WITH NO EXTENSION takes the default marker rather than no
-	// marker at all: a generator named `Makefile` or `Dockerfile` is an
-	// ordinary case, and the table is a convenience over a default
-	// rather than the thing that decides a file is a template.
 	bare := templateDir(t, map[string]string{"gen": templateGen})
 	out, _, code = templateRun(filepath.Join(bare, "gen"))
 	if 0 != code || templateCanon != out {
@@ -91,11 +80,6 @@ func TestTemplateCheckIsTheRoundTrip(t *testing.T) {
 		t.Fatalf("clean: code %d out %q err %q", code, out, errw)
 	}
 
-	// A MARKER LINE THE TRANSFORM WOULD NOT HAVE WRITTEN is what this
-	// catches: the marker stands at the left margin with the aontu
-	// indented after it, so a marker indented to match the code around it
-	// is moved back. The report names the first line that differs rather
-	// than diffing the whole generator.
 	bad := templateDir(t, map[string]string{
 		"gen.ts": "//- of: [\n  //- {\n//- ]\n"})
 	_, errw, code = templateRun("--check", filepath.Join(bad, "gen.ts"))
@@ -111,7 +95,6 @@ func TestTemplateUsageErrorsExit2(t *testing.T) {
 	dir := templateDir(t, map[string]string{"gen.ts": templateGen})
 	file := filepath.Join(dir, "gen.ts")
 
-	// The two directions are not modes that compose.
 	for _, tc := range []struct {
 		args []string
 		want string

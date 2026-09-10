@@ -92,10 +92,6 @@ describe('coverage2-cli', () => {
     return () => Object.defineProperty(process, 'stdin', desc)
   }
 
-  // COLOUR IS A DECISION ABOUT THE DESTINATION (the review's finding
-  // F), and only the command can see the destination. Every other test
-  // in this suite runs with stderr captured or piped, which is the
-  // colour-OFF arm; this is the other one.
   test('an-interactive-stderr-leaves-colour-to-no-color', () => {
     const desc = Object.getOwnPropertyDescriptor(process, 'stderr')!
     const fakeErr: any = new PassThrough()
@@ -155,12 +151,6 @@ describe('coverage2-cli', () => {
   })
 
 
-  // NO_COLOR SET BUT EMPTY does not disable colour -- the one exception
-  // no-color.org states, which err.ts implements and `--style auto`
-  // has to implement too, since it reads the variable itself rather
-  // than through the error frames' gate. And an EXPLICIT style is
-  // returned whatever the destination is, which is the arm every other
-  // test skips: the two refusals below never reach the resolver.
   test('style-auto-honours-an-empty-no-color-and-an-explicit-style-wins', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-style3-'))
     const file = Path.join(dir, 'm.aon')

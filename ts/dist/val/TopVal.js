@@ -17,7 +17,6 @@ class TopVal extends Val_1.Val {
         this.mark.hide = false;
     }
     same(peer) {
-        // return this === peer
         return peer.isTop;
     }
     unify(peer, ctx) {

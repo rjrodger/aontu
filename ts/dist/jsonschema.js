@@ -3,34 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.jsonSchema = jsonSchema;
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 const utility_1 = require("./utility");
-// JSON SCHEMA EXPORT (the review's finding I / SUPPORT.md act 2).
-//
-// "JSON Schema's decisive 2026 advantage is not its validator ecosystem
-// -- it is that every major LLM provider's structured-output API
-// natively constrains generation to JSON Schema." Without an export,
-// Aontu cannot ride that path and then apply `vet` as the semantic gate
-// -- the hybrid an enterprise would actually deploy -- and an MCP tool's
-// `inputSchema`, which the protocol REQUIRES to be JSON Schema, cannot
-// be derived from an Aontu tool model at all (use case 09's interop
-// wall).
-//
-// THE MAPPING IS LOSSY, AND SAYS SO PER CONSTRUCT. That is the whole
-// design. Aontu's constraint algebra maps cleanly onto JSON Schema's
-// core -- bounds, patterns, lengths, enums, required and closed -- and
-// then stops: an evaluate-only `must()` is opaque by construction, an
-// exact `0d` leaf has no JSON type that preserves it, a cross-field
-// reference is not a property constraint at all, and `unique(k)` has no
-// JSON Schema spelling. A converter that dropped those silently would
-// hand its caller a schema that ADMITS MORE than the model does, which
-// is the failure mode this whole language exists to refuse. So every
-// loss is reported with its path, its construct and its reason, and
-// `--strict` turns the report into a refusal.
-//
-// It exports the UNIFIED value, not the parse: what a document MEANS is
-// what a consumer should be constrained to, and the meaning is what the
-// fixpoint produced.
-//
-// Draft 2020-12, because that is what the structured-output APIs read.
 const aontu_1 = require("./aontu");
 const err_1 = require("./err");
 const BagVal_1 = require("./val/BagVal");
@@ -43,11 +15,6 @@ function pathText(path) {
 function lose(ctx, path, construct, reason) {
     ctx.lossy.push({ path: pathText(path), construct, reason });
 }
-// The JSON type for a kind marker, by the marker CLASS's name -- the
-// same load-bearing name canon renders (ScalarKindVal). `number` and
-// its four leaves all become JSON's two numeric types; the exactness of
-// `biginteger`/`bigdecimal` has no JSON type at all, which is a loss the
-// caller is told about rather than a silent widening.
 const KIND_TYPE = {
     String: 'string',
     Boolean: 'boolean',
@@ -56,15 +23,8 @@ const KIND_TYPE = {
     Float: 'number',
     BigDecimal: 'number',
     Number: 'number',
-    // A path value is its address string at the JSON boundary
-    // (docs/design/PATHS.0.md), so the projection says `string` -- the
-    // same lossy-projection rule the exact numeric leaves follow.
     Path: 'string',
 };
-// The JSON value of a concrete scalar, for `const`, `enum` and
-// `default`. An exact leaf renders through its own digits rather than
-// through binary64 -- and is reported as a loss where it is emitted,
-// because JSON's number has no exactness to receive it.
 function scalarJson(v) {
     if (v.isBigInteger) {
         return Number(v.peg);
@@ -84,9 +44,6 @@ function scalarType(v) {
     const t = typeof v.peg;
     return 'number' === t ? 'number' : 'boolean' === t ? 'boolean' : 'string';
 }
-// The constraint residual's atoms, onto JSON Schema's keywords. The
-// three that map exactly (bounds, pattern, count) go across; the two
-// that cannot (`must`, `unique(k)`) are reported.
 function fromConstraint(ctx, path, c) {
     const out = {};
     if (null != c.kind && null != KIND_TYPE[c.kind.name]) {
@@ -98,9 +55,6 @@ function fromConstraint(ctx, path, c) {
     else if ('number' === c.domain) {
         out.type = 'number';
     }
-    // Bounds. An OPEN endpoint is JSON Schema's exclusive form, which is
-    // a keyword of its own in 2020-12 rather than the boolean flag draft-4
-    // used.
     if (null != c.lo) {
         out[c.lo.open ? 'exclusiveMinimum' : 'minimum'] = scalarJson(c.lo.v);
     }
@@ -112,21 +66,12 @@ function fromConstraint(ctx, path, c) {
     if (0 < c.neqs.length) {
         out.not = { enum: c.neqs.map(scalarJson) };
     }
-    // Patterns. Aontu DEFINES its portable subset (`re`'s abbreviations
-    // mean the same in both ports); every member of that subset is also
-    // an ECMA-262 regular expression, which is what JSON Schema's
-    // `pattern` is read as, so this crosses without translation. More
-    // than one pattern needs `allOf`: `pattern` is a single keyword.
     if (1 === c.res.length) {
         out.pattern = c.res[0].src;
     }
     else if (1 < c.res.length) {
         out.allOf = c.res.map((r) => ({ pattern: r.src }));
     }
-    // A COUNT is a length or a size depending on what is counted, and the
-    // residual does not always know which. Where the domain says string,
-    // it is minLength/maxLength; otherwise the container keywords, since
-    // a count atom on a container is what `length` overwhelmingly means.
     if (null != c.count) {
         const lo = null == c.count.lo ? undefined : scalarJson(c.count.lo.v);
         const hi = null == c.count.hi ? undefined : scalarJson(c.count.hi.v);
@@ -157,28 +102,6 @@ function fromConstraint(ctx, path, c) {
     }
     return out;
 }
-// The exporter proper. Every arm answers a schema; the ones that cannot
-// answer honestly report a loss and fall back to `{}`, which admits
-// anything -- the safe direction for a document that will be checked
-// again by `vet`, and the direction the loss report exists to make
-// visible.
-// NO DEFENSIVE GUARD ON `v`. Every caller walks a bag's own children
-// and a bag holds Vals, so a non-Val here is not a degenerate input,
-// it is a bug in this file -- and an unreachable `if` is a branch arm
-// the ADR-002 gate counts and no `node:coverage ignore` suppresses
-// (the marker drops LINES, not branches). Go's twin keeps its `nil ==
-// v` arm because a missing map key there yields a typed nil rather
-// than an absent property.
-// DEPRECATION IS AN ANNOTATION, and 2020-12 has one: `deprecated`.
-// The export used to drop the whole record in SILENCE -- no keyword,
-// and no loss line even under --strict -- which is the one thing the
-// verb's own contract says it never does (use-cases/BUGS.md §56).
-//
-// The boolean crosses faithfully. The record's STRINGS (msg, use,
-// since) have no home in 2020-12, so they are reported as a loss
-// rather than invented into `description`: this exporter emits no
-// `description` anywhere, and quietly making it mean "deprecation
-// note" would be a mapping a consumer cannot undo.
 function fromVal(ctx, path, v) {
     const out = fromValInner(ctx, path, v);
     const dep = v?.deprecation;
@@ -194,16 +117,8 @@ function fromVal(ctx, path, v) {
     }
     return out;
 }
-// The record's text keys -- the ones with nothing to carry them.
-// `DEPRECATION_KEYS` in DeprecateFuncVal.ts is the authority on what a
-// record may hold; this is that list, and a key added there without a
-// JSON Schema home belongs here too.
 const DEPRECATION_TEXT = ['msg', 'use', 'since'];
 function fromValInner(ctx, path, v) {
-    // A preference is its inner value plus a DEFAULT. JSON Schema's
-    // `default` is annotation rather than constraint -- it does not
-    // validate -- which is exactly what a preference is when something
-    // else supplies the value.
     if (true === v.isPref) {
         const inner = fromVal(ctx, path, v.peg);
         const gen = generated(v.peg);
@@ -215,12 +130,6 @@ function fromValInner(ctx, path, v) {
     if (true === v.isConstraint) {
         return fromConstraint(ctx, path, v);
     }
-    // A SIZING RESIDUE is a container and its own sizing atom, kept
-    // together because more members could still change the atom's reading
-    // (use-cases/BUGS.md §16). Both halves are exportable and both must
-    // be: the container gives the shape, the atom gives `uniqueItems` and
-    // the length keywords, and a walk that saw only "a conjunct" would
-    // report the whole field as unresolved and admit anything.
     const residue = (0, BagVal_1.sizingResidue)(v);
     if (undefined !== residue) {
         return {
@@ -241,10 +150,6 @@ function fromValInner(ctx, path, v) {
                 'this leaf exists for cannot be carried; the schema says ' +
                 '"' + t + '" and a consumer may round');
         }
-        // KIND_TYPE is TOTAL over the kinds a marker can carry, so there is
-        // no miss to fall back from -- and a fallback that cannot be taken
-        // is a branch arm the coverage gate counts. Go's twin keeps its
-        // empty-map arm, which its own ignore mechanism can carry.
         return { type: t };
     }
     if (true === v.isNull) {
@@ -260,9 +165,6 @@ function fromValInner(ctx, path, v) {
         }
         return { const: scalarJson(v), type: scalarType(v) };
     }
-    // Everything else is residue: a reference that did not resolve, a
-    // function or operator still waiting, a nil. None of them is a
-    // property constraint, and guessing one would be inventing a promise.
     lose(ctx, path, residueName(v), 'this is not a value yet, so there is nothing to constrain a ' +
         'consumer to; the schema admits anything here');
     return {};
@@ -277,19 +179,11 @@ function residueName(v) {
 // generate. Used for `default` and for `enum` members: both are VALUES
 // in the schema, so a member that is itself a shape has none to give.
 function generated(v) {
-    // No try/catch: a collecting context RECORDS a failed generation on
-    // itself instead of throwing, which is the whole point of the mode.
-    // Neither `vet` nor the Go twin (`schemaGenerated`) wraps this
-    // either, and an untakeable catch is a branch arm the gate counts.
     const a0 = new aontu_1.Aontu();
     const ctx = a0.ctx({ collect: true });
     const out = v.gen(ctx);
     return 0 === ctx.err.length ? out : undefined;
 }
-// A disjunction of CONCRETE members is an enum -- the shape a
-// structured-output API constrains best. Anything else is `anyOf`. A
-// preferred member contributes the `default` either way, which is how
-// `*"a"|"b"|"c"` reaches a provider as a defaulted enum.
 function fromDisjunct(ctx, path, v) {
     const members = v.peg;
     let def = undefined;
@@ -367,8 +261,6 @@ function fromList(ctx, path, v) {
         }
         return out;
     }
-    // A written list literal is a TUPLE: position by position, and no
-    // more. 2020-12 spells that `prefixItems` plus `items: false`.
     return {
         type: 'array',
         prefixItems: els.map((el, i) => fromVal(ctx, [...path, String(i)], el)),
@@ -380,12 +272,6 @@ function fromList(ctx, path, v) {
 function jsonSchema(src, options) {
     const opts = options ?? {};
     const aontu = new aontu_1.Aontu((0, utility_1.includeOpts)(opts));
-    // COLLECT MODE, so a syntax error arrives on the context rather than
-    // as a throw -- the same failure Go's `parseEntry` hands back as an
-    // error, reached by the branch below. No try/catch here for the same
-    // reason `vet` has none: the mode exists so the failure can be
-    // reported rather than escape, and a catch that cannot be entered is
-    // a branch arm the ADR-002 gate counts.
     const actx = aontu.ctx({ collect: true });
     const root = aontu.unify(src, { path: opts.path, collect: true }, actx);
     // A nil root always arrives with its reason collected beside it, which

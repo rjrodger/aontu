@@ -9,15 +9,7 @@ import (
 	"testing"
 )
 
-// The number tower's Phase 2/3 invariants that the shared TSV suite
-// cannot express: they are about the internal representation (pointer
-// pegs, normal form, the budget boundary) rather than about observable
-// canon text. See docs/design/number-tower.md, D2/D4/D6/D8.
 
-// TestDecimalNormalForm pins D4 at the representation level: one value,
-// one (coefficient, scale) pair. Scale is presentation, so trailing
-// zeros and exponents fold away — but never below ONE decimal place,
-// which is what keeps canon(0d1e3) reparsing as a bigdecimal.
 func TestDecimalNormalForm(t *testing.T) {
 	cases := []struct {
 		coeff int64
@@ -28,11 +20,11 @@ func TestDecimalNormalForm(t *testing.T) {
 		{10, 2, "0.1"},    // trailing zero stripped
 		{100, 3, "0.1"},   // repeatedly
 		{1, -3, "1000.0"}, // negative scale folded into the coefficient
-		{15, -1, "150.0"}, // 1.5e2
+		{15, -1, "150.0"},
 		{10, 1, "1.0"},    // never below one decimal place
 		{1000, 0, "1000.0"},
 		{0, 5, "0.0"},  // zero normalises to scale 1
-		{0, -5, "0.0"}, //
+		{0, -5, "0.0"},
 		{-15, 1, "-1.5"},
 		{1, 4, "0.0001"}, // padded past the point
 	}
@@ -46,8 +38,6 @@ func TestDecimalNormalForm(t *testing.T) {
 		}
 	}
 
-	// The normal form is unique, so numerically equal decimals built by
-	// different routes are field-for-field identical.
 	a := newDecimal(big.NewInt(10), 2)
 	b := newDecimal(big.NewInt(1), 1)
 	if a.scale != b.scale || a.coeff.Cmp(b.coeff) != 0 {
@@ -55,9 +45,6 @@ func TestDecimalNormalForm(t *testing.T) {
 	}
 }
 
-// TestDecimalInputNotMutated guards the immutability contract (D8):
-// pegs are shared by clones, so a constructor must never retain — nor
-// mutate — the caller's big.Int.
 func TestDecimalInputNotMutated(t *testing.T) {
 	n := big.NewInt(150)
 	d := newDecimal(n, 2)
@@ -77,11 +64,6 @@ func TestDecimalInputNotMutated(t *testing.T) {
 	}
 }
 
-// TestExactIdentityIsValueNotPointer is the Phase 3 hazard in isolation:
-// two separately built exact values hold DIFFERENT pointers, so every
-// identity test must compare the number (D2). `==` on the peg would
-// pass the small cases by accident of interning in neither port — it
-// fails all of them here.
 func TestExactIdentityIsValueNotPointer(t *testing.T) {
 	big1 := newBigInteger(new(big.Int).SetInt64(5))
 	big2 := newBigInteger(new(big.Int).SetInt64(5))
@@ -119,9 +101,6 @@ func TestExactIdentityIsValueNotPointer(t *testing.T) {
 	}
 }
 
-// TestDecimalCmp checks the comparison that identity rests on, including
-// across scales (so it stays correct for decimals built outside the
-// parser's normal form).
 func TestDecimalCmp(t *testing.T) {
 	cases := []struct {
 		a, b *Decimal
@@ -141,8 +120,6 @@ func TestDecimalCmp(t *testing.T) {
 	}
 }
 
-// TestNegativeZeroNeverSurvives pins D5 for both exact leaves, at the
-// representation level as well as through the parser.
 func TestNegativeZeroNeverSurvives(t *testing.T) {
 	if got := newDecimal(big.NewInt(0), 3).neg().digits(); got != "0.0" {
 		t.Errorf("-0d0.0 digits = %q, want 0.0", got)
@@ -162,16 +139,11 @@ func TestNegativeZeroNeverSurvives(t *testing.T) {
 	}
 }
 
-// TestExactnessBudgetBoundary pins D6 at both bounds and on both sides
-// of each. The SCALE bound is the load-bearing half: `0d1e1000000000`
-// has a one-digit coefficient, so only the scale check can catch it.
 func TestExactnessBudgetBoundary(t *testing.T) {
-	// Coefficient digits are counted AS WRITTEN (leading zeros included),
-	// exactly as the canonical port counts them.
 	d4095 := strings.Repeat("9", decimalMaxCoeffDigits-1)
 	ok := []string{
-		"x:0d" + d4095 + ".9",             // 4096 written coefficient digits
-		"x:0d1e-" + itoa(decimalMaxScale), // scale exactly at the bound
+		"x:0d" + d4095 + ".9",
+		"x:0d1e-" + itoa(decimalMaxScale),
 		"x:0d1e" + itoa(decimalMaxScale),  // and at the negative bound
 	}
 	for _, src := range ok {
@@ -181,9 +153,9 @@ func TestExactnessBudgetBoundary(t *testing.T) {
 	}
 
 	bad := []string{
-		"x:0d" + d4095 + ".99", // 4097 written coefficient digits
+		"x:0d" + d4095 + ".99",
 		"x:0d" + strings.Repeat("0", decimalMaxCoeffDigits) + ".1", // padding counts too
-		"x:0d1e-" + itoa(decimalMaxScale+1),                        // scale one past the bound
+		"x:0d1e-" + itoa(decimalMaxScale+1),
 		"x:0d1e" + itoa(decimalMaxScale+1),
 		"x:0d1e1000000000",                       // the one-digit scale bomb
 		"x:0d1e99999999999999999999999999999999", // and an exponent past int64
@@ -210,10 +182,6 @@ func TestExactnessBudgetBoundary(t *testing.T) {
 	}
 }
 
-// TestNewBigConstructors pins D8's exact-input construction contract:
-// the API builds the same values the literals do, refuses what the
-// literals refuse, and never takes a float64 (which would already have
-// rounded).
 func TestNewBigConstructors(t *testing.T) {
 	huge, _ := new(big.Int).SetString("123456789012345678901234567890", 10)
 	if got := NewBigInteger(huge).Canon(); got != "0d123456789012345678901234567890" {
@@ -234,7 +202,7 @@ func TestNewBigConstructors(t *testing.T) {
 		"-1.5":  "-0d1.5",
 		"+1.5":  "0d1.5",
 		"-0.0":  "0d0.0",
-		"5":     "0d5.0",    // the constructor picks the leaf, not the digits
+		"5":     "0d5.0",
 		"0d1e3": "0d1000.0", // the marker is optional, not forbidden
 		"0D5":   "0d5.0",
 	} {
@@ -283,10 +251,6 @@ func mustDecimal(t *testing.T, s string) Val {
 	return v
 }
 
-// TestExactLiteralDoesNotDisturbOrdinaryNumbers is the lexer guard: the
-// `0d` value definition claims its own run and nothing else. An ordinary
-// decimal, a base-prefixed literal and a genuine path reference must all
-// parse exactly as they did before the tower.
 func TestExactLiteralDoesNotDisturbOrdinaryNumbers(t *testing.T) {
 	for src, want := range map[string]string{
 		"x:1.5":            `{"x":1.5}`,
@@ -310,10 +274,6 @@ func TestExactLiteralDoesNotDisturbOrdinaryNumbers(t *testing.T) {
 	}
 }
 
-// TestCanonRoundTrips is the property D4 exists to protect: canon is a
-// function of the value, and reparsing a canon gives the same value —
-// including the kind, which is why an integral bigdecimal keeps its
-// single decimal place.
 func TestCanonRoundTrips(t *testing.T) {
 	for _, lit := range []string{
 		"0d5", "0d0", "-0d5", "0d1.5", "-0d1.5", "0d0.10",
@@ -334,9 +294,6 @@ func TestCanonRoundTrips(t *testing.T) {
 		if got := again.Canon(); got != canon {
 			t.Errorf("%q: canon %s reparsed to %s", lit, canon, got)
 		}
-		// And the canon LITERAL unifies with the source literal it came
-		// from — same kind, same number — which is the property that
-		// makes canon a function of the value rather than of the source.
 		clit := strings.TrimSuffix(strings.TrimPrefix(canon, `{"x":`), `}`)
 		joint, err := New().Unify("x:" + lit + " & " + clit)
 		if err != nil {
@@ -349,11 +306,6 @@ func TestCanonRoundTrips(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------
-// Phase 4 — arithmetic (D6). The shared TSV rows pin the ladder itself;
-// what follows is what canon text cannot reach: the checked int64 add,
-// the budget applied to a RESULT, and the exact ceiling/floor arithmetic
-// underneath upper()/lower().
 
 // TestDecimalAddIsExact pins the addition itself: align the scales, add
 // the coefficients, renormalise. No rounding, at any scale difference.
@@ -361,7 +313,7 @@ func TestDecimalAddIsExact(t *testing.T) {
 	cases := []struct{ a, b, want string }{
 		{"0.1", "0.2", "0.3"},   // the headline: not 0.30000000000000004
 		{"1.5", "1.5", "3.0"},   // integral results keep one decimal place
-		{"0.25", "0.75", "1.0"}, //
+		{"0.25", "0.75", "1.0"},
 		{"1.0", "-1.0", "0.0"},  // and zero is the one normal zero
 		{"1e-10", "1", "1.0000000001"},
 		{"1234567890123456789012345678901234.5", "0.5", "1234567890123456789012345678901235.0"},
@@ -380,9 +332,6 @@ func TestDecimalAddIsExact(t *testing.T) {
 	}
 }
 
-// TestExactLadderPromotion walks the operand cross-product the ladder
-// covers, in both orders: the widest operand wins, and a result NEVER
-// demotes to a narrower leaf even when its value would fit.
 func TestExactLadderPromotion(t *testing.T) {
 	for src, want := range map[string]string{
 		"x:0d5+-0d2":        `{"x":0d3}`,   // stays a biginteger
@@ -406,11 +355,6 @@ func TestExactLadderPromotion(t *testing.T) {
 	}
 }
 
-// TestIntegerSumStorageContract is the reason integer + integer stopped
-// going through binary64: the sum is computed exactly, and then has to
-// FIT — integral, inside the int64 window, and exactly representable in
-// binary64. Go's int64 holds sums a JS number cannot, so the last clause
-// is what stops the two ports diverging on precisely these values.
 func TestIntegerSumStorageContract(t *testing.T) {
 	ok := []struct {
 		x, y int64
@@ -418,11 +362,11 @@ func TestIntegerSumStorageContract(t *testing.T) {
 	}{
 		{1, 2, 3},
 		{-2, 3, 1},
-		{1 << 52, 1 << 52, 1 << 53},        // 2^53 is representable
-		{(1 << 53) - 1, 1, 1 << 53},        //
-		{-(1 << 53), 0, -(1 << 53)},        //
+		{1 << 52, 1 << 52, 1 << 53},
+		{(1 << 53) - 1, 1, 1 << 53},
+		{-(1 << 53), 0, -(1 << 53)},
 		{math.MinInt64, 0, math.MinInt64},  // -2^63 is exactly representable
-		{math.MinInt64 / 2, 0, -(1 << 62)}, //
+		{math.MinInt64 / 2, 0, -(1 << 62)},
 	}
 	for _, c := range ok {
 		out := integerPlus(nil, newPlusOp(newInteger(c.x), newInteger(c.y)), newInteger(c.x), newInteger(c.y))
@@ -439,10 +383,10 @@ func TestIntegerSumStorageContract(t *testing.T) {
 	bad := [][2]int64{
 		{1 << 52, (1 << 52) + 1},             // 2^53+1: exact, but not in binary64
 		{math.MaxInt64, 1},                   // wraps: the checked add catches it
-		{math.MaxInt64, math.MaxInt64},       //
+		{math.MaxInt64, math.MaxInt64},
 		{math.MinInt64, -1},                  // and in the other direction
 		{math.MinInt64, math.MinInt64},       // a wrap that lands exactly on 0
-		{1 << 62, 1 << 62},                   // 2^63: out of the int64 window
+		{1 << 62, 1 << 62},
 		{math.MaxInt64 - 1, 0},               // in range, but binary64 rounds it up
 		{4503599627370496, 4503599627370497}, // the spec row, at the boundary
 	}
@@ -459,10 +403,6 @@ func TestIntegerSumStorageContract(t *testing.T) {
 	}
 }
 
-// TestExactPlusRefusals: every pairing `+` must refuse rather than
-// answer. A float mix is a hard error in BOTH orders (a Big type never
-// silently becomes a binary float); a non-numeric peer does not coerce
-// and simply leaves the op unresolved, exactly as it did before.
 func TestExactPlusRefusals(t *testing.T) {
 	for _, src := range []string{
 		"x:1.0+0d2", "x:0d2+1.0", "x:1.0+0d0.5", "x:0d0.5+1.0",
@@ -478,9 +418,6 @@ func TestExactPlusRefusals(t *testing.T) {
 		}
 	}
 
-	// Not an error, but not an answer either: the op stays unresolved
-	// and generate() reports it, which is what these pairs did before
-	// the exact leaves joined `+`.
 	for _, src := range []string{
 		"x:0d5+true", "x:0d5+null", "x:0d5+top", "x:0d5+integer",
 		"x:true+0d0.5", "x:0d5+[1]",
@@ -491,10 +428,6 @@ func TestExactPlusRefusals(t *testing.T) {
 	}
 }
 
-// TestExactBudgetAppliesToResults: D6's budget bounds what arithmetic
-// may produce, not just what a literal may say. Scale alignment is the
-// route to a blow-up — both operands are inside the budget, their exact
-// sum is not — and the answer is a refusal, never a rounded value.
 func TestExactBudgetAppliesToResults(t *testing.T) {
 	src := "x:0d1e-" + itoa(decimalMaxScale) + "+0d1e" + itoa(decimalMaxScale)
 	_, err := New().Generate(src)
@@ -518,9 +451,6 @@ func TestExactBudgetAppliesToResults(t *testing.T) {
 	}
 }
 
-// TestUpperLowerExactLeaves pins the exact ceiling/floor: coefficient
-// arithmetic, no float64 anywhere near it, and the ARGUMENT's kind kept
-// (R5) — so an integral result still renders its bigdecimal place.
 func TestUpperLowerExactLeaves(t *testing.T) {
 	for src, want := range map[string]string{
 		"x:upper(0d1.1)":  `{"x":0d2.0}`,

@@ -1,7 +1,6 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
-
 import type {
   Val,
   ValSpec,
@@ -32,14 +31,11 @@ import {
 } from '../utility'
 
 
-
 import {
   top
 } from './top'
 
 
-
-// TODO: move main logic to op/conjunct
 class ConjunctVal extends JunctionVal {
   isConjunct = true
   isGenable = true
@@ -78,7 +74,6 @@ class ConjunctVal extends JunctionVal {
 
     this.peg = norm(this.peg)
 
-    // console.log('\nCONJUNCT', ctx.cc, this.id, this.canon, peer.id, peer.canon)
 
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
@@ -87,7 +82,6 @@ class ConjunctVal extends JunctionVal {
     let newhide = this.mark.hide || peer.mark.hide
 
     for (let vI = 0; vI < this.peg.length; vI++) {
-      // console.log('CONJUNCT-peg', vI, this.peg[vI].canon, this.peg[vI].mark)
       newtype = this.peg[vI].mark.type || newtype
       newhide = this.peg[vI].mark.hide || newhide
     }
@@ -95,7 +89,6 @@ class ConjunctVal extends JunctionVal {
     for (let vI = 0; vI < this.peg.length; vI++) {
       this.peg[vI].mark.type = newtype
       this.peg[vI].mark.hide = newhide
-      // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
 
       upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
         unite(te ? ctx.clone({ explain: ec(te, 'OWN') }) : ctx, this.peg[vI], peer, 'cj-own')
@@ -103,17 +96,10 @@ class ConjunctVal extends JunctionVal {
       upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type
       upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide
 
-      // let prevdone = done
       done = done && (DONE === upeer[vI].dc)
 
       if (upeer[vI].isNil) {
         return upeer[vI]
-        // return Nil.make(
-        //   ctx,
-        //   '&peer[' + upeer[vI].canon + ',' + peer.canon + ']',
-        //   this.peg[vI],
-        //   peer
-        // )
       }
     }
 
@@ -155,7 +141,6 @@ class ConjunctVal extends JunctionVal {
 
       else {
         val = unite(te ? ctx.clone({ explain: ec(te, 'DEF') }) : ctx, t0, t1, 'cj-peer-t0t1')
-        // console.log('CONJUNCT-T', t0.canon, t1?.canon, '->', val.canon)
         done = done && DONE === val.dc
         newtype = this.mark.type || val.mark.type
         newhide = this.mark.hide || val.mark.hide
@@ -184,7 +169,6 @@ class ConjunctVal extends JunctionVal {
       out = top()
     }
 
-    // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
     else if (1 === outvals.length) {
       out = outvals[0]
       out.mark.type = newtype
@@ -196,7 +180,6 @@ class ConjunctVal extends JunctionVal {
 
     out.dc = done ? DONE : this.dc + 1
 
-    // console.log('CONJUNCT-unify', this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
 
     explainClose(te, out)
 
@@ -216,19 +199,6 @@ class ConjunctVal extends JunctionVal {
 
 
   gen(ctx?: AontuContext) {
-    // A RESIDUATED SIZING ATOM DECIDES HERE (the review's finding C,
-    // use-cases/BUGS.md §16). `length`/`unique` over a container keep
-    // the readings that MORE MEMBERS COULD STILL CHANGE -- an upper
-    // bound satisfied, a lower bound violated, distinctness so far --
-    // rather than deciding against whatever the container held when it
-    // first settled (ConstraintVal.admitContainer). Generation is where
-    // no more members can arrive, so it is where the provisional
-    // reading becomes the verdict: the container generates if the atom
-    // is satisfied, and the atom's OWN refusal is raised if it is not.
-    //
-    // Without this the conjunct would report `conjunct` for a document
-    // whose only fault is a length -- the constraint's message is the
-    // one the author needs.
     const residue = sizingResidue(this)
     if (undefined !== residue) {
       const settled: any = residue.con.settleContainer(residue.bag, ctx)
@@ -243,13 +213,11 @@ class ConjunctVal extends JunctionVal {
       undefined
     )
 
-    // TODO: refactor to use Site
     nil.path = this.path
     nil.site.url = this.site.url
     nil.site.row = this.site.row
     nil.site.col = this.site.col
 
-    // descErr(nil, ctx)
 
     if (null == ctx) {
       throw new AontuError(nil.msg)
@@ -258,7 +226,6 @@ class ConjunctVal extends JunctionVal {
     return undefined
   }
 }
-
 
 
 // Normalize Conjunct:

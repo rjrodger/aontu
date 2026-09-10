@@ -1,12 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// THE FORMATTER'S OWN CASES (docs/design/FMT.0.md). What the two ports
-// must AGREE on -- the form itself -- is pinned row by row in
-// test/spec/fmt.tsv and executed by both spec runners. What is here is
-// the rest: the self-check's refusal (reached through the hook, since a
-// formatter that is right never takes that arm on its own), the unified
-// diff, and the corpus gate -- every document under use-cases/ and
-// test/spec/files/ formats to a fixed point.
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -48,8 +41,6 @@ describe('format', () => {
     Assert.equal(same.text, 'a: 1\n')
     Assert.equal(same.changed, false)
 
-    // Line endings are the checkout's business, not the document's:
-    // CRLF formats to LF, and that IS a change.
     const crlf: any = format('a: 1\r\n')
     Assert.equal(crlf.text, 'a: 1\n')
     Assert.equal(crlf.changed, true)
@@ -72,9 +63,6 @@ describe('format', () => {
     Assert.equal(m.errors[0].code, 'merge_conflict')
   })
 
-  // THE DEPTH BUDGET: a document nested past the evaluation budget is
-  // refused as a finding, in both ports at the same depth, rather than
-  // left to whichever port's stack gives out first.
   test('format-refuses-past-the-depth-budget', () => {
     const nest = (n: number) => 'a:' + '{b:'.repeat(n) + '1' + '}'.repeat(n) + '\n'
     const ok: any = format(nest(999))
@@ -86,10 +74,6 @@ describe('format', () => {
     Assert.equal(deep.errors[0].class, 'budget')
   })
 
-  // THE SELF-CHECK. The formatter re-parses what it wrote and compares
-  // the two trees; a disagreement is its own defect, so it writes
-  // nothing and says so, with both spellings in the finding. The check
-  // is injectable because a correct formatter never fails it.
   test('format-refuses-its-own-defect', () => {
     const r: any = format('a: {b: 1}\n', undefined, { same: () => false })
     Assert.equal(r.verdict, 'error')
@@ -112,9 +96,6 @@ describe('format', () => {
     Assert.deepEqual(seen, ['{"a":1}', 'a: 1\n'])
   })
 
-  // THE LAWFUL TIER'S CHECK (FMT.0.md §7.3). A merge or a repeat stays
-  // only where the engine agrees the two spellings meet the same; the
-  // hook stands in for the engine, and sees both spellings.
   test('format-keeps-the-spelling-the-engine-refuses', () => {
     const seen: string[][] = []
     const keep: any = format('s: a: 1\ns: b: 2\n', undefined, {
@@ -143,9 +124,6 @@ describe('format', () => {
       '  c: ' + V + ': 1\n  c: d: 2\n',
     ]])
 
-    // The engine's own repros: §76 of use-cases/BUGS.md is a map this
-    // port evaluates differently as one map and as three statements,
-    // so the merge is refused here and taken by Go. Goes with §76.
     const repro = Fs.readFileSync(Path.join(repoRoot(),
       'use-cases', 'repros', 'key-func', 'spread-key-through-deep-ref.aon'), 'utf8')
     const kept: any = format(repro)
@@ -153,9 +131,6 @@ describe('format', () => {
       'a: b: c: d: e: $.a.b.f\na: b: f: { &: { n:key() } }\na: b: f: x: {}\n'), kept.text)
   })
 
-  // THE LINT (§4) is asked for, never assumed: without the option the
-  // report carries no findings, and with it the findings say where.
-  // The rules themselves are pinned row by row in fmt.tsv.
   test('format-lints-only-when-asked', () => {
     const src = 'a: 1\r\nHTTP_PORT: 8080\r\n'
     const plain: any = format(src)
@@ -190,8 +165,6 @@ describe('format', () => {
     Assert.equal(unifiedDiff('x', 'a', 'a\n'),
       '--- a/x\n+++ b/x\n@@ -1,1 +1,1 @@\n-a\n\\ No newline at end of file\n+a\n')
 
-    // Two changes far apart are two hunks, three lines of context
-    // each; the unique lines between them are the anchors.
     const lines = (n: number) => Array.from({ length: n }, (_, i) => 'line ' + i)
     const before = lines(20).join('\n') + '\n'
     const edited = lines(20)
@@ -202,9 +175,6 @@ describe('format', () => {
       '@@ -1,6 +1,6 @@\n line 0\n line 1\n-line 2\n+changed 2\n line 3\n line 4\n line 5\n' +
       '@@ -15,6 +15,7 @@\n line 14\n line 15\n line 16\n+inserted\n line 17\n line 18\n line 19\n')
 
-    // Lines that repeat on both sides -- closers, blanks -- are no
-    // anchors, and the gap between anchors recurses to the plain
-    // delete-and-insert.
     const a = 'x: {\n  a: 1\n}\ny: {\n  b: 2\n}\n'
     const b = 'x: {\n  a: 1\n  c: 3\n}\ny: {\n  b: 2\n}\n'
     Assert.equal(unifiedDiff('x', a, b),
@@ -261,11 +231,6 @@ describe('format', () => {
 })
 
 
-// THE BUNDLED MODELS ARE HELD TO THE FORM (docs/design/MODELS.0.md D4):
-// `fmt` leaves each of the `aontu:` models exactly as bundled, and
-// `--lint` reports nothing on it. The language's own examples pass its
-// formatter, or the formatter is wrong or the examples are. Twin of
-// TestBundledModelsAreFormatted in go/format_test.go.
 describe('format-bundled-models', () => {
   test('aontu-models-are-fmt-clean-and-lint-clean', () => {
     for (const name of AONTU_MODELS) {

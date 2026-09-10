@@ -1,7 +1,6 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
-
 import type {
   Val,
   ValSpec,
@@ -20,7 +19,6 @@ import {
 import {
   AontuContext,
 } from '../ctx'
-
 
 
 import { StringVal } from './StringVal'
@@ -43,8 +41,6 @@ import { unite } from '../unify'
 import { top } from './top'
 
 
-// TODO: KEY, SELF, PARENT are reserved names - error
-
 class VarVal extends FeatureVal {
   isVar = true
 
@@ -64,8 +60,6 @@ class VarVal extends FeatureVal {
     let nameVal
 
     if (this.peg.isVal) {
-      // $.a.b.c - convert path to absolute
-      // if (this.peg instanceof RefVal) {
       if (this.peg.isRef) {
         this.peg.absolute = true
         nameVal = this.peg
@@ -80,16 +74,13 @@ class VarVal extends FeatureVal {
       }
     }
     else {
-      // TODO: how to pass row+col?
       nameVal = new StringVal({ peg: '' + this.peg }, ctx)
     }
 
-    // if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
     if (!(nameVal.isRef) && DONE === nameVal.dc) {
       if (nameVal instanceof StringVal) {
         let found = ctx.vars[nameVal.peg]
 
-        // TODO: support complex values
         const ft = typeof found
         // Single ladder: a missing var must report `unknown_var` and not
         // fall through to the `invalid_var_kind` default below.
@@ -122,10 +113,6 @@ class VarVal extends FeatureVal {
           out = makeNilErr(ctx, 'invalid_var_kind', this, peer)
         }
 
-        // A non-TOP peer (e.g. a spread constraint unified against the
-        // var) applies to the RESOLVED value rather than being silently
-        // dropped (mirrors VarVal.Unify in go/varval — the resolved
-        // value unites with the peer).
         if (!out.isNil && null != peer && !peer.isTop) {
           out = unite(te ? ctx.clone({ explain: ec(te, 'VAL') }) : ctx,
             out, peer, 'var-val')
@@ -170,7 +157,6 @@ class VarVal extends FeatureVal {
       undefined
     )
 
-    // TODO: refactor to use Site
     nil.path = this.path
     nil.site.url = this.site.url
     nil.site.row = this.site.row
@@ -179,7 +165,6 @@ class VarVal extends FeatureVal {
     descErr(nil, ctx)
 
     if (ctx) {
-      // ctx.err.push(nil)
       ctx.adderr(nil)
     }
     else {

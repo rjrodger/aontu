@@ -1,10 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE REACHABILITY CHECK (the review's finding J, the Go side of
-// ts/src/cli.ts): does anything `from` links to, at any remove, end up
-// at `to`? A verb of its own for the same reason `relations` is one:
-// reachability is a fact about one finished model, and it is global and
-// non-monotone, so no lattice citizen may assert it.
 
 package main
 

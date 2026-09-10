@@ -49,7 +49,6 @@ class PrefFuncVal extends FuncBaseVal {
       // Wrap every child val in a PrefVal
       out = walk(out, (_key: string | number | undefined, val: Val) => {
         let oval = val
-        // console.log('PREFVAL', _key, oval.canon, oval.constructor.name)
         if (
           val.isScalar
           || val.isPref

@@ -1,11 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// The views beyond what the shared rows can reach from an inline
-// source: files and includes (the layers panel's document names, the
-// ladder's file order, the poset's labels), and a verdict matrix the
-// subsumption checker cannot be made to produce. What the two ports
-// must AGREE on -- every figure, byte for byte, and every refusal --
-// is test/spec/view.tsv; the Go twin of this file is go/view_test.go.
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -26,10 +20,6 @@ const write = (dir: string, name: string, src: string): string => {
 }
 
 
-// A RECORDER THAT NAMES A PATH THE DOCUMENT DOES NOT HAVE
-// (use-cases/BUGS.md 70, the Go recorder's template ghost), and a
-// record nothing contributed to. This port's recorder writes neither,
-// so a recorder that does is handed in through the seam.
 class Ghostly extends Provenance {
   record(path: string[], a: any, b: any, out: any): void {
     super.record(path, a, b, out)
@@ -48,9 +38,6 @@ class Ghostly extends Provenance {
 
 describe('view', () => {
 
-  // A MULTI-FILE DOCUMENT: the layers panel names the files an include
-  // wrote into relative to the entry, and the ladder's rungs sort by
-  // file and then by column.
   test('view-over-included-files', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-view-'))
     write(dir, 'lib/base.aon', 'a: {x: **1 & integer, y: 2}\n')
@@ -72,9 +59,6 @@ describe('view', () => {
         .errors?.[0].code,
       'view_rows_exceeded')
 
-    // The rank-1 rung first; then the rank-0 rungs by file -- the FULL
-    // path, so `<dir>/entry.aon` before `<dir>/lib/base.aon` -- and,
-    // within entry.aon's one row, by column.
     const ladder = view(src, { kind: 'ladder', at: '$.a.x', path: entry, trust })
     Assert.equal(ladder.verdict, 'rendered')
     Assert.ok((ladder.text as string).includes(
@@ -116,11 +100,6 @@ describe('view', () => {
   })
 
 
-  // THE PROVENANCE RECORD CAN NAME A PATH THE DOCUMENT DOES NOT HAVE
-  // (use-cases/BUGS.md 70, the Go recorder's template ghost), and a
-  // record nothing contributed to. Neither is a row of the panel. This
-  // port's recorder writes neither, so a recorder that does is handed
-  // in through the seam.
   test('view-layers-skips-paths-the-document-lacks', () => {
     const r = view('a: {b: 1}', { kind: 'layers' }, { provenance: () => new Ghostly() })
     Assert.equal(r.verdict, 'rendered', JSON.stringify(r.errors))
@@ -146,9 +125,6 @@ describe('view', () => {
   })
 
 
-  // THE VIEW DOCUMENT'S TWO CALLER ERRORS, which the CLI cannot make:
-  // it always passes a path. What the declarations MEAN is
-  // test/spec/views.tsv.
   test('view-set-needs-the-path-of-its-declarations', () => {
     for (const opts of [undefined, { views: '' }]) {
       const r = viewSet('a: 1', opts)
@@ -159,10 +135,6 @@ describe('view', () => {
   })
 
 
-  // A VERDICT MATRIX THE CHECKER CANNOT BE MADE TO PRODUCE: a chain
-  // the closure implies but the checker measured as does_not_subsume
-  // is reported as order_intransitive rather than absorbed, and a
-  // class label with a line terminator is refused.
   test('view-poset-injected-verdicts', () => {
     const compare: ViewCompare = (g: ViewPosetDoc, s: ViewPosetDoc) => {
       const pair = g.label + s.label

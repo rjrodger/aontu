@@ -1,17 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Subsumption as a first-class query (G3 phase 2): the Go port of
-// ts/src/subsume.ts. Does the GENERAL value admit every instance the
-// SPECIFIC value admits?
-//
-// A dedicated structural walk over EVALUATED values, never mutating its
-// inputs, returning a THREE-VALUED verdict — `subsumes`,
-// `does_not_subsume` (with the failing path and both canons as the
-// witness) or `undecided` (with a reason code, never silently) — plus
-// `error` for a source that does not stand up on its own. Where a rule
-// cannot decide, the answer folds toward "not subsumed" or "undecided":
-// the safe directions (docs/reference-language.md, "Subsumption").
-// Findings reuse G2's report vocabulary, class `compat`.
 
 package aontu
 
@@ -78,10 +66,6 @@ func subPathText(path []string) string {
 	return out
 }
 
-// subSiteOf builds a finding site: position from the value's byte
-// offset against ITS OWN document's source — the two trees never meet
-// in this query, so a general value always locates in the general
-// source and a specific one in the specific source.
 func subSiteOf(v Val, role, url, src string) VetSite {
 	// Len starts at -1, the "unknown" the other coordinates use: Go's
 	// zero value for an int is 0, which would claim an empty span for
@@ -134,17 +118,6 @@ func subAdmission(v Val) Val {
 	return v
 }
 
-// subMemberAdmission is the admitted set of one MEMBER of a
-// disjunction. A PREFERRED BRANCH CONTRIBUTES EXACTLY ITS OWN VALUE
-// (ADR-004): the admission gate made that the engine's rule --
-// `*'auto'|'literal'|'data'` admits those three strings and nothing
-// else -- and the subsumption walk kept comparing a pref member by its
-// KIND superior, the pre-ADR-004 reading. So a disjunction with a
-// default did not subsume ITSELF: every member widened to `string`,
-// which no general member admits (use-cases/BUGS.md §29). Only for a
-// member: a bare `*x` standing alone is still gated by kind, which is
-// subAdmission above and the documented rule. The twin of
-// memberAdmission in ts/src/subsume.ts.
 func subMemberAdmission(v Val) Val {
 	if p, ok := v.(*PrefVal); ok {
 		return prefInnerPeg(p)
@@ -156,13 +129,6 @@ func subMemberAdmission(v Val) Val {
 // has-one, indeterminate). Equal-rank preferences that disagree are
 // indeterminate — the engine itself refuses them only at generation.
 func subEffectiveDefault(v Val) (Val, bool, bool) {
-	// EVERY pref layer is unwrapped (prefInnerPeg), not just one: a
-	// ranked default's effective value is the innermost peg (the
-	// rank-uniform meet, ADR-004). The one-layer unwrap left a rank-2
-	// default wearing a `*`-wrapper no plain alternative subsumes --
-	// the pref_not_instance lint's ranked false positive of
-	// use-cases/BUGS.md §4. Mirrors effectiveDefault in
-	// ts/src/subsume.ts.
 	if p, ok := v.(*PrefVal); ok {
 		return prefInnerPeg(p), true, false
 	}
@@ -267,32 +233,11 @@ func subsumeNode(st *subState, path []string, g0, s0 Val) string {
 		return subNo
 	}
 
-	// TOP admits everything. There is no nil rule: an error-free
-	// evaluated document carries no nil (failing disjunct members are
-	// discarded, every other nil collects an error, and Subsume answers
-	// `error` for a source that does not stand alone), so a nil handed
-	// to the walk by a future caller falls to the no-rule fold below —
-	// `undecided`, the safe direction.
 	if isTop(g) {
 		return subYes
 	}
 
 	if subUnresolvedVal(g) || subUnresolvedVal(s) {
-		// REFLEXIVITY IS A LAW, not a rule the ladder gets to skip. Every
-		// value admits itself, residue included: the set admitted by
-		// `integer & min(0)` is exactly the set admitted by
-		// `integer & min(0)`. Without this, a constraint inside a spread
-		// template made a contract non-SELF-subsumable -- expected and
-		// actual byte-identical, verdict `undecided` -- so `breaking` on
-		// the documented close-per-entry idiom hard-failed reflexivity
-		// and had to run --allow-undecided, which then masks the genuine
-		// undecideds it exists to surface (use-cases/BUGS.md §28).
-		//
-		// Identity is the HASH FORM, not the canon: canon drops
-		// closedness and the marks, so close({a:1}) and {a:1} share a
-		// canon while admitting different sets. Computed only on this
-		// branch, where the answer would otherwise be undecided, so the
-		// hot path is untouched.
 		if nil != g && nil != s && Hcanon(g) == Hcanon(s) {
 			return subYes
 		}
@@ -484,27 +429,6 @@ func subsumeNode(st *subState, path []string, g0, s0 Val) string {
 		return subsumeBag(st, path, listView(gl), listView(sl))
 	}
 
-	// THE LADDER IS NOT TOTAL, and the formers that fall past it are the
-	// ones the evaluator MEANS to leave standing: a recursion, a
-	// relation and its graph atom, a refer() target constraint. None of
-	// them describes a set of values a structural walk can compare, so
-	// `undecided` is the honest answer for two DIFFERENT ones.
-	//
-	// For two IDENTICAL ones it is not. REFLEXIVITY IS A LAW -- every
-	// value admits itself -- and identity is the HASH FORM, the same
-	// rule the unresolved branch above applies and for the same reason:
-	// it costs nothing, because it runs only where the answer would
-	// otherwise be `undecided`. Without it a document that declares a
-	// relation, shares a template by reference or alias, or recurses did
-	// not subsume ITSELF, so `breaking` on the idiom the language exists
-	// for hard-failed and had to run --allow-undecided, which masks the
-	// genuine undecideds it exists to surface (use-cases/BUGS.md 64,
-	// and 28 before it).
-	//
-	// A NIL is the exception, and the reason the law is spelled here
-	// rather than in the unresolved rule: a nil is not a value, so it
-	// admits nothing, itself included. Pinned by a direct test
-	// (TestSubsumeNoRuleFold); the TS walk keeps the same fold.
 	if nil != g && nil != s && !g.Nil() && !s.Nil() &&
 		Hcanon(g) == Hcanon(s) {
 		return subYes
@@ -600,15 +524,6 @@ func subsumeBag(st *subState, path []string, g, s bagView) string {
 		}
 	}
 
-	// Spread templates: a path-dependent template's meaning depends on
-	// where it lands, which no structural comparison can decide -- UNLESS
-	// the two templates are the same template. REFLEXIVITY IS A LAW and
-	// identity is the HASH FORM (the same rule the unresolved branch of
-	// subsumeNode applies): two byte-identical templates admit the same
-	// set wherever they land, so a document with a reference- or
-	// alias-valued template subsumes itself, and the comparison either
-	// side of the template is decided on its own merits rather than
-	// dragged to `undecided` (use-cases/BUGS.md 64).
 	if nil != g.spread || nil != s.spread {
 		sameTemplate := nil != g.spread && nil != s.spread &&
 			Hcanon(g.spread) == Hcanon(s.spread)
@@ -644,20 +559,6 @@ func subsumeBag(st *subState, path []string, g, s bagView) string {
 	return out
 }
 
-// subTrial runs a comparison whose findings are DISCARDED: disjunct
-// member-matching asks many "would this member do?" questions, and only
-// the aggregated outcome is a finding.
-// A DISTRIBUTION TRIAL IS NOT A NODE CORRESPONDENCE. It asks whether
-// one ALTERNATIVE of one side admits one alternative of the other,
-// which is a question about admitted sets; the two values it compares
-// are not the same node of the two documents. The `gen` profile's mark
-// rule is a correspondence question -- did a field that used to be
-// generated become hidden -- and firing it here compared a whole
-// disjunction (carrying its enclosing bag's mark) against a member
-// extracted out of one (which does not), so `hide({c: *a|b})` stopped
-// subsuming ITSELF under --profile gen (use-cases/BUGS.md §29). The
-// enclosing node's marks are compared where they correspond: at that
-// node, by the ordinary walk.
 func subTrial(st *subState, path []string, g, s Val) string {
 	trial := &subState{
 		profile:      st.profile,
@@ -709,30 +610,10 @@ func subsumeDefaultsWalk(st *subState, path []string, g, s Val) string {
 	return out
 }
 
-// Subsume reports whether generalSrc subsumes specificSrc — is every
-// instance the specific admits admitted by the general too? Both
-// sources are evaluated fresh (single-use trees make this mandatory);
-// the recursion runs on the finished values. The port of
-// ts/src/subsume.ts, held to byte-identical reports by
-// test/spec/subsume.tsv.
-// PolicyCompat reads a document's own compatibility declaration:
-// `$.aontu_policy.compat`, a disjunction whose default is the declared
-// mode ("backward" | "forward" | "full" | "none"). The empty string
-// means the key is absent, the document does not stand alone, or the
-// value does not spell a mode. Exported for the `breaking` verb
-// (go/cmd/aontu), which cannot reach the tree's fields itself; the
-// canonical port keeps the same reader beside its verb (ts/src/cli.ts
-// policyCompat).
 func PolicyCompat(src, path string) string {
 	return PolicyCompatTrust(src, path, nil, nil)
 }
 
-// PolicyCompatTrust is PolicyCompat under an explicit include
-// capability AND the extensions read as text, so a verb reading a
-// document's own policy reads it the same way it evaluates everything
-// else. Both options, never one: this took `trust` alone, so a
-// `breaking` whose mode declaration arrived through a `--text-ext`
-// include read no mode at all and silently fell back to backward.
 func PolicyCompatTrust(
 	src, path string, trust *TrustOptions, textExt []string) string {
 	a := aontuForPathTrust(path, trust, textExt)

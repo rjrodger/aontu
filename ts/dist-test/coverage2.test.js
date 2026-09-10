@@ -110,10 +110,6 @@ function pendingCtx() {
         });
         return () => Object.defineProperty(process, 'stdin', desc);
     }
-    // COLOUR IS A DECISION ABOUT THE DESTINATION (the review's finding
-    // F), and only the command can see the destination. Every other test
-    // in this suite runs with stderr captured or piped, which is the
-    // colour-OFF arm; this is the other one.
     (0, node_test_1.test)('an-interactive-stderr-leaves-colour-to-no-color', () => {
         const desc = Object.getOwnPropertyDescriptor(process, 'stderr');
         const fakeErr = new node_stream_1.PassThrough();
@@ -171,12 +167,6 @@ function pendingCtx() {
         Assert.match(out, /\x1b\[2m/);
         Assert.equal(out.replace(/\x1b\[[0-9;]*m/g, ''), 'a\n└── b\n');
     });
-    // NO_COLOR SET BUT EMPTY does not disable colour -- the one exception
-    // no-color.org states, which err.ts implements and `--style auto`
-    // has to implement too, since it reads the variable itself rather
-    // than through the error frames' gate. And an EXPLICIT style is
-    // returned whatever the destination is, which is the arm every other
-    // test skips: the two refusals below never reach the resolver.
     (0, node_test_1.test)('style-auto-honours-an-empty-no-color-and-an-explicit-style-wins', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-style3-'));
         const file = Path.join(dir, 'm.aon');

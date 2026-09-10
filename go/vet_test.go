@@ -2,10 +2,6 @@
 
 package aontu
 
-// The Go twin of ts/test/vet.test.ts: the same cases, in the same
-// order, asserting the same things. Cross-port BEHAVIOUR is pinned by
-// the shared rows in test/spec/vet.tsv; these pin the per-port API
-// around it (the options struct, the site projection, the walk arms).
 
 import (
 	"os"
@@ -20,15 +16,6 @@ func vetRun(schema, data string, opts *VetOptions) VetReport {
 	return Vet(schema, data, opts)
 }
 
-// THE REPAIR THE REPORT SAYS IS UNSAFE, made safe. A finding's site
-// used to carry a point and no extent, so the only length available to
-// a consumer was the CANON -- and canon is not source text. Both halves
-// are asserted here: the span-driven edit is exact, and the
-// canon-driven one corrupts, so the test states what it prevents rather
-// than only that it passes.
-//
-// Status report 2026-08-21 §5, "the manual fallback corrupts files".
-// Twin: describe('vet-site-span') in ts/test/vet.test.ts.
 func TestVetSiteSpanIsSafeToReplace(t *testing.T) {
 	const data = "port: 0x1F\n"
 
@@ -92,9 +79,6 @@ func TestVetContradictionIsInvalid(t *testing.T) {
 	}
 }
 
-// The two negative verdicts are the mechanical answer to error.tsv's
-// conflation: a contradiction can never be satisfied, incompleteness
-// merely is not satisfied YET.
 func TestVetResidueIsIncompleteNotInvalid(t *testing.T) {
 	r := vetRun(vetSchema, `service: { name: "auth" }`, nil)
 	if VetIncomplete != r.Verdict || 1 != len(r.Findings) {
@@ -124,12 +108,6 @@ func TestVetContradictionOutranksResidue(t *testing.T) {
 	}
 }
 
-// A broken schema is never blamed on the data -- verdict `error`, not
-// `invalid` -- and it is not a bare verdict either: the finding says
-// what did not stand up and where, and BOTH sites name the schema.
-// The sites are the failure's operands, which the provenance walk
-// reaches only because it descends into a nil (walk.go); without that
-// the report named no file at all.
 func TestVetBrokenSchemaIsNeverBlamedOnData(t *testing.T) {
 	r := vetRun("a: 1\na: 2", "a: 1", nil)
 	if VetError != r.Verdict || 1 != len(r.Findings) {
@@ -197,9 +175,6 @@ func TestVetUnparseableDataIsInvalid(t *testing.T) {
 	if "syntax" != f.Code || "parse" != f.Class || "$" != f.Path {
 		t.Fatalf("finding: %+v", f)
 	}
-	// LOCATED. The parser knows where it stopped and the site says so;
-	// it used to read -1:-1 while the human renderer drew a caret under
-	// the exact character.
 	if 1 != len(f.Sites) || VetRoleData != f.Sites[0].Role ||
 		"nil" != f.Sites[0].Value ||
 		1 != f.Sites[0].Row || 4 != f.Sites[0].Col {
@@ -297,8 +272,6 @@ func TestVetMustFindingCarriesTheAuthorMessageAsNote(t *testing.T) {
 	}
 }
 
-// The message is the nil's headline, which the two ports hold to byte
-// parity — one line, no frames.
 func TestVetMessageIsTheHeadlineOnly(t *testing.T) {
 	r := vetRun(vetSchema, `service: { name: "auth", port: "8080" }`, nil)
 	msg := r.Findings[0].Message
@@ -324,13 +297,6 @@ func TestVetRootConflictReportsTheRootPath(t *testing.T) {
 	}
 }
 
-// The spread constraint lives off-peg, so this is only reachable by
-// following it. The finding lands on the INSTANCE — $.services.auth.port,
-// the field a repair loop has to edit — and not on the template the
-// conflict nil was created against. It named the template until the
-// meet-path fix (ADR-030): a meet of two operands is attributed to the
-// slot it was driven at, which for a spread is the instance position.
-// Twin of conflict-inside-a-spread-template-is-found in ts/test/vet.test.ts.
 func TestVetConflictInsideASpreadTemplateIsFound(t *testing.T) {
 	r := vetRun("services: &: { port: integer }",
 		`services: { auth: { port: "80" } }`, nil)
@@ -379,13 +345,6 @@ func TestVetAtSelectsASubtree(t *testing.T) {
 	}
 }
 
-// A recursive residual inside the lifted anchor names its definition
-// by ABSOLUTE path (`next?: $.spec.Node`, RECURSION.0.md), and the
-// anchored meet's root is the subtree -- which holds no `$.spec`.
-// Before the meet context kept the settled schema root for the
-// residual's walk (Ctx.fixroot), the residual held its peer forever
-// and BAD DATA AT DEPTH VETTED VALID; the depth-0 fields were
-// checked, everything under `next` was not.
 func TestVetAtExpandsARecursiveSchemaAtDepth(t *testing.T) {
 	schema := "spec: hide({ Node: { v: integer, next?: $.spec.Node } })"
 	good := vetRun(schema, `{"v":1,"next":{"v":2,"next":{"v":3}}}`,
@@ -525,14 +484,6 @@ func TestVetNestedListConflictsAreAllReported(t *testing.T) {
 	}
 }
 
-// A JUNCTION REPORTS ITS OWN POSITION. The meet mints a fresh
-// disjunction, which used to arrive unsited -- so a finding naming a
-// disjunction that had met anything pointed at -1:-1 with no file, and
-// an agent reading the report had nowhere to go (the review's finding
-// F). The narrowed disjunction now carries the site of the one it came
-// from, which the parser puts at the start of the first alternative.
-// Twin: vet.tsv:vet-junction-site, and the hover-kind-labels case in
-// ts/test/coverage3.test.ts.
 func TestVetJunctionReportsItsOwnSite(t *testing.T) {
 	r := vetRun("a: 1|2", "a: 3", nil)
 	sites := r.Findings[0].Sites
@@ -545,7 +496,6 @@ func TestVetJunctionReportsItsOwnSite(t *testing.T) {
 	}
 }
 
-// Columns count UTF-16 code units, as the canonical port's sites do.
 func TestVetColumnsCountUTF16Units(t *testing.T) {
 	r := vetRun(`k: { "é": integer }`, `k: { "é": "x" }`, nil)
 	if 1 != len(r.Findings) {
@@ -556,11 +506,6 @@ func TestVetColumnsCountUTF16Units(t *testing.T) {
 	}
 }
 
-// `SchemaPath` and `DataPath` are the two documents' OWN bases: a
-// relative `@"file"` load inside either resolves from the directory
-// holding it, not from the process working directory -- which is
-// neither document's home, and may hold a same-named decoy. The two
-// paths are separate because the documents need not live together.
 func TestVetEachDocumentResolvesItsOwnIncludes(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "part.aon"),
@@ -592,13 +537,6 @@ func TestVetEachDocumentResolvesItsOwnIncludes(t *testing.T) {
 	}
 }
 
-// EVERY SITE NAMES THE FILE WHOSE TEXT IT EXCERPTS (the review's
-// finding F, use-cases/BUGS.md §25). Vet stamped the ENTRY document's
-// name over every value of both trees, so a constraint written in an
-// included library was reported at the entry file, with the LIBRARY's
-// row and column -- a line the entry may not even have. A repair agent
-// that follows the site edits the wrong file. Twin:
-// a-site-names-the-file-its-text-lives-in in ts/test/vet.test.ts.
 func TestVetSiteNamesTheIncludedFile(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "lib"), 0o755); err != nil {
@@ -650,10 +588,6 @@ func TestVetSiteNamesTheIncludedFile(t *testing.T) {
 	}
 }
 
-// An INCLUDED DATA file is still data. The role used to be a string
-// comparison against the data entry's name, so a value read through an
-// include of the DATA document would have read `schema` the moment its
-// site named the file it really came from.
 func TestVetIncludedDataIsStillData(t *testing.T) {
 	dir := t.TempDir()
 	part := filepath.Join(dir, "part.aon")
@@ -686,12 +620,6 @@ func TestVetIncludedDataIsStillData(t *testing.T) {
 	}
 }
 
-// THE REPAIR, NOT JUST THE DIAGNOSIS (the review's finding F). The
-// message is the headline and nothing else -- that is what makes it one
-// line and comparable -- so everything the engine knows about how to FIX
-// the failure reached a terminal reader in the frames and a machine
-// reader not at all. The TypeScript twin is
-// `a-finding-carries-the-repair-hint` in ts/test/vet.test.ts.
 func TestVetFindingCarriesTheHint(t *testing.T) {
 	// The clearest case in the language: the literal is refused BECAUSE
 	// binary64 would round it, and the fix is a one-character prefix the
@@ -719,9 +647,6 @@ func TestVetFindingCarriesTheHint(t *testing.T) {
 	if !strings.Contains(hint, "\n") {
 		t.Fatalf("hint was truncated to one line:\n%s", hint)
 	}
-	// Trailing whitespace was spacing for the frame that used to follow
-	// the hint; the deliberate blank lines inside it are "\n \n" and
-	// must survive.
 	if hint != strings.TrimRight(hint, " \t\r\n") {
 		t.Fatalf("hint keeps trailing whitespace: %q", hint)
 	}
@@ -747,17 +672,7 @@ func TestVetFindingWithoutHintText(t *testing.T) {
 	t.Fatalf("no pref_not_instance finding: %+v", r.Findings)
 }
 
-// A FILE THE READER CAN OPEN (the review's finding F). The parser
-// resolves an include to an absolute path -- the right identity, the
-// wrong name -- so a site prints it as the entry's own spelling reaches
-// it. The TypeScript twin is `an-included-file-is-named-as-the-entry-
-// reaches-it` in ts/test/vet.test.ts.
 func TestDisplayFileNamesTheIncludeAsTheEntryReachesIt(t *testing.T) {
-	// A REAL absolute path, from the OS rather than assembled: on
-	// Windows a rooted path is not an absolute one without its drive
-	// letter, so `\w\proj\lib.aon` is relative there and the rule
-	// under test would decline to rewrite it -- passing for the wrong
-	// reason on Linux and failing outright on Windows.
 	dir := t.TempDir()
 	abs := filepath.Join(dir, "lib.aon")
 	absEntry := filepath.Join(dir, "entry.aon")

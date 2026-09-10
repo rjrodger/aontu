@@ -1,11 +1,6 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-// The exported VERSION constant is maintained by the `version` npm
-// lifecycle script (see package.json), which rewrites src/aontu.ts on
-// `npm version` / `npm run repo-bump`. That script is easy to break
-// silently — it once pointed at a path that no longer existed and went
-// unnoticed for many releases — so assert the two agree.
 const node_test_1 = require("node:test");
 const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");

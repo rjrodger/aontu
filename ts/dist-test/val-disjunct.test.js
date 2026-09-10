@@ -25,9 +25,6 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
         (0, expect_1.expect)(u2a).equal('{"a":*1|number}');
         let u2 = UC('a:*1|number,a:*2|number');
         (0, expect_1.expect)(u2).equal('{"a":*2|*1|number}');
-        // TODO: fix syntax (*...) !!!
-        // let u3 = UC('(*1|number) & (*2|number)')
-        // expect(u3).equal('*2|*1|number')
         let u4 = UC('(number|*1) & (number|*2)');
         (0, expect_1.expect)(u4).equal('number|*1|*2');
         let g0 = G('{&:{x:*1|number},a:{},b:{x:2}}');
@@ -37,7 +34,6 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
     });
     (0, node_test_1.test)('clone', () => {
         let v0 = P('{x:1}|{y:2}|{z:3}');
-        // console.log(v0.canon)
         (0, expect_1.expect)(v0.canon).equal('({"x":1}|{"y":2})|{"z":3}');
         let ctx = makeCtx(v0);
         let v0c = v0.clone(ctx);

@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The refer internals no source reaches (ADR-002; G4 phase 2). The
-// residual is minted where it is used and answers whole shapes, so its
-// per-arm behaviour — a name with a character no bare source can carry,
-// the two nil-combination arms of a refer-meets-refer merge, a nil
-// peer, an address that walks into a scalar, a flow whose top-level
-// meet fails — is exercised here directly. Cross-package runs (the CLI
-// tests) do not count toward this package's coverage.
 
 package aontu
 
@@ -15,11 +8,6 @@ import (
 )
 
 func TestAddrSegmentOK(t *testing.T) {
-	// Every arm of the character switch, including the two a source
-	// cannot spell inside an address (an address is met as a STRING, so
-	// the upper-case and digit arms are reachable, but the switch is
-	// pinned whole here rather than by four spec rows that all say the
-	// same thing).
 	for _, ok := range []string{"a", "Z", "0", "_", "-", "aZ0_-"} {
 		if !addrSegmentOK(ok) {
 			t.Errorf("addrSegmentOK(%q) = false, want true", ok)
@@ -33,9 +21,6 @@ func TestAddrSegmentOK(t *testing.T) {
 }
 
 func TestParseAddressShapes(t *testing.T) {
-	// An address is a TREE PATH (ADR-014), in the two spellings a
-	// reference uses. The TS twin is address-spellings in
-	// ts/test/coverage3.test.ts.
 	a, ok := parseAddress("$.services.auth")
 	if !ok || !a.Absolute || 0 != a.Up || 2 != len(a.Parts) ||
 		"services" != a.Parts[0] || "auth" != a.Parts[1] {
@@ -46,9 +31,6 @@ func TestParseAddressShapes(t *testing.T) {
 		"b" != r.Parts[0] || "c" != r.Parts[1] {
 		t.Fatalf("parseAddress = %+v,%v", r, ok)
 	}
-	// What is not an address. `$` alone names the whole document, which
-	// has no position to be written back into; the rest are paths
-	// without an anchor, empty segments, or characters no key spells.
 	for _, bad := range []string{"$", "", "a.b", "services.auth", "$.",
 		"$.a.", "$..a", ".", "..", "$.a b", "$.a/b"} {
 		if _, ok := parseAddress(bad); ok {
@@ -58,8 +40,6 @@ func TestParseAddressShapes(t *testing.T) {
 }
 
 func TestAddressPathResolution(t *testing.T) {
-	// The TS twin is address-path-resolution in
-	// ts/test/coverage3.test.ts.
 	abs, _ := parseAddress("$.a.b")
 	if p, ok := addressPath(abs, []string{"x", "y", "dep"}); !ok ||
 		2 != len(p) || "a" != p[0] || "b" != p[1] {
@@ -81,11 +61,6 @@ func TestAddressPathResolution(t *testing.T) {
 }
 
 func TestRelValShape(t *testing.T) {
-	// The stubs no spec row reaches: the fold-order slot and the
-	// silent generation of a settled-but-unmet relation (the bag
-	// drops an optional one before asking, and a required one errors
-	// before generation). The TS twin is rel-func-shape in
-	// ts/test/coverage3.test.ts.
 	r := newRel(nil)
 	if 45000 != r.cjo() {
 		t.Errorf("cjo = %d", r.cjo())
@@ -104,9 +79,6 @@ func TestRelValShape(t *testing.T) {
 
 func TestReferValShape(t *testing.T) {
 	r := newRefer(nil)
-	// AFTER the plain values, BEFORE the sizing atoms (ADR-016):
-	// sibling path values fold together first under the prefix rule,
-	// and the residual then meets one merged address.
 	if 120000 != r.cjo() {
 		t.Errorf("cjo = %d", r.cjo())
 	}
@@ -130,14 +102,6 @@ func TestReferValShape(t *testing.T) {
 }
 
 func TestReferValLateDeliveryArms(t *testing.T) {
-	// The second-path and second-held arms are CROSS-PASS arms:
-	// sibling paths and constraints in one conjunct pre-merge at
-	// their own (lower) cjo before the residual folds, so each is
-	// reached only by a late-delivered peer -- a flow into a pending
-	// refer, spread timing. Pinned at the API, as the nil peer above
-	// is. The TS twins are refer-second-path-peer-refines-by-prefix
-	// and refer-holds-a-second-constraint-by-meet in
-	// ts/test/coverage3.test.ts.
 	ctx := &Ctx{root: newMap(), collect: true}
 	r := newRefer(nil)
 	addr, _ := parseAddress("$.q")
@@ -151,7 +115,6 @@ func TestReferValLateDeliveryArms(t *testing.T) {
 	if !ok || "$.q.r" != kept.addrsrc {
 		t.Fatalf("kept address = %v", kept)
 	}
-	// Incomparable addresses are the conflict two unequal scalars are.
 	if out := r.Unify(newPath("$.z"), ctx); !out.Nil() {
 		t.Fatalf("incomparable = %s", out.Canon())
 	}
@@ -173,8 +136,6 @@ func TestReferMergeNilCombinations(t *testing.T) {
 	typed := newMap()
 	typed.set("k", newInteger(1))
 
-	// The merge's four corners: neither side typed, one side typed
-	// either way, and neither side holding vs one side holding.
 	bare := newRefer(nil)
 	withT := newRefer(typed)
 	if out := bare.Unify(withT, ctx).(*ReferVal); Val(typed) != out.tval {
@@ -183,10 +144,6 @@ func TestReferMergeNilCombinations(t *testing.T) {
 	if out := withT.Unify(newRefer(nil), ctx).(*ReferVal); Val(typed) != out.tval {
 		t.Error("a typed refer should keep its type against an untyped peer")
 	}
-	// Both sides typed meet their types. In a document two typed
-	// refers at one position settle independently and their types
-	// flow separately (the two-typed-refers-merge-* rows), so this
-	// corner is the direct API meet, pinned here with the others.
 	typed2 := newMap()
 	typed2.set("k2", newInteger(2))
 	if out := withT.Unify(newRefer(typed2), ctx).(*ReferVal); nil == out.tval || out.tval.Nil() {
@@ -201,10 +158,6 @@ func TestReferMergeNilCombinations(t *testing.T) {
 	if out := withH.Unify(newRefer(nil), ctx).(*ReferVal); Val(held) != out.held {
 		t.Error("a held refer should keep it against an unheld peer")
 	}
-	// Both sides holding meet their constraints, as both sides typed
-	// meet their types (the two-typed-refers-merge-their-types row).
-	// Constraints in one conjunct pre-merge before either refer folds,
-	// so this corner is a cross-pass delivery, pinned at the API.
 	withH2 := newRefer(nil)
 	withH2.held = newScalarKind(KindString)
 	if out := withH.Unify(withH2, ctx).(*ReferVal); nil == out.held || out.held.Nil() {
@@ -230,11 +183,6 @@ func TestReferNilPeerIsTheNil(t *testing.T) {
 }
 
 func TestFindAtWalksIntoNonBags(t *testing.T) {
-	// A path that descends THROUGH a scalar names nothing: the walk
-	// stops rather than guessing. Reachable from source only as a
-	// pending refer that later refuses, so the walk itself is pinned
-	// here. The TS twin is find-at-walks-into-non-bags in
-	// ts/test/coverage3.test.ts.
 	m := newMap()
 	m.set("p", newInteger(1))
 	root := newMap()
@@ -261,10 +209,6 @@ func TestFindAtWalksIntoNonBags(t *testing.T) {
 }
 
 func TestAddressPathClimbsOffTheTop(t *testing.T) {
-	// A relative address with more parent steps than the link has
-	// ancestors. No later pass can grow the tree upwards, so settle
-	// refuses at once rather than residuating to the last pass. The TS
-	// twin is address-path-resolution / refer-climb-off-the-top-refuses.
 	addr, ok := parseAddress("...z")
 	if !ok {
 		t.Fatal("...z should parse as a relative address")
@@ -284,11 +228,6 @@ func TestAddressPathClimbsOffTheTop(t *testing.T) {
 }
 
 func TestReferFlowRefusalIsTheNil(t *testing.T) {
-	// A flow whose TOP-LEVEL meet fails answers the nil rather than
-	// writing a broken representative back: `refer(1)` against a map
-	// target. From source the conflict usually lands on a FIELD (the
-	// maps meet and one key disagrees), so the whole-value refusal is
-	// pinned here.
 	ctx := &Ctx{}
 	m := newMap()
 	m.set("k", newInteger(1))
@@ -305,13 +244,6 @@ func TestReferFlowRefusalIsTheNil(t *testing.T) {
 }
 
 func TestRecurseBudgetBackstop(t *testing.T) {
-	// The T-1 backstop (RECURSION.0.md): the depth budget is shared
-	// with the unite nesting guard, so through DATA the nesting guard
-	// always trips first -- a chain deep enough to charge the residual
-	// is a tree too deep to drive. The arm is a backstop, pinned
-	// directly: a residual already charged to the budget refuses the
-	// next expansion as recursion_budget, naming the target. The TS
-	// twin is recurse-budget-backstop in ts/test/coverage3.test.ts.
 	ctx := &Ctx{root: newMap(), collect: true}
 	rec := newRecurse([]string{"n"}, maxUniteDepth)
 	out := rec.Unify(newMap(), ctx)
@@ -325,11 +257,6 @@ func TestRecurseBudgetBackstop(t *testing.T) {
 }
 
 func TestGraphAtomShape(t *testing.T) {
-	// The atom arms no document reaches through unite's ladder: the
-	// fast paths skip a DONE value with no peer, so the self-drive's
-	// held-nil and held-done returns and the dedup/absorb held merges
-	// are pinned directly, the way TestRelValShape pins rel's. The TS
-	// twin is graph-atom-shape in ts/test/coverage3.test.ts.
 	ctx := &Ctx{root: newMap(), collect: true}
 
 	// Bare atom: DONE at birth, self-drive answers itself.
@@ -349,8 +276,6 @@ func TestGraphAtomShape(t *testing.T) {
 		t.Fatalf("held-done self-drive: dc = %d", heldAtom.dc)
 	}
 
-	// A held whose own drive collapses to a nil (a pending conjunct
-	// of two scalars): the self-drive answers the nil.
 	broken := newGraphAtom("acyclic", "",
 		newConjunct([]Val{newInteger(1), newInteger(2)}))
 	if out := broken.Unify(nil, ctx); !out.Nil() {
@@ -404,15 +329,9 @@ func TestGraphAtomShape(t *testing.T) {
 }
 
 func TestRecurseResidualShape(t *testing.T) {
-	// The residual arms unite's ladder never dispatches to (the fast
-	// paths skip a DONE value with no peer) and the hold arms a
-	// document with an assembled definition never revisits, pinned
-	// directly, the way TestGraphAtomShape pins the atom's. The TS
-	// twin is recurse-residual-shape in ts/test/coverage3.test.ts.
 	ctx := &Ctx{root: newMap(), collect: true}
 	mk := func(target ...string) *RecurseVal { return newRecurse(target, 0) }
 
-	// Self-drive: nothing to advance.
 	r := mk("n")
 	if r != r.Unify(nil, ctx) {
 		t.Fatal("self-drive must answer itself")
@@ -448,14 +367,6 @@ func TestRecurseResidualShape(t *testing.T) {
 		t.Fatal("bumpRecurse must reach a conjunct member")
 	}
 
-	// A RAW REFERENCE IS SEEDED TOO, and this is the arm that makes the
-	// design's second termination bound live at all (use-cases/BUGS.md
-	// §57). A freshly cloned level holds the definition's references
-	// UNRESOLVED, so a walk looking only for residuals found nothing to
-	// stamp and xc read 0 at EVERY expansion, in the healthy form as
-	// much as the runaway one. The seed rides on the reference;
-	// RefVal.find mints its residual from it. Twin of the same
-	// assertion in ts/test/coverage3.test.ts.
 	ref := &RefVal{absolute: true, peg: []any{"n"}}
 	bumpRecurse(ref, 7)
 	if 7 != ref.rxc {

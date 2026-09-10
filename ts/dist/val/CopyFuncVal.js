@@ -26,16 +26,13 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
         const out = null == val || null == ctx ?
             (0, err_1.makeNilErr)(ctx, 'invalid-arg', this) :
             val.clone(ctx);
-        // console.log('CR', out)
         if (!out.isRef) {
             (0, utility_1.walk)(out, (_key, val) => {
-                // console.log('WALK', val)
                 val.mark.type = false;
                 val.mark.hide = false;
                 return val;
             });
         }
-        // console.log('COPY-RESOLVE', ctx.cc, val, out)
         return out;
     }
 } /* node:coverage ignore next 6 */

@@ -22,12 +22,7 @@ func newList(elems []Val) *ListVal {
 	return l
 }
 
-// superior answers top for a bag, as it always has. Its one caller
-// was the preference gate, which asks superOf now (ADR-011 R4) and
-// lifts a bag child by child instead; the method stays because the
-// Val interface requires it.
-// (superOf answers for this type before the fallthrough.)
-func (l *ListVal) superior() Val { return top() } //coverage:ignore
+func (l *ListVal) superior() Val { return top() } //coverage:ignore no caller: superOf lifts a bag child by child (ADR-011 R4)
 
 func (l *ListVal) Canon() string {
 	var b strings.Builder
@@ -60,15 +55,7 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 		if (e.markedType() || e.markedHide()) && !probing(ctx) {
 			continue
 		}
-		// Mirrors the MapVal.Gen child handling (which mirrors TS
-		// BagVal.gen): non-generable elements error at the bag level
-		// (or truncate under collect); a nil that doesn't stand for
-		// JSON null contributes nothing.
 		if !genable(e) {
-			// Code follows the TS BagVal.gen choice (see MapVal.Gen).
-			// Rendered via a NilVal for the full TS-style message, with
-			// the element index as the key detail (TS BagVal.gen passes
-			// the bag key either way).
 			code := "listval_no_gen"
 			if l.closed {
 				code = "listval_required"
@@ -116,22 +103,9 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil {
 		peer = top()
 	}
-	// A sizing residual (`length`, `unique`) sorts AFTER containers in a
-	// conjunct so that it counts the MERGED list rather than the first
-	// fragment (sizingCjo in constraint.go). That makes the list the
-	// accumulator and the constraint its peer, the reverse of the usual
-	// order -- and the reading belongs to the constraint either way, so
-	// hand it straight back.
 	if pc, ok := peer.(*ConstraintVal); ok {
 		return pc.Unify(l, ctx)
 	}
-	// A DISJUNCT ALTERNATIVE MATCHES ITS OWN LENGTH (BUGS.md §52
-	// regime 4, the X-C3 adjudication): in a trial, a literal list
-	// with no spread admits only a peer list of the same length -- a
-	// spread makes it variadic. Outside trials the ordinary
-	// elementwise merge stands (two statements of one list are one
-	// list), so `[] | [&: T]` stops admitting every list through the
-	// empty arm while `a: [] a: [1]` still merges.
 	if pl, ok := peer.(*ListVal); ok && nil != ctx && ctx.trial &&
 		nil == l.spread && nil == pl.spread &&
 		len(l.peg) != len(pl.peg) {
@@ -191,19 +165,6 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 			e.setMarkHide(true)
 		}
 		islot := append(cp(dbase), itoa(i))
-		// APPLIED ONCE PER ELEMENT, the guard MapVal.Unify has carried
-		// since the spread was written: an element that already holds
-		// this template's contribution is progressed by self-unification
-		// instead of having the template met into it a second time.
-		// Re-applying is the identity for a template that has already
-		// RESOLVED, which is why the missing guard went unnoticed here
-		// — but a template that residuates (`&: id(key(1))`, G8 phase 0)
-		// is not yet a value to be idempotent about, so each pass
-		// conjoined another copy and the element's canon DOUBLED per
-		// pass. The old `ctx.cc < 3` key delay hid it by ending the
-		// growth at three passes; the staging rule waits for the model
-		// to settle, and a model whose canon doubles every pass never
-		// does. Mirrors ts/src/val/ListVal.ts.
 		var ev Val
 		if !isTop(spreadCj) && sprOf(e) == spreadCj {
 			if e.Dc() == DONE {
@@ -266,13 +227,6 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	} else if !isTop(peer) {
-		// The meet is the LIST against a non-list, so it happens at the
-		// list's own slot -- restore it. The element loops above overwrite
-		// ctx.slot with an element slot and only the in-branch paths put
-		// it back, so a stale index survived into this branch and
-		// makeNilErr's slot-extension then stamped it: `a:[10,"bad"] &
-		// {a:[...]}` reported `$.a.1`, an element that is not party to the
-		// failure, where TypeScript reported `$.a` (BUGS.md 47).
 		ctx.slot = dbase
 		// The container KIND delegates to its own arm, exactly as a
 		// scalar delegates to a ScalarKindVal peer (PATHS.0.md).

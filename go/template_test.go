@@ -2,11 +2,6 @@
 
 package aontu
 
-// The extension table of the template surface. The two TRANSFORMS are
-// pinned by test/spec/template.tsv, which both runners execute; this
-// is the one piece of the surface a spec row cannot reach, because the
-// mode is handed a marker rather than a file name. Twin of the
-// marker-for cases in ts/test/template.test.ts.
 
 import "testing"
 
@@ -22,14 +17,8 @@ func TestMarkerFor(t *testing.T) {
 		// THE EXTENSION IS CASE-INSENSITIVE: a file from a case-folding
 		// filesystem is the same generator.
 		{"GEN.TS", "//-"},
-		// NO EXTENSION AT ALL takes the default rather than no marker:
-		// `Makefile` and `Dockerfile` are ordinary generators, and the
-		// table is a convenience over a default rather than the thing
-		// that decides a file is a template.
 		{"Makefile", "//-"},
 		{"gen", "//-"},
-		// A DOT IN A DIRECTORY IS NOT AN EXTENSION, or `v1.2/gen` would
-		// be read as a `2/gen` file.
 		{"v1.2/gen", "//-"},
 		{`win\v1.2\gen`, "//-"},
 		// An extension the table does not know: the caller passes its

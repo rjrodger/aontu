@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE TRIM REPORTER (G3 phase 6, the Go side of ts/src/cli.ts):
-// report redundant entries as paths. Report-only — REWRITING needs
-// G7's format-preserving patch surface — which is why --check is
-// REQUIRED rather than defaulted: `aontu trim f.aon` reads as "trim
-// this file", and doing something else silently is worse than saying
-// so.
 
 package main
 
@@ -89,8 +83,6 @@ func runTrim(argv []string, stdout, stderr io.Writer) int {
 
 func renderTrimText(report aontu.TrimReport) string {
 	head := "verdict: " + report.Verdict
-	// WHY, when the document could not be evaluated at all: rendered as
-	// vet renders a finding, because it IS one (the review's finding F).
 	if 0 < len(report.Errors) {
 		out := []string{head, ""}
 		for _, f := range report.Errors {

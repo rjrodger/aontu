@@ -2,10 +2,6 @@
 
 package aontu
 
-// REACHABILITY OVER THE LINK GRAPH (the review's finding J,
-// use-cases/REVIEW.md) — the Go twin of ts/src/reach.ts. See that file
-// for why this is a verb rather than a constraint, and why it is
-// transitive rather than reflexive-transitive.
 
 import (
 	"sort"
@@ -21,10 +17,6 @@ type ReachVerdict = string
 type ReachReport struct {
 	Verdict ReachVerdict `json:"verdict"`
 
-	// Path is the path found, as entity names from the source to the
-	// destination, both included. Present ONLY on `reaches`: a path is
-	// the evidence for the answer, and there is no evidence for a
-	// negative one.
 	Path []string `json:"path,omitempty"`
 
 	// Errors is WHY the graph could not be looked at, in vet's finding
@@ -34,15 +26,9 @@ type ReachReport struct {
 
 // ReachOptions mirrors ReachOptions in ts/src/reach.ts.
 type ReachOptions struct {
-	// Relation follows only edges under this relation. Empty means
-	// follow every edge, which is the whole graph and the commoner
-	// question.
 	Relation string
 }
 
-// reachEndpointFinding is the refusal for an endpoint that names no
-// entity. NOT "unreachable": answering `no` would report a typo as a
-// fact about the model.
 func reachEndpointFinding(name string, known []string) VetFinding {
 	f := VetFinding{
 		Code:     "refer_unresolved",
@@ -59,11 +45,6 @@ func reachEndpointFinding(name string, known []string) VetFinding {
 	return f
 }
 
-// parseNodePath is the segments a `$.dotted` endpoint spells, or
-// ok=false when it is not one. Reachability is between TREE POSITIONS
-// (ADR-014), so an endpoint is a path and nothing else -- the same
-// spelling the report prints back. Mirrors parseNodePath in
-// ts/src/reach.ts.
 func parseNodePath(s string) ([]string, bool) {
 	if "$" == s {
 		return nil, true
@@ -80,10 +61,6 @@ func parseNodePath(s string) ([]string, bool) {
 	return parts, true
 }
 
-// nodeAt reports whether a path names a node of the evaluated tree. An
-// endpoint that exists but has no edges is a perfectly good question
-// with the answer `unreachable`; only one that names NOTHING is an
-// error. Mirrors nodeAt in ts/src/reach.ts.
 func nodeAt(root Val, path []string) bool {
 	node := root
 	for _, seg := range path {
@@ -127,9 +104,6 @@ func (a *Aontu) Reach(src, from, to string, opts *ReachOptions) ReachReport {
 	}
 
 	graph := GraphOf(root)
-	// The nodes the graph actually touches, for the error note: a
-	// document has every path in it, and listing them all would drown
-	// the one fact a mistyped endpoint needs.
 	seen := map[string]bool{}
 	linked := []string{}
 	for _, e := range graph.Edges {

@@ -2,11 +2,6 @@
 
 package aontu
 
-// The trust profile (G5 phase 3, docs/trust.md): the Go twin of
-// ts/test/trust.test.ts's engine half — include capabilities, the
-// include manifest, and the deterministic budgets. The shared contract
-// rows are test/spec/include-trust.tsv (both runners); the CLI and LSP
-// halves live beside their packages (cmd/aontu, lsp).
 
 import (
 	"os"
@@ -15,41 +10,10 @@ import (
 	"testing"
 )
 
-// srcPath spells a path for EMBEDDING IN SOURCE text. Inside an @"..."
-// include a backslash is an ESCAPE character, so a native Windows path
-// interpolated raw is eaten by the lexer: C:\Users\RUNNER\...\root
-// arrives as C:UsersRUNNER...oot, because \U, \A and \r are string
-// escapes and \r is a carriage return. Go accepts forward slashes on
-// every platform, so sources spell paths that way; filesystem calls
-// keep native paths.
-//
-// The canonical port has had this since it was written
-// (ts/test/trust.test.ts, `sp`) and this twin never got it, which
-// nothing noticed because the Go CI matrix declared windows-latest
-// while hardcoding runs-on: ubuntu-latest -- so the Windows job had
-// never once run on Windows. Fixing the matrix is what surfaced it.
-//
-// An unconditional replace, NOT filepath.ToSlash, and deliberately:
-// ToSlash is a no-op wherever the separator is already '/', so the
-// behaviour this helper exists for would be exercised on Windows
-// alone -- the one platform a contributor cannot run. Spelling the
-// rule outright makes it the same code everywhere, testable here, and
-// character-for-character the rule the canonical twin applies.
-//
-// NOT named `sp`, which is what the canonical twin calls it: in this
-// package `sp` is a domain term -- the SOURCE POSITION carried on every
-// Val (`base.sp`, and `func(sp int) Val` throughout lang.go) -- so a
-// package-level `sp(string) string` would be shadowed by dozens of
-// locals and read as the wrong thing at every call site.
 func srcPath(p string) string {
 	return strings.ReplaceAll(p, "\\", "/")
 }
 
-// trustWorld builds a little world to confine: root/{in.aon, nest.aon,
-// sub/deep.aon}, with secret.aon OUTSIDE the root and a symlink inside
-// pointing at it. The symlink is best-effort: Windows refuses one
-// without Developer Mode or elevation, and the single test that needs
-// it skips rather than failing for a reason that is not about Aontu.
 func trustWorld(t *testing.T) (dir, root string) {
 	t.Helper()
 	dir = t.TempDir()
@@ -70,7 +34,7 @@ func trustWorld(t *testing.T) (dir, root string) {
 	}
 	if err := os.Symlink(filepath.Join(dir, "secret.aon"),
 		filepath.Join(root, "link.aon")); err != nil {
-		// Not fatal: see the note above. trustSymlink reports it.
+		// Not fatal: trustSymlink skips the calling test.
 		t.Logf("symlink unavailable on this platform: %v", err)
 	}
 	return dir, root
@@ -132,12 +96,6 @@ func TestTrustMemIsTheWholeWorld(t *testing.T) {
 	}
 }
 
-// A LANGUAGE-SUPPLIED MODEL CANNOT BE SHADOWED (ADR-028). The aontu:
-// leg answers before the memory resolver is consulted, so a host that
-// declares its own aontu:system still gets the engine's. This is what
-// the scheme buys, and it became true of the system and view
-// vocabularies when they moved off their bare std/ names. Twin:
-// a-bundled-model-is-not-shadowed-by-mem in ts/test/trust.test.ts.
 func TestBundledModelIsNotShadowedByMem(t *testing.T) {
 	a := New()
 	a.Trust = &TrustOptions{IncludeMem: map[string]string{
@@ -199,17 +157,6 @@ func TestTrustRootMissIsNotFoundNotDenied(t *testing.T) {
 	}
 }
 
-// The include MANIFEST (docs/trust.md): the resolved closure as sorted,
-// deduplicated { path, capability } — hermeticity clause 1's "file set"
-// made observable.
-// THE VERB OPTIONS CARRY THE CAPABILITY, not just the evaluator. Every
-// report surface -- Vet, Subsume, Get, Why, Patch, RelationCheck,
-// TrimCheck, AgentsMd -- builds its own engine from a path, and G5
-// wired --trust to the bare command alone, so each of them ran the full
-// system resolver with no way to confine it (use-cases/REVIEW.md
-// finding G). This is the library half of that fix: an option struct's
-// Trust must reach the engine underneath. The CLI half is
-// TestTrustCliEveryVerbHonoursTheCapability in cmd/aontu.
 func TestTrustVerbOptionsConfineTheEngine(t *testing.T) {
 	dir, root := trustWorld(t)
 	entry := filepath.Join(root, "leak.aon")
@@ -263,11 +210,6 @@ func TestTrustVerbOptionsConfineTheEngine(t *testing.T) {
 		t.Fatalf("patch ignored Trust: %s", v)
 	}
 
-	// The query surfaces take the capability from the ENGINE -- Get and
-	// Why are methods, so aontuForPathTrust is what the CLI hands them
-	// and there is no second place for a caller to set it (the
-	// canonical port's get/why are free functions and take it in
-	// options; ADR-001 is a contract on behaviour, not on API shape).
 	open := aontuForPathTrust(entry, nil, nil)
 	if got := open.Get(src, "$.a.secret", nil); !got.OK {
 		t.Fatalf("get, unconfined: %+v", got.Findings)
@@ -320,10 +262,6 @@ func TestTrustDepsIsEmptyWithoutIncludes(t *testing.T) {
 // include what the filesystem would refuse. The shared spec rows cannot
 // reach this leg -- they resolve real files -- so it is pinned here.
 func TestMemCapabilityGatesTheExtension(t *testing.T) {
-	// `.csv` rather than `.txt`: the extension this example used is now
-	// READ, as one string scalar, so it no longer demonstrates a gate.
-	// `.csv` is still refused -- and for the ADR-001 reason, which is
-	// the sharpest one to pin here.
 	a := New()
 	a.Trust = &TrustOptions{IncludeMem: map[string]string{"/v/rows.csv": "m: 1"}}
 	_, err := a.Parse(`a:@"/v/rows.csv"`)
@@ -355,12 +293,6 @@ func TestTrustDepsNamesTheMemCapability(t *testing.T) {
 	}
 }
 
-// The budgets are integer counts of engine events, deterministic by
-// construction; zero means the shared spec constants
-// (test/spec/budget.tsv). A chain needing more passes than the budget
-// exhausts LOUDLY — budget_passes, never silent truncation — including
-// at Passes:1, where the still-refining snapshot must be taken at the
-// final pass's entry (there is no earlier pass).
 func TestTrustPassesBudgetExhaustsLoudly(t *testing.T) {
 	chain := "a1:$.a2 a2:$.a3 a3:$.a4 a4:1"
 	code := trustCode(t,
@@ -368,7 +300,6 @@ func TestTrustPassesBudgetExhaustsLoudly(t *testing.T) {
 	if "budget_passes" != code {
 		t.Fatalf("code: %q", code)
 	}
-	// The same document under the default budget resolves.
 	if "" != trustCode(t, nil, chain) {
 		t.Fatal("default budget should resolve the chain")
 	}
@@ -413,15 +344,12 @@ func TestTrustNonexistentRootStillConfines(t *testing.T) {
 	}
 }
 
-// The sink accessors are nil-safe by contract (the resolver can run in
-// a parse that carries no trust sink at all): the guards are exercised
-// directly, the recordNotFound precedent (coverage3_test.go).
 func TestTrustSinkNilGuards(t *testing.T) {
 	if nil != trustSinkOf(nil) {
 		t.Fatal("nil ctx must yield nil sink")
 	}
-	recordDenied(nil, "p", "none")       // must not panic
-	recordDep(nil, "p", "file")          // must not panic
+	recordDenied(nil, "p", "none")
+	recordDep(nil, "p", "file")
 	recordDep(&trustSink{}, "p", "file") // nil deps slice: must not panic
 
 	// recordText is the same contract: a sink with no text map, and a
@@ -436,9 +364,6 @@ func TestTrustSinkNilGuards(t *testing.T) {
 	}
 }
 
-// THE WIDENING'S TWO EDGES, both of which the shared spec rows cannot
-// reach: they resolve real files under no flag, and TextExt is an
-// option rather than language.
 func TestTextExtWideningAndItsLimits(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, body string) string {
@@ -466,10 +391,6 @@ func TestTextExtWideningAndItsLimits(t *testing.T) {
 		t.Fatalf("widened md: %s", got)
 	}
 
-	// NOT EVEN AS TEXT: `js` is the extension ADR-012 singles out,
-	// because multisource's own default would EXECUTE it. No spelling
-	// of the flag reaches it -- and the two ports disagreed here once,
-	// Go reading the file where TypeScript refused it.
 	b := New()
 	b.TextExt = []string{"js"}
 	if _, err := b.Parse(`x:@"` + srcPath(js) + `"`); nil == err ||

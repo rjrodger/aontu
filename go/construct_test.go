@@ -63,7 +63,6 @@ func TestPublicConstructorsUnify(t *testing.T) {
 		"k":   NewScalarKind(KindInteger),
 	}
 
-	// $foo & number resolves to 11.
 	v, err := New().UnifyVars("a:$foo & number", vars)
 	if err != nil {
 		t.Fatalf("unify: %v", err)
@@ -86,26 +85,15 @@ func TestPublicConstructorsUnify(t *testing.T) {
 	}
 }
 
-// TestNewIntegerRefusesLossyInt64 pins D8's API-side storage contract:
-// programmatic construction obeys the same exactness rule as a literal.
-//
-// This is the one storage divergence no parse-time rule could ever
-// catch, because no literal can express it. Go's integer leaf is an
-// int64 and the canonical TypeScript port's is a double, so an int64
-// that binary64 cannot carry exactly would be exact here and silently a
-// DIFFERENT number there — while D7 already refuses the equivalent
-// literal in both ports. The API had to be narrowed to match.
 func TestNewIntegerRefusesLossyInt64(t *testing.T) {
-	// THE RULE IS EXACTNESS, NOT MAGNITUDE. These are all far above 2^53
-	// and all exactly representable, so all still construct.
 	exact := []int64{
 		0, 1, -1, 11,
-		9007199254740992,     // 2^53
-		-9007199254740992,    // -2^53
-		1152921504606846976,  // 2^60
+		9007199254740992,
+		-9007199254740992,
+		1152921504606846976,
 		9223372036854774784,  // 2^63-1024, the last exact int64
-		-9223372036854775808, // math.MinInt64 = -2^63, a power of two
-		1000000000000000000,  // 10^18; its odd part 5^18 fits in 53 bits
+		-9223372036854775808,
+		1000000000000000000,
 	}
 	for _, i := range exact {
 		if v := NewInteger(i); v.Nil() {
@@ -118,8 +106,8 @@ func TestNewIntegerRefusesLossyInt64(t *testing.T) {
 		9007199254740993,     // 2^53+1, the first
 		-9007199254740993,    // and its mirror
 		9223372036854775807,  // 2^63-1 (math.MaxInt64), rounds UP to 2^63
-		1152921504606846977,  // 2^60+1
-		-9223372036854775807, // -(2^63-1)
+		1152921504606846977,
+		-9223372036854775807,
 	}
 	for _, i := range lossy {
 		v := NewInteger(i)

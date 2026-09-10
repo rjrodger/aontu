@@ -1,7 +1,6 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
 
-
 import { describe, it } from 'node:test'
 
 import type {
@@ -33,7 +32,6 @@ import { srcPath } from './srcpath'
 
 let lang = new Lang()
 let P: (s: string, o?: any) => Val = lang.parse.bind(lang)
-
 
 
 describe('lang', function() {
@@ -156,11 +154,6 @@ describe('lang', function() {
     global.console = require('console')
 
     let g0 = new Lang({
-      // resolver: makeFileResolver((spec: any) => {
-      //   return 'string' === typeof spec ? spec : spec?.peg
-      // })
-      // debug: true,
-      // trace: true,
     })
 
     let t00x = g0.parse('x:@"' + srcPath(__dirname) + '/../test/t00.aon"')
@@ -181,11 +174,6 @@ describe('lang', function() {
     expect(t00xABs.canon).equal('{"A":11,"B":22,"x":{"a":1}}')
 
 
-    // AN INCLUDE UNIFIES IN PLACE, so the loaded document's keys join
-    // this map where the `@` stands rather than arriving as a trailing
-    // conjunct arm. The parse-level canon is therefore the same shape
-    // inlining the loaded bytes gives, and the `{}&` wrapper these
-    // expectations used to carry is gone.
     let t00v = g0.parse('@"' + srcPath(__dirname) + '/../test/t00.aon"')
     expect(t00v.canon).equal('{"a":1}')
     let t00 = new Unify(t00v)
@@ -237,9 +225,6 @@ describe('lang', function() {
     @"` + srcPath(__dirname) + `/../test/t04.aon"
     z: 33
     `)
-    // Two includes and three local pairs fold into ONE map, in the
-    // order the statements are written, which is what inlining the two
-    // loaded files at their `@`s gives.
     expect(t02m.canon).equal('{"a":1,"b":2,"x":11,"y":22,"z":33}')
 
 
@@ -454,13 +439,6 @@ describe('lang', function() {
   })
 
 
-  // PARSE-level canon of nested junctions: a junction child that is
-  // itself a junction with more than one term is parenthesised
-  // (JunctionVal.canon), so the text reparses to the same structure.
-  // No spec mode observes parse-level canon (the shared suite is
-  // unify-level), so this table is pinned by per-port twins: the Go
-  // twin with the SAME rows is TestParseCanonNestedJunctions in
-  // go/aontu_test.go. Closes the issue #30 divergence.
   it('parse-canon-nested-junctions', () => {
     const rows: [string, string][] = [
       ['a:(1|2)&3', '{"a":(1|2)&3}'],
