@@ -17,12 +17,17 @@ Quick reference:
 - Shared behaviour lives in `test/spec/*.tsv` and is run by both
   `ts/test/spec.test.ts` and `go/spec_test.go`.
 - `make test` runs both suites; `make cov` checks the ADR-002 floor.
+- A release publishes over OIDC, by dispatching `publish.yml`, never a
+  local token publish. `make publish` needs the `gh` CLI; without it,
+  run its steps and dispatch through the API. See
+  [docs/release-and-tag.md](docs/release-and-tag.md), "Releasing
+  without `gh`".
 - Documentation edits follow [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)
   (Diátaxis placement, voice, banned phrases, snippet directives);
   `ts/test/docs.test.ts` enforces it — every tagged snippet tested or
   skipped with a reason.
 - Forward-looking work is the capability review in
-  `docs/capability-review/` (G1–G10, design) plus
+  `docs/capability-review/` (G1–G11, design) plus
   `docs/capability-review/progress.md` (the register of what has
   landed). **A phase's row in the register changes in the same commit
   that changes its status** — see AGENTS.md, "The capability-review

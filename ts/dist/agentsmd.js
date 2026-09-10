@@ -42,7 +42,10 @@ function agentsMd(src, opts) {
     // arrive through a `--text-ext` include listed those keys and then
     // reported an EMPTY shape, because the read the shape came from
     // refused the include the read above it had just honoured.
-    const shape = (0, query_1.get)(src, '$', { view: 'types', depth: 2, path: options.path, ...(0, utility_1.includeOpts)(options) });
+    const shape = (0, query_1.get)(src, '$', {
+        view: 'types', depth: options.depth ?? 2,
+        path: options.path, ...(0, utility_1.includeOpts)(options),
+    });
     // A REAL path, so the example command works as written: the first
     // root key when there is one, the root itself when there is not.
     const example = 0 < keys.length ? '$.' + keys[0] : '$';
@@ -76,6 +79,9 @@ function agentsMd(src, opts) {
         '# change it without editing it',
         'aontu set ' + example + '=<value> --entry ' + name +
             ' --overlay overlay.aon',
+        '',
+        '# the language itself, offline: the whole grammar on one page',
+        'aontu help language',
         '```',
         '',
         'Regenerate this section with `aontu agentsmd ' + name + '`.',

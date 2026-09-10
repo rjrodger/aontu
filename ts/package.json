@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.61.0",
+  "version": "0.62.0",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "types": "dist/aontu.d.ts",

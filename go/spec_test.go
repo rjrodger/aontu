@@ -1033,6 +1033,10 @@ func specVetOpts(t *testing.T, raw any) *VetOptions {
 		case "maxErrors":
 			n, _ := v.(float64)
 			opts.MaxErrors = int(n)
+		case "coverage":
+			opts.Coverage, _ = v.(bool)
+		case "coverageAt":
+			opts.CoverageAt, _ = v.(string)
 		default:
 			t.Fatalf("unknown vet opt %q", k)
 		}

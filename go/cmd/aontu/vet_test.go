@@ -14,9 +14,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	aontu "github.com/aontu-lang/aontu/go"
 )
 
 const vetSchemaSrc = "service: { name: string, port: integer }"
@@ -561,5 +564,203 @@ func TestVetWatchWaitSeesAChange(t *testing.T) {
 	}
 	if !<-done {
 		t.Fatal("watchWait should report a change")
+	}
+}
+
+// THE COVERAGE FLAGS (G11 phase 5,
+// docs/capability-review/g11-agent-onramp.md). The accounting itself
+// is pinned by the shared rows in test/spec/vet.tsv; what the COMMAND
+// owns -- the flags, the text block, the exit class -- is here, and
+// ts/test/cli.test.ts holds the twin.
+
+func vetCovFiles(t *testing.T, schema, data string) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	s := filepath.Join(dir, "schema.aon")
+	d := filepath.Join(dir, "data.aon")
+	if err := os.WriteFile(s, []byte(schema), 0o600); nil != err {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(d, []byte(data), 0o600); nil != err {
+		t.Fatal(err)
+	}
+	return s, d
+}
+
+// The star schema is a key NAMED `*`, so it constrains nothing -- and
+// without the flag the run is byte-for-byte what it always was.
+const vetCovStar = `entity: { "*": { name: string, table: string } }`
+const vetCovGood = `entity: { &: { name: string, table: string } }`
+const vetCovData = `entity: { planet: { name: "P", table: "planets" } }`
+
+func TestVetCoverageIsAbsentUnlessAsked(t *testing.T) {
+	s, d := vetCovFiles(t, vetCovStar, vetCovData)
+	out, _, code := vetRun("--partial", s, d)
+	if 0 != code {
+		t.Fatalf("want 0, got %d: %s", code, out)
+	}
+	if strings.Contains(out, "coverage") {
+		t.Errorf("a run that did not ask for coverage reported it: %s", out)
+	}
+	jsonOut, _, _ := vetRun("--partial", "--format", "json", s, d)
+	if strings.Contains(jsonOut, "\"coverage\"") {
+		t.Errorf("the JSON report carries coverage unasked: %s", jsonOut)
+	}
+}
+
+// THE DEFECT THE PHASE EXISTS FOR, at the command line: the verdict is
+// `valid` and the run examined nothing.
+func TestVetCoverageReportsAVacuousRun(t *testing.T) {
+	s, d := vetCovFiles(t, vetCovStar, vetCovData)
+	out, _, code := vetRun("--partial", "--coverage", s, d)
+	if 0 != code {
+		t.Fatalf("want 0 (the verdict word is unchanged), got %d", code)
+	}
+	if !strings.Contains(out, "verdict: valid") {
+		t.Errorf("the verdict changed: %s", out)
+	}
+	for _, want := range []string{
+		"VACUOUS", "0/2 data leaves checked", "unused: $.entity.*",
+		"unchecked: $.entity.planet",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the coverage block omits %q:\n%s", want, out)
+		}
+	}
+}
+
+// AND THE GATE: only under --strict-coverage, and it is the exit code
+// that moves, never the verdict word.
+func TestVetStrictCoverageExitsOneOnVacuous(t *testing.T) {
+	s, d := vetCovFiles(t, vetCovStar, vetCovData)
+	out, errw, code := vetRun("--partial", "--strict-coverage", s, d)
+	if 1 != code {
+		t.Fatalf("want 1, got %d: %s %s", code, out, errw)
+	}
+	if !strings.Contains(out, "verdict: valid") {
+		t.Errorf("the verdict word changed: %s", out)
+	}
+	if !strings.Contains(errw, "checked nothing") {
+		t.Errorf("no reason on stderr: %s", errw)
+	}
+	// The reason names the fix, because the caller who hit this does
+	// not know the template exists.
+	if !strings.Contains(errw, "aontu help language") {
+		t.Errorf("the reason does not point at the language: %s", errw)
+	}
+}
+
+// A schema that DOES constrain is not vacuous, and --strict-coverage
+// leaves it exactly as it was.
+func TestVetStrictCoveragePassesARealCheck(t *testing.T) {
+	s, d := vetCovFiles(t, vetCovGood, vetCovData)
+	out, errw, code := vetRun("--strict-coverage", s, d)
+	if 0 != code {
+		t.Fatalf("want 0, got %d: %s %s", code, out, errw)
+	}
+	if strings.Contains(out, "VACUOUS") || strings.Contains(errw, "nothing") {
+		t.Errorf("a real check was called vacuous: %s %s", out, errw)
+	}
+	if !strings.Contains(out, "2/2 data leaves checked") {
+		t.Errorf("the ratio is wrong: %s", out)
+	}
+}
+
+// --strict-coverage IMPLIES the accounting: a gate cannot fire on what
+// was never measured.
+func TestVetStrictCoverageImpliesCoverage(t *testing.T) {
+	s, d := vetCovFiles(t, vetCovGood, vetCovData)
+	out, _, _ := vetRun("--strict-coverage", s, d)
+	if !strings.Contains(out, "coverage:") {
+		t.Errorf("--strict-coverage did not measure: %s", out)
+	}
+	atOut, _, _ := vetRun("--coverage-at", "$.entity", s, d)
+	if !strings.Contains(atOut, "coverage:") {
+		t.Errorf("--coverage-at did not measure: %s", atOut)
+	}
+}
+
+func TestVetCoverageJSON(t *testing.T) {
+	s, d := vetCovFiles(t, vetCovStar, vetCovData)
+	out, _, code := vetRun("--partial", "--coverage", "--format", "json", s, d)
+	if 0 != code {
+		t.Fatalf("want 0, got %d", code)
+	}
+	var report struct {
+		Coverage *aontu.VetCoverage `json:"coverage"`
+		Verdict  string             `json:"verdict"`
+	}
+	if err := json.Unmarshal([]byte(out), &report); nil != err {
+		t.Fatalf("not JSON: %v\n%s", err, out)
+	}
+	if nil == report.Coverage {
+		t.Fatal("the JSON report carries no coverage")
+	}
+	if !report.Coverage.Vacuous || 0 != report.Coverage.Checked ||
+		"valid" != report.Verdict {
+		t.Errorf("bad report: %+v %s", report.Coverage, report.Verdict)
+	}
+}
+
+// SEVERAL DATA FILES ARE ONE ACCOUNTING: the schema side is the same
+// for each, so a declaration one file exercised is not unused, while
+// the data side adds up.
+func TestVetCoverageAcrossSeveralDataFiles(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, src string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(src), 0o600); nil != err {
+			t.Fatal(err)
+		}
+		return p
+	}
+	s := write("s.aon", "a: string\nb: integer")
+	d1 := write("d1.aon", `a: "x"`)
+	d2 := write("d2.aon", "b: 1")
+	out, _, code := vetRun("--partial", "--coverage", s, d1, d2)
+	if 0 != code {
+		t.Fatalf("want 0, got %d: %s", code, out)
+	}
+	// One leaf each, both checked, and neither declaration is unused:
+	// d1 met `$.a` and d2 met `$.b`.
+	if !strings.Contains(out, "2/2 data leaves checked") {
+		t.Errorf("the data side did not add up: %s", out)
+	}
+	if strings.Contains(out, "unused:") {
+		t.Errorf("a declaration another file met was called unused: %s", out)
+	}
+}
+
+// THE TEXT FORM CAPS EACH LIST at ten and counts the rest: a report a
+// reader scrolls past is a report nobody reads. The JSON form carries
+// every path, which is what a machine wants.
+func TestVetCoverageTextCapsTheLists(t *testing.T) {
+	data := "{"
+	for i := 0; i < 14; i++ {
+		data += "k" + strconv.Itoa(i) + ": " + strconv.Itoa(i) + ",\n"
+	}
+	data += "}"
+	s, d := vetCovFiles(t, "declared: string", data)
+	out, _, _ := vetRun("--partial", "--coverage", s, d)
+	if !strings.Contains(out, "unchecked: … and 4 more") {
+		t.Errorf("the list was not capped and counted:\n%s", out)
+	}
+	// And the JSON keeps every one.
+	jsonOut, _, _ := vetRun("--partial", "--coverage", "--format", "json", s, d)
+	var report struct {
+		Coverage aontu.VetCoverage `json:"coverage"`
+	}
+	if err := json.Unmarshal([]byte(jsonOut), &report); nil != err {
+		t.Fatalf("not JSON: %v", err)
+	}
+	if 14 != len(report.Coverage.Unchecked) {
+		t.Errorf("the JSON list was capped too: %d", len(report.Coverage.Unchecked))
+	}
+}
+
+func TestVetCoverageUsageRefusals(t *testing.T) {
+	_, errw, code := vetRun("--coverage-at")
+	if 2 != code || !strings.Contains(errw, "--coverage-at needs a path") {
+		t.Errorf("want 2 and a reason, got %d: %s", code, errw)
 	}
 }

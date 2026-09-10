@@ -15,6 +15,11 @@ practice. Entries are append-only and numbered in order. A decision that
 no longer holds is not deleted: its status changes to **Superseded by
 ADR-NNN**, so the reasoning that led there stays readable.
 
+An entry that should not have been admitted is not deleted either. Its
+status becomes **Relocated to #NNN**, its record moves to that issue in
+full, and its heading stays here so the citations in the code, the spec
+and the CHANGELOG still resolve. Numbers are never reused.
+
 | ADR | Decision | Status |
 |-----|----------|--------|
 | [ADR-001](#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec) | TypeScript and Go stay at full parity, driven by a shared spec | Accepted |
@@ -31,23 +36,23 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-012](#adr-012--an-includes-extension-decides-what-the-file-is-aontu-source-config-data-or-refused) | An include's extension decides what the file is: Aontu source, config data, or refused | Accepted |
 | [ADR-013](#adr-013--the-project-operates-one-transparency-log-and-nothing-else) | The project operates one transparency log, and nothing else | Superseded in part by [ADR-019](#adr-019--the-project-stores-module-bytes-and-federates-the-log) |
 | [ADR-014](#adr-014--the-tree-is-the-namespace-there-is-no-identity-mark) | The tree is the namespace: there is no identity mark | Accepted |
-| [ADR-015](#adr-015--paths-are-first-class-values-pathp-captures-and-a-vacuous-constructor-call-is-a-kind) | Paths are first-class values: `path(p)` captures, and a vacuous constructor call is a kind | Accepted |
+| [ADR-015](#adr-015--paths-are-first-class-values-pathp-captures-and-a-vacuous-constructor-call-is-a-kind) | Paths are first-class values: `path(p)` captures, and a vacuous constructor call is a kind | Superseded in part by [ADR-016](#adr-016--a-string-is-never-a-path-conversion-lives-in-the-call-and-paths-meet-by-prefix) |
 | [ADR-016](#adr-016--a-string-is-never-a-path-conversion-lives-in-the-call-and-paths-meet-by-prefix) | A string is never a path: conversion lives in the call, and paths meet by prefix | Accepted |
 | [ADR-017](#adr-017--the-builtin-call-surface-is-declared-parsed-by-both-ports) | The builtin call surface is declared, parsed by both ports | Accepted |
-| [ADR-018](#adr-018--the-pipe-operator-is-removed) | The pipe operator is removed | Accepted |
+| [ADR-018](#adr-018--the-pipe-operator-is-removed) | The pipe operator is removed | Relocated to [#188](https://github.com/aontu-lang/aontu/issues/188) |
 | [ADR-019](#adr-019--the-project-stores-module-bytes-and-federates-the-log) | The project stores module bytes, and federates the log | Accepted |
-| [ADR-020](#adr-020--a-module-path-is-domainpath-and-the-domain-is-a-proved-namespace) | A module path is `<domain>/<path>`, and the domain is a proved namespace | Accepted |
+| [ADR-020](#adr-020--a-module-path-is-domainpath-and-the-domain-is-a-proved-namespace) | A module path is `<domain>/<path>`, and the domain is a proved namespace | Superseded in part by [ADR-022](#adr-022--compatibility-is-computed-so-the-major-leaves-the-name) |
 | [ADR-021](#adr-021--the-project-hosts-private-packages-with-authenticated-reads) | The project hosts private packages, with authenticated reads | Accepted |
 | [ADR-022](#adr-022--compatibility-is-computed-so-the-major-leaves-the-name) | Compatibility is computed, so the major leaves the name | Accepted |
 | [ADR-023](#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired) | G9 completes at the renderer: the reflection sidecar, the Jostraca bridge and string interpolation are retired | Accepted |
 | [ADR-024](#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition) | The forge's token authorises a publish, and Sigstore is one provider of the proof, not its definition | Accepted |
 | [ADR-025](#adr-025--a-references-copy-is-an-instance-and-a-match-does-not-fire-on-an-unfilled-hole) | A reference's copy is an instance, and a match does not fire on an unfilled hole | Accepted |
-| [ADR-026](#adr-026--each-is-retired-form-carries-the-bound) | `each` is retired: `form` carries the bound | Accepted |
-| [ADR-027](#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound) | The list generator is named `each`, and `_ & t` is its bound | Accepted |
+| [ADR-026](#adr-026--each-is-retired-form-carries-the-bound) | `each` is retired: `form` carries the bound | Relocated to [#189](https://github.com/aontu-lang/aontu/issues/189) |
+| [ADR-027](#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound) | The list generator is named `each`, and `_ & t` is its bound | Relocated to [#189](https://github.com/aontu-lang/aontu/issues/189) |
 | [ADR-028](#adr-028--every-language-supplied-schema-is-named-under-aontu) | Every language-supplied schema is named under `aontu:` | Accepted |
 | [ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root) | A bundled model lands under `$.aontu`, not at the document root | Accepted |
 | [ADR-030](#adr-030--the-path-of-a-meet-is-the-slot-it-was-driven-at) | The path of a meet is the slot it was driven at | Accepted |
-| [ADR-031](#adr-031--a-path-part-that-names-a-type-is-camelcase) | A path part that names a type is CamelCase | Accepted |
+| [ADR-031](#adr-031--a-path-part-that-names-a-type-is-camelcase) | A path part that names a type is CamelCase | Relocated to [#190](https://github.com/aontu-lang/aontu/issues/190) |
 | [ADR-032](#adr-032--a-grammar-is-a-string-and-parsing-is-a-function) | A grammar is a string, and parsing is a function | Accepted |
 
 ---
@@ -1518,7 +1523,7 @@ progress register records the retirement.
 ## ADR-015 — Paths are first-class values: `path(p)` captures, and a vacuous constructor call is a kind
 
 **Date:** 2026-08-31
-**Status:** Accepted
+**Status:** Superseded in part by [ADR-016](#adr-016--a-string-is-never-a-path-conversion-lives-in-the-call-and-paths-meet-by-prefix)
 
 ### Context
 
@@ -1730,41 +1735,19 @@ docs/design/SIGNATURES.0.md.
 ## ADR-018 — The pipe operator is removed
 
 **Date:** 2026-08-31
-**Status:** Accepted
+**Status:** Relocated to [#188](https://github.com/aontu-lang/aontu/issues/188)
 
-### Context
+Not an entry for this register, by the test at the head of this file:
+removing one grammar token changes how one part of the language works,
+not what the project is, and the entry weighed no alternative — it says
+so itself. The one durable rule it stated, that a code removal is an ADR
+matter, is [ADR-011](#adr-011--the-star-is-sugar-the-disjunction-is-the-structure)'s
+precedent rather than this entry's.
 
-G8 phase 4 added `|>` as parse-time sugar: `x |> f(a)` WAS `f(x, a)`,
-never reaching a Val, never appearing in canon. The plan had allowed
-dropping the phase if call nesting proved acceptable; it landed
-without adoption evidence either way. What it cost was real grammar:
-a third `|`-family operator with its own (loosest) precedence, a
-carve-out for constraint atoms that already built, an error code for
-piping into a non-call, and — measured while it lived — the one
-spelling in the language that could synthesise an UNSITED value,
-which the `why` and `patch` surfaces then had to special-case.
-
-### Decision
-
-The pipe is removed, fully: the operator from both grammars, the
-call-rebuilding machinery (`pipeTerms`/`pipeCall`, the `callterms`
-riders, Go's `piped` site suppression), `test/spec/pipe.tsv`, the
-`pipe_target` error code (a code removal is an ADR matter — ADR-011
-is the precedent for changing the code contract by ADR), and the
-documentation. Every spelling it covered has the ordinary form:
-`x |> f(a)` is written `f(x, a)`.
-
-### Consequences
-
-Sources using `|>` no longer parse — a breaking change, recorded in
-the CHANGELOG. With the one unsited-value spelling gone, patch's
-span-verification refusal arm is unreachable through `patch`; it is
-KEPT, because splicing without span verification corrupts the file,
-and the last step before a splice becomes its own seam
-(`verifiedSite`) in both ports, unit-tested with conjuncts the engine
-would never produce — the footing `spanHolds` already stood on, and
-no coverage exclusion needed. The G8 phase 4 register row is flipped
-to REMOVED; the design record stands.
+**The decision stands and shipped**: `|>` is gone from both grammars,
+and `x |> f(a)` is written `f(x, a)`. The full record, context and
+consequences included, is
+[#188](https://github.com/aontu-lang/aontu/issues/188).
 
 ---
 
@@ -2836,156 +2819,36 @@ alone — an accident that happened to be the safe answer.
 ## ADR-026 — `each` is retired: `form` carries the bound
 
 **Date:** 2026-09-08
-**Status:** Accepted
+**Status:** Relocated to [#189](https://github.com/aontu-lang/aontu/issues/189)
 
-### Context
+Not an entry for this register, by the test at the head of this file: it
+decides which of two builtins survives, and its own reasoning is an
+application of an existing rule rather than a new one —
+"[ADR-008](#adr-008--constraints-are-named-not-spelled-with-operators)'s,
+generalised past constraints: **one spelling per concept**".
 
-The language shipped two list generators. `each(data, tmpl?)` (G8
-phase 1) made one element per member of its data, each of them that
-member MET with the template. `form(data, tmpl)` (G9 §4, RENDER.0.md
-P6) made one element per member, each of them the template
-instantiated with `_` bound to the source member: it REPLACED where
-`each` met.
-
-They were argued as a pair, on the same line the language draws twice
-elsewhere — `min`/`max` (bounds) against `least`/`greatest`
-(aggregates), `filter` (select by unifiability) against `match`
-(choose a result). `each` was the bound, a monotone lattice citizen;
-`form` was the construction.
-
-The pair does not survive contact with `_`. `form`'s hole binds the
-source member, so putting that member back into the template recovers
-the meet exactly:
-
-    each(d)     ==  form(d, _)
-    each(d, t)  ==  form(d, _ & t)
-
-This was probed rather than argued: `each`'s whole surface — both
-arities, kind, map, preference and constraint templates, empty bags,
-generation over a generator, the spread-augmented snapshot, a hole as
-the data argument, the member rule (hidden child, unfilled optional,
-optional null), code-point key order including astral keys, staged
-canon, composition under `sum` and `join`, and every refusal — was run
-in both spellings, through both engines, in both modes. Every value
-agreed, and so did the DERIVED GRAPH: a `refer()` link inside a
-generated element is reported from the destination path under either
-spelling, the graph being path-native
-([ADR-014](#adr-014--the-tree-is-the-namespace-there-is-no-identity-mark)).
-Two things differed, and neither was semantic: an unfired call canons
-as ITSELF, so two different sources round-trip differently; and a
-non-bag argument raised `each_data` from one and `form_data` from the
-other.
-
-### Decision
-
-**`each` is removed. `form(d, _ & t)` is the bound, and `form(d, _)`
-is a bag's members as a list.**
-
-The rule this follows is
-[ADR-008](#adr-008--constraints-are-named-not-spelled-with-operators)'s,
-generalised past constraints: **one spelling per concept.** A second
-spelling for an operation the language already had is a second thing
-to learn, a second thing to document, a second thing to keep in parity
-across two ports, and a second place for the two ports to drift. The
-bound/construction distinction is real, but it is a distinction
-between two ARGUMENTS to one generator, not between two generators.
-
-`each_data` is RETIRED but stays REGISTERED. This registry is
-append-only and renames are forbidden (`test/spec/errcodes.tsv`): a
-code a released engine could raise keeps its class and its meaning
-whether or not anything raises it still. Nothing raises it now; a
-non-bag argument answers `form_data`.
-
-### Consequences
-
-- **This is a breaking change.** A document calling `each` is refused
-  with `unknown_function`, in both ports. It fails LOUDLY: the removal
-  was taken on its own rather than combined with any renaming of
-  `form`, because a rename that moved the name `each` onto `form`
-  would leave every existing `each(d, t)` parsing and silently
-  changing from a meet to a replacement — no diagnostic anywhere.
-  Removal errors; a swap would not.
-- The count of built-ins falls from forty-three to forty-two.
-- `test/spec/gen-each.tsv` is gone; its rows live in
-  `test/spec/gen-form.tsv` under "THE BOUND SPELLING", carried over
-  with their expectations UNCHANGED, which is what makes this a
-  spelling change rather than a behaviour change.
-- The one-argument `each(m)` was the map-to-list conversion the name
-  was coined for (IDEAS.md: "each - convert to list"). `form(m, _)`
-  is a longer spelling of it, and that cost is accepted: it is one
-  reading of `_`, against a whole second builtin.
-- The G8 phase 1 register entry records the removal rather than being
-  rewritten: the phase landed as designed, and this decision came
-  after.
-
+**The decision stands and shipped**, and it is half of one decision:
+[ADR-027](#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound)
+put the name `each` back on the survivor. Both records are
+[#189](https://github.com/aontu-lang/aontu/issues/189).
 
 ## ADR-027 — The list generator is named `each`, and `_ & t` is its bound
 
 **Date:** 2026-09-09
-**Status:** Accepted
+**Status:** Relocated to [#189](https://github.com/aontu-lang/aontu/issues/189)
 
-### Context
+Not an entry for this register, by the test at the head of this file: it
+names one function, its argument is a preference stated after the fact,
+and its central consequence was a release-ordering instruction, which
+expires. It is the second half of
+[ADR-026](#adr-026--each-is-retired-form-carries-the-bound)'s decision.
 
-[ADR-026](#adr-026--each-is-retired-form-carries-the-bound) retired the
-meet-only `each` because `form(d, _ & t)` spelled the same thing. That
-left one list generator, called `form` — a coinage, chosen because the
-function it most resembles is `map` and `map` is already a kind name in
-this language.
-
-`form` is a poor name for it. It reads as a noun, and this language's
-other constructors are verbs (`pack`, `filter`, `match`, `emit`,
-`split`, `join`). It collides in prose with the several senses of
-"form" the documentation already uses — canonical form, hash form, the
-agreed form, the pair form — and `aontu hash --form` is a flag.
-Meanwhile `each` is now free, is the name every reader arrives with for
-"one element per member", and is what `IDEAS.md` called the operation
-before either function existed ("each - convert to list").
-
-### Decision
-
-**The list generator is `each(d: map|list, template t: any) : list`.**
-`form` is gone.
-
-The two idioms are distinguished by the template, not by the function:
-
-    each(d, t)      the element IS t                   construction
-    each(d, _ & t)  the element is the child MET with t  bound
-    each(d, _)      the element is the child            members as a list
-
-`_` is what carries the distinction, and it was already the language's
-word for "the value here". Mentioning the hole keeps the child;
-leaving it out replaces the child. One generator, one spelling per
-concept, and the idiom is documented under "The `_ & …` idiom" in
-`docs/reference-language.md`.
-
-**`each_data` returns to service and `form_data` retires.** The code
-now names its function again, and — this is the point — its RELEASED
-meaning never changed: "the first argument to `each` has no children".
-`form_data`, which only ever existed while the function was called
-`form`, keeps its row, this registry being append-only.
-
-### Consequences
-
-- **This is a breaking change, and it is loud.** A document calling
-  `form` is refused with `unknown_function` in both ports.
-- **It must not ship in the same release as ADR-026.** Between the two
-  decisions, `each` means the meet and `form` means the replacement. A
-  release carrying both would leave a document written against the
-  previous release parsing unchanged while `each(d, t)` silently
-  stopped meeting and started replacing. `each($.m)` and a kind
-  template fail loudly (arity, no-gen), but a RECORD template does
-  not: `each($.ports, {protocol: *TCP|string})` would quietly drop
-  every port's own fields. The commits are separate so that ADR-026
-  can be released first, with `each` simply absent, and this rename
-  released after. **Releasing them together is the one way to make
-  this change silent, and it must not be done.**
-- `test/spec/gen-form.tsv` is back to `gen-each.tsv`, its rows carrying
-  the same expectations under the new name.
-- The G9 §4 / RENDER P6 design documents still say `form`. They are
-  design records of what was decided then, and the progress register
-  carries the rename, per the AGENTS.md rule that the register is
-  status and the design documents are not.
-
+**The decision stands and shipped.** The list generator is
+`each(d, t)`; `each(d, _ & t)` is the bound, `each(d, _)` the members as
+a list, and `form` is gone. The sequencing instruction it carried was
+overtaken — both halves ship in one release, with the upgrade warning
+the CHANGELOG carries in its place. Both records are
+[#189](https://github.com/aontu-lang/aontu/issues/189).
 
 ## ADR-028 — Every language-supplied schema is named under `aontu:`
 
@@ -3208,49 +3071,18 @@ port is already in at that point.
 ## ADR-031 — A path part that names a type is CamelCase
 
 **Date:** 2026-09-09
-**Status:** Accepted
+**Status:** Relocated to [#190](https://github.com/aontu-lang/aontu/issues/190)
 
-### Context
+Not an entry for this register, and the entry says so itself: "**It
+binds the bundled models and nothing else.** This is a convention, not a
+rule the engine enforces … for a matter of taste." A convention that
+binds four keys and is enforced by nothing belongs with the models it
+describes, not among the decisions everything is built on.
 
-The bundled vocabularies land under `$.aontu` ([ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root)),
-and their members were already CamelCase — `Port`, `Component`,
-`Service`, `Semver`, `Figure`. The namespace segment above them was not:
-`$.aontu.system.Port`, `$.aontu.view.Figure`. Nothing said which case a
-reader should expect where, so the two conventions sat one segment apart
-in the same path.
-
-### Decision
-
-**A path part that names a type is CamelCase.** The bundled models
-follow it, so every landing key is capitalised:
-
-    @"aontu:system"   ->  $.aontu.System.Port, .Component, .Service, .Semver
-    @"aontu:view"     ->  $.aontu.View.Figure
-    @"aontu:code"     ->  $.aontu.Code.units
-    @"aontu:profile"  ->  $.aontu.Profile
-
-**The SCHEME name is unchanged and stays lowercase.** `@"aontu:system"`
-is a source name, not a path, and the two are different things: the
-scheme names a model to load, the key names where its content lands.
-
-**It binds the bundled models and nothing else.** This is a convention,
-not a rule the engine enforces: a user's own schemas are neither checked
-nor warned about, and `aontu vet` gains no finding for a lowercase
-`type()`. Making it enforceable would need an error code and spec rows
-in both ports, for a matter of taste.
-
-### Consequences
-
-- **Breaking, and loud**: `$.aontu.system.Port` no longer resolves, and
-  a renderer handed `aontu: code: units:` finds no units. Both fail at
-  the reference rather than quietly.
-- `Code` and `Profile` are capitalised for uniformity across the
-  namespace even though what lands under them is data — an instance of
-  the code vocabulary, a profile's fields — rather than a type. The
-  alternative, capitalising only `System` and `View`, would have made
-  the case of a bundled key depend on what its members happen to be,
-  which is a worse thing for a reader to have to know.
-- The renderer's input contract moves with it in both ports.
+**The convention stands and shipped**: `$.aontu.System.Port`, and
+`.View`/`.Code`/`.Profile` with it, while the scheme name stays
+lowercase. The full record is
+[#190](https://github.com/aontu-lang/aontu/issues/190).
 
 
 ## ADR-032 — A grammar is a string, and parsing is a function

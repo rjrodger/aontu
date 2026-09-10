@@ -200,8 +200,13 @@ function relationCheck(src, opts) {
         };
     }
     const decls = ctx._reldecls;
+    // The count rides every report from here down: the engine knows it
+    // at exactly this point, and a caller asking "was there anything to
+    // check?" should not have to evaluate the document a second time to
+    // find out.
+    const counted = true === options.count ? { declared: decls.size } : {};
     if (0 === decls.size) {
-        return { verdict: 'pass', findings: [] };
+        return { verdict: 'pass', findings: [], ...counted };
     }
     // NOR IS A DOCUMENT THAT CANNOT BE GENERATED. Unification can
     // succeed over a tree that still holds an unsettled disjunction --
@@ -226,6 +231,7 @@ function relationCheck(src, opts) {
     return {
         verdict: 0 === findings.length ? 'pass' : 'fail',
         findings,
+        ...counted,
     };
 }
 //# sourceMappingURL=relation.js.map

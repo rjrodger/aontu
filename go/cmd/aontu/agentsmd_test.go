@@ -8,7 +8,7 @@ package main
 
 import (
 	"bytes"
-
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -104,5 +104,76 @@ func TestAgentsMdUsageErrorsExit2(t *testing.T) {
 	out, _, code := mdRun("--help")
 	if 0 != code || !strings.Contains(out, "aontu agentsmd") {
 		t.Fatalf("want help, got %d", code)
+	}
+}
+
+// --- G11 phase 7: the shape's depth ---
+
+// TWO LEVELS TELL AN AGENT WHAT THE DOCUMENT IS ABOUT AND NOTHING IT
+// CAN ACT ON: `{"entity":{&:top}}` names the root key and says `top`
+// under it. The default is unchanged, because the stanza is spliced
+// into a file people read; a caller that wants the fields asks.
+func TestAgentsMdDepth(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "model.aon")
+	src := "entity: { &: { table: string, fields: { &: { type: string } } } }\n"
+	if err := os.WriteFile(file, []byte(src), 0o644); nil != err {
+		t.Fatal(err)
+	}
+
+	shapeOf := func(args ...string) string {
+		t.Helper()
+		var out, errw bytes.Buffer
+		if code := runAgentsMd(append(args, file), &out, &errw); 0 != code {
+			t.Fatalf("agentsmd %v: %d %q", args, code, errw.String())
+		}
+		for _, line := range strings.Split(out.String(), "\n") {
+			if strings.HasPrefix(line, "- Shape: ") {
+				return line
+			}
+		}
+		t.Fatalf("no shape line: %q", out.String())
+		return ""
+	}
+
+	deep := shapeOf("--depth", "4")
+	if deep == shapeOf() {
+		t.Error("--depth changed nothing")
+	}
+	if !strings.Contains(deep, "table") {
+		t.Errorf("--depth 4 shows no field: %s", deep)
+	}
+	if shapeOf("--depth", "2") != shapeOf() {
+		t.Error("--depth 2 is not the default")
+	}
+
+	var out, errw bytes.Buffer
+	if code := runAgentsMd([]string{"--depth", "0", file}, &out, &errw); 2 != code ||
+		!strings.Contains(errw.String(), "--depth needs a positive integer") {
+		t.Errorf("--depth 0: %d %q", code, errw.String())
+	}
+	errw.Reset()
+	if code := runAgentsMd([]string{"--depth"}, &out, &errw); 2 != code ||
+		!strings.Contains(errw.String(), "--depth needs a positive integer") {
+		t.Errorf("--depth with no value: %d %q", code, errw.String())
+	}
+}
+
+// THE LANGUAGE DOOR (G11 phase 7). A stanza is the first thing an
+// agent reads about a document, and it now says where to learn the
+// language the document is written in -- offline, from the binary it
+// already has.
+func TestAgentsMdNamesTheLanguageDoor(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "m.aon")
+	if err := os.WriteFile(file, []byte("a: 1\n"), 0o644); nil != err {
+		t.Fatal(err)
+	}
+	var out, errw bytes.Buffer
+	if code := runAgentsMd([]string{file}, &out, &errw); 0 != code {
+		t.Fatalf("agentsmd: %d %q", code, errw.String())
+	}
+	if !strings.Contains(out.String(), "aontu help language") {
+		t.Errorf("the stanza does not point at the language: %q", out.String())
 	}
 }

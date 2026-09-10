@@ -6,6 +6,21 @@ test/spec/files/** text eol=lf
 # SIGNATURES.0.md): byte-compared with it by go/sig_test.go, so it
 # keeps the same line endings on every platform.
 go/sigdecl.txt text eol=lf
+# The embedded teaching pack (G11 phase 1): copies of docs/skill/*.md
+# and grammar/aontu.abnf staged into the Go command's own package,
+# because //go:embed cannot read above its own directory. Both suites
+# byte-compare them with their sources, so they keep the same line
+# endings on every platform. The globs above already cover .md, .tsv
+# and .abnf; this is here so the directory is not mistaken for
+# hand-written content. Regenerate with `make helpdoc`, never by hand.
+go/cmd/aontu/helpdoc/** text eol=lf
+# The starting documents `aontu init` writes (G11 phase 6). Real files,
+# run by the suites where they live, and staged into both ports by the
+# same generator -- so they are byte-compared like the pack above. The
+# globs below do not reach them: two are `.aon` and one is a shell
+# script, and a scaffold that arrived with CRLF would be written back
+# out that way by a command whose two ports must write the same bytes.
+docs/skill/init/** text eol=lf
 
 # The same rule, for the same reason, over every other file the suite
 # READS AS DATA rather than compiles: the documentation is executed

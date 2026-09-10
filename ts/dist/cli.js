@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.vetWaiter = void 0;
+exports.vetWaiter = exports.KNOWN_VERBS = void 0;
 exports.replCommand = replCommand;
 exports.evalSource = evalSource;
 exports.main = main;
@@ -18,9 +18,15 @@ exports.runTemplate = runTemplate;
 exports.runMod = runMod;
 exports.runHash = runHash;
 exports.runGet = runGet;
+exports.runHelp = runHelp;
+exports.runExplain = runExplain;
+exports.runInit = runInit;
+exports.nearestVerb = nearestVerb;
+exports.looksLikeVerb = looksLikeVerb;
 exports.runWhy = runWhy;
 exports.renderWhyText = renderWhyText;
 exports.runSet = runSet;
+exports.runAllow = runAllow;
 exports.runAgentsMd = runAgentsMd;
 exports.runFmt = runFmt;
 exports.watchChange = watchChange;
@@ -55,6 +61,9 @@ const view_1 = require("./view");
 const agentsmd_1 = require("./agentsmd");
 const format_1 = require("./format");
 const utility_1 = require("./utility");
+const helpdoc_1 = require("./helpdoc");
+const hints_1 = require("./hints");
+const keyorder_1 = require("./keyorder");
 const HELP = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
        aontu subsume [options] <general> <specific>
@@ -74,14 +83,46 @@ const HELP = `Usage: aontu [options] [file]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
-       aontu agentsmd [--write <AGENTS.md>] <file>
+       aontu allow --role <role> [--at <path>] <roles-file> <path>...
+       aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu help [topic] [--format text|json]
+       aontu explain <code> | --list [--format text|json]
+       aontu init [dir]
        aontu lsp
        aontu mcp [--root <dir>]
 
 Evaluate an aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
 With no file and piped input, read the source from stdin.
+
+NEW TO THE LANGUAGE? This page documents the TOOL. The documentation
+of the LANGUAGE travels inside this binary, and this is how to reach it:
+
+  aontu help              List the topics this binary carries
+  aontu help tasks        Which verb does the job you have
+  aontu help language     The whole grammar, on one page
+  aontu help examples     The ladder, from plain JSON upward
+  aontu help codes        What a refusal means
+  aontu help grammar      The published ABNF
+  aontu explain <code>    What one error code a report carries means
+  aontu explain --list    Every registered code with its class
+
+Every one of those answers with no network and no checkout. The
+long-form documentation -- the tutorial, the language and API
+references, the how-to guides -- is in docs/ of the repository, which
+is where to go when the topics above are not enough; the contributor
+and agent guide is AGENTS.md beside it.
+
+NOTHING TO EDIT YET? aontu init [dir] writes a working model, an
+instance of it, and the four checks to run -- so the first
+document is an edit of something that already holds, rather than an
+invention. It refuses to overwrite.
+
+The one construct to know before writing anything: &: inside a map is
+a TEMPLATE that every key of that map must satisfy. A quoted "*" is a
+key named *, not a wildcard, and a schema written that way constrains
+nothing while still reporting valid.
 
 The vet verb validates data documents against a schema document and
 reports what does not hold, as text or as a machine-readable object.
@@ -92,7 +133,11 @@ query between a document and its own earlier versions.
 
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
-  -h, --help      Show this help and exit
+  --format <f>    text (default) or json. The json form wraps the
+                  answer as {aontu, findings, ok, out}, so a failure
+                  here reads like every other verb's
+  -h, --help      Show this help and exit (the verbs and their flags);
+                  aontu help is the LANGUAGE, and lists its own topics
   --jsonl         REPL: answer every command as one JSON line
   -v, --version   Print the version and exit
   --trust <t>     Include capability: system (default), none, or
@@ -123,12 +168,28 @@ Vet options:
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
+  --coverage        Report what the check EXAMINED: how many data
+                    leaves a schema declaration constrained, the
+                    shallowest data paths none did, and the
+                    declarations no data met
+  --strict-coverage --coverage, and exit 1 when the run was VACUOUS --
+                    when no data leaf was constrained at all. The
+                    verdict word is unchanged, so nothing that passes
+                    today starts failing without this flag
+  --coverage-at <p> Measure coverage under this path of the data only
   --format <f>      text (default), json or sarif
   --watch           Re-run whenever a watched file changes
 
+A check that examined NOTHING and a check that passed answer the same
+without --coverage. The usual cause is a schema written with the
+wildcard other tools use: a quoted "*" is a key NAMED *, not a
+template, so it constrains nothing and the run still reports valid.
+The template is &: -- see aontu help language.
+
 Vet exit codes:
   0  valid       data unifies, and is concrete (or --partial)
-  1  invalid     at least one contradiction
+  1  invalid     at least one contradiction, or a vacuous run under
+                 --strict-coverage
   2  usage       bad option, or a file that cannot be read
   3  incomplete  no contradiction, but the truth is not yet satisfied
   4  error       the schema is unusable on its own
@@ -326,13 +387,60 @@ change contradicts a pinned value -- aontu why locates it, and
 --in-place rewrites it), 2 usage, 3 incomplete, 4 the entry does not
 stand up on its own.
 
+Allow options:
+  --role <role>     The role the caller is operating under (required)
+  --at <path>       Where the roles map lives in the role model
+                    (default $.roles)
+  --format <f>      text (default) or json
+
+The allow verb asks a role model whether a role may modify every one
+of the given subtrees, and answers before the change is made. The
+role model is an aontu document: one entry per role, each carrying
+allow (the subtrees it may modify) and optionally deny (the ones it
+may not), as path strings starting at $; * in a path matches any one
+key. A path is allowed when an allow entry is at or above it, and
+refused when a deny entry is at, above or below it, whatever the
+order. Every path starts with $, and may be spelled as set's
+assignment, <path>=<value>, whose value must be one value: a value
+carrying a second pair would write a subtree the gate was not asked
+about.
+
+Allow exit codes: 0 allowed (every path), 1 refused (at least one
+path, or a role the model does not declare), 2 usage, 4 the role
+model does not stand up on its own.
+
 Agentsmd options:
   --write <file>  Splice the stanza into this file between the
                   aontu:begin and aontu:end markers, appending them
                   when they are absent; the rest is left alone
+  --depth <n>     How deep the shape line projects (default 2). Two
+                  levels name the root keys and say top under them; a
+                  caller that wants the fields asks for them
 
 Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
 stand up on its own.
+
+Help options:
+  --format <f>    text (default) or json, the topic and its text
+
+The help verb prints the embedded teaching pack: the language, not the
+tool. With no topic it lists them. Topics are tasks, language,
+examples, codes and grammar; the corpus is generated from docs/skill/
+and grammar/aontu.abnf, so it cannot drift from those sources.
+
+Help exit codes: 0 printed, 2 an unknown topic (the topics are listed)
+or a bad option.
+
+Explain options:
+  --list          Every registered error code with its class
+  --format <f>    text (default) or json
+
+The explain verb answers what one error code means, from the same
+table the engine attaches to a finding. Every registered code has an
+entry, so a code read out of a report always resolves.
+
+Explain exit codes: 0 explained, 2 an unknown code (near matches are
+named) or a bad option.
 
 Fmt options:
   -w, --write     Rewrite each file in place, when its form would change
@@ -387,8 +495,46 @@ function version() {
         return '0.0.0';
     }
 }
+// The terminal colour escapes the parser puts in its message text. A
+// machine-readable report is no place for them, which is the rule
+// findingOf states in ts/src/vet.ts; the twin here rather than an
+// import because go/cmd/aontu carries its own for the same reason (the
+// engine's is not exported to its command).
+const EVAL_ANSI = new RegExp('\u001b\\[[0-9;]*m', 'g');
+// THE ENGINE'S DIAGNOSIS AS A FINDING (G11 phase 7). The bare command
+// was the one verb whose failure had no machine-readable form, so the
+// default entry point was the one an agent had to parse with a regular
+// expression.
+//
+// THE HEADLINE ONLY, and no `hint`. Both are parity decisions rather
+// than economies: the frames under the headline are drawn for a person
+// reading a terminal and only the first line is held to byte parity
+// between the ports (the rule findingOf states), and the hint TABLES
+// are deliberately not in parity while the code registry is -- so a
+// hint here would make the two ports answer differently for a code
+// only one of them explains. `aontu explain <code>` is where the hint
+// lives, which is what phase 3 built it for.
+//
+// The CLASS comes from the registry rather than from the nil, because
+// the registry is what both ports hold set-equal
+// (test/spec/errcodes.tsv). Mirrors evalFinding in
+// go/cmd/aontu/main.go.
+function evalFinding(code, text) {
+    return {
+        class: (0, hints_1.codeClass)(code),
+        code,
+        message: text.split('\n')[0].replace(EVAL_ANSI, ''),
+        path: '$',
+        severity: 'error',
+        // NO SITE. The bare command's failure is the whole document not
+        // standing up, and the two sites a conflict names are in the
+        // frames the text form prints; naming one of them here would be a
+        // choice the engine has not made.
+        sites: [],
+    };
+}
 // Evaluate source, returning either the rendered output or the error
-// message. Never throws.
+// message, and the failure in the finding shape. Never throws.
 function evalSource(aontu, src, mode) {
     try {
         // exactJSON, not JSON.stringify: a document using the `0d` exact
@@ -400,14 +546,47 @@ function evalSource(aontu, src, mode) {
         const text = 'canon' === mode
             ? aontu.unify(src).canon
             : (0, aontu_1.exactJSON)(aontu.generate(src), 2);
-        return { ok: true, text };
+        return { ok: true, text, findings: [] };
     }
     catch (err) {
         const msg = (err instanceof aontu_1.AontuError || true === err?.aontu)
             ? err.message
             : String(err?.message ?? err);
-        return { ok: false, text: msg };
+        // WHAT THE ENGINE COLLECTED, when it collected anything: an
+        // AontuError carries the NilVals the run failed on, already
+        // materialised (handleErrors in ts/src/aontu.ts), and their first
+        // is the diagnosis every other verb reports. An error raised
+        // outside the engine's own collection -- exactJSON's circular
+        // refusal, a foreign object claiming to be one -- carries none,
+        // and answers with the text alone rather than an invented code.
+        const errs = 'function' === typeof err?.errs ? err.errs() : [];
+        const first = errs[0];
+        return {
+            ok: false,
+            text: msg,
+            findings: null == first ? [] : [evalFinding(first.why, msg)],
+        };
     }
+}
+// The bare command's answer, in the form the caller asked for. The
+// text form is what it has always printed, on the stream the verdict
+// chooses; `--format json` is the same answer as one object, on
+// stdout, so a harness reads one stream and one shape either way.
+// Mirrors emit in go/cmd/aontu/main.go.
+function emitEval(res, format) {
+    if ('json' === format) {
+        process.stdout.write((0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'eval' },
+            findings: res.findings,
+            ok: res.ok,
+            out: res.ok ? res.text : '',
+        }, 2) + '\n');
+    }
+    else {
+        ;
+        (res.ok ? process.stdout : process.stderr).write(res.text + '\n');
+    }
+    return res.ok ? 0 : 1;
 }
 // The one-line warning of the staged default flip. Once per (kind,
 // path): a fixpoint re-resolves nothing (includes load at parse), but
@@ -542,12 +721,32 @@ function verbOpts(trust, entryRoot) {
 function entryRootOf(file) {
     return null == file ? process.cwd() : (0, node_path_1.dirname)((0, node_path_1.resolve)(file));
 }
-function runFile(file, mode, trust) {
+function runFile(file, mode, format, trust) {
     let src;
     try {
         src = (0, node_fs_1.readFileSync)(file, 'utf8');
     }
     catch (err) {
+        // A MISTYPED VERB READS AS A FILE NAME, and until G11 phase 2 that
+        // was only said when there were TWO of them. The one-argument case
+        // is the one an agent actually produces -- `aontu help`, `aontu
+        // init`, `aontu ontology` -- and it answered `cannot read help:
+        // ...`, which describes the symptom and hides the cause.
+        //
+        // The test is SHAPE, not existence: a bare word (no separator, no
+        // extension) that cannot be read was meant as a verb, while
+        // `./help`, `help.aon` and `/tmp/help` were meant as paths and keep
+        // the file diagnosis and its exit 1. That is the same escape hatch
+        // the subcommand dispatch documents. Mirrors go/cmd/aontu/main.go.
+        if (looksLikeVerb(file)) {
+            process.stderr.write(`aontu: \`${file}\` is not a file, and not a verb this port knows\n`);
+            const near = nearestVerb(file, KNOWN_VERBS);
+            if ('' !== near) {
+                process.stderr.write(`aontu: did you mean \`aontu ${near}\`?\n`);
+            }
+            process.stderr.write('aontu: `aontu --help` lists the verbs, `aontu help` the topics\n');
+            return 2;
+        }
         process.stderr.write(`aontu: cannot read ${file}: ${err.message}\n`);
         return 1;
     }
@@ -563,19 +762,16 @@ function runFile(file, mode, trust) {
         errfs: { existsSync: node_fs_1.existsSync, readFileSync: node_fs_1.readFileSync },
         ...trustOpts(trust, (0, node_path_1.dirname)(path)),
     });
-    const res = evalSource(aontu, src, mode);
-    (res.ok ? process.stdout : process.stderr).write(res.text + '\n');
-    return res.ok ? 0 : 1;
+    return emitEval(evalSource(aontu, src, mode), format);
 }
-function runStdin(mode, trust) {
+function runStdin(mode, format, trust) {
     return new Promise((resolve) => {
         let src = '';
         process.stdin.setEncoding('utf8');
         process.stdin.on('data', (d) => (src += d));
         process.stdin.on('end', () => {
             const res = evalSource(new aontu_1.Aontu(trustOpts(trust, process.cwd())), src, mode);
-            (res.ok ? process.stdout : process.stderr).write(res.text + '\n');
-            resolve(res.ok ? 0 : 1);
+            resolve(emitEval(res, format));
         });
     });
 }
@@ -739,6 +935,9 @@ function parseVetArgs(argv) {
     let partial = false;
     let maxErrors;
     let watch = false;
+    let coverage = false;
+    let strictCoverage = false;
+    let coverageAt;
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         // `-h`/`--help` before anything else, INCLUDING the file count:
@@ -782,6 +981,24 @@ function parseVetArgs(argv) {
         else if ('--partial' === arg) {
             partial = true;
         }
+        else if ('--coverage' === arg) {
+            coverage = true;
+        }
+        else if ('--strict-coverage' === arg) {
+            // IMPLIES THE ACCOUNTING, because a gate cannot fire on what was
+            // never measured. Asking for the strict form and having to
+            // remember `--coverage` beside it is a usage trap with one
+            // correct answer, so the flag takes it.
+            coverage = true;
+            strictCoverage = true;
+        }
+        else if ('--coverage-at' === arg) {
+            coverageAt = argv[++i];
+            if (null == coverageAt) {
+                return { err: 'aontu: --coverage-at needs a path' };
+            }
+            coverage = true;
+        }
         else if ('--watch' === arg) {
             watch = true;
         }
@@ -805,6 +1022,9 @@ function parseVetArgs(argv) {
             partial,
             maxErrors,
             watch,
+            coverage,
+            strictCoverage,
+            coverageAt,
         },
     };
 }
@@ -837,11 +1057,46 @@ function renderFinding(f) {
 function renderVetText(report) {
     const head = `verdict: ${report.verdict}` +
         (report.truncated ? ' (findings truncated)' : '');
-    if (0 === report.findings.length) {
-        return head;
-    }
-    return [head, ''].concat(report.findings.map(renderFinding)).join('\n');
+    const body = 0 === report.findings.length ? []
+        : ['', ...report.findings.map(renderFinding)];
+    const cover = null == report.coverage ? []
+        : ['', ...renderVetCoverage(report.coverage)];
+    return [head, ...body, ...cover].join('\n');
 }
+// The coverage block (G11 phase 5). VACUOUS FIRST and in the
+// imperative, because it is the one line that changes what the reader
+// should do: a `valid` verdict above it means nothing.
+function renderVetCoverage(c) {
+    const out = [];
+    if (c.vacuous) {
+        out.push('coverage: VACUOUS — no data leaf was constrained' +
+            ' by the schema; this run checked nothing');
+    }
+    out.push(`coverage: ${c.checked}/${c.leaves} data leaves checked,` +
+        ` ${c.declared} schema declarations`);
+    // The lists are the SHALLOWEST paths, so each names a subtree rather
+    // than every leaf under it, and both are capped: a report a reader
+    // scrolls past is a report nobody reads.
+    for (const [label, paths] of [
+        ['unchecked', c.unchecked], ['unused', c.unused],
+    ]) {
+        if (0 === paths.length) {
+            continue;
+        }
+        const shown = paths.slice(0, COVERAGE_LIST_MAX);
+        for (const p of shown) {
+            out.push(`  ${label}: ${p}`);
+        }
+        if (shown.length < paths.length) {
+            out.push(`  ${label}: … and ${paths.length - shown.length} more`);
+        }
+    }
+    return out;
+}
+// How many coverage paths the TEXT form prints per list. The JSON form
+// carries every one: a machine reads the whole list, a person reads the
+// first few and the count.
+const COVERAGE_LIST_MAX = 10;
 // The machine-readable form. `aontu` names the producer, so a report
 // read from a file or a pipe says which version and which verb made it
 // without the consumer having to know.
@@ -851,6 +1106,7 @@ function renderVetJson(report) {
         verdict: report.verdict,
         truncated: report.truncated,
         findings: report.findings,
+        ...(null == report.coverage ? {} : { coverage: report.coverage }),
     }, 2);
 }
 // The machine-interchange form (G2 phase 5): SARIF 2.1.0, rendered by
@@ -891,6 +1147,20 @@ function vetOnce(args, trust) {
     let verdict = 'valid';
     let truncated = false;
     const findings = [];
+    // COVERAGE ACROSS SEVERAL DATA FILES (G11 phase 5). Two data files
+    // are two candidates for one truth, so the schema side is the SAME
+    // for each: `declared` is taken once, and a declaration is unused
+    // only when NO file met it -- the intersection, because a
+    // declaration one file exercised is exercised. The data side adds
+    // up: leaves and checked leaves sum, and `unchecked` is the union.
+    let cov;
+    // Initialised rather than left undefined: it is filled in the same
+    // block that sets `cov`, so a fallback at the read below would be an
+    // arm nothing can take. The FIRST file replaces it wholesale, which
+    // is what makes the fold an intersection rather than an empty set.
+    let unusedEvery = new Set();
+    let unusedSeen = false;
+    const uncheckedAll = new Set();
     for (const source of sources) {
         const report = (0, aontu_1.vet)(schemaSrc, source.src, {
             ...verbOpts(trust, entryRootOf(args.schema)),
@@ -908,12 +1178,32 @@ function vetOnce(args, trust) {
             // absolute one would name the same file two ways.
             schemaPath: args.schema,
             dataPath: source.file,
+            coverage: args.coverage,
+            coverageAt: args.coverageAt,
         });
         if (VET_RANK[verdict] < VET_RANK[report.verdict]) {
             verdict = report.verdict;
         }
         truncated = truncated || report.truncated;
         findings.push(...report.findings);
+        if (null != report.coverage) {
+            const c = report.coverage;
+            cov = null == cov ? { ...c } : {
+                checked: cov.checked + c.checked,
+                declared: c.declared,
+                leaves: cov.leaves + c.leaves,
+                unchecked: [],
+                unused: [],
+                vacuous: false,
+            };
+            for (const p of c.unchecked) {
+                uncheckedAll.add(p);
+            }
+            const mine = new Set(c.unused);
+            unusedEvery = unusedSeen
+                ? new Set([...unusedEvery].filter((u) => mine.has(u))) : mine;
+            unusedSeen = true;
+        }
         // A SCHEMA-SIDE FAULT IS THE SAME FAULT FOR EVERY DATA FILE, so it
         // is reported ONCE. `error` means exactly that -- the run could not
         // be set up from the truth's side, never the data's (the exit table
@@ -936,15 +1226,34 @@ function vetOnce(args, trust) {
     // gets here; this is the second, honest cut.
     const cap = args.maxErrors ?? vet_1.VET_MAX_ERRORS;
     const kept = cap < findings.length ? findings.slice(0, cap) : findings;
+    if (null != cov) {
+        cov.unchecked = [...uncheckedAll].sort(keyorder_1.cmpCodePoint);
+        cov.unused = [...unusedEvery].sort(keyorder_1.cmpCodePoint);
+        cov.vacuous = 0 === cov.checked && 0 < cov.leaves;
+    }
     const report = {
         verdict,
         truncated: truncated || cap < findings.length,
         findings: kept,
+        ...(null == cov ? {} : { coverage: cov }),
     };
     const text = 'json' === args.format ? renderVetJson(report) :
         'sarif' === args.format ? renderVetSarif(report) :
             renderVetText(report);
     process.stdout.write(text + '\n');
+    // A VACUOUS CHECK IS A FAILED GATE UNDER `--strict-coverage`, and
+    // only under it: the verdict WORD is unchanged, so nothing that
+    // passes today starts failing, and a caller who wants the stronger
+    // gate asks for it. The reason goes to stderr, because stdout is a
+    // report contract -- a JSON consumer reads `coverage.vacuous` and a
+    // person reads this.
+    if (true === args.strictCoverage && true === report.coverage?.vacuous) {
+        process.stderr.write('aontu: no data leaf was constrained by the schema:' +
+            ' this run checked nothing\n' +
+            'aontu: `aontu help language` — a map template is `&:`,' +
+            ' and a quoted "*" is a key named *\n');
+        return 1;
+    }
     return VET_EXIT[verdict];
 }
 // How often `--watch` polls for a change. Polling by mtime+size rather
@@ -1877,6 +2186,29 @@ function modText(sub, report) {
     }
     return lines.join('\n');
 }
+// VACUITY SIGNALS (G11 phase 4,
+// docs/capability-review/g11-agent-onramp.md).
+//
+// The same principle phase 5 applied to `vet`: a verb that did NOTHING
+// and a verb that did its job answer the same. `aontu view tree` over a
+// document declaring no relations printed one newline and exited 0;
+// `aontu render` with no profile printed nothing and exited 0; `aontu
+// relations` over a document declaring none answered `verdict: pass`.
+// For a person at a terminal that is a shrug. For an unattended agent
+// it is a green check mark on an empty box.
+//
+// ON STDERR, ALWAYS. stdout is a report contract -- a `--format json`
+// consumer parses it -- and the exit code is a verdict class that
+// callers already branch on. Neither changes here: what changes is
+// that the caller is TOLD. A caller who wants it to be fatal has
+// `vet --strict-coverage`, and the same argument would give the other
+// verbs a flag of their own if one is ever asked for.
+//
+// The repository already ruled this for one verb, in G8 phase 6 on
+// `trim`: "doing something else silently is worse than refusing".
+function vacuous(what, why) {
+    process.stderr.write(`aontu: ${what}: ${why}\n`);
+}
 function runRelations(argv) {
     const trusted = takeTrust(argv);
     if (null == trusted) {
@@ -1921,12 +2253,20 @@ function runRelations(argv) {
         return 2;
     }
     const report = (0, aontu_1.relationCheck)(src, {
-        path: files[0], ...verbOpts(trust, entryRootOf(files[0])),
+        path: files[0], count: true,
+        ...verbOpts(trust, entryRootOf(files[0])),
     });
     const text = 'json' === format
         ? renderRelationsJson(report)
         : renderRelationsText(report);
     process.stdout.write(text + '\n');
+    // `pass` over NO declarations is the vacuous case, and the engine
+    // knows it exactly: `_reldecls` is empty. The count is asked for
+    // here rather than derived, so the answer costs no second
+    // evaluation.
+    if (0 === report.declared) {
+        vacuous('this document declares no relations', '`pass` means nothing was checked, not that the graph is sound');
+    }
     return RELATIONS_EXIT[report.verdict];
 }
 function runReaches(argv) {
@@ -2203,7 +2543,7 @@ function runView(argv) {
             return 2;
         }
     }
-    const report = (0, view_1.view)(srcs[0], {
+    const viewOpts = {
         ...opts,
         style: viewStyleOf(style, opts.as ?? (0, view_1.viewDefaultProfile)(kind)),
         kind,
@@ -2211,7 +2551,26 @@ function runView(argv) {
         roots,
         ...verbOpts(trust, entryRootOf(files[0])),
         docs: files.slice(1).map((path, i) => ({ src: srcs[i + 1], path })),
-    });
+    };
+    const report = (0, view_1.view)(srcs[0], viewOpts);
+    // AN EMPTY FIGURE IS THE SAME BYTES AS A DRAWN ONE MINUS ITS
+    // CONTENT, and every profile spells "empty" differently: text draws
+    // nothing at all, mermaid still draws its `flowchart LR` header, the
+    // matrix still prints its count line. Rather than teach this one
+    // place each of those spellings -- a list that goes stale the first
+    // time a profile gains a header -- ASK THE SAME KIND TO DRAW AN
+    // EMPTY DOCUMENT and compare. Equal texts mean this document
+    // contributed nothing to the figure, whatever the profile.
+    //
+    // It costs one drawing of `{}`, which is the cheapest document
+    // there is, and only on a run that produced a figure at all.
+    if ('error' !== report.verdict && null != report.text) {
+        const bare = (0, view_1.view)('{}', viewOpts);
+        if ('error' !== bare.verdict && bare.text === report.text) {
+            vacuous('nothing to draw', 'this figure is what the same view draws for an empty document' +
+                ' — the model declares nothing this kind can show');
+        }
+    }
     if ('json' === format) {
         process.stdout.write(renderViewJson(report) + '\n');
     }
@@ -2677,6 +3036,11 @@ function runRender(argv) {
         langs.set(profile.lang, pf);
         profiles.push(profile);
     }
+    // A RENDER WITH NO PROFILE PRODUCES NO UNITS, and said so with zero
+    // bytes and exit 0. The profile is what maps a model onto a
+    // language, so without one there is nothing for the renderer to
+    // write -- which is a usable answer only if the caller is told.
+    const noProfiles = 0 === profiles.length;
     const report = (0, aontu_1.render)(src, {
         at, unit, strict, profiles, path: files[0],
         coverage, coverageAt,
@@ -2686,6 +3050,13 @@ function runRender(argv) {
         trace: 'json' === format,
         ...verbOpts(trust, entryRootOf(files[0])),
     });
+    // Said once, whatever the format: stdout stays the report.
+    if ('error' !== report.verdict && 0 === report.units.length) {
+        vacuous('nothing was rendered', noProfiles
+            ? 'no profile was given, and the document declares none' +
+                ' (see aontu help tasks)'
+            : 'the document produced no units under this profile');
+    }
     if ('json' === format) {
         process.stdout.write((0, aontu_1.exactJSON)({
             aontu: { version: version(), verb: 'render' },
@@ -3328,6 +3699,164 @@ function runSet(argv) {
     return VET_EXIT[report.verdict];
 }
 // ---------------------------------------------------------------------
+// The role gate (docs/design/ALLOW.0.md): may the role the caller is
+// operating under modify these subtrees? Asked before `set`, by an
+// agent whose skill names its role, and answered from a role model
+// that is itself an aontu document. The verdict is the exit code, as
+// it is for every gate here: 0 is yes, 1 is no, 4 is "the model that
+// was to decide does not stand up", and an agent branches on nothing
+// else.
+const ALLOW_HELP = 'aontu allow --role <role> <roles-file> <path> [more-paths...] (try --help)';
+const ALLOW_EXIT = {
+    allowed: 0,
+    refused: 1,
+    error: 4,
+};
+// One line per asked path: the answer, and the entry that gave it, as
+// a path into the role model so `aontu why` can locate the rule.
+function renderAllowDecision(d, role) {
+    const head = `${d.path}: ${d.allowed ? 'allowed' : 'refused'}`;
+    switch (d.reason) {
+        case 'allow':
+        case 'deny':
+            return `${head} by ${d.by} (${d.pattern})`;
+        case 'uncovered':
+            return `${head} (no allow entry of ${role} covers it)`;
+        default:
+            return `${head} (role ${role} is not declared)`;
+    }
+}
+function renderAllowText(report) {
+    const lines = [`verdict: ${report.verdict}`, `role: ${report.role}`]
+        .concat(report.paths.map((d) => renderAllowDecision(d, report.role)));
+    if (0 === report.findings.length) {
+        return lines.join('\n');
+    }
+    return lines.concat('', report.findings.map(renderFinding)).join('\n');
+}
+// Does the text after `=` parse as exactly one value? Parsed, never
+// evaluated, with loads denied: the question is the shape of the
+// argument, and reading a file to answer it would be the write the
+// gate exists to precede.
+function oneValue(value) {
+    try {
+        const probe = new aontu_1.Aontu({ trust: { include: 'none' } })
+            .parse('v: ' + value);
+        return 1 === Object.keys(probe.peg).length;
+    }
+    catch {
+        return false;
+    }
+}
+function runAllow(argv) {
+    const trusted = takeTrust(argv);
+    if (null == trusted) {
+        return 2;
+    }
+    argv = trusted.argv;
+    const trust = trusted.trust;
+    const rest = [];
+    let role;
+    let at;
+    let format = 'text';
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        if ('--role' === arg) {
+            role = argv[++i];
+            if (null == role) {
+                process.stderr.write('aontu: --role needs a role name\n');
+                return 2;
+            }
+        }
+        else if ('--at' === arg) {
+            at = argv[++i];
+            if (null == at) {
+                process.stderr.write('aontu: --at needs a path\n');
+                return 2;
+            }
+        }
+        else if ('--format' === arg) {
+            const f = argv[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return 2;
+            }
+            format = f;
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown allow option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            rest.push(arg);
+        }
+    }
+    if (null == role || rest.length < 2) {
+        process.stderr.write(`aontu: allow needs --role, a role model and at least one path\n` +
+            `${ALLOW_HELP}\n`);
+        return 2;
+    }
+    const [file, ...asked] = rest;
+    // A role is ONE KEY of the roles map. A dotted name would be read as
+    // a path by `why` when it follows the entry the report names, and an
+    // empty one names the map itself.
+    if ('' === role || role.includes('.')) {
+        process.stderr.write('aontu: --role needs one key, without dots\n');
+        return 2;
+    }
+    // A path may arrive in `set`'s spelling, `$.a.b=1`, so a skill can
+    // hand the gate the very arguments the write will get. The text up
+    // to the first `=` is the path, and it starts with `$`: an empty
+    // argument, or a second file name, would otherwise read as a path
+    // and be answered. The VALUE is checked to be one value. `set`
+    // appends it as source after the flattened path, so a value carrying
+    // a second pair -- `3 secrets: key: "x"` -- writes a sibling of the
+    // overlay root, a subtree the gate was never asked about.
+    const paths = [];
+    for (const arg of asked) {
+        const eq = arg.indexOf('=');
+        const path = eq < 0 ? arg : arg.slice(0, eq);
+        if (!path.startsWith('$')) {
+            process.stderr.write(`aontu: a path starts with $ (got ${JSON.stringify(arg)})\n`);
+            return 2;
+        }
+        if (0 <= eq && !oneValue(arg.slice(eq + 1))) {
+            process.stderr.write(`aontu: the value of ${path} is not one value\n`);
+            return 2;
+        }
+        paths.push(path);
+    }
+    let src;
+    try {
+        src = (0, node_fs_1.readFileSync)(file, 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+        return 2;
+    }
+    const report = (0, aontu_1.allow)(src, role, paths, {
+        at, path: file, ...verbOpts(trust, entryRootOf(file)),
+    });
+    const text = 'json' === format ?
+        (0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'allow' },
+            findings: report.findings,
+            paths: report.paths,
+            role: report.role,
+            verdict: report.verdict,
+        }, 2) :
+        renderAllowText(report);
+    // The report IS the answer, refused or not, so it goes to stdout as
+    // vet's does; the exit code carries the verdict for a caller that
+    // reads nothing else.
+    process.stdout.write(text + '\n');
+    return ALLOW_EXIT[report.verdict];
+}
+// ---------------------------------------------------------------------
 // The generated AGENTS.md stanza (G7 phase 6): the prose entrypoint,
 // derived from the definition, so it cannot drift from the formal
 // source it points at.
@@ -3341,6 +3870,10 @@ function runAgentsMd(argv) {
     const trust = trusted.trust;
     const files = [];
     let write;
+    // The SHAPE's depth (G11 phase 7). Default 2, unchanged: the stanza
+    // is spliced into a file people read, and a deeper shape is a
+    // question the caller asks rather than one it is handed.
+    let depth = 2;
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         if ('-h' === arg || '--help' === arg) {
@@ -3353,6 +3886,14 @@ function runAgentsMd(argv) {
                 process.stderr.write('aontu: --write needs a file\n');
                 return 2;
             }
+        }
+        else if ('--depth' === arg) {
+            const n = Number(argv[++i]);
+            if (!Number.isInteger(n) || n < 1) {
+                process.stderr.write('aontu: --depth needs a positive integer\n');
+                return 2;
+            }
+            depth = n;
         }
         else if (arg.startsWith('-')) {
             process.stderr.write(`aontu: unknown agentsmd option ${arg} (try --help)\n`);
@@ -3375,7 +3916,7 @@ function runAgentsMd(argv) {
         return 2;
     }
     const report = (0, aontu_1.agentsMd)(src, {
-        name: files[0], path: files[0],
+        depth, name: files[0], path: files[0],
         ...verbOpts(trust, entryRootOf(files[0])),
     });
     if (!report.ok) {
@@ -3635,6 +4176,356 @@ function parseTrustArg(value) {
     }
     return undefined;
 }
+// THE TEACHING PACK, SERVED FROM THE COMMAND (G11 phase 1,
+// docs/capability-review/g11-agent-onramp.md; mirrors
+// go/cmd/aontu/help.go).
+//
+// HELP documents the TOOLCHAIN and says nothing about the LANGUAGE:
+// `&`, the map template and the one construct an ontology cannot be
+// written without, occurs zero times in it, while `template` occurs
+// fourteen times and names an unrelated verb every time. docs/skill/
+// was already the right content and already gated; the gap was
+// DELIVERY, since it reached an installation as
+// node_modules/aontu/skill/ where nothing looks. ts/src/helpdoc.ts is
+// generated from those sources by ts/scripts/helpdoc.cjs and asserted
+// byte-identical with them by ts/test/helpdoc.test.ts.
+const HELP_VERB_HELP = 'aontu help [topic] (try `aontu help` for the topics)';
+const EXPLAIN_HELP = 'aontu explain <code> (try `aontu explain --list`)';
+function helpIndexText(index) {
+    const width = index.reduce((w, t) => Math.max(w, t.topic.length), 0);
+    return 'aontu help <topic> — the language, offline.\n\n' +
+        index.map((t) => '  ' + t.topic.padEnd(width) + '  ' + t.summary).join('\n') +
+        '\n\n' +
+        '`aontu --help` documents the verbs, their flags and their exit\n' +
+        'codes. `aontu explain <code>` explains one error code.\n' +
+        'Start at `aontu help tasks` if you know the job but not the verb.';
+}
+function runHelp(argv) {
+    let format = 'text';
+    const topics = [];
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        else if ('--format' === arg) {
+            const f = argv[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return 2;
+            }
+            format = f;
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown help option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            topics.push(arg);
+        }
+    }
+    if (1 < topics.length) {
+        process.stderr.write(`aontu: help takes one topic\n${HELP_VERB_HELP}\n`);
+        return 2;
+    }
+    if (0 === topics.length) {
+        process.stdout.write(('json' === format
+            ? (0, aontu_1.exactJSON)({
+                aontu: { version: version(), verb: 'help' },
+                topics: helpdoc_1.HELPDOC.map((t) => ({ topic: t.topic, summary: t.summary, source: t.source })),
+            }, 2)
+            : helpIndexText(helpdoc_1.HELPDOC)) + '\n');
+        return 0;
+    }
+    const found = helpdoc_1.HELPDOC.find((t) => topics[0] === t.topic);
+    if (null != found) {
+        if ('json' === format) {
+            process.stdout.write((0, aontu_1.exactJSON)({
+                aontu: { version: version(), verb: 'help' },
+                topic: found.topic,
+                summary: found.summary,
+                source: found.source,
+                text: found.text,
+            }, 2) + '\n');
+            return 0;
+        }
+        process.stdout.write(found.text);
+        return 0;
+    }
+    // AN UNKNOWN TOPIC IS A USAGE ERROR AND NAMES THE ALTERNATIVES,
+    // because the caller who typed it has no other way to find out what
+    // exists -- that is the whole condition this verb was added for.
+    process.stderr.write(`aontu: no help topic \`${topics[0]}\`\n` +
+        `aontu: topics are ${helpdoc_1.HELPDOC.map((t) => t.topic).join(', ')}\n`);
+    return 2;
+}
+// `aontu explain <code>` (G11 phase 3; mirrors
+// go/cmd/aontu/explain.go).
+//
+// THE REGISTRY IS THE LIST, NOT THE HINT TABLE. test/spec/errcodes.tsv
+// registers 157 codes and the spec suite asserts set equality between
+// the file and codeClasses IN BOTH PORTS, so listing from codeClasses
+// is listing the shared contract. The hint tables are smaller and are
+// NOT in parity -- 130 entries here against 131 in Go, the extra being
+// decimal_syntax, which this port never raises -- so listing from them
+// would make `aontu explain --list` differ between ports over a
+// difference that is not about what either port can report.
+//
+// A REGISTERED CODE WITH NO HINT ANSWERS WITH ITS CLASS AND SAYS SO.
+// Twenty-seven registered codes carry no explanation text here; before
+// this verb their absence was invisible, because a hint is only ever
+// seen beside the error that raises it.
+// The dynamic prefixes a generated code extends (`func:upper`,
+// `op[+]`). Mirrors CODE_PREFIXES in ts/src/hints.ts, which is not
+// exported; a code that extends one is registered through its prefix
+// and carries that prefix's hint.
+const EXPLAIN_PREFIXES = ['func:', 'op:', 'op[', 'var[', 'ref['];
+function explainCode(code) {
+    const cls = (0, hints_1.codeClass)(code);
+    let hint = hints_1.hints[code] ?? '';
+    let registered = null != hints_1.codeClasses[code];
+    if (!registered) {
+        for (const prefix of EXPLAIN_PREFIXES) {
+            if (code.startsWith(prefix)) {
+                // No guard on `hint` here: every hint key is also a registry
+                // key (the spec suite asserts codeClasses set-equal with
+                // test/spec/errcodes.tsv, and hints is a subset of it), so a
+                // code that reaches this loop is unregistered and therefore
+                // has no hint of its own.
+                registered = true;
+                hint = hints_1.hints[prefix] ?? '';
+                break;
+            }
+        }
+    }
+    return { cls, hint, registered };
+}
+// Every code in the shared registry, sorted by code point so both
+// ports list them in the same order.
+function explainCodes() {
+    return Object.keys(hints_1.codeClasses).sort(keyorder_1.cmpCodePoint);
+}
+function explainListText(format) {
+    const codes = explainCodes();
+    if ('json' === format) {
+        return (0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'explain' },
+            codes: codes.map((code) => ({
+                code,
+                class: (0, hints_1.codeClass)(code),
+                // Whether this port carries explanation text for the code. The
+                // registry is in parity; the hint tables are not, so a consumer
+                // that wants only explained codes can filter rather than guess.
+                explained: '' !== explainCode(code).hint,
+            })),
+        }, 2);
+    }
+    const width = codes.reduce((w, c) => Math.max(w, c.length), 0);
+    return codes.map((c) => c.padEnd(width) + '  ' + (0, hints_1.codeClass)(c) +
+        ('' === explainCode(c).hint ? '  (no text)' : '')).join('\n');
+}
+function runExplain(argv) {
+    let format = 'text';
+    let list = false;
+    const codes = [];
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        else if ('--list' === arg) {
+            list = true;
+        }
+        else if ('--format' === arg) {
+            const f = argv[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return 2;
+            }
+            format = f;
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown explain option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            codes.push(arg);
+        }
+    }
+    if (list) {
+        if (0 < codes.length) {
+            process.stderr.write(`aontu: --list takes no code\n${EXPLAIN_HELP}\n`);
+            return 2;
+        }
+        process.stdout.write(explainListText(format) + '\n');
+        return 0;
+    }
+    if (1 !== codes.length) {
+        process.stderr.write(`aontu: explain needs one code\n${EXPLAIN_HELP}\n`);
+        return 2;
+    }
+    const code = codes[0];
+    const { cls, hint, registered } = explainCode(code);
+    if (!registered) {
+        // AN UNKNOWN CODE IS A USAGE ERROR AND NAMES NEAR MATCHES. A
+        // caller reading a code out of a report has almost certainly typed
+        // it correctly, so the likely cause is a code from another tool or
+        // a truncated one, and the near matches say which.
+        process.stderr.write(`aontu: no such error code \`${code}\`\n`);
+        const near = nearestVerb(code, explainCodes());
+        if ('' !== near) {
+            process.stderr.write(`aontu: did you mean \`${near}\`?\n`);
+        }
+        process.stderr.write('aontu: `aontu explain --list` lists every registered code\n');
+        return 2;
+    }
+    if ('json' === format) {
+        process.stdout.write((0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'explain' },
+            code,
+            class: cls,
+            hint,
+        }, 2) + '\n');
+        return 0;
+    }
+    // A REGISTERED CODE WITH NO HINT SAYS SO rather than printing an
+    // empty block, which would read as an explanation that happened to
+    // be blank.
+    const body = '' === hint
+        ? '(no explanation text is registered for this code)'
+        : hint;
+    process.stdout.write(`code:  ${code}\nclass: ${cls}\n\n${body}\n`);
+    return 0;
+}
+// `aontu init` (G11 phase 6,
+// docs/capability-review/g11-agent-onramp.md).
+//
+// NOT SCAFFOLDING CONVENIENCE. The agent's most expensive failure is
+// writing a FIRST document at all: the measurement that opened G11
+// found one reaching for the wildcard its neighbours use and getting
+// `verdict: valid` over data that violates it. A known-good starting
+// document turns generation into editing, which is the operation a
+// model is reliably good at.
+//
+// The trio is real, runnable and tested where it lives
+// (docs/skill/init/, run by ts/test/helpdoc.test.ts), and staged into
+// both ports by the same generator that stages the teaching pack, so
+// the two write the same bytes.
+const INIT_HELP = 'aontu init [dir] (try --help)';
+function runInit(argv) {
+    const dirs = [];
+    for (const arg of argv) {
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown init option ${arg} (try --help)\n`);
+            return 2;
+        }
+        dirs.push(arg);
+    }
+    if (1 < dirs.length) {
+        process.stderr.write(`aontu: init takes one directory\n${INIT_HELP}\n`);
+        return 2;
+    }
+    const dir = dirs[0] ?? '.';
+    // REFUSES TO OVERWRITE, and checks every member BEFORE writing any of
+    // them: a scaffold that wrote two files and then refused the third
+    // would leave a directory in a state neither the caller nor a re-run
+    // can reason about.
+    const standing = helpdoc_1.INITDOC.filter((f) => (0, node_fs_1.existsSync)((0, node_path_1.join)(dir, f.name)));
+    if (0 < standing.length) {
+        process.stderr.write(`aontu: ${dir} already holds ${standing.map((f) => f.name).join(', ')}\n` +
+            'aontu: init never overwrites; move them aside or name an' +
+            ' empty directory\n');
+        return 2;
+    }
+    try {
+        (0, node_fs_1.mkdirSync)(dir, { recursive: true });
+        for (const f of helpdoc_1.INITDOC) {
+            (0, node_fs_1.writeFileSync)((0, node_path_1.join)(dir, f.name), f.text, { mode: f.mode });
+        }
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot write in ${dir}: ${err.message}\n`);
+        return 2;
+    }
+    process.stdout.write(helpdoc_1.INITDOC.map((f) => (0, node_path_1.join)(dir, f.name)).join('\n') + '\n' +
+        '\nA model, an instance of it, and the four questions to ask.\n' +
+        'Run the checks:  sh ' + (0, node_path_1.join)(dir, 'check.sh') + '\n' +
+        'Learn the language:  aontu help language\n');
+    return 0;
+}
+// EVERY VERB THIS PORT DISPATCHES, for the nearest-verb suggestion
+// G11 phase 2 prints. A separate list from the if-chain in main()
+// because the chain's arms have three different shapes and cannot be
+// a table; ts/test/cli-help.test.ts keeps the two from drifting by
+// running each name and requiring it not to fall through to the bare
+// command.
+const KNOWN_VERBS = [
+    'agentsmd', 'allow', 'breaking', 'explain', 'fmt', 'get', 'hash',
+    'help', 'init', 'jsonschema', 'lsp', 'mcp', 'mod', 'reaches',
+    'relations', 'render', 'set', 'subsume', 'template', 'trim', 'vet',
+    'view', 'why',
+];
+exports.KNOWN_VERBS = KNOWN_VERBS;
+// looksLikeVerb reports whether an unreadable argument was meant as a
+// verb rather than as a path. A bare word has no separator and no
+// extension; `./help`, `help.aon`, `/tmp/help` and `sub/dir` are paths
+// and keep the file diagnosis. Mirrors go/cmd/aontu/main.go.
+function looksLikeVerb(arg) {
+    return '' !== arg &&
+        !/[/\\.]/.test(arg) &&
+        !arg.startsWith('-');
+}
+// NEAREST-VERB SUGGESTION (G11 phase 2). Restricted
+// Damerau-Levenshtein with a cap that grows with the word and stops at
+// three: one edit is a convincing suggestion on any length, three is
+// the most that can be believed on a long one, and an UNCAPPED
+// nearest match on a three-letter typo names something unrelated with
+// confidence. Mirrors go/cmd/aontu/help.go, including the sort, so
+// the two ports suggest the same verb on a tie.
+function nearestVerb(word, verbs) {
+    let best = '';
+    let bestDist = Infinity;
+    const limit = Math.min(3, 1 + Math.floor(word.length / 4));
+    for (const v of [...verbs].sort(keyorder_1.cmpCodePoint)) {
+        const d = editDistance(word.toLowerCase(), v);
+        if (d < bestDist) {
+            best = v;
+            bestDist = d;
+        }
+    }
+    return bestDist > limit ? '' : best;
+}
+// Levenshtein with a transposition, iterative over two rows. Mirrors
+// editDistance in go/cmd/aontu/help.go exactly.
+function editDistance(a, b) {
+    const ar = [...a];
+    const br = [...b];
+    let prev2 = new Array(br.length + 1).fill(0);
+    let prev = new Array(br.length + 1).fill(0).map((_, j) => j);
+    let cur = new Array(br.length + 1).fill(0);
+    for (let i = 1; i <= ar.length; i++) {
+        cur[0] = i;
+        for (let j = 1; j <= br.length; j++) {
+            const cost = ar[i - 1] === br[j - 1] ? 0 : 1;
+            let m = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+            if (1 < i && 1 < j &&
+                ar[i - 1] === br[j - 2] && ar[i - 2] === br[j - 1] &&
+                prev2[j - 2] + 1 < m) {
+                m = prev2[j - 2] + 1;
+            }
+            cur[j] = m;
+        }
+        prev2 = [...prev];
+        prev = [...cur];
+    }
+    return prev[br.length];
+}
 function main(argv, servers = SERVERS) {
     // COLOUR OFF WHEN THE DESTINATION IS NOT A TERMINAL. Error frames
     // hardcoded their ANSI escapes, so a piped report and a `--jsonl`
@@ -3644,6 +4535,10 @@ function main(argv, servers = SERVERS) {
     // CLI can make this call. `undefined` means "leave it to NO_COLOR".
     (0, aontu_1.setColor)(true === process.stderr.isTTY ? undefined : false);
     let mode = 'json';
+    // THE REPORT FORM (G11 phase 7), default text: every existing caller
+    // reads exactly what it always read, and a caller that asks for json
+    // gets the failure in the finding shape every other verb reports.
+    let format = 'text';
     // A LIST, though the bare command evaluates exactly one document.
     // It used to be one variable and the last argument won, which made a
     // MISTYPED VERB a silent success: `aontu vet2 schema.aon good.json`
@@ -3693,6 +4588,9 @@ function main(argv, servers = SERVERS) {
     if ('set' === argv[2]) {
         return finish(runSet(argv.slice(3)));
     }
+    if ('allow' === argv[2]) {
+        return finish(runAllow(argv.slice(3)));
+    }
     if ('why' === argv[2]) {
         return finish(runWhy(argv.slice(3)));
     }
@@ -3701,6 +4599,17 @@ function main(argv, servers = SERVERS) {
     }
     if ('hash' === argv[2]) {
         return finish(runHash(argv.slice(3)));
+    }
+    // G11 phases 1 and 3. Dispatched with the rest, so `aontu ./help`
+    // still reads a file named help exactly as `aontu ./vet` does.
+    if ('help' === argv[2]) {
+        return finish(runHelp(argv.slice(3)));
+    }
+    if ('explain' === argv[2]) {
+        return finish(runExplain(argv.slice(3)));
+    }
+    if ('init' === argv[2]) {
+        return finish(runInit(argv.slice(3)));
     }
     if ('mod' === argv[2]) {
         return finish(runMod(argv.slice(3)));
@@ -3747,6 +4656,14 @@ function main(argv, servers = SERVERS) {
                 return finish(2);
             }
             trust = parsed;
+        }
+        else if ('--format' === arg) {
+            const f = args[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return finish(2);
+            }
+            format = f;
         }
         else if ('--jsonl' === arg) {
             jsonl = true;
@@ -3802,7 +4719,7 @@ function main(argv, servers = SERVERS) {
     trust = { ...trust, textExt };
     const file = files[0];
     if (null != file) {
-        finish(runFile(file, mode, trust));
+        finish(runFile(file, mode, format, trust));
     }
     // `--jsonl` overrides the TTY gate: the mode exists to be DRIVEN by
     // a harness over a pipe, so gating it on an interactive terminal
@@ -3812,7 +4729,7 @@ function main(argv, servers = SERVERS) {
         runRepl(mode, jsonl, trust);
     }
     else {
-        runStdin(mode, trust).then((code) => finish(code));
+        runStdin(mode, format, trust).then((code) => finish(code));
     }
-} /* node:coverage ignore next 18 */
+} /* node:coverage ignore next 20 */
 //# sourceMappingURL=cli.js.map

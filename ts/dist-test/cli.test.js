@@ -1410,6 +1410,112 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([broken]), 4));
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--help']), 0)).out.includes('aontu agentsmd'), true);
     });
+    // --- G11 phase 4: the vacuity signals ---
+    // A VERB THAT DID NOTHING AND A VERB THAT SUCCEEDED ANSWERED THE
+    // SAME. The signal is on STDERR, so no `--format json` stdout
+    // contract changes and no exit code moves: what changes is that the
+    // caller is told. The repository already ruled this for `trim` in G8
+    // phase 6 -- doing something else silently is worse than refusing.
+    (0, node_test_1.test)('vacuity-signals-on-view-render-relations', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vacuous-'));
+        const plain = Path.join(dir, 'plain.aon');
+        Fs.writeFileSync(plain, 'a: { b: 1 }\n');
+        // `pass` over NO declarations: the graph is not sound, it is
+        // unexamined.
+        const rel = vetCapture(() => Assert.equal((0, cli_1.runRelations)([plain]), 0));
+        Assert.match(rel.out, /verdict: pass/);
+        Assert.match(rel.err, /declares no relations/);
+        // A figure identical to what the same kind draws for `{}`.
+        const view = vetCapture(() => Assert.equal((0, cli_1.runView)(['graph', plain]), 0));
+        Assert.match(view.out, /flowchart LR/);
+        Assert.match(view.err, /nothing to draw/);
+        // No profile, so no unit: the exit code is the one --stdout
+        // already had, and the reason is now said.
+        const render = vetCapture(() => (0, cli_1.runRender)(['--stdout', plain]));
+        Assert.match(render.err, /nothing was rendered/);
+        Assert.match(render.err, /no profile was given/);
+        // AND THE NEGATIVE: a document that DOES declare says nothing.
+        const graph = Path.join(dir, 'graph.aon');
+        Fs.writeFileSync(graph, 'a: {dependsOn: rel() & acyclic() & [path($.b)]}\n' +
+            'b: {}\n');
+        const declared = vetCapture(() => (0, cli_1.runRelations)([graph]));
+        Assert.doesNotMatch(declared.err, /declares no relations/);
+        Fs.rmSync(dir, { recursive: true, force: true });
+    });
+    // --- G11 phase 7: --depth on the stanza, --format json on the bare
+    // command ---
+    // TWO LEVELS TELL AN AGENT WHAT THE DOCUMENT IS ABOUT AND NOTHING IT
+    // CAN ACT ON: `{"entity":{&:top}}` names the root key and says `top`
+    // under it. The default is unchanged, because the stanza is spliced
+    // into a file people read; a caller that wants the fields asks.
+    (0, node_test_1.test)('agentsmd-depth-projects-the-shape', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-md-depth-'));
+        const entry = Path.join(dir, 'model.aon');
+        Fs.writeFileSync(entry, 'entity: { &: { table: string, fields: { &: { type: string } } } }');
+        const shapeOf = (args) => {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([...args, entry]), 0));
+            const line = r.out.split('\n').find((l) => l.startsWith('- Shape: '));
+            Assert.ok(null != line, r.out);
+            return line;
+        };
+        const deep = shapeOf(['--depth', '4']);
+        Assert.notEqual(deep, shapeOf([]), '--depth changed nothing');
+        Assert.match(deep, /table/);
+        Assert.equal(shapeOf(['--depth', '2']), shapeOf([]), '--depth 2 is not the default');
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--depth', '0', entry]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--depth', 'two', entry]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--depth']), 2));
+        // THE LANGUAGE DOOR. A stanza is the first thing an agent reads
+        // about a document, and it says where to learn the language the
+        // document is written in -- offline, from the binary it has.
+        Assert.match(vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([entry]), 0)).out, /aontu help language/);
+        Fs.rmSync(dir, { recursive: true, force: true });
+    });
+    // THE DEFAULT ENTRY POINT WAS THE ONE AN AGENT HAD TO PARSE WITH A
+    // REGULAR EXPRESSION: every verb but this one could answer as an
+    // object, and this is the one an agent reaches for first.
+    (0, node_test_1.test)('bare-command-format-json', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-fmtjson-'));
+        const good = Path.join(dir, 'good.aon');
+        Fs.writeFileSync(good, 'a:1 b:$.a');
+        const ok = run(['--format', 'json', good]);
+        Assert.equal(ok.code, 0);
+        const report = JSON.parse(ok.out);
+        Assert.equal(report.aontu.verb, 'eval');
+        Assert.deepEqual(report.findings, []);
+        Assert.equal(report.ok, true);
+        // `out` is exactly what the text form prints.
+        Assert.equal(report.out, run([good]).out.replace(/\n$/, ''));
+        // `--canon` chooses what the answer IS, `--format` how it is
+        // wrapped.
+        Assert.equal(JSON.parse(run(['-c', '--format', 'json', good]).out).out, '{"a":1,"b":1}');
+        const bad = Path.join(dir, 'bad.aon');
+        Fs.writeFileSync(bad, 'a: 1 & 2\n');
+        const failed = run(['--format', 'json', bad]);
+        Assert.equal(failed.code, 1);
+        const report2 = JSON.parse(failed.out);
+        Assert.equal(report2.ok, false);
+        Assert.equal(report2.out, '');
+        Assert.deepEqual(report2.findings, [{
+                class: 'conflict',
+                code: 'scalar_value',
+                // THE HEADLINE ONLY, and no hint: the frames under it are drawn
+                // for a person, and the hint tables are deliberately not in
+                // cross-port parity while the code registry is.
+                message: '[aontu/scalar_value]: Cannot unify values at path $.a',
+                path: '$',
+                severity: 'error',
+                sites: [],
+            }]);
+        // The stdin entry answers the same way.
+        Assert.equal(JSON.parse(run(['--format', 'json'], 'a: 1 & 2\n').out).findings[0].code, 'scalar_value');
+        for (const args of [['--format', 'yaml'], ['--format']]) {
+            const r = run([...args, good]);
+            Assert.equal(r.code, 2, args.join(' '));
+            Assert.match(r.out, /--format needs text or json/);
+        }
+        Fs.rmSync(dir, { recursive: true, force: true });
+    });
     // G7 phase 5: the overlay patch verb. What the two ports must agree
     // on (the report) is pinned by test/spec/patch.tsv; these cases hold
     // the command line and, above all, WHEN THE FILE IS WRITTEN.
@@ -2420,6 +2526,264 @@ function fmtFiles(...srcs) {
         const dir3 = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-layout-'));
         Fs.writeFileSync(Path.join(dir3, 'mod.aon'), 'mod: { path: "corp.example/app" }\n');
         Assert.doesNotMatch(vetCapture(() => (0, cli_1.runMod)(['verify', dir3])).err, /aontu_meta\//);
+    });
+});
+// --- the allow verb (docs/design/ALLOW.0.md) --------------------------
+//
+// The gate's answers are held by allow.test.ts; these cases hold the
+// command line -- flag parsing, the exit classes, the two formats, and
+// the assignment spelling a skill hands straight through from `set`.
+(0, node_test_1.describe)('cli-allow', () => {
+    const ROLES = [
+        'roles: {',
+        '  admin: { allow: ["$"] }',
+        '  dev: { allow: ["$.services"] deny: ["$.services.*.tier"] }',
+        '  qa: { allow: ["$.tests"] }',
+        '}',
+        '',
+    ].join('\n');
+    function rolesFile(src = ROLES) {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-allow-cli-'));
+        const file = Path.join(dir, 'roles.aon');
+        Fs.writeFileSync(file, src);
+        return file;
+    }
+    (0, node_test_1.test)('allow-answers-every-path-and-names-the-rule', () => {
+        const file = rolesFile();
+        const yes = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.services.auth.replicas']), 0));
+        Assert.equal(yes.out, [
+            'verdict: allowed',
+            'role: dev',
+            '$.services.auth.replicas: allowed by $.roles.dev.allow.0 ($.services)',
+            '',
+        ].join('\n'));
+        Assert.equal(yes.err, '');
+        // Every reason has its line: deny names the rule, uncovered says
+        // no rule reached, and the verdict is the exit code.
+        const no = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.services.auth', '$.tests']), 1));
+        Assert.equal(no.out, [
+            'verdict: refused',
+            'role: dev',
+            '$.services.auth: refused by $.roles.dev.deny.0 ($.services.*.tier)',
+            '$.tests: refused (no allow entry of dev covers it)',
+            '',
+        ].join('\n'));
+    });
+    (0, node_test_1.test)('allow-takes-the-assignment-spelling', () => {
+        const file = rolesFile();
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'qa', file,
+            '$.tests.smoke="on"', '$.tests.x="a=b"', '$.tests.y={ a: 1 }']), 0));
+        Assert.match(r.out, /^\$\.tests\.smoke: allowed/m);
+        Assert.match(r.out, /^\$\.tests\.x: allowed/m);
+        Assert.match(r.out, /^\$\.tests\.y: allowed/m);
+        // The value must be ONE value. `set` appends it as source after
+        // the flattened path, so a second pair in it writes a sibling of
+        // the overlay root -- a subtree the gate was never asked about.
+        for (const bad of [
+            '$.tests.smoke=3 secrets: key: "x"',
+            '$.tests.smoke=3\nsecrets: 1',
+            '$.tests.smoke="unterminated',
+            '$.tests.smoke=@"other.aon"',
+        ]) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'qa', file, bad]), 2));
+            Assert.match(r.err, /the value of \$\.tests\.smoke is not one value/);
+            Assert.equal(r.out, '');
+        }
+    });
+    (0, node_test_1.test)('allow-undeclared-role-is-refused-with-a-finding', () => {
+        const file = rolesFile();
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'ops', file, '$.a']), 1));
+        Assert.equal(r.out, [
+            'verdict: refused',
+            'role: ops',
+            '$.a: refused (role ops is not declared)',
+            '',
+            '$.roles.ops: no_path [reference]',
+            '  The role ops is not declared at $.roles in this document.',
+            '',
+        ].join('\n'));
+    });
+    (0, node_test_1.test)('allow-broken-model-is-exit-4-with-the-engines-finding', () => {
+        const file = rolesFile('roles: dev: { allow: "$.a" }\n');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.a']), 4));
+        Assert.match(r.out, /^verdict: error\nrole: dev\n\n\$: scalar_kind \[reference\]/);
+        // The same report as an object.
+        const j = JSON.parse(vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--format', 'json', '--role', 'dev', file, '$.a']), 4)).out);
+        Assert.equal(j.verdict, 'error');
+        Assert.deepEqual(j.paths, []);
+        Assert.equal(j.findings[0].code, 'scalar_kind');
+    });
+    (0, node_test_1.test)('allow-json-names-the-producer', () => {
+        const file = rolesFile();
+        const j = JSON.parse(vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--format', 'json', '--role', 'dev', file, '$.services.x.replicas']), 0)).out);
+        Assert.equal(j.aontu.verb, 'allow');
+        Assert.equal(j.verdict, 'allowed');
+        Assert.equal(j.role, 'dev');
+        Assert.deepEqual(j.findings, []);
+        Assert.deepEqual(j.paths, [{
+                allowed: true, by: '$.roles.dev.allow.0', path: '$.services.x.replicas',
+                pattern: '$.services', reason: 'allow',
+            }]);
+    });
+    (0, node_test_1.test)('allow-at-moves-the-roles-map', () => {
+        const file = rolesFile('policy: roles: dev: { allow: ["$.a"] }\n');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--at', '$.policy.roles', file, '$.a.b']), 0));
+        Assert.match(r.out, /allowed by \$\.policy\.roles\.dev\.allow\.0/);
+    });
+    (0, node_test_1.test)('allow-trust-reaches-the-engine', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-allow-trust-'));
+        Fs.writeFileSync(Path.join(dir, 'dev.aon'), 'roles: dev: { allow: ["$"] }');
+        const file = Path.join(dir, 'roles.aon');
+        Fs.writeFileSync(file, '@"dev.aon"\n');
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.a']), 0));
+        const denied = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--trust', 'none', '--role', 'dev', file, '$.a']), 4));
+        Assert.match(denied.out, /include_denied/);
+    });
+    (0, node_test_1.test)('allow-usage-errors-exit-2', () => {
+        const file = rolesFile();
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)([]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)([file, '$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--at']), 2));
+        // A role is one key.
+        for (const role of ['', '.', 'dev.allow', 'a.b']) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', role, file, '$.a']), 2));
+            Assert.match(r.err, /--role needs one key, without dots/);
+        }
+        // A path starts with $: an empty argument, an assignment that
+        // lost its path, and a second file name are all refused rather
+        // than read as paths and answered.
+        for (const arg of ['', '=', '=1', 'services.auth', file]) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'admin', file, arg]), 2));
+            Assert.match(r.err, /a path starts with \$/);
+        }
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--format', 'yaml', file, '$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--bogus', file, '$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--trust', 'bogus', '--role', 'dev', file, '$.a']), 2));
+        const missing = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', Path.join(Path.dirname(file), 'no.aon'), '$.a']), 2));
+        Assert.match(missing.err, /cannot read/);
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--help']), 0)).out.includes('aontu allow --role'), true);
+    });
+    (0, node_test_1.test)('allow-dispatches-through-main', () => {
+        const file = rolesFile();
+        const r = vetCapture(() => (0, cli_1.main)(['node', 'cli', 'allow', '--role', 'admin', file, '$']));
+        Assert.match(r.out, /verdict: allowed/);
+        Assert.match(run(['--help']).out, /aontu allow --role <role>/);
+        Assert.match(run(['--help']).out, /Allow exit codes/);
+    });
+    // THE COVERAGE FLAGS (G11 phase 5,
+    // docs/capability-review/g11-agent-onramp.md). The accounting itself
+    // is pinned by the shared rows in test/spec/vet.tsv; what the COMMAND
+    // owns -- the flags, the text block, the exit class -- is here, and
+    // go/cmd/aontu/vet_test.go holds the twin.
+    // The star schema is a key NAMED `*`, so it constrains nothing.
+    const COV_STAR = 'entity: { "*": { name: string, table: string } }';
+    const COV_GOOD = 'entity: { &: { name: string, table: string } }';
+    const COV_DATA = 'entity: { planet: { name: "P", table: "planets" } }';
+    function covFiles(schema, data) {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-cov-'));
+        const s = Path.join(dir, 'schema.aon');
+        const d = Path.join(dir, 'data.aon');
+        Fs.writeFileSync(s, schema);
+        Fs.writeFileSync(d, data);
+        return [s, d];
+    }
+    (0, node_test_1.test)('vet-coverage-is-absent-unless-asked', () => {
+        const [s, d] = covFiles(COV_STAR, COV_DATA);
+        const r = run(['vet', '--partial', s, d]);
+        Assert.equal(r.code, 0);
+        Assert.ok(!r.out.includes('coverage'), `a run that did not ask for coverage reported it: ${r.out}`);
+        const j = run(['vet', '--partial', '--format', 'json', s, d]);
+        Assert.ok(!j.out.includes('"coverage"'), `the JSON report carries coverage unasked: ${j.out}`);
+    });
+    // THE DEFECT THE PHASE EXISTS FOR, at the command line: the verdict
+    // is `valid` and the run examined nothing.
+    (0, node_test_1.test)('vet-coverage-reports-a-vacuous-run', () => {
+        const [s, d] = covFiles(COV_STAR, COV_DATA);
+        const r = run(['vet', '--partial', '--coverage', s, d]);
+        Assert.equal(r.code, 0, 'the verdict word is unchanged');
+        Assert.ok(r.out.includes('verdict: valid'));
+        for (const want of [
+            'VACUOUS', '0/2 data leaves checked', 'unused: $.entity.*',
+            'unchecked: $.entity.planet',
+        ]) {
+            Assert.ok(r.out.includes(want), `the coverage block omits ${want}:\n${r.out}`);
+        }
+    });
+    // AND THE GATE: only under --strict-coverage, and it is the exit code
+    // that moves, never the verdict word.
+    (0, node_test_1.test)('vet-strict-coverage-exits-one-on-vacuous', () => {
+        const [s, d] = covFiles(COV_STAR, COV_DATA);
+        const r = run(['vet', '--partial', '--strict-coverage', s, d]);
+        Assert.equal(r.code, 1);
+        Assert.ok(r.out.includes('verdict: valid'), 'the verdict word changed');
+        Assert.ok(r.out.includes('checked nothing'), r.out);
+        // The reason names the fix, because the caller who hit this does
+        // not know the template exists.
+        Assert.ok(r.out.includes('aontu help language'), r.out);
+    });
+    (0, node_test_1.test)('vet-strict-coverage-passes-a-real-check', () => {
+        const [s, d] = covFiles(COV_GOOD, COV_DATA);
+        const r = run(['vet', '--strict-coverage', s, d]);
+        Assert.equal(r.code, 0, r.out);
+        Assert.ok(!r.out.includes('VACUOUS'), r.out);
+        Assert.ok(r.out.includes('2/2 data leaves checked'), r.out);
+    });
+    // --strict-coverage and --coverage-at IMPLY the accounting: a gate
+    // cannot fire on what was never measured.
+    (0, node_test_1.test)('vet-coverage-flags-imply-the-accounting', () => {
+        const [s, d] = covFiles(COV_GOOD, COV_DATA);
+        Assert.ok(run(['vet', '--strict-coverage', s, d]).out.includes('coverage:'));
+        Assert.ok(run(['vet', '--coverage-at', '$.entity', s, d]).out.includes('coverage:'));
+    });
+    (0, node_test_1.test)('vet-coverage-json', () => {
+        const [s, d] = covFiles(COV_STAR, COV_DATA);
+        const r = run(['vet', '--partial', '--coverage', '--format', 'json', s, d]);
+        Assert.equal(r.code, 0);
+        const report = JSON.parse(r.out);
+        Assert.equal(report.verdict, 'valid');
+        Assert.equal(report.coverage.vacuous, true);
+        Assert.equal(report.coverage.checked, 0);
+        Assert.deepEqual(Object.keys(report.coverage).sort(), ['checked', 'declared', 'leaves', 'unchecked', 'unused', 'vacuous']);
+    });
+    // SEVERAL DATA FILES ARE ONE ACCOUNTING: the schema side is the same
+    // for each, so a declaration one file exercised is not unused, while
+    // the data side adds up.
+    (0, node_test_1.test)('vet-coverage-across-several-data-files', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-cov-'));
+        const write = (name, src) => {
+            const p = Path.join(dir, name);
+            Fs.writeFileSync(p, src);
+            return p;
+        };
+        const s = write('s.aon', 'a: string\nb: integer');
+        const d1 = write('d1.aon', 'a: "x"');
+        const d2 = write('d2.aon', 'b: 1');
+        const r = run(['vet', '--partial', '--coverage', s, d1, d2]);
+        Assert.equal(r.code, 0, r.out);
+        Assert.ok(r.out.includes('2/2 data leaves checked'), r.out);
+        Assert.ok(!r.out.includes('unused:'), `a declaration another file met was called unused: ${r.out}`);
+    });
+    // THE TEXT FORM CAPS EACH LIST at ten and counts the rest: a report a
+    // reader scrolls past is a report nobody reads. The JSON form carries
+    // every path, which is what a machine wants.
+    (0, node_test_1.test)('vet-coverage-text-caps-the-lists', () => {
+        let data = '{';
+        for (let i = 0; i < 14; i++) {
+            data += `k${i}: ${i},\n`;
+        }
+        data += '}';
+        const [s, d] = covFiles('declared: string', data);
+        const r = run(['vet', '--partial', '--coverage', s, d]);
+        Assert.ok(r.out.includes('unchecked: … and 4 more'), `the list was not capped and counted:\n${r.out}`);
+        const j = run(['vet', '--partial', '--coverage', '--format', 'json', s, d]);
+        Assert.equal(JSON.parse(j.out).coverage.unchecked.length, 14, 'the JSON list was capped too');
+    });
+    (0, node_test_1.test)('vet-coverage-usage-refusals', () => {
+        const r = run(['vet', '--coverage-at']);
+        Assert.equal(r.code, 2);
+        Assert.ok(r.out.includes('--coverage-at needs a path'), r.out);
     });
 });
 //# sourceMappingURL=cli.test.js.map

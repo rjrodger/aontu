@@ -356,6 +356,9 @@ function vetGolden(report: any): string {
     truncated: report.truncated,
     findings: report.findings.map(
       ({ message, hint, ...rest }: any) => rest),
+    // Absent unless the row asked for it (G11 phase 5), so every row
+    // written before coverage existed compares exactly as it did.
+    ...(null == report.coverage ? {} : { coverage: report.coverage }),
   })
 }
 

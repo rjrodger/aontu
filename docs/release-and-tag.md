@@ -77,6 +77,46 @@ Release only the half that changed. A TypeScript-only change wants
 `go=false`; leaving it ticked with an unchanged `VERSION` is harmless: the
 workflow refuses rather than moving an existing tag.
 
+### Releasing without `gh`
+
+**The dispatch is what publishes**, over OIDC, and it is the only thing
+that may: a local publish goes over a token and bypasses the trusted
+publisher entirely. So an environment without the `gh` CLI (an agent
+session, a container that ships no forge tooling) does not get a
+different release path. It gets the same one, driven through the API.
+
+`make publish` refuses early in that environment, at its `command -v gh`
+guard, and it refuses **before** it bumps anything, so nothing is left
+half-done. Run what it would have run:
+
+1. **Its guards, all of them, first.** On `main`, clean tree, not behind
+   `origin/main`, and neither tag already taken, asked of **origin**,
+   because a clone's tag list is stale exactly when it matters.
+   Everything after them is irreversible.
+2. `cd ts && npm version --no-git-tag-version <V>`, which also rewrites
+   `ts/src/aontu.ts`'s `VERSION` through the `version` lifecycle script,
+   and the `perl` rewrite of `const VERSION` in `go/aontu.go`.
+3. `make all`, both builds and both suites, against the bumped tree.
+4. Stage the four paths the target stages: `ts/package.json`,
+   `ts/src/aontu.ts`, `ts/dist` and `go/aontu.go`. **Three TypeScript
+   paths, not one**: the source constant and the committed build move
+   with the manifest, and `ts/test/version.test.ts` catches it in the
+   publish job if they do not, which is after the tag push.
+5. Commit `release: npm <V> go <GOV>`, and push `main`.
+6. Dispatch `publish.yml` on `main` with `npm`, `go` and
+   `expect_sha=<the commit just pushed>`, through
+   `POST /repos/{owner}/{repo}/actions/workflows/publish.yml/dispatches`
+   or any client for it.
+
+`expect_sha` is the step to not skip. `--ref main` names a moving
+branch, and the guard exists so that a commit landing between the push
+and the run cannot be released under the version just bumped. For the
+same reason, **do not push to `main` while a publish run is in flight**:
+the run resolves the ref more than once, and the tag it writes should be
+the commit it tested.
+
+First driven this way on 2026-09-10, for npm 0.62.0 and go 0.1.20.
+
 ## The trusted-publisher registration
 
 The repository moved from `rjrodger/aontu` to `aontu-lang/aontu`, and **an

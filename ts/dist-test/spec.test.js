@@ -331,6 +331,9 @@ function vetGolden(report) {
         verdict: report.verdict,
         truncated: report.truncated,
         findings: report.findings.map(({ message, hint, ...rest }) => rest),
+        // Absent unless the row asked for it (G11 phase 5), so every row
+        // written before coverage existed compares exactly as it did.
+        ...(null == report.coverage ? {} : { coverage: report.coverage }),
     });
 }
 // Files whose rows evaluate under a fixed trust profile (G5,

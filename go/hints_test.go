@@ -285,3 +285,84 @@ func TestMergeConflictCRLF(t *testing.T) {
 		t.Fatalf("crlf plain: %v", out)
 	}
 }
+
+// THE EXPLAIN SURFACE (G11 phase 3). The verb in cmd/aontu is a thin
+// projection of these two, but coverage is measured per package, so
+// the engine's own exports need the engine's own cases. What they
+// assert is the CONTRACT the verb rests on: the registry is the list,
+// a registered code always resolves, a dynamic code resolves through
+// the prefix it extends, and nothing outside the registry does.
+func TestExplainCode(t *testing.T) {
+	// A registered code with text.
+	class, hint, registered := ExplainCode("no_scalar_unify")
+	if !registered || "conflict" != class || "" == hint {
+		t.Fatalf("no_scalar_unify: %q %q %v", class, hint, registered)
+	}
+
+	// A registered code WITHOUT text. The 27 of these are exactly what
+	// the verb exists to make visible; before it, a missing hint could
+	// only be met beside the error that raises it.
+	class, hint, registered = ExplainCode("deprecated")
+	if !registered || "" == class {
+		t.Fatalf("deprecated: %q %q %v", class, hint, registered)
+	}
+	if "" != hint {
+		t.Log("deprecated has gained a hint; the table is closing, which" +
+			" is the work item G11 phase 3 created")
+	}
+
+	// A DYNAMIC CODE is registered through the prefix it extends and
+	// carries that prefix's text: the suffix names the operator, the
+	// explanation is the prefix's.
+	class, hint, registered = ExplainCode("func:upper")
+	if !registered || "conflict" != class || hints["func:"] != hint {
+		t.Fatalf("func:upper: %q %q %v", class, hint, registered)
+	}
+	for _, code := range []string{"op:x", "op[+]", "var[x", "ref[y"} {
+		if _, _, ok := ExplainCode(code); !ok {
+			t.Errorf("%s does not resolve through its prefix", code)
+		}
+	}
+
+	// An unregistered code is NOT registered, and still classifies --
+	// which is what lets a caller be told it is unknown rather than
+	// merely unexplained.
+	class, hint, registered = ExplainCode("no-such-code")
+	if registered || "internal" != class || "" != hint {
+		t.Fatalf("no-such-code: %q %q %v", class, hint, registered)
+	}
+
+	// The empty code is the why-less nil, which classifies as its
+	// eventual gen-time code, nil_gen -- stated as the RULE rather than
+	// as nil_gen's current class, so this case pins the delegation and
+	// not a constant that belongs to another table.
+	if class, _, _ := ExplainCode(""); codeClass("nil_gen") != class {
+		t.Fatalf("the empty code classifies as %q, not as nil_gen does", class)
+	}
+}
+
+// Codes is the REGISTRY, sorted, so both ports list in one order. It
+// is deliberately not the hint table: the registry is in cross-port
+// parity and the hint tables are not.
+func TestCodes(t *testing.T) {
+	codes := Codes()
+	if len(codeClasses) != len(codes) {
+		t.Fatalf("Codes has %d entries, the registry %d",
+			len(codes), len(codeClasses))
+	}
+	for i := 1; i < len(codes); i++ {
+		if codes[i-1] >= codes[i] {
+			t.Fatalf("Codes is not sorted at %d: %q then %q",
+				i, codes[i-1], codes[i])
+		}
+	}
+	for _, code := range codes {
+		if _, _, registered := ExplainCode(code); !registered {
+			t.Errorf("%s is listed and does not resolve", code)
+		}
+	}
+	if len(hints) >= len(codes) {
+		t.Logf("the hint table (%d) has caught up with the registry (%d)",
+			len(hints), len(codes))
+	}
+}

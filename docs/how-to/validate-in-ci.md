@@ -147,6 +147,53 @@ $ aontu vet --watch schema.aon user.json
 Every run is a full re-parse and re-unify, so what you see on each
 save is exactly what CI will say.
 
+## Make the gate prove it checked something
+
+A gate that passes because it examined **nothing** is worse than no
+gate: it reports success. The usual cause is one construct, and it is
+silent. A schema written with the wildcard other tools use is a key
+**named** `*` in aontu, so it meets no data key and constrains
+nothing. Here it is as `wild.aon`:
+
+<!-- test: scenario vacuous-gate -->
+<!-- test: file wild.aon -->
+<!-- fmt: keep the braces are the point: this is the block shape a caller writes, and the agreed form collapses it to a chain -->
+```aontu
+entity: { "*": { table: string } }
+```
+
+`rows.aon` is the data it was meant to check:
+
+<!-- test: file rows.aon -->
+```aontu
+entity: planet: table: 42
+```
+
+<!-- test: run -->
+```sh
+$ aontu vet --partial --strict-coverage wild.aon rows.aon
+verdict: valid
+...
+coverage: VACUOUS — no data leaf was constrained by the schema; this run checked nothing
+coverage: 0/1 data leaves checked, 3 schema declarations
+  unchecked: $.entity.planet
+  unused: $.entity.*
+aontu: no data leaf was constrained by the schema: this run checked nothing
+...
+$ echo $?
+1
+```
+
+`--strict-coverage` is the CI form: it measures what the run examined
+and exits 1 when the answer is nothing. The verdict word stays
+`valid`, because the unification really did hold; what failed is the
+gate's claim to have checked anything. Written with the template
+`&:` the same run checks the field and refuses the `42`.
+
+Use `--coverage` alone while writing a schema, to see which
+declarations no data meets and which data paths nothing constrains,
+and `--coverage-at` to measure one subtree.
+
 Vetting gates the data; the schema itself changes too, and that gate
 is [`aontu breaking`](gate-schema-changes.md). For decoding an
 individual finding, see [Read a conflict

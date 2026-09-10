@@ -19,6 +19,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +59,11 @@ type vetArgs struct {
 	partial   bool
 	maxErrors int
 	watch     bool
+	// G11 phase 5. strictCoverage implies coverage; coverageAt narrows
+	// the data side and implies it too.
+	coverage       bool
+	strictCoverage bool
+	coverageAt     string
 }
 
 // parseVetArgs reads the verb's argument tail. It returns the error
@@ -116,6 +122,22 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 			args.closed = true
 		case "--partial" == arg:
 			args.partial = true
+		case "--coverage" == arg:
+			args.coverage = true
+		case "--strict-coverage" == arg:
+			// IMPLIES THE ACCOUNTING, because a gate cannot fire on what
+			// was never measured. Asking for the strict form and having
+			// to remember --coverage beside it is a usage trap with one
+			// correct answer, so the flag takes it.
+			args.coverage = true
+			args.strictCoverage = true
+		case "--coverage-at" == arg:
+			i++
+			if len(argv) <= i {
+				return nil, "aontu: --coverage-at needs a path"
+			}
+			args.coverageAt = argv[i]
+			args.coverage = true
 		case "--watch" == arg:
 			args.watch = true
 		case strings.HasPrefix(arg, "-"):
@@ -168,14 +190,60 @@ func renderVetText(report aontu.VetReport) string {
 	if report.Truncated {
 		head += " (findings truncated)"
 	}
-	if 0 == len(report.Findings) {
-		return head
+	out := []string{head}
+	if 0 < len(report.Findings) {
+		out = append(out, "")
+		for _, f := range report.Findings {
+			out = append(out, renderFinding(f))
+		}
 	}
-	out := []string{head, ""}
-	for _, f := range report.Findings {
-		out = append(out, renderFinding(f))
+	if nil != report.Coverage {
+		out = append(out, "")
+		out = append(out, renderVetCoverage(*report.Coverage)...)
 	}
 	return strings.Join(out, "\n")
+}
+
+// coverageListMax is how many coverage paths the TEXT form prints per
+// list. The JSON form carries every one: a machine reads the whole
+// list, a person reads the first few and the count.
+const coverageListMax = 10
+
+// renderVetCoverage is the coverage block (G11 phase 5). VACUOUS FIRST
+// and in the imperative, because it is the one line that changes what
+// the reader should do: a `valid` verdict above it means nothing.
+func renderVetCoverage(c aontu.VetCoverage) []string {
+	out := []string{}
+	if c.Vacuous {
+		out = append(out, "coverage: VACUOUS — no data leaf was constrained"+
+			" by the schema; this run checked nothing")
+	}
+	out = append(out, "coverage: "+strconv.Itoa(c.Checked)+"/"+
+		strconv.Itoa(c.Leaves)+" data leaves checked, "+
+		strconv.Itoa(c.Declared)+" schema declarations")
+	// The lists are the SHALLOWEST paths, so each names a subtree
+	// rather than every leaf under it, and both are capped: a report a
+	// reader scrolls past is a report nobody reads.
+	for _, list := range []struct {
+		label string
+		paths []string
+	}{{"unchecked", c.Unchecked}, {"unused", c.Unused}} {
+		if 0 == len(list.paths) {
+			continue
+		}
+		shown := list.paths
+		if coverageListMax < len(shown) {
+			shown = shown[:coverageListMax]
+		}
+		for _, p := range shown {
+			out = append(out, "  "+list.label+": "+p)
+		}
+		if len(shown) < len(list.paths) {
+			out = append(out, "  "+list.label+": … and "+
+				strconv.Itoa(len(list.paths)-len(shown))+" more")
+		}
+	}
+	return out
 }
 
 // vetReportJSON is the machine-readable form. `aontu` names the
@@ -186,7 +254,10 @@ func renderVetText(report aontu.VetReport) string {
 // keys (exactJSON) and Go's encoder writes declaration order, so the
 // two agree only if the declaration is already sorted.
 type vetReportJSON struct {
-	Aontu     vetProducerJSON    `json:"aontu"`
+	Aontu vetProducerJSON `json:"aontu"`
+	// Absent unless the run asked for it (G11 phase 5), so no existing
+	// consumer's report changes shape.
+	Coverage  *aontu.VetCoverage `json:"coverage,omitempty"`
 	Findings  []aontu.VetFinding `json:"findings"`
 	Truncated bool               `json:"truncated"`
 	Verdict   string             `json:"verdict"`
@@ -210,6 +281,7 @@ func renderVetJSON(report aontu.VetReport) string {
 	// or a slice of the same.
 	_ = enc.Encode(vetReportJSON{
 		Aontu:     vetProducerJSON{Verb: "vet", Version: aontu.VERSION},
+		Coverage:  report.Coverage,
 		Findings:  report.Findings,
 		Truncated: report.Truncated,
 		Verdict:   report.Verdict,
@@ -328,6 +400,16 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 	verdict := aontu.VetValid
 	truncated := false
 	findings := []aontu.VetFinding{}
+	// COVERAGE ACROSS SEVERAL DATA FILES (G11 phase 5). Two data files
+	// are two candidates for one truth, so the schema side is the SAME
+	// for each: Declared is taken once, and a declaration is unused
+	// only when NO file met it -- the intersection, because a
+	// declaration one file exercised is exercised. The data side adds
+	// up: leaves and checked leaves sum, and Unchecked is the union.
+	// Mirrors ts/src/cli.ts.
+	var cov *aontu.VetCoverage
+	var unusedEvery map[string]bool
+	uncheckedAll := map[string]bool{}
 
 	for _, source := range sources {
 		report := aontu.Vet(string(schemaSrc), source.src, &aontu.VetOptions{
@@ -348,6 +430,8 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 			// would name the same file two ways.
 			SchemaPath: args.schema,
 			DataPath:   source.file,
+			Coverage:   args.coverage,
+			CoverageAt: args.coverageAt,
 		})
 
 		if vetRank[verdict] < vetRank[report.Verdict] {
@@ -355,6 +439,34 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 		}
 		truncated = truncated || report.Truncated
 		findings = append(findings, report.Findings...)
+
+		if nil != report.Coverage {
+			c := *report.Coverage
+			if nil == cov {
+				got := c
+				cov = &got
+			} else {
+				cov.Checked += c.Checked
+				cov.Declared = c.Declared
+				cov.Leaves += c.Leaves
+			}
+			for _, p := range c.Unchecked {
+				uncheckedAll[p] = true
+			}
+			mine := map[string]bool{}
+			for _, u := range c.Unused {
+				mine[u] = true
+			}
+			if nil == unusedEvery {
+				unusedEvery = mine
+			} else {
+				for u := range unusedEvery {
+					if !mine[u] {
+						delete(unusedEvery, u)
+					}
+				}
+			}
+		}
 
 		// A SCHEMA-SIDE FAULT IS THE SAME FAULT FOR EVERY DATA FILE, so
 		// it is reported ONCE. `error` means exactly that -- the run
@@ -387,7 +499,16 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 		findings = findings[:cap]
 	}
 
-	report := aontu.VetReport{Verdict: verdict, Truncated: truncated, Findings: findings}
+	if nil != cov {
+		cov.Unchecked = sortedKeys(uncheckedAll)
+		cov.Unused = sortedKeys(unusedEvery)
+		cov.Vacuous = 0 == cov.Checked && 0 < cov.Leaves
+	}
+
+	report := aontu.VetReport{
+		Coverage: cov, Verdict: verdict,
+		Truncated: truncated, Findings: findings,
+	}
 	text := renderVetText(report)
 	switch args.format {
 	case "json":
@@ -399,5 +520,32 @@ func vetOnce(args *vetArgs, trust trustArg, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintln(stdout, text)
+
+	// A VACUOUS CHECK IS A FAILED GATE UNDER --strict-coverage, and
+	// only under it: the verdict WORD is unchanged, so nothing that
+	// passes today starts failing, and a caller who wants the stronger
+	// gate asks for it. The reason goes to stderr, because stdout is a
+	// report contract -- a JSON consumer reads coverage.vacuous and a
+	// person reads this.
+	if args.strictCoverage && nil != report.Coverage && report.Coverage.Vacuous {
+		fmt.Fprintln(stderr,
+			"aontu: no data leaf was constrained by the schema:"+
+				" this run checked nothing")
+		fmt.Fprintln(stderr,
+			"aontu: `aontu help language` — a map template is `&:`,"+
+				" and a quoted \"*\" is a key named *")
+		return 1
+	}
 	return vetExit[verdict]
+}
+
+// sortedKeys is the set as a sorted slice, so both ports order the
+// aggregate coverage lists the same way.
+func sortedKeys(set map[string]bool) []string {
+	out := make([]string, 0, len(set))
+	for k := range set {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

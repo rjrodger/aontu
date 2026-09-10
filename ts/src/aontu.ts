@@ -22,6 +22,10 @@ import { get, why } from './query'
 import { patch } from './patch'
 import { diff } from './diff'
 import { agentsMd } from './agentsmd'
+import { allow } from './allow'
+export type {
+  AllowDecision, AllowOptions, AllowReason, AllowReport, AllowVerdict,
+} from './allow'
 import { graphOf } from './graph'
 import { relationCheck, relationErrors } from './relation'
 import { view, viewSet, viewTree } from './view'
@@ -38,7 +42,7 @@ export type { LintFinding, FormatReport, FormatOptions } from './format'
 // Kept in step with package.json by the `version` npm lifecycle script,
 // which runs on `npm version` / `npm run repo-bump`. version.test.ts
 // fails if the two ever drift.
-const VERSION = '0.61.0'
+const VERSION = '0.62.0'
 
 
 // A module file's VALUE, as far as it goes. COLLECTED, not raised: a
@@ -475,6 +479,11 @@ export {
   patch,
   diff,
   agentsMd,
+
+  // The role gate (docs/design/ALLOW.0.md): may a role modify a
+  // subtree, by a role model that is itself an aontu document. The
+  // question an agent asks before `set`.
+  allow,
   graphOf,
   relationCheck,
   view,

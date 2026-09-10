@@ -228,6 +228,17 @@ const hints: Record<string, string> = {
   view_profile_unknown: 'The figure kind does not render into the profile asked for: there is no\ntext form of a node-link drawing and no Mermaid form of a matrix. The\nnote lists the profiles the kind declares; the first is its default.',
 
   format_check: 'The formatted text is not the same document, so nothing was written.\nThis is a formatter defect: please report it, with the source.',
+
+  // THIS PORT NEVER RAISES decimal_syntax -- Go's construct.go does,
+  // and go/hints.go's header records that the CODE is Go-only. The
+  // TEXT is here anyway, verbatim, because since G11 phase 3 this
+  // table is a LOOKUP surface as well as a message source: the code is
+  // in the shared registry (test/spec/errcodes.tsv), so
+  // `aontu explain decimal_syntax` must answer the same in both ports
+  // or the agent that met the error under one binary learns nothing
+  // from the other. An entry for a code this port cannot raise is
+  // never read on an error path, only on that lookup.
+  decimal_syntax: 'This 0d literal is not a valid exact number.',
   view_style_profile: 'Each profile has ONE way to carry the meaning of a figure\'s marks:\nSGR escapes for text, CSS classes for svg. Asking for the other one is\na usage error rather than a silent no-op. `none` works everywhere.',
   view_style_unknown: 'The styles are none, ansi and css, plus `auto` at the command line,\nwhich the command resolves before the library runs: whether the\ndestination is a terminal is not something a library can see.',
 

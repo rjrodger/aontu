@@ -192,6 +192,11 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 		profiles = append(profiles, profile)
 	}
 
+	// A RENDER WITH NO PROFILE PRODUCES NO UNITS, and said so with zero
+	// bytes and exit 0. The profile is what maps a model onto a
+	// language, so without one there is nothing for the renderer to
+	// write -- which is a usable answer only if the caller is told.
+	noProfiles := 0 == len(profiles)
 	report := aontuForFileTrust(files[0], trust).Render(string(src),
 		&aontu.RenderOptions{At: at, Unit: unit, Strict: strict,
 			Profiles: profiles, Coverage: coverage, CoverageAt: coverageAt,
@@ -199,6 +204,16 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 			// shape there has always said; a text run computes it only
 			// when the coverage report needs it.
 			Trace: "json" == format})
+
+	// Said once, whatever the format: stdout stays the report.
+	if "error" != report.Verdict && 0 == len(report.Units) {
+		why := "the document produced no units under this profile"
+		if noProfiles {
+			why = "no profile was given, and the document declares none" +
+				" (see aontu help tasks)"
+		}
+		vacuous(stderr, "nothing was rendered", why)
+	}
 
 	if "json" == format {
 		io.WriteString(stdout, renderReportJSON(report)+"\n")

@@ -1878,11 +1878,11 @@ The list **kind**: admits any list, defaults to nothing.
 
 Example: `y: list() & [1]`→`[1]`
 
-### `lower(s: string|number) : string`
+### `lower(s: string|number, start?: integer|biginteger, len?: integer|biginteger) : string`
 
-Lowercase a string; **floor** of a number, keeping the argument's kind.
+Lowercase a string, or a run of it; **floor** of a number, keeping the argument's kind. The range is `upper`'s; see [`upper`](#uppers-stringnumber-start-integerbiginteger-len-integerbiginteger--string).
 
-Example: `lower(ABC)`→`"abc"`, `lower(2)`→ integer `2`, `lower(1.9)`→ float `1`, `lower(0d1.9)`→ bigdecimal `0d1.0`
+Example: `lower(ABC)`→`"abc"`, `lower("FOO",1,-1)`→`"Foo"`, `lower("FOOBAR",-3,-1)`→`"fooBAR"`, `lower(1.9)`→ float `1`
 
 ### `map() : map`
 
@@ -2040,11 +2040,13 @@ Require distinct members, optionally comparing a named field. See [unique semant
 
 Example: `list() & unique(id)`
 
-### `upper(s: string|number) : string`
+### `upper(s: string|number, start?: integer|biginteger, len?: integer|biginteger) : string`
 
-Uppercase a string; **ceiling** of a number, keeping the argument's kind.
+Uppercase a string, or a run of it; **ceiling** of a number, keeping the argument's kind.
 
-Example: `upper(abc)`→`"ABC"`, `upper(2)`→ integer `2`, `upper(1.1)`→ float `2`, `upper(0d1.1)`→ bigdecimal `0d2.0`
+`start` is a boundary. Zero or positive, the run begins there and reaches forward; negative, it counts from the end and the run stops there, the character it lands on being the first one left alone. `len` is how many characters; `-1`, which is also the default, is the whole source. Both ends clamp, so a run past either end does as much as exists. Indices are code points. A range on a number is refused.
+
+Example: `upper(abc)`→`"ABC"`, `upper("foo",0,1)`→`"Foo"`, `upper("foo",1)`→`"fOO"`, `upper("foo",-1,2)`→`"FOo"`, `upper(1.1)`→ float `2`
 
 ### `usc(s: string, variant?: string) : string`
 

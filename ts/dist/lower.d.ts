@@ -6,6 +6,9 @@ export type LowerCtx = {
     lossy: RenderLoss[];
 };
 export declare function splitWords(name: string): string[];
+export declare function lowerASCII(s: string): string;
+export declare function upperASCII(s: string): string;
+export declare function capitalise(word: string, acronyms: string[]): string;
 export declare function caseName(name: string, style: string, acronyms: string[]): string;
 export declare function ident(name: string, role: string, ctx: LowerCtx, path: string, bare: boolean): string;
 export declare function quote(s: string, profile: any): string;

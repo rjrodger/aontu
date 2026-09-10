@@ -77,15 +77,127 @@ regresses `path($.z.x.a)` in TypeScript alone.
 New codes: `abnf_grammar`, `parse_arg`, `parse_failed`. Rationale in
 [ADR-032](ADR.md#adr-032--a-grammar-is-a-string-and-parsing-is-a-function).
 
-> **RELEASE SEQUENCING.** The two `each` entries below (the removal and
-> the rename) must not ship in one release. Between them, `each`
-> changes meaning from a meet to a replacement. Cut a release after the
-> removal, with `each` simply absent, and release the rename after
-> that. Together they are silent for a record template; apart, every
-> affected call errors. See
-> [ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
-> No other entry in this section carries the hazard: each of the rest
-> fails loudly on an old document.
+### BREAKING: `Semver` carries build metadata and checks by grammar
+
+`$.aontu.System.Semver` is a **five**-element tuple, where 0.62.0
+shipped four, and the two string parts are checked by an inline ABNF
+grammar rather than by a pattern:
+
+```
+[major minor patch pre-release build]
+
+[1]                      ->  [1 0 0 "" ""]
+[1 2 3 "alpha.1"]        ->  [1 2 3 "alpha.1" ""]
+[1 0 0 "" "exp.sha.5114f85"]
+```
+
+**To migrate:** a version written out to four elements gains a fifth,
+`""`. A version written short -- `[1]`, `[1 2]`, `[1 2 3]` -- needs no
+change, the tail still defaulting. A sixth element is refused
+(`[aontu/constraint]`), where a fifth was in 0.62.0. A consumer reading
+the generated JSON sees a five-element array.
+
+**The pre-release is now checked for its SHAPE, not just its
+alphabet.** `"alpha..1"` and `"01"` were admitted in 0.62.0 and are
+refused here (`[aontu/empty]`); `"beta_1"` was refused then and still
+is. This is the shape `re()` cannot express at all -- dot-separated
+identifiers is a quantified group holding a quantifier, refused as
+`constraint_pattern` for backtracking exponentially -- which is what
+makes it the worked test of `abnf()` and `parse()`.
+
+**Build metadata is carried**, where 0.62.0 dropped it, and its grammar
+is deliberately not the pre-release one: a build identifier may have a
+leading zero (`[1 0 0 "" "001"]` stands), because build metadata is
+never compared. It sits LAST for the same reason: [semver.org
+2.0.0](https://semver.org) says it MUST be ignored when determining
+precedence, and last is the one position a left-to-right comparison can
+stop before without leaving a hole.
+
+The vocabulary's canon-hash moves with it, as it does for any change to
+a bundled model.
+
+## Go 0.1.20 — 2026-09-10 · TypeScript 0.62.0
+
+> **UPGRADING FROM 0.61.0: `each` changed meaning, and `form` is gone.**
+> In 0.61.0 `each(d, t)` MET each member of `d` with `t`. Here it
+> REPLACES that member with `t`, and the meet is spelled
+> `each(d, _ & t)`. The call site does not change shape, so a record
+> template is the one case that does not error:
+> `each($.ports, {protocol: *TCP|string})` now drops every port's own
+> fields instead of adding to them. **Add `_ &` to every two-argument
+> `each` whose template is a record, before upgrading.** A kind
+> template and the one-argument `each($.m)` fail loudly instead
+> (no-gen, arity). `form`, which carried the replacement in 0.60.0 and
+> 0.61.0, is gone: it is refused with `unknown_function` in both ports,
+> and it is spelled `each` now.
+>
+> The two are one decision taken in two steps, and the steps were meant
+> to reach you in two releases, the first with `each` simply absent so
+> that an old call could not be silent. Both had landed before either
+> shipped, so they arrive together and this warning stands in place of
+> the sequencing. The record is
+> [#189](https://github.com/aontu-lang/aontu/issues/189).
+>
+> No other entry below carries the hazard: each of the rest fails
+> loudly on an old document.
+
+### `aontu allow`: the role gate
+
+**An agent that edits a model under a role had nowhere to ask whether
+it may, so the rule lived in its prompt, where nothing checks it.**
+`aontu allow --role <role> [--at <path>] <roles-file> <path>...` asks a
+role model whether the role may modify every one of the given
+subtrees, and answers before the change is made, as an exit code an
+agent branches on: 0 allowed (every path), 1 refused (at least one
+path, or a role the model does not declare), 2 usage, 4 the role model
+does not stand up on its own. The role model is an aontu document, one
+entry per role carrying `allow` and optionally `deny` as path strings,
+so spreads, references, includes and `close()` compose it the way they
+compose everything else; `--at` says where the roles map lives when it
+is not `$.roles`, and `--format json` is the same report as an object.
+
+**The rule is small, and it errs towards refusal.** A path is allowed
+when an `allow` entry is at or above it, and never by an entry below
+it, because a change at the asked node reaches every sibling of the
+entry. A path is refused when a `deny` entry is at, above or below it,
+whatever the order the entries were written in: denied
+`$.services.*.tier` refuses `$.services.auth.tier`, and refuses
+`$.services.auth` too, since a change at the service could rewrite the
+tier. `*` matches exactly one key and is the only pattern character.
+Every answer names the deciding entry as a path into the role model
+(`$.roles.dev.deny.0`), so `aontu why` locates the line that wrote it,
+and a path may arrive in `set`'s `<path>=<value>` spelling, so a skill
+hands the gate the arguments the write will get; the value must be one
+value, because `set` appends it as source and a second pair inside it
+would write a subtree the gate was not asked about. An undeclared role is a refusal with a `no_path` finding beside
+it, not an error: the question has an answer, and the answer is no.
+
+**The shape of a role is aontu as well.** The model meets it at
+evaluation, as data meets a schema under `vet`: a spread template over
+the roles map whose entries are `string & re("^[$]") & re("[^.]$")`, so
+a malformed role, or an entry that is empty or does not start at `$`,
+is refused with the engine's own code and site and the verb invents no
+finding shape of its own. The lists are read from the written tree, so
+a `hide()`d deny still denies. Two consequences: a role model that
+`close()`s its role vocabulary must declare `deny?` in it, or the
+template's optional key is `[aontu/closed]` for every role; and a key
+containing a dot is unreachable, as it is for `get`, while a role is
+one key, looked up as written. The gate answers
+about the path and says nothing about where the value is written: a
+path reached through a reference is `set`'s business, which appends
+there and refuses `--in-place`.
+
+**TypeScript only, as a spike.** `ts/src/allow.ts` and the verb in
+`ts/src/cli.ts`, held by `ts/test/allow.test.ts` and the `cli-allow`
+block of `ts/test/cli.test.ts`; `docs/reference-api.md` has the verb
+with tested transcripts, `docs/how-to/gate-changes-by-role.md` the
+recipe, the skill its verb line, and use case 18
+(`use-cases/18-role-permissions`) a closed role vocabulary over a
+service model with an agent skill that asks before it writes. The Go
+port does not have the verb and no shared spec mode pins it, so it is
+not landed under ADR-001: `go/allow.go` with its CLI verb, and a
+five-column `allow` mode in `test/spec/allow.tsv` probed in both
+ports, are what would land it. `docs/design/ALLOW.0.md` is the note.
 
 ### BREAKING: a bundled key that names a type is CamelCase
 
@@ -110,7 +222,7 @@ where you wrote `aontu: code: units: [...]`. Both fail loudly.
 It is a **convention and only a convention**: a user's own schemas are
 neither checked nor warned about, and `aontu vet` gains no finding for a
 lowercase `type()`. Rationale in
-[ADR-031](ADR.md#adr-031--a-path-part-that-names-a-type-is-camelcase).
+[#190](https://github.com/aontu-lang/aontu/issues/190).
 
 ### FIX: the path of a conflict is the field to edit
 
@@ -182,11 +294,11 @@ Rationale in
 ### `aontu:system` gains `Semver`
 
 A version (semver.org 2.0.0) as an **ordered tuple** — major, minor,
-patch, pre-release, build — **with the tail defaulted**:
+patch, pre-release — **with the tail defaulted**:
 
 ```
-v: $.aontu.System.Semver & [1]   ->  [1, 0, 0, "", ""]
-v: $.aontu.System.Semver & [1 2 3 "alpha.1" "exp.sha.5114f85"]
+v: $.aontu.System.Semver & [1]   ->  [1, 0, 0, ""]
+v: $.aontu.System.Semver & [1 2 3 "alpha.1"]
 ```
 
 A list, not a dotted string and not a map. A version is compared
@@ -194,30 +306,21 @@ rather than read, and the comparison runs component by component from
 the left: `"1.10.0"` sorts below `"1.9.0"` as text, and a map has no
 order of its own to compare along.
 
-**Leading zeroes need no rule in the numeric parts**: they are
-integers, and `01` is not a distinct integer literal, so the spec's
-"MUST NOT contain leading zeroes" is impossible to write there rather
-than merely forbidden.
+**Leading zeroes need no rule**: the numeric parts are integers, and
+`01` is not a distinct integer literal, so the spec's "MUST NOT contain
+leading zeroes" is impossible to write rather than merely forbidden.
 
-**The pre-release and the build are checked BY GRAMMAR**, each by an
-inline ABNF grammar applied through the one-argument `parse()` above.
-That is what a pattern could not do: the spec spells both as
-dot-separated identifiers, which as a regex is a quantified group
-containing a quantifier — a shape `re()` refuses outright
-(`constraint_pattern`) for backtracking exponentially. So `"beta_1"`,
-`"alpha..1"` and `"01"` are all refused, where an alphabet check would
-have let the last two through.
+**The pre-release check is the alphabet, not the structure**, and the
+vocabulary says so. The spec's grammar is dot-separated identifiers,
+which as a regex is a quantified group containing a quantifier — a
+shape `re()` refuses outright (`constraint_pattern`) for backtracking
+exponentially. So `"beta_1"` is refused and `"alpha..1"` is not.
+Carrying the pre-release as a list of identifiers would check it in
+full, and is the change to make if that matters more than `[1]` does.
 
-**The two grammars differ where the spec does.** A wholly numeric
-pre-release identifier may not carry a leading zero, because
-pre-releases are compared numerically; a build identifier may, because
-build metadata is never compared. `[1 0 0 "0alpha"]` and
-`[1 0 0 "" "001"]` both stand.
-
-**Build metadata comes last.** The spec says it MUST be ignored when
-determining precedence, and last is the one position where a
-comparison walking the tuple from the left can stop before it without
-leaving a hole.
+**Build metadata is not carried.** The spec has it, and also says it
+MUST be ignored when determining precedence — so a type whose purpose
+is comparison is the wrong place for it.
 
 Additive: the vocabulary's canon-hash moves, as it does for any change
 to a bundled model.
@@ -283,7 +386,7 @@ the hole's owner are all the function's own and are untouched.
 `each_data` returns to service and `form_data` retires; its released
 meaning is unchanged, and the registry keeps both rows, being
 append-only. Rationale in
-[ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
+[#189](https://github.com/aontu-lang/aontu/issues/189).
 
 ### BREAKING: `each` is removed, `form` carries the bound
 
@@ -322,7 +425,7 @@ to a replacement.
 `each_data` is retired but stays registered in
 `test/spec/errcodes.tsv`, which is append-only; a non-bag argument now
 answers `form_data`. Rationale in
-[ADR-026](ADR.md#adr-026--each-is-retired-form-carries-the-bound).
+[#189](https://github.com/aontu-lang/aontu/issues/189).
 
 ### `aontu fmt`: the repeat stops at a record
 

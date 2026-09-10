@@ -69,12 +69,21 @@ func runRelations(argv []string, stdout, stderr io.Writer) int {
 
 	// The file's own directory is the include base, as every verb
 	// resolves a named file (vet's aontuForPath rule).
-	report := aontuForFileTrust(files[0], trust).RelationCheck(string(src))
+	report := aontuForFileTrust(files[0], trust).RelationCheckOpts(
+		string(src), &aontu.RelationOptions{Count: true})
 	text := renderRelationsText(report)
 	if "json" == format {
 		text = renderRelationsJSON(report)
 	}
 	io.WriteString(stdout, text+"\n")
+	// `pass` over NO declarations is the vacuous case, and the engine
+	// knows it exactly: ctx.reldecls is empty. The count is asked for
+	// here rather than derived, so the answer costs no second
+	// evaluation.
+	if nil != report.Declared && 0 == *report.Declared {
+		vacuous(stderr, "this document declares no relations",
+			"`pass` means nothing was checked, not that the graph is sound")
+	}
 	return relationsExit[report.Verdict]
 }
 

@@ -6,6 +6,7 @@ exports.displayFile = displayFile;
 exports.failureFinding = failureFinding;
 exports.anchorAt = anchorAt;
 exports.throughResidue = throughResidue;
+exports.vetCoverage = vetCoverage;
 exports.vet = vet;
 const aontu_1 = require("./aontu");
 const node_path_1 = require("node:path");
@@ -21,6 +22,7 @@ const subsume_1 = require("./subsume");
 // (query imports anchorAt from here), and a benign one: both sides
 // use the other only from inside a function body, never at load time.
 const query_1 = require("./query");
+const keyorder_1 = require("./keyorder");
 // The default cap, exported because the CLI applies it to the WHOLE
 // report across several data files and must not carry a second copy of
 // the number (ts/src/cli.ts).
@@ -393,6 +395,189 @@ function throughResidue(v) {
 // are unusable — which is why an unusable schema is a verdict (`error`)
 // rather than an exception too: "the schema is broken" is a fact the
 // agent loop needs to branch on, not an exceptional condition.
+// THE COVERAGE ACCOUNTING (G11 phase 5). Structural, over the two
+// trees vet already holds, and deliberately NOT provenance-based: the
+// question is what the SCHEMA DECLARES about the data, which is a
+// property of the two documents rather than of the meet that ran. A
+// meet-based reading would also count a value the data supplied to
+// itself as "covered", which is the opposite of the thing being asked.
+//
+// A map's template lives on `spread.cj` rather than in `peg`, so a
+// declaration path spells it `&` -- the same character the language
+// spells it with, and one no map key can collide with, since a bare
+// `&` cannot be a key.
+const COVER_TEMPLATE = '&';
+// Is this value a bag with children to walk?
+function coverKids(v) {
+    // NO KIND GUARD: the two tests below already reject anything that is
+    // not a bag, exactly as the Go twin's type switch does, so a guard
+    // above them is dead code (ADR-002).
+    const out = [];
+    if (true === v.isMap && null != v.peg) {
+        for (const k of Object.keys(v.peg).sort(keyorder_1.cmpCodePoint)) {
+            out.push({ key: k, val: v.peg[k] });
+        }
+    }
+    else if (true === v.isList && Array.isArray(v.peg)) {
+        v.peg.forEach((m, i) => out.push({ key: String(i), val: m }));
+    }
+    return out;
+}
+// The template a bag applies to every child, when it has one. A spread
+// with no conjunct is not a declaration: `{"*":{...}}` carries the
+// empty spread every map carries, and reading that as a template is
+// precisely the confusion this phase exists to end.
+function coverTemplate(v) {
+    const cj = v?.spread?.cj;
+    return null != cj && true === cj.isVal && true !== cj.isTop ? cj : undefined;
+}
+// Every declaration the schema makes, as a path, with the node at it.
+// Named keys and templates alike, at every depth.
+//
+// NO IDENTITY GUARD, and that is a decision rather than an omission.
+// `walkVals` (ts/src/walk.ts) carries one because it walks values the
+// unification MINTED -- findings, conjunct operands, disjunct trials --
+// where a node really is reached twice. These two walks descend a
+// SETTLED bag through `peg` and `spread` alone, and such a tree is a
+// tree: a reference resolves by cloning its target, and an alias, a
+// repeated spread and a recursive residual were each probed and share
+// nothing. The property is already relied on repository-wide, because
+// `canon` walks the same edges with no guard and is computed on every
+// one of these values. A guard here would be a branch nothing can
+// take, which ADR-002 exists to keep out.
+function coverDeclare(v, path, out) {
+    const tpl = coverTemplate(v);
+    if (null != tpl) {
+        const at = [...path, COVER_TEMPLATE];
+        out.set(pathText(at), tpl);
+        coverDeclare(tpl, at, out);
+    }
+    for (const { key, val } of coverKids(v)) {
+        const at = [...path, key];
+        out.set(pathText(at), val);
+        coverDeclare(val, at, out);
+    }
+}
+// Every path in the data, and whether it is a LEAF -- a node with no
+// children, which is where a value lives.
+function coverDataPaths(v, path, out) {
+    const kids = coverKids(v);
+    if (0 < path.length) {
+        out.push({ path: pathText(path), leaf: 0 === kids.length });
+    }
+    for (const { key, val } of kids) {
+        coverDataPaths(val, [...path, key], out);
+    }
+}
+// Walk one data path down the schema, naming the declaration that
+// constrains it -- the exact key where the schema has one, else the
+// covering template. Undefined when the schema declares nothing there.
+function coverMatch(anchor, segs) {
+    // NO NIL GUARD ON `at`, and none on an empty `segs`: `at` starts as
+    // the anchor and is only ever reassigned to a non-nil child or
+    // template, and coverDataPaths never emits the root path, so a call
+    // with no segments cannot happen. A guard that cannot fire is dead
+    // code, and dead code is what ADR-002 exists to keep out.
+    let at = anchor;
+    let decl = '';
+    for (const seg of segs) {
+        const named = true === at.isMap && null != at.peg ? at.peg[seg]
+            : true === at.isList && Array.isArray(at.peg) ? at.peg[Number(seg)]
+                : undefined;
+        if (null != named && true === named.isVal) {
+            decl = '' === decl ? seg : decl + '.' + seg;
+            at = named;
+            continue;
+        }
+        const tpl = coverTemplate(at);
+        if (null == tpl) {
+            return undefined;
+        }
+        decl = '' === decl ? COVER_TEMPLATE : decl + '.' + COVER_TEMPLATE;
+        at = tpl;
+    }
+    return '$.' + decl;
+}
+// The SHALLOWEST members of a set of paths: one whose parent is also in
+// the set is covered by naming the parent, and naming both is noise.
+// `render --coverage`'s `dead` is built on the same rule.
+function coverShallowest(paths) {
+    const held = new Set(paths);
+    return paths.filter((p) => {
+        for (let at = p; -1 !== at.lastIndexOf('.');) {
+            at = at.slice(0, at.lastIndexOf('.'));
+            if (held.has(at)) {
+                return false;
+            }
+        }
+        return true;
+    }).sort(keyorder_1.cmpCodePoint);
+}
+// The accounting itself: what the schema declared, what the data holds,
+// and which of each the other met.
+function vetCoverage(anchor, dataVal, coverageAt) {
+    const declarations = new Map();
+    coverDeclare(anchor, [], declarations);
+    const dataPaths = [];
+    coverDataPaths(dataVal, [], dataPaths);
+    // `--coverage-at` narrows the DATA side, which is the side a caller
+    // gating one subtree is asking about. The schema side follows from
+    // it: a declaration is unused only among the data actually measured.
+    const under = null == coverageAt ? undefined
+        : coverageAt.replace(/^\$\.?/, '');
+    const inScope = (p) => {
+        if (null == under || '' === under) {
+            return true;
+        }
+        const want = '$.' + under;
+        return p === want || p.startsWith(want + '.');
+    };
+    const used = new Set();
+    const unchecked = [];
+    let checked = 0;
+    let leaves = 0;
+    for (const { path, leaf } of dataPaths) {
+        if (!inScope(path)) {
+            continue;
+        }
+        const segs = path.replace(/^\$\.?/, '').split('.').filter((x) => '' !== x);
+        const decl = coverMatch(anchor, segs);
+        if (leaf) {
+            leaves++;
+        }
+        if (null == decl) {
+            unchecked.push(path);
+            continue;
+        }
+        used.add(decl);
+        if (leaf) {
+            checked++;
+        }
+    }
+    // A declaration is met when it constrained a data path, or when a
+    // declaration BENEATH it was: `$.a` is used by `$.a.b` meeting
+    // `$.a.b`, and reporting the parent as unused would be false.
+    const unused = [];
+    for (const decl of declarations.keys()) {
+        const covered = used.has(decl) ||
+            [...used].some((u) => u.startsWith(decl + '.'));
+        if (!covered) {
+            unused.push(decl);
+        }
+    }
+    return {
+        checked,
+        declared: declarations.size,
+        leaves,
+        unchecked: coverShallowest(unchecked),
+        unused: coverShallowest(unused),
+        // VACUOUS IS ABOUT LEAVES, and a document with none cannot be
+        // vacuously checked: `{}` against any schema examined nothing
+        // because there was nothing to examine, which is not the failure
+        // this reports.
+        vacuous: 0 === checked && 0 < leaves,
+    };
+}
 function vet(schemaSrc, dataSrc, opts) {
     const options = opts ?? {};
     const schemaUrl = options.schemaUrl ?? DEFAULT_SCHEMA_URL;
@@ -519,6 +704,26 @@ function vet(schemaSrc, dataSrc, opts) {
         schemaUrl, schemaPath: options.schemaPath,
         dataUrl, dataPath: options.dataPath,
     };
+    // COVERAGE IS MEASURED BEFORE THE MEET (G11 phase 5), because the
+    // meet CONSUMES its operands: parsed trees are single-use, and under
+    // `--at` the anchor itself is the left operand. Measuring after would
+    // read a tree the fixpoint had already rewritten.
+    //
+    // The data side is its own evaluation rather than the parse above,
+    // so a document that reaches its values through `@"..."` or a
+    // reference is measured on the paths it actually has. It is one more
+    // evaluation of one document, and it happens only when asked for.
+    let coverage;
+    if (true === options.coverage) {
+        const coverCtx = aontu.ctx({ collect: true });
+        const settledData = aontu.unify(dataSrc, dataOpts, coverCtx);
+        // A data document that does not stand alone is already reported by
+        // the meet below; here it falls back to what was parsed, which is
+        // the same paths minus whatever an include would have added.
+        const measured = 0 === coverCtx.err.length && true !== settledData?.isNil
+            ? settledData : dataVal;
+        coverage = vetCoverage(anchor, measured, options.coverageAt);
+    }
     // Default-validity lint (G3 phase 5, re-examined under ADR-004): for
     // every disjunction in the SCHEMA carrying a preference, warn when
     // the effective default is not an instance of any REMAINING
@@ -802,6 +1007,9 @@ function vet(schemaSrc, dataSrc, opts) {
     else if (0 < unmet && true !== options.partial) {
         verdict = 'incomplete';
     }
-    return { verdict, truncated, findings: kept };
+    return {
+        verdict, truncated, findings: kept,
+        ...(null == coverage ? {} : { coverage }),
+    };
 }
 //# sourceMappingURL=vet.js.map

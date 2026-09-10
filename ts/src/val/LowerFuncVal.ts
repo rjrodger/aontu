@@ -16,6 +16,7 @@ import { makeNilErr } from '../err'
 import { ScalarKindVal } from '../val/ScalarKindVal'
 import { makeScalarLike } from '../val/valutil'
 import { Decimal } from '../val/Decimal'
+import { caseRange, rangeArg } from './caserange'
 
 
 
@@ -49,7 +50,23 @@ class LowerFuncVal extends FuncBaseVal {
     // internal error.
     const arg = args?.[0]
     const oldpeg = arg?.peg
-    const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
+
+    // THE RANGE (ts/src/val/caserange.ts): `start` names the first
+    // character of the run when it is zero or positive and the last
+    // when it is negative; `len` of -1, and the absent argument, are
+    // the source's length. Refused on a NUMBER, where a run of
+    // characters means nothing -- the numeric arm below is a ceiling,
+    // not a case mapping.
+    const start = rangeArg(args?.[1])
+    const len = rangeArg(args?.[2])
+    const ranged = undefined !== start || undefined !== len
+    if (ranged &&
+      (Number.isNaN(start as number) || Number.isNaN(len as number) ||
+        'string' !== typeof oldpeg)) {
+      return this.place(makeNilErr(ctx, 'invalid-arg', this, arg, 'range'))
+    }
+    const peg = 'string' === typeof oldpeg ?
+      caseRange(oldpeg, start ?? 0, len ?? -1, false) :
       'number' === typeof oldpeg ? Math.floor(oldpeg) :
         // The exact leaves take an EXACT floor and keep their kind: a
         // biginteger is already integral so it is its own floor, and a

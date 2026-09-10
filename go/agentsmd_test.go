@@ -75,3 +75,49 @@ func TestAgentsMdSplice(t *testing.T) {
 		t.Fatalf("reversed markers: %q", got)
 	}
 }
+
+// The SHAPE's depth (G11 phase 7). Two levels name the root keys and
+// say `top` under them; a caller that wants the fields asks for them.
+// Here rather than only in the command suite for the reason the header
+// above states: cross-package runs do not count toward this package's
+// coverage.
+func TestAgentsMdDepthOption(t *testing.T) {
+	src := "entity: { &: { table: string, fields: { &: { type: string } } } }\n"
+
+	shape := func(opts *AgentsMdOptions) string {
+		t.Helper()
+		r := New().AgentsMd(src, opts)
+		if !r.OK {
+			t.Fatalf("agentsmd: %+v", r.Findings)
+		}
+		for _, line := range strings.Split(r.Stanza, "\n") {
+			if strings.HasPrefix(line, "- Shape: ") {
+				return line
+			}
+		}
+		t.Fatalf("no shape line: %q", r.Stanza)
+		return ""
+	}
+
+	deep := shape(&AgentsMdOptions{Depth: 4})
+	if !strings.Contains(deep, "table") {
+		t.Errorf("Depth 4 shows no field: %s", deep)
+	}
+	// The DEFAULT is unchanged, however it is spelled: no options at
+	// all, options with no depth, and the depth it already used.
+	base := shape(nil)
+	if base == deep {
+		t.Error("Depth changed nothing")
+	}
+	if base != shape(&AgentsMdOptions{}) ||
+		base != shape(&AgentsMdOptions{Depth: 2}) {
+		t.Error("the default depth is not 2")
+	}
+
+	// THE LANGUAGE DOOR: a stanza says where to learn the language the
+	// document is written in, offline, from the binary in hand.
+	if !strings.Contains(New().AgentsMd(src, nil).Stanza,
+		"aontu help language") {
+		t.Error("the stanza does not point at the language")
+	}
+}

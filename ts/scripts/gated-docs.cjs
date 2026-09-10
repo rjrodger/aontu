@@ -14,7 +14,7 @@
 //
 // Scope is docs/STYLE-GUIDE.md, "How this guide is enforced": the
 // Diátaxis pages, the how-to guides, the three contributor references
-// that ship under docs/, the sixteen published use cases, and the two
+// that ship under docs/, the eighteen published use cases, and the two
 // package READMEs. Design notes, the capability review, the defect
 // ledgers and the repro corpus are working documents and are out.
 

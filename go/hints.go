@@ -2,7 +2,10 @@
 
 package aontu
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // hints maps unification error codes to human-readable explanations.
 // Since the #29 message-parity work the non-parameterised entries are
@@ -461,4 +464,61 @@ func codeClass(code string) string {
 		}
 	}
 	return "internal"
+}
+
+// THE EXPLAIN SURFACE (G11 phase 3, the Go side of
+// ts/src/hints.ts's exports).
+//
+// THE REGISTRY IS THE LIST, NOT THE HINT TABLE. test/spec/errcodes.tsv
+// registers 157 codes and the spec suite asserts set equality between
+// the file and codeClasses IN BOTH PORTS, so listing from codeClasses
+// is listing the shared contract. The hint table is smaller and is NOT
+// in parity -- 131 entries here against 130 in TypeScript, the extra
+// being decimal_syntax, which TS never raises -- so listing from it
+// would make `aontu explain --list` differ between ports over a
+// difference that is not about what either port can report.
+//
+// A REGISTERED CODE WITH NO HINT ANSWERS WITH ITS CLASS AND SAYS SO.
+// Twenty-six registered codes carry no explanation text here; before
+// this verb their absence was invisible, because a hint is only ever
+// seen beside the error that raises it.
+
+// ExplainCode returns the class for an error code, its hint text (empty
+// when this port registers none), and whether the code is in the shared
+// registry at all. An unregistered code still gets a class -- codeClass
+// falls back to a dynamic prefix, else `internal` -- which is what lets
+// a caller be told it is unknown rather than merely unexplained.
+func ExplainCode(code string) (class string, hint string, registered bool) {
+	class = codeClass(code)
+	hint = hints[code]
+	_, registered = codeClasses[code]
+	if !registered {
+		// A dynamic code (`func:upper`, `op[+]`) is registered through
+		// the prefix it extends, and carries that prefix's hint: the
+		// suffix names the operator, the explanation is the prefix's.
+		// No guard on `hint` here: every hint key is also a registry
+		// key (the spec suite asserts codeClasses set-equal with
+		// test/spec/errcodes.tsv, and hints is a subset of it), so a
+		// code that reaches this loop is unregistered and therefore has
+		// no hint of its own.
+		for _, prefix := range codePrefixes {
+			if strings.HasPrefix(code, prefix) {
+				registered = true
+				hint = hints[prefix]
+				break
+			}
+		}
+	}
+	return class, hint, registered
+}
+
+// Codes returns every code in the shared registry, sorted by code
+// point, so both ports list them in the same order.
+func Codes() []string {
+	out := make([]string, 0, len(codeClasses))
+	for code := range codeClasses {
+		out = append(out, code)
+	}
+	sort.Strings(out)
+	return out
 }
