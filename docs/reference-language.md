@@ -56,6 +56,9 @@ the [Explanation](explanation.md).
 - [Generation](#generation)
 - [Subsumption](#subsumption)
 - [Errors](#errors)
+- [Grammars: `abnf()` and `parse()`](#grammars-abnf-and-parse)
+  - [A grammar reads better in backticks](#a-grammar-reads-better-in-backticks)
+  - [Shaping the tree](#shaping-the-tree)
 - [The constraint algebra](#the-constraint-algebra)
   - [Named constraint aliases](#named-constraint-aliases)
 
@@ -1752,6 +1755,12 @@ and [emit](#transforming-emit).
 `pack` and `each` construct collections; `filter` selects members;
 `pick` projects a field; `emit` applies a rule table and flattens its output.
 
+### `abnf(g: string) : string`
+
+Compile an RFC 5234 ABNF grammar and answer its source, so a parser is an ordinary string. A grammar that does not compile is refused here, once, rather than at every site that parses with it. See [grammars](#grammars-abnf-and-parse).
+
+Example: `G: abnf("v = 1*DIGIT")`
+
 ### `above(n: number|string) : constraint`
 
 Constrain a numeric or string value to be strictly greater than a bound. See [bounds](#the-constraint-algebra).
@@ -1943,6 +1952,12 @@ Example: `open(close({x:1})) & {y:2}`→`{x:1,y:2}`
 One keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each).
 
 Example: `deploy: pack($.names, {replicas:*2|integer})`
+
+### `parse(g: string, v?: string) : map|constraint`
+
+Parse a string under a grammar and answer the syntax tree. With no value, the grammar as a **constraint** on whatever meets it, answering that value unchanged. A failure to parse is a failure to unify. See [grammars](#grammars-abnf-and-parse).
+
+Example: `parse($.G, "12")` → `{rule:"v" src:"12" kids:[...]}`; `*"" | parse($.G)`
 
 ### `path(capture p?: path) : path`
 
@@ -3044,7 +3059,7 @@ $ aontu system.aon
 | `$.aontu.System.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
 | `$.aontu.System.Component` | a node with `ports`, each of which is a `Port` |
 | `$.aontu.System.Service` | a Component whose `kind` is `service` |
-| `$.aontu.System.Semver` | a version as an ordered tuple, `[major minor patch pre-release]`, with the tail defaulted: `[1]` is `[1 0 0 ""]` |
+| `$.aontu.System.Semver` | a version as an ordered tuple, `[major minor patch pre-release build]`, with the tail defaulted: `[1]` is `[1 0 0 "" ""]` |
 
 **`Semver` is a list, not a string and not a map.** A version is
 compared rather than read, and comparison runs component by component
@@ -3053,8 +3068,8 @@ sorts below `"1.9.0"` as text, and a map has no order of its own to
 compare along.
 
 **The tail is defaulted**, so a version may be written as short as it
-is meant: `[1]` is `[1 0 0 ""]`, and `[1 2]` is `[1 2 0 ""]`. The
-arity is four, so a fifth element is refused (`[aontu/constraint]`).
+is meant: `[1]` is `[1 0 0 "" ""]`, and `[1 2]` is `[1 2 0 "" ""]`. The
+arity is five, so a sixth element is refused (`[aontu/constraint]`).
 Write this as `version.aon`:
 
 <!-- test: scenario aontu-system-semver -->
@@ -3076,35 +3091,50 @@ $ aontu version.aon
     1,
     2,
     3,
-    "alpha.1"
+    "alpha.1",
+    ""
   ],
   "v": [
     1,
     0,
     0,
+    "",
     ""
   ]
 }
 ```
 
-Two limits are worth knowing, and the vocabulary records both:
+Three things about the two string parts are worth knowing:
 
-- **The pre-release is checked for its alphabet, not its shape.**
-  [semver.org 2.0.0](https://semver.org) spells the pre-release as
-  dot-separated identifiers, which as a pattern is a quantified group
-  holding a quantifier, the one shape `re()` refuses outright
+- **Both are checked by grammar, not by pattern.**
+  [semver.org 2.0.0](https://semver.org) spells each as dot-separated
+  identifiers, which as a pattern is a quantified group holding a
+  quantifier, the one shape `re()` refuses outright
   (`constraint_pattern`, for backtracking exponentially; see
-  [The constraint algebra](#the-constraint-algebra)). So `"beta_1"` is
-  refused for its underscore and `"alpha..1"` is not refused at all.
-  Carrying the pre-release as a list of identifiers instead would
-  check it in full.
-- **Build metadata is not carried.** The spec has it, and also says it
-  MUST be ignored when determining precedence; a type whose purpose is
-  comparison is the wrong place to keep it.
+  [The constraint algebra](#the-constraint-algebra)). The vocabulary
+  carries an ABNF grammar for each instead and applies it with
+  `parse()`, so `"beta_1"`, `"alpha..1"` and `"01"` are all refused
+  (`[aontu/empty]`) where an alphabet pattern admitted the last two.
+  The two grammars are members of the model in their own right,
+  `semverPreRelease` and `semverBuild`, hidden so a schema's grammar
+  does not generate into the document it checks, and lower-case because
+  the case of a bundled key says whether it names a type. See
+  [grammars](#grammars-abnf-and-parse).
+- **The two grammars differ where the spec does.** A wholly numeric
+  pre-release identifier may not carry a leading zero, because
+  pre-releases are compared numerically; a build identifier may,
+  because build metadata is never compared. So `[1 0 0 "01"]` is
+  refused, `[1 0 0 "0alpha"]` stands, and so does
+  `[1 0 0 "" "001"]`.
+- **Build metadata comes last.** The spec says it MUST be ignored when
+  determining precedence, and last is the one position where a
+  comparison that walks the tuple from the left can stop before it
+  without leaving a hole.
 
-Leading zeroes need no rule at all: the numeric parts are integers, and
+Leading zeroes need no rule in the numeric parts: they are integers, and
 `01` is not a distinct integer literal, so the spec's "MUST NOT contain
-leading zeroes" is impossible to write rather than merely forbidden.
+leading zeroes" is impossible to write there rather than merely
+forbidden.
 
 `@"aontu:system"` is **bundled with the engine** (no filesystem, no
 package resolution) so it resolves under every include capability
@@ -4114,6 +4144,242 @@ characters anywhere else in a quoted string (`a:"<<<<<<<"`); a bare
 In conflict messages the operand later in the source is named first
 ("…value: `<later>` with value: `<earlier>`") so the two sites are
 distinguishable.
+
+## Grammars: `abnf()` and `parse()`
+
+`re()` is deliberately small: the portable pattern subset both engines
+agree on. Real formats are published as **grammars** rather than as
+regexes, and transcribing one into that subset is at best lossy. `abnf()`
+takes the grammar as written.
+
+**`abnf(g)` compiles an RFC 5234 grammar and answers its source**, so a
+parser is an ordinary string that canons, hashes and unifies like any
+other. The compile is what the call is for: a grammar that does not
+compile is refused where it is DECLARED, once, rather than at every site
+that parses with it. Write this as `grammar.aon`:
+
+<!-- test: scenario abnf-parse -->
+<!-- test: file grammar.aon -->
+```aon
+G: abnf("v = n \".\" n\nn = 1*d\nd = %x30-39\n")
+a: parse($.G, "1.2")
+```
+
+<!-- test: run -->
+```sh
+$ aontu grammar.aon
+{
+  "G": "v = n \".\" n\nn = 1*d\nd = %x30-39\n",
+  "a": {
+    "kids": [
+      {
+        "kids": [],
+        "rule": "d",
+        "src": "1"
+      },
+      {
+        "kids": [
+          {
+            "kids": [],
+            "rule": "d",
+            "src": "2"
+          }
+        ],
+        "rule": "n",
+        "src": "2"
+      }
+    ],
+    "rule": "v",
+    "src": "1.2"
+  }
+}
+```
+
+**`parse(g, v)` answers the syntax tree** as ordinary maps and lists:
+`rule` names the production that matched, `src` the text it matched, and
+`kids` its children. `kids` is always present and always a list, so a
+schema written against the tree need not ask whether a leaf has the key.
+
+**A failure to parse is a failure to unify.** The call answers a refusal
+(`parse_failed`), so a field is refused rather than set to a value
+meaning "no". That is what lets a grammar act as a check:
+
+```aon
+G: abnf("v = 1*d\nd = %x30-39\n")
+ok: parse($.G, "12") # the tree
+no: parse($.G, "x") # [aontu/parse_failed]
+```
+
+**`parse(g)` with no value is the grammar as a constraint**, which is
+what a schema position wants: there is no value there yet to hand the
+call. It is value-preserving, like every other atom in
+[the constraint algebra](#the-constraint-algebra): it admits a string
+the grammar accepts and answers that string, so it stays idempotent and
+order-independent under a meet, and a default can sit beside it. Write
+this as `check.aon`:
+
+<!-- test: scenario abnf-constraint -->
+<!-- test: file check.aon -->
+```aon
+G: abnf("v = 1*d\nd = %x30-39\n")
+tag: *"" | parse($.G)
+ver: (*"" | parse($.G)) & "12"
+```
+
+<!-- test: run -->
+```sh
+$ aontu check.aon
+{
+  "G": "v = 1*d\nd = %x30-39\n",
+  "tag": "",
+  "ver": "12"
+}
+```
+
+`tag` takes its default because nothing met it; `ver` was written with
+`"12"`, the grammar accepts it, and the field keeps the string it was
+given. Written with `"xy"` instead, both branches fail and the
+disjunction is empty (`[aontu/empty]`). The tree is what the
+two-argument form is for: a constraint that also rewrote its value would
+have to carry the grammar that produced it for a second meet to mean
+anything, and nothing needs that yet. `aontu:system`'s `Semver` is the
+worked use: see [The `aontu:system` vocabulary](#the-aontusystem-vocabulary).
+
+Four things are worth knowing before writing a grammar:
+
+- **Whitespace is not skipped.** The grammars run here describe strings
+  with no spaces in them, so `1 . 2` does not parse as `1.2`.
+- **The empty string parses under no grammar.** The host engine answers
+  an empty tree for empty input, which would make `parse(g, "")` succeed
+  everywhere; it is refused instead.
+- **The parse is bounded** at 100 000 steps. A grammar needing more is
+  refused rather than run, for the reason `re()` refuses a pattern that
+  backtracks exponentially.
+- **`src` is the text the rule matched**, assembled from what the
+  grammar consumed rather than sliced out of the input.
+- **A character class must not contain a literal used elsewhere.**
+  Write `digit = "0" / positive-digit`, never `digit = %x30-39`, when
+  `"0"` also appears on its own. Where a class overlaps a literal the
+  class wins, and the literal's alternative silently becomes
+  unreachable, so a grammar that looks right refuses input it names.
+
+The overlap rule is worth a moment, because a grammar that breaks it
+looks correct and fails on ordinary input. The no-leading-zero rule of a
+semantic version needs `"0"` as an alternative of its own:
+
+<!-- test: skip an ABNF fragment, not an aontu document; the overlap rule it shows is pinned by the grammars in `aontu:system` and their rows in test/spec/aontu-system.tsv -->
+```abnf
+numeric-identifier = "0" / positive-digit *digit
+positive-digit     = %x31-39
+digit              = "0" / positive-digit
+```
+
+`digit` is spelled `"0" / positive-digit` rather than `%x30-39` so that
+a `0` is always the same token wherever it appears. Spell it as the
+class and `numeric-identifier`'s `"0"` branch is never reached, so
+`1.0.0` stops parsing while `1.2.3` still does.
+
+### A grammar reads better in backticks
+
+A backtick string spans lines, so a grammar can be written as a grammar
+rather than as a run of escapes. Write this as `media.aon`:
+
+<!-- test: scenario abnf-backtick -->
+<!-- test: file media.aon -->
+```aon
+G: abnf(
+  `
+media = "@" type "/" sub
+type = 1*ALPHA
+sub = 1*ALPHA
+ALPHA = %x61-7A
+`
+)
+
+ok: "@text/plain" & parse($.G)
+```
+
+<!-- test: run -->
+```sh
+$ aontu media.aon
+{
+  "G": "\nmedia = \"@\" type \"/\" sub\ntype = 1*ALPHA\nsub = 1*ALPHA\nALPHA = %x61-7A\n",
+  "ok": "@text/plain"
+}
+```
+
+The leading newline is part of the string and costs nothing: a grammar
+is a list of rules, and ABNF ignores a blank line. The bundled
+[`aontu:system`](#the-aontusystem-vocabulary) model still spells its two
+grammars with `\n` escapes, because its text is held in a raw string
+literal in each port and a raw string cannot contain a backtick.
+
+### Shaping the tree
+
+The answer is the RAW tree, so a document that wants natural structure
+builds it with the language's own verbs. Three do the work:
+[`pick`](#projecting-fields-pick) projects one field of every child,
+[`filter`](#selecting-filter-and-match) selects children by rule, and
+[`join`](#folding-to-a-string-join) folds a one-element selection back
+to a scalar. `hide()` keeps the grammar and the tree out of the
+generated document. Write this as `shape.aon`:
+
+<!-- test: scenario abnf-shape -->
+<!-- test: file shape.aon -->
+```aon
+G: hide(
+  abnf(
+    `
+ver = "v" maj "." min "." pat
+maj = 1*DIGIT
+min = 1*DIGIT
+pat = 1*DIGIT
+DIGIT = %x30-39
+`
+  )
+)
+
+t: hide(parse($.G, "v1.2.30"))
+
+parts: pick($.t.kids, src)
+names: pick($.t.kids, rule)
+minor: join(pick(filter($.t.kids, { rule:"min" }), src))
+whole: $.t.src
+```
+
+<!-- test: run -->
+```sh
+$ aontu shape.aon
+{
+  "minor": "2",
+  "names": [
+    "maj",
+    "min",
+    "pat"
+  ],
+  "parts": [
+    "1",
+    "2",
+    "30"
+  ],
+  "whole": "v1.2.30"
+}
+```
+
+**A leading field loses its name**, and that is the one shape rule a
+grammar author has to know. The compiler folds a production's first
+element into the parent's node, so `ver = maj "." min "." pat` answers a
+first child named `DIGIT` where the version above answers `maj`. The fix
+is the `"v"` above: give the production a leading terminal and every
+field keeps its name. Both engines do this identically, so it is a
+property of the grammar compiler rather than a difference between the
+ports.
+
+One more limit follows from reading a tree rather than a value: every
+leaf is the **text** the rule matched, so `"30"` is a string and stays
+one, and nothing here turns it into `30`. Naming the engine's own value
+builders from the grammar would answer that and the fold above together,
+and the grammar compiler cannot yet express them as data.
 
 ## The constraint algebra
 

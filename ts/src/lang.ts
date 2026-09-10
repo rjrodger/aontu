@@ -120,6 +120,7 @@ import { CopyFuncVal } from './val/CopyFuncVal'
 import { KeyFuncVal } from './val/KeyFuncVal'
 import { TypeFuncVal } from './val/TypeFuncVal'
 import { HideFuncVal } from './val/HideFuncVal'
+import { AbnfFuncVal, ParseFuncVal } from './val/AbnfFuncVal'
 import { DeprecateFuncVal } from './val/DeprecateFuncVal'
 import { ReferFuncVal, RelFuncVal } from './val/ReferFuncVal'
 import { AcyclicFuncVal, InverseFuncVal } from './val/GraphAtomVal'
@@ -618,6 +619,9 @@ help isolate the syntax error.`,
     unique: UniqueConstraintVal,
 
     must: MustConstraintVal,
+
+    abnf: AbnfFuncVal,
+    parse: ParseFuncVal,
 
     // G3 phase 4: the deprecation mark. Unification-transparent; the
     // record rides the result (Val.deprecation) and canon renders the

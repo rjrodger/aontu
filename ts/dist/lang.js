@@ -51,6 +51,7 @@ const CopyFuncVal_1 = require("./val/CopyFuncVal");
 const KeyFuncVal_1 = require("./val/KeyFuncVal");
 const TypeFuncVal_1 = require("./val/TypeFuncVal");
 const HideFuncVal_1 = require("./val/HideFuncVal");
+const AbnfFuncVal_1 = require("./val/AbnfFuncVal");
 const DeprecateFuncVal_1 = require("./val/DeprecateFuncVal");
 const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
@@ -450,6 +451,8 @@ help isolate the syntax error.`,
         length: ConstraintVal_1.LengthConstraintVal,
         unique: ConstraintVal_1.UniqueConstraintVal,
         must: ConstraintVal_1.MustConstraintVal,
+        abnf: AbnfFuncVal_1.AbnfFuncVal,
+        parse: AbnfFuncVal_1.ParseFuncVal,
         // G3 phase 4: the deprecation mark. Unification-transparent; the
         // record rides the result (Val.deprecation) and canon renders the
         // call back (canonRiders).

@@ -50,6 +50,8 @@ var funcSet = map[string]bool{
 	// with `+`, so it inherits the one number-to-text rule and the
 	// language does not grow a second.
 	"join": true,
+	"abnf":  true,
+	"parse": true,
 }
 
 var stagedFuncs = map[string]bool{
@@ -238,31 +240,18 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		base = f.path
 	}
 
+	// One-argument parse meets its peer instead of resolving.
+	if "parse" == f.name && 1 == len(f.peg) {
+		return constrainParse(ctx, f, base, peer)
+	}
+
 	if stagedFuncs[f.name] {
 		driven := stagedDrive(ctx, f, base)
 		fillable := !isTop(peer) && hasPlace(f) && "match" != f.name
 		ready := (driven || fillable) && ctx.settle
 
 		if !ready {
-			f.notdone()
-			switch {
-			case isTop(peer):
-				// The residuation clone re-paths via the driving ctx (TS
-				// `this.clone(ctx)` — overlay of the stored path on
-				// ctx.path).
-				return clonePath(f, overlayPath(base, f.path))
-			case peer.Nil():
-				return peer
-			default:
-				if pf, ok := peer.(*FuncVal); ok && pf.name == f.name &&
-					pathEq(pf.path, f.path) && pf.Canon() == f.Canon() {
-					return f
-				}
-				cj := newConjunct([]Val{f, peer})
-				cj.path = cp(f.path)
-				cj.sp, cj.spu, cj.surl = f.sp, f.spu, f.surl
-				return cj
-			}
+			return residuate(f, base, peer)
 		}
 	}
 
@@ -422,6 +411,27 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	return out
 }
 
+// residuate holds a call that cannot answer yet. The conjunct carries
+// the call's own path, or a finding on it names the meet's root.
+func residuate(f *FuncVal, base []string, peer Val) Val {
+	f.notdone()
+	switch {
+	case isTop(peer):
+		return clonePath(f, overlayPath(base, f.path))
+	case peer.Nil():
+		return peer
+	default:
+		if pf, ok := peer.(*FuncVal); ok && pf.name == f.name &&
+			pathEq(pf.path, f.path) && pf.Canon() == f.Canon() {
+			return f
+		}
+		cj := newConjunct([]Val{f, peer})
+		cj.path = cp(f.path)
+		cj.sp, cj.spu, cj.surl = f.sp, f.spu, f.surl
+		return cj
+	}
+}
+
 func pathEq(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -496,6 +506,16 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 			return makeNilErr(ctx, "invalid-arg", f, nil)
 		}
 		return project(ctx, f, base, args[0], args[1])
+	case "abnf":
+		if len(args) < 1 { //coverage:ignore arity is refused at parse
+			return makeNilErr(ctx, "invalid-arg", f, nil)
+		}
+		return grammarSource(ctx, f, args[0])
+	case "parse":
+		if len(args) < 2 { //coverage:ignore the 1-arg form returns from Unify
+			return makeNilErr(ctx, "invalid-arg", f, nil)
+		}
+		return applyGrammar(ctx, f, args[0], args[1])
 	case "join":
 		if len(args) < 1 { //coverage:ignore arity {1,2} is refused at parse
 			// UNREACHABLE, and kept for the reason the guards above are.

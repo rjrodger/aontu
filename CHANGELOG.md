@@ -7,6 +7,152 @@ which implementation each change affects.
 
 ## Unreleased
 
+### Grammars: `abnf()` and `parse()`
+
+`re()` is deliberately small -- the portable pattern subset both
+engines agree on -- and real formats are published as **grammars**
+rather than as regexes. Transcribing one into that subset is at best
+lossy. Two new builtins take the grammar as written:
+
+```aon
+G: abnf("v = n \".\" n\nn = 1*d\nd = %x30-39\n")
+a: parse($.G, "1.2")   # { rule:"v" src:"1.2" kids:[...] }
+```
+
+**`abnf(g)` compiles an RFC 5234 grammar and answers its source**, so a
+parser is an ordinary string that canons, hashes and unifies like any
+other value -- no new kind in the lattice. The compile is what the call
+is for: a grammar that does not compile is refused where it is
+DECLARED, once, rather than at every site that parses with it.
+
+**`parse(g, v)` answers the syntax tree** as ordinary maps and lists --
+`rule`, `src` and `kids`, with `kids` always present and always a list.
+**A failure to parse is a failure to unify**, so a grammar acts as a
+check: the field is refused (`parse_failed`) rather than set to a value
+meaning "no".
+
+**`parse(g)` with no value is the grammar as a CONSTRAINT**, which is
+what a schema position wants: there is no value there yet to hand the
+call.
+
+```aon
+G: abnf("v = 1*d\nd = %x30-39\n")
+tag: *"" | parse($.G)          # ""   -- nothing met it
+ver: (*"" | parse($.G)) & "12" # "12" -- the grammar takes it
+```
+
+It is value-preserving, like every other constraint atom: it admits a
+string the grammar accepts and answers **that string**, so it stays
+idempotent and order-independent under a meet, and a default can sit
+beside it. The tree is what the two-argument form is for.
+
+Three limits, each deliberate:
+
+- **Whitespace is not skipped.** These grammars describe strings with
+  no spaces in them, so `1 . 2` does not parse as `1.2`.
+- **The empty string parses under no grammar.** The host engine answers
+  an empty tree for empty input, which would make `parse(g, "")`
+  succeed under every grammar.
+- **The parse is bounded** at 100 000 steps, for the reason `re()`
+  refuses a pattern that backtracks exponentially: a regex match, and
+  now a parse, is counted by no evaluator budget otherwise.
+
+A fourth rule is the author's, not the engine's: **a character class
+must not contain a literal used elsewhere.** Write
+`digit = "0" / positive-digit`, never `digit = %x30-39`, when `"0"` also
+appears on its own -- where a class overlaps a literal the class wins,
+and the literal's alternative silently becomes unreachable.
+
+The answer is the RAW tree. Choosing a different shape means naming the
+host engine's own value builders from the grammar, which its compiler
+cannot yet express as data.
+
+**TypeScript's `@tabnas/parser` moves to 0.9.0**, which Go already
+pinned; TypeScript had been a minor behind at 0.8.7. All three grammar
+packages are now pinned EXACTLY and identically in the two ports:
+`parser` 0.9.0, `abnf` 0.4.7, `bnf` 0.1.10. Exactly rather than by
+range, because `bnf` 0.1.11 peer-asks for `parser` 0.9.1, and 0.9.1
+regresses `path($.z.x.a)` in TypeScript alone.
+
+**A grammar reads better in backticks.** A backtick string spans lines,
+so a grammar can be written as a grammar rather than as a run of
+escapes:
+
+```aon
+G: abnf(
+  `
+media = "@" type "/" sub
+type = 1*ALPHA
+sub = 1*ALPHA
+ALPHA = %x61-7A
+`
+)
+
+ok: "@text/plain" & parse($.G)
+```
+
+(The bundled models still spell their grammars with `\n` escapes: each
+port holds that text in a raw string literal, and a raw string cannot
+contain a backtick.)
+
+**Shaping the tree** is the language's own job, and three verbs do it:
+`pick` projects one field of every child, `filter` selects children by
+rule, `join` folds a one-element selection back to a scalar. Worked
+through five small grammars in the reference and pinned by the
+`shape-*` rows.
+
+One shape rule a grammar author has to know, and it is now written
+down: **a production's leading element folds into the parent**, so
+`ver = maj "." min "." pat` answers a first child named `DIGIT` rather
+than `maj`. Give the production a leading terminal and every field
+keeps its name. Both engines do this identically. The parser answering
+natural structure directly needs the ABNF front-end to reach the
+engine's own value builders, which it does not yet do; the request is
+written up in
+[GRAMMAR-SHAPE.0.md](docs/design/GRAMMAR-SHAPE.0.md).
+
+New codes: `abnf_grammar`, `parse_arg`, `parse_failed`. Rationale in
+[ADR-033](ADR.md#adr-033--a-grammar-is-a-string-and-parsing-is-a-function).
+
+### BREAKING: `Semver` carries build metadata and checks by grammar
+
+`$.aontu.System.Semver` is a **five**-element tuple, where 0.62.0
+shipped four, and the two string parts are checked by an ABNF grammar
+rather than by a pattern:
+
+```
+[major minor patch pre-release build]
+
+[1]                      ->  [1 0 0 "" ""]
+[1 2 3 "alpha.1"]        ->  [1 2 3 "alpha.1" ""]
+[1 0 0 "" "exp.sha.5114f85"]
+```
+
+**To migrate:** a version written out to four elements gains a fifth,
+`""`. A version written short -- `[1]`, `[1 2]`, `[1 2 3]` -- needs no
+change, the tail still defaulting. A sixth element is refused
+(`[aontu/constraint]`), where a fifth was in 0.62.0. A consumer reading
+the generated JSON sees a five-element array.
+
+**The pre-release is now checked for its SHAPE, not just its
+alphabet.** `"alpha..1"` and `"01"` were admitted in 0.62.0 and are
+refused here (`[aontu/empty]`); `"beta_1"` was refused then and still
+is. This is the shape `re()` cannot express at all -- dot-separated
+identifiers is a quantified group holding a quantifier, refused as
+`constraint_pattern` for backtracking exponentially -- which is what
+makes it the worked test of `abnf()` and `parse()`.
+
+**Build metadata is carried**, where 0.62.0 dropped it, and its grammar
+is deliberately not the pre-release one: a build identifier may have a
+leading zero (`[1 0 0 "" "001"]` stands), because build metadata is
+never compared. It sits LAST for the same reason: [semver.org
+2.0.0](https://semver.org) says it MUST be ignored when determining
+precedence, and last is the one position a left-to-right comparison can
+stop before without leaving a hole.
+
+The vocabulary's canon-hash moves with it, as it does for any change to
+a bundled model.
+
 ## Go 0.1.20 — 2026-09-10 · TypeScript 0.62.0
 
 > **UPGRADING FROM 0.61.0: `each` changed meaning, and `form` is gone.**

@@ -70,6 +70,25 @@ const hints = {
         '  must("gold"|"silver","tier") & "lead" -> nil    # ... reported\n' +
         '                                                   #     with "tier";\n' +
         '  min(0) & must(integer,"whole") & 3    -> 3      # Bands compose.',
+    abnf_grammar: 'This ABNF grammar could not be compiled:\n' +
+        '{reason}\n' +
+        ' \n' +
+        'abnf() takes RFC 5234 ABNF -- `=` and `/`, not `::=`. The\n' +
+        'compiler reports the first thing it could not read; a rule\n' +
+        'referenced but never defined is the usual cause, after a\n' +
+        'quantifier written the EBNF way.',
+    parse_arg: 'parse(grammar, text) takes two strings: a grammar, normally the\n' +
+        'answer of an abnf() call, and the text to parse.\n' +
+        ' \n' +
+        'Examples:\n' +
+        '  G: abnf("v = 1*DIGIT")\n' +
+        '  a: parse($.G, "12")     # the AST\n' +
+        '  b: parse($.G, 12)       # parse_arg: the text is not a string',
+    parse_failed: 'The text does not parse under this grammar:\n' +
+        '{reason}\n' +
+        ' \n' +
+        'A failure to parse is a failure to unify, so the field is\n' +
+        'refused rather than set to a value meaning "no".',
     constraint_pattern: 'This re() pattern is outside the supported subset. It uses\n' +
         '{reason}.\n' +
         ' \n' +
@@ -491,6 +510,9 @@ const codeClasses = {
     constraint: 'conflict',
     must: 'conflict',
     constraint_pattern: 'conflict',
+    abnf_grammar: 'parse',
+    parse_arg: 'parse',
+    parse_failed: 'conflict',
     scalar_value: 'conflict',
     scalar_kind: 'conflict',
     no_scalar_unify: 'conflict',

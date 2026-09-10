@@ -19,6 +19,8 @@ require (
 )
 
 require (
+	github.com/tabnas/abnf/go v0.4.7 // indirect
+	github.com/tabnas/bnf/go v0.1.10 // indirect
 	github.com/tabnas/directive/go v0.5.2 // indirect
 	github.com/tabnas/hoover/go v0.3.6 // indirect
 )

@@ -1,7 +1,7 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
 
-const STD_SYSTEM = `# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
+const STD_SYSTEM = String.raw`# aontu:system --- the SYSTEM VOCABULARY (G4 phase 4). Ports, components
 # and relations need no syntax: they are schemas. Everything here is
 # ordinary unification --- conjunction, spreads, marks, defaults ---
 # so the vocabulary costs the language nothing, and an author who wants
@@ -29,39 +29,84 @@ aontu: System: {
   Service: type({ kind:service ports?:{ &: $.aontu.System.Port } })
 
   # A semantic version (semver.org 2.0.0) as an ORDERED TUPLE: major,
-  # minor, patch, pre-release. A list and not a dotted string, because a
-  # version is COMPARED and the comparison runs component by component
-  # from the left: "1.10.0" sorts below "1.9.0" as text. A list and not
-  # a map, because a map has no order of its own to compare along.
+  # minor, patch, pre-release, build. A list and not a dotted string,
+  # because a version is COMPARED and the comparison runs component by
+  # component from the left: "1.10.0" sorts below "1.9.0" as text. A
+  # list and not a map, because a map has no order of its own to
+  # compare along.
   #
-  # THE TAIL DEFAULTS, so [1] is [1 0 0 ""] and [1 2] is [1 2 0 ""].
-  # A major-only version is the common case and should cost one token.
+  # THE TAIL DEFAULTS, so [1] is [1 0 0 "" ""] and [1 2] is
+  # [1 2 0 "" ""]. A major-only version is the common case and should
+  # cost one token.
   #
-  # LEADING ZEROES ARE IMPOSSIBLE HERE rather than merely forbidden:
-  # the numeric parts are integers, and 01 is not a distinct integer
-  # literal. The spec's "MUST NOT contain leading zeroes" needs no rule.
+  # LEADING ZEROES ARE IMPOSSIBLE in the numeric parts rather than
+  # merely forbidden: they are integers, and 01 is not a distinct
+  # integer literal. The spec's "MUST NOT contain leading zeroes"
+  # needs no rule of its own for major, minor and patch.
   #
-  # THE PRE-RELEASE CHECK IS PARTIAL, and deliberately says so. The
-  # spec's grammar is dot-separated identifiers, each non-empty, each
-  # [0-9A-Za-z-], numeric ones without leading zeroes -- which as a
-  # regex is a quantified group containing a quantifier, and re()
-  # refuses that shape outright (constraint_pattern) because it
-  # backtracks exponentially. So the alphabet is checked and the
-  # STRUCTURE is not: "beta_1" is refused, "alpha..1" and "01" are not.
-  # Carrying the pre-release as a LIST of identifiers would check it in
-  # full, one identifier per element, and is the change to make if that
-  # matters more than [1 0 0 ""] does.
+  # THE PRE-RELEASE AND BUILD PARTS ARE CHECKED BY GRAMMAR. Their
+  # shape -- dot-separated identifiers, each non-empty, each drawn
+  # from [0-9A-Za-z-], numeric pre-release ones without leading
+  # zeroes -- is, as a regex, a quantified group containing a
+  # quantifier, and re() refuses that shape outright
+  # (constraint_pattern) because it backtracks exponentially. The two
+  # ABNF grammars below say it directly instead, so "alpha..1" and
+  # "01" are refused where an alphabet pattern admitted them.
+  # parse(g) written with no value is the grammar as a CONSTRAINT: it
+  # admits a string the grammar accepts and answers that string
+  # unchanged, which is what lets the default sit beside it.
   #
-  # BUILD METADATA IS NOT CARRIED. The spec has it, and the spec also
-  # says it MUST be ignored when determining precedence -- so a type
-  # whose purpose is comparison is the wrong place for it.
+  # THE GRAMMARS ARE MEMBERS, named once and reused. A reference
+  # between members of a bundled model survives the include when the
+  # target carries no type() mark -- what Service works around is a
+  # reference to a MARKED member, which the include's own marks make
+  # unusable. A grammar is an ordinary string, so it is safe to name.
+  #
+  # They are hide()den because a schema's grammar is not part of the
+  # document the schema checks: without it the two strings generate
+  # into every document that includes this model.
+  #
+  # LOWER CASE, deliberately, where every other member here is
+  # CamelCase: the case of a bundled key says whether it names a TYPE,
+  # and these name grammars.
+  semverPreRelease: hide(
+    abnf(
+      "pre-release = pre-release-id *( \".\" pre-release-id )\n"
+      + "pre-release-id = \"0\" [ *digit alnum-tail ]\n"
+      + "  / positive-digit *digit [ alnum-tail ] / alnum-tail\n"
+      + "alnum-tail = non-digit *id-char\n"
+      + "id-char = digit / non-digit\n"
+      + "non-digit = letter / \"-\"\n"
+      + "digit = \"0\" / positive-digit\n"
+      + "positive-digit = %x31-39\n"
+      + "letter = %x41-5A / %x61-7A\n"
+    )
+  )
+  semverBuild: hide(
+    abnf(
+      "build = build-id *( \".\" build-id )\n"
+      + "build-id = 1*id-char\n"
+      + "id-char = digit / non-digit\n"
+      + "non-digit = letter / \"-\"\n"
+      + "digit = \"0\" / positive-digit\n"
+      + "positive-digit = %x31-39\n"
+      + "letter = %x41-5A / %x61-7A\n"
+    )
+  )
+
+  # BUILD METADATA IS CARRIED AND COMES LAST. The spec says it MUST be
+  # ignored when determining precedence, so it is the one element a
+  # comparison walking the tuple from the left should stop before:
+  # last is the only position where stopping is a truncation and not
+  # a hole.
   Semver: type(
     [
       integer & min(0)
       *0 | (integer & min(0))
       *0 | (integer & min(0))
-      *"" | (string & re("^[0-9A-Za-z.-]+$"))
-    ] & length(4)
+      *"" | parse($.aontu.System.semverPreRelease)
+      *"" | parse($.aontu.System.semverBuild)
+    ] & length(5)
   )
   # (The Relation schema that used to sit here is retired with the
   # relations: magic key, RELATIONS.0.md P2: a relation is declared
