@@ -5,8 +5,10 @@ repository layout, build/test commands, the shared `test/spec/*.tsv`
 suite, and TypeScript/Go parity conventions.
 
 Fundamentals are recorded in [ADR.md](ADR.md): ADR-001 (TS/Go full
-parity via the shared spec) and ADR-002 (100 % coverage in both, every
-exclusion justified). Do not reverse those without a new ADR entry.
+parity via the shared spec), ADR-002 (100 % coverage in both, every
+exclusion justified) and ADR-032 (code comments sparse, terse, and only
+for intricate or surprising code). Do not reverse those without a new
+ADR entry.
 
 Quick reference:
 
@@ -22,6 +24,11 @@ Quick reference:
   run its steps and dispatch through the API. See
   [docs/release-and-tag.md](docs/release-and-tag.md), "Releasing
   without `gh`".
+- Code comments follow ADR-032 and are gated: `make comments` runs
+  before every push (`make hooks` installs the pre-push hook), and
+  `ts/test/comments.test.ts` runs the same checker in CI. It refuses
+  narrative, requirements, commented-out code and stale references, so
+  prune rather than explain.
 - Documentation edits follow [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)
   (Diátaxis placement, voice, banned phrases, snippet directives);
   `ts/test/docs.test.ts` enforces it — every tagged snippet tested or

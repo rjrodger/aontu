@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The trust profile (G5 phase 3, docs/trust.md): the include capability
-// ('none' | { mem } | { root } | 'system'), the deterministic budgets,
-// the include manifest, the CLI flags and warning window, and the LSP's
-// workspace confinement. The shared contract rows are
-// test/spec/include-trust.tsv (both runners, root-confined to the
-// fixtures directory); what is per-port — the API shapes, the CLI, the
-// LSP wiring — is here, with go/trust_test.go as the twin.
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -25,28 +18,11 @@ import {
 import { srcPath } from './srcpath'
 
 
-// The uri a real editor sends for a directory: `file://`, then the
-// ABSOLUTE PATH with its own leading slash. On Windows that makes three
-// slashes before the drive letter (file:///C:/Users/me/project), which
-// is the shape uriToPath has to undo. These tests used to build
-// `'file://' + path` — two slashes — which is not what any client sends
-// and which quietly hid the drive-letter defect. Twin: fileURI in
-// go/lsp/lsp_test.go.
 const fileURI = (p: string): string => {
   const s = srcPath(p)
   return 'file://' + (s.startsWith('/') ? s : '/' + s)
 }
 
-// A little world to confine: root/{in.aon, nest.aon, sub/deep.aon},
-// with secret.aon OUTSIDE the root and a symlink inside pointing at it.
-//
-// THE SYMLINK IS BEST-EFFORT. Windows refuses one without Developer
-// Mode or elevation, and libuv asks for it exactly as Go does -- same
-// CreateSymbolicLinkW, same unprivileged-create retry, same privilege
-// required. Unguarded, that EPERM threw out of the shared fixture and
-// took every test in this file with it, for a reason that is not about
-// Aontu. Only symlinkEscape needs the link; the rest of the world is
-// built either way. Twin: trustWorld/trustSymlink in go/trust_test.go.
 function world(): { dir: string, root: string } {
   const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-trust-'))
   const root = Path.join(dir, 'root')
@@ -106,12 +82,6 @@ describe('trust-include', () => {
     Assert.throws(() => b.generate('a:@"/nope.aon"'), /not found/)
   })
 
-  // A LANGUAGE-SUPPLIED MODEL CANNOT BE SHADOWED (ADR-028). The
-  // `aontu:` leg answers before the memory resolver is built, so a host
-  // that declares its own `aontu:system` still gets the engine's. This
-  // is what the scheme buys, and it became true of the system and view
-  // vocabularies when they moved off their bare `std/` names. Twin:
-  // TestBundledModelIsNotShadowedByMem in go/trust_test.go.
   test('a-bundled-model-is-not-shadowed-by-mem', () => {
     const a = new Aontu({
       trust: { include: { mem: { 'aontu:system': 'system: {HIJACKED: 1}' } } },
@@ -167,10 +137,6 @@ describe('trust-include', () => {
       'include_denied')
   })
 
-  // Package resolution is recorded in the manifest as its own
-  // capability, and under the warning window a package hit warns as
-  // 'pkg'. (@tabnas/jsonic/package.json resolves through the package
-  // leg from the ts/ working directory the tests run in.)
   test('pkg-resolution-is-recorded-and-warned', () => {
     const warned: string[] = []
     const a = new Aontu({
@@ -224,12 +190,6 @@ describe('trust-manifest', () => {
 
 describe('trust-budget', () => {
 
-  // The budgets are integer counts of engine events, deterministic by
-  // construction; zero-config means the shared spec constants
-  // (test/spec/budget.tsv). A chain needing more passes than the
-  // budget exhausts LOUDLY — budget_passes, never silent truncation —
-  // including at passes:1, where the still-refining snapshot must be
-  // taken at the final pass's entry (there is no earlier pass).
   test('passes-budget-exhausts-loudly', () => {
     const chain = 'a1:$.a2 a2:$.a3 a3:$.a4 a4:1'
     Assert.equal(
@@ -269,8 +229,6 @@ describe('trust-lsp', () => {
   test('workspace-root-confines-diagnostics', () => {
     const w = world()
     const h = init({ rootUri: fileURI(w.root) })
-    // Two diagnostics, matching the syntax-failure precedent: the
-    // outer parse nil and the inner denial carrying the code.
     const diags = diagsFor(h, `a:@"${srcPath(w.root)}/../secret.aon"`)
     Assert.ok(diags.some((d: any) => 'include_denied' === d.code),
       JSON.stringify(diags))
@@ -343,16 +301,6 @@ describe('trust-lsp', () => {
     Assert.deepEqual(diagsFor(h, `a:@"${srcPath(w.root)}/in.aon"`), [])
   })
 
-  // HOVER, not only diagnostics. The server confined the diagnostics
-  // it published and left hover on the full system resolver, so a
-  // workspace-confined session still resolved an escaping include the
-  // moment a cursor rested on it (use-cases/REVIEW.md finding G).
-  //
-  // EVERY column of the line is probed rather than one chosen one: a
-  // hover span is measured in the INCLUDED document's own coordinates,
-  // so which column carries the value is an artefact of the include's
-  // text, and the invariant is that NO cursor position on a confined
-  // document reveals the outside value.
   test('workspace-root-confines-hover', () => {
     const w = world()
     const hovers = (h: any, text: string): string => {
@@ -492,13 +440,6 @@ describe('trust-cli', () => {
     }
   })
 
-  // EVERY VERB, not just the bare command. The capability flags were
-  // wired to `aontu <file>` alone, so `aontu vet schema.aon data.json`
-  // -- the surface an agent scripts -- ran the full system resolver
-  // with no way to confine it (use-cases/REVIEW.md finding G). Each
-  // verb is asserted twice: the escape resolves under today's default
-  // and is DENIED under --trust none, so a verb that quietly dropped
-  // the flag again would fail here.
   test('every-verb-honours-the-capability', () => {
     const w = world()
     const entry = Path.join(w.root, 'leak.aon')
@@ -515,18 +456,6 @@ describe('trust-cli', () => {
         JSON.stringify([open.code, open.out, open.err]),
         JSON.stringify([shut.code, shut.out, shut.err]),
         'the verb ignored --trust: ' + args.join(' '))
-      // The denial itself is named where the verb's report carries a
-      // reason. `relations`, `trim` and `subsume`/`breaking` answer an
-      // `error` verdict whose cause the report shape has nowhere to
-      // put -- the review's finding F, open in both ports
-      // (use-cases/BUGS.md, "relations and trim report verdict:error
-      // with zero findings"). What every verb MUST do is honour the
-      // capability, which the difference above asserts.
-      //
-      // `hash` was exempt here too, on the same grounds, and it no
-      // longer is: it now prints the engine's diagnosis under its
-      // headline in both ports, so it can be held to naming the
-      // denial like everything else.
       if (!/verdict: error/.test(shut.out + shut.err)) {
         Assert.match(shut.out + shut.err, /include denied|include_denied/)
       }
@@ -549,23 +478,6 @@ describe('trust-cli', () => {
   })
 
 
-  // THE OTHER HALF OF THE SAME QUESTION, verb by verb. `--text-ext` is
-  // the include option that rides WITH the capability, and it was
-  // tested on ONE representative verb -- `get`. That is what let three
-  // verbs ship with it dropped: `view` and `set` refused a `.md`
-  // include the bare command read, and Go's `breaking` refused one
-  // TypeScript's honoured. A representative test proves the road the
-  // flag travels, not the engine at the end of it, and every verb has
-  // its own engine.
-  //
-  // Each verb is asserted twice, as above: it REFUSES the include with
-  // no flag, and does not refuse it with the flag. The pair is what
-  // matters -- an assertion that the flag works, on a verb that never
-  // reads the include at all, passes for the wrong reason.
-  //
-  // `fmt` is absent because it takes neither include option, in either
-  // port: it formats source text and self-checks the result, and
-  // resolves nothing. `mod` reads a directory rather than a document.
   test('every-verb-honours-the-text-extensions', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-textext-'))
     Fs.writeFileSync(Path.join(dir, 'doc.md'), '# hi\n')
@@ -601,10 +513,6 @@ describe('trust-cli', () => {
     both(['agentsmd', entry])
     both(['set', '$.z=1', '--entry', entry, '--overlay', overlay])
 
-    // subsume and breaking answer `verdict: error` for a document that
-    // does not stand up and have nowhere in the report to say why
-    // (use-cases/BUGS.md, the review's finding F), so the refusal is
-    // the verdict rather than a named code.
     for (const args of [
       ['subsume', schema, entry],
       ['breaking', '--against', entry, entry],
@@ -684,12 +592,6 @@ describe('trust-cli', () => {
     }
   })
 
-  // A bad spelling is the usage class FROM EVERY VERB, not only from
-  // the bare command: each verb strips the flags before parsing its own
-  // tail, so each has its own refusal to exercise. Checked against a
-  // verb tail that would otherwise be valid, so the exit code is the
-  // flag's and not the tail's. Twin:
-  // TestTrustCliEveryVerbRefusesABadSpelling in go/cmd/aontu.
   test('every-verb-refuses-a-bad-spelling', () => {
     const w = world()
     const entry = Path.join(w.root, 'main.aon')

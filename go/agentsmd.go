@@ -1,13 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE AGENTS.md STANZA (G7 phase 6, the Go side of ts/src/agentsmd.ts):
-// generated FROM the definition, so the prose entrypoint cannot drift
-// from the formal source it points at.
-//
-// A hand-written "here is where the config lives" paragraph is stale
-// the first time a key is renamed. This one is derived: the root keys
-// come from the document, the pin from G6's canon-hash, and the
-// commands are spelled with paths that exist.
 
 package aontu
 
@@ -30,11 +22,6 @@ type AgentsMdReport struct {
 }
 
 type AgentsMdOptions struct {
-	// Depth is how deep the SHAPE line projects, default 2 (G11 phase
-	// 7). Two levels name the root keys and say `top` under them, which
-	// tells an agent what the document is ABOUT and nothing it can act
-	// on; a caller that wants the fields asks for them. The default is
-	// unchanged, because the stanza is spliced into a file people read.
 	Depth int
 	// Name is what the stanza should call the document. The engine
 	// never reads a file; the CLI passes what the author typed.
@@ -144,19 +131,6 @@ func AgentsMdSplice(existing, stanza string) string {
 		}
 		return head + stanza
 	}
-	// SKIP THE END MARKER'S LINE TERMINATOR, whatever it is, and only
-	// if it is there. This was `+1` -- one byte, assumed to be the LF
-	// of the marker's own line -- and that assumption is wrong twice.
-	//
-	// On a CRLF document the byte after the marker is the CR, so the
-	// retained tail began with the LF the stanza had already supplied
-	// and every regeneration gained a blank line. Worse, a document
-	// whose end marker is the LAST thing in it, with no trailing
-	// newline, made `+1` index PAST THE END: Go panics on the slice,
-	// while the canonical port's slice() clamps and returns cleanly
-	// (ts/src/agentsmd.ts). A crash on one port and a result on the
-	// other is exactly what ADR-001 forbids, so both now skip an
-	// optional CR then an optional LF, bounded by the length.
 	end := to + len(AgentsMdEnd)
 	if end < len(existing) && '\r' == existing[end] {
 		end++

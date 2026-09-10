@@ -5,48 +5,12 @@ exports.ESC_VARIANTS = void 0;
 exports.isEscVariant = isEscVariant;
 exports.escapeText = escapeText;
 exports.unescapeText = unescapeText;
-// THE ESCAPE CONVENTIONS (G9 phase 6, docs/design/TEMPLATE.0.md D4).
-// `esc(s, variant?)` makes a string safe to place inside a literal of
-// the named convention, and `usc` reads it back out.
-//
-// A VARIANT NAMES A CONVENTION, NOT A LANGUAGE, and that is the whole
-// reason it is a variant rather than something a renderer knows:
-// several languages share one convention, and one language has
-// several -- a C-family literal escapes differently in each quote, and
-// SQL spells a literal one way and an identifier another.
-//
-// With no variant it is the C escape, JSON canonical, which covers
-// TypeScript, JavaScript, Java, C, C++, C#, Go, Rust, Swift, Kotlin,
-// Scala and JSON itself. That is why it is the default rather than a
-// lookup.
-//
-// EVERY CONVENTION IS SPELLED OUT HERE rather than borrowed from a
-// host function, and the reason is parity: `JSON.stringify` escapes
-// what Go's `encoding/json` does not (and the reverse), and
-// `encodeURIComponent` leaves `!'()*` alone where RFC 3986 does not.
-// A generated file must be byte-identical whichever engine wrote it,
-// so both ports carry this table and go/escape.go is its twin.
-//
-// `usc` IS THE LEFT INVERSE, AND IT IS PARTIAL. `usc(esc(s))` is `s`
-// for every `s`; `esc(usc(t))` is `t` only for canonically escaped
-// `t`, because several spellings escape to one value. Input with no
-// inverse -- a truncated `\u12`, an undefined `\q`, a lone `'` where
-// the convention doubles it -- is REFUSED (`usc_malformed`), never
-// passed through: a generator that reads a value back out of an
-// artifact and silently gets a different one is the failure this
-// whole pair exists to close.
 // The variant names, in the order the reference lists them. `none` is
 // not here: it is the absent argument, and the absent argument is the
 // C/JSON convention.
 const ESC_VARIANTS = ['sq', 'sql', 'shell', 'xml', 'uri', 'regex'];
 exports.ESC_VARIANTS = ESC_VARIANTS;
-// The regex metacharacters, which are exactly the ones the pattern
-// subset admits as escaped-to-mean-themselves (RE_ESCAPE_PUNCT in
-// ConstraintVal). So `esc(s, regex)` always answers a pattern the
-// subset accepts, which is the point of having the variant at all.
 const ESC_REGEX_PUNCT = '\\.+*?()[]{}|^$/';
-// The five XML entities, in the order they must be APPLIED: `&` first,
-// or the ampersands of the other four are escaped a second time.
 const ESC_XML = [
     ['&', '&amp;'],
     ['<', '&lt;'],
@@ -54,10 +18,6 @@ const ESC_XML = [
     ['"', '&quot;'],
     ["'", '&apos;'],
 ];
-// The characters RFC 3986 calls unreserved. Everything else is
-// percent-encoded, byte by byte of its UTF-8, with UPPERCASE hex --
-// the case the RFC prefers, pinned here because the two ports must
-// agree on it.
 const ESC_URI_UNRESERVED = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
 function isEscVariant(v) {
     return ESC_VARIANTS.includes(v);
@@ -180,7 +140,6 @@ function unescC(src, quote) {
     }
     return [out, true];
 }
-// Four hex digits at `at`, or -1 when they are not four hex digits.
 function hex4(src, at) {
     if (src.length < at + 4) {
         return -1;
@@ -335,10 +294,6 @@ function unescRegex(src) {
     }
     return [out, true];
 }
-// UTF-8 by hand, both ways, because the percent convention is defined
-// over BYTES and the two ports must produce the same ones. TextEncoder
-// would do for the forward direction; the reverse needs the error
-// behaviour spelled out, so both are here.
 function utf8Bytes(ch) {
     const c = ch.codePointAt(0);
     if (0x80 > c) {

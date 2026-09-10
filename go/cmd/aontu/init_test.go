@@ -2,13 +2,6 @@
 
 package main
 
-// The Go twin of the init cases in ts/test/helpdoc.test.ts (G11 phase
-// 6). The trio is generated into both ports from docs/skill/init/, so
-// what the two must AGREE on -- the bytes, the modes, the order, and
-// every exit class -- is asserted in both suites against those same
-// sources. These are CLI-level messages and the shared spec suite runs
-// the engine, so asserting both ports against one source is what makes
-// the agreement checkable.
 
 import (
 	"bytes"
@@ -81,9 +74,6 @@ func TestInitModelUsesTheTemplateAndNotTheStar(t *testing.T) {
 	}
 }
 
-// The trio is only worth writing if it holds up. The four commands are
-// read OUT OF THE EMITTED SCRIPT rather than copied here, so a check
-// this port cannot answer fails the test instead of going unnoticed.
 func TestInitWritesATrioThatChecksItself(t *testing.T) {
 	dir := t.TempDir()
 	out, errs, code := initRun(dir)
@@ -104,12 +94,6 @@ func TestInitWritesATrioThatChecksItself(t *testing.T) {
 		if nil != err {
 			t.Fatalf("cannot stat %s: %v", f.name, err)
 		}
-		// NOT ON WINDOWS, which carries no POSIX permission bits: every
-		// file there reads back 0666 whatever mode was asked for, so the
-		// check would be asserting the platform rather than the code.
-		// What the trio records and what each port stages is asserted
-		// above and in TestInitTrioIsIdenticalWithItsSources, on every
-		// platform.
 		if "windows" != runtime.GOOS && f.mode != info.Mode().Perm() {
 			t.Errorf("%s written %o, want %o", f.name, info.Mode().Perm(), f.mode)
 		}

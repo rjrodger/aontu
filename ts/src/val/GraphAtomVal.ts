@@ -1,24 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE GRAPH ATOMS (RELATIONS.0.md §3.3): `acyclic()` and
-// `inverse(name)`, conjoined at the same field as the `rel()` they
-// govern. Their model is the sizing atoms -- a property that cannot be
-// decided while information can still arrive is HELD during
-// unification and DECIDED at generation, where no more can.
-//
-// During unification they are lattice-inert: both properties are
-// global and non-monotone (one more edge can make an acyclic graph
-// cyclic), and the lattice guarantee -- more information never
-// falsifies what has been observed -- forbids a constraint that could
-// answer true and then false. So the atoms only RESIDUATE: they ride
-// the field through meets, dedup additively, appear in canon and reach
-// the `aon1-` hash, and REGISTER the declaration on the context. The
-// predicate they govern is the key they sit on, evaluation-global,
-// additive across declarations.
-//
-// The verdict lands at generation (relationVerdict,
-// ts/src/relation.ts) and is reported identically by the `relations`
-// verb -- one decision, two surfaces.
 
 import type {
   Val,
@@ -41,10 +22,6 @@ import { unite } from '../unify'
 import { propagateMarks } from '../utility'
 
 
-// The declarations one evaluation accumulates: predicate -> what its
-// atoms said. Additive, exactly as two statements of one map are. The
-// map lives on the CONTEXT (created in the constructor, like the
-// _depth box), so every clone shares one registry.
 export type RelDecl = {
   acyclic?: boolean
   inverses: Set<string>
@@ -63,10 +40,6 @@ class GraphAtomVal extends FeatureVal {
 
   akind: 'acyclic' | 'inverse'
   invname?: string
-  // The value the atom rides on -- the sizing-constraint shape: the
-  // atom ABSORBS its fold neighbours (the rel, the container, another
-  // atom) and carries them, so the fold's pairwise walk still merges
-  // the value across it. Absent until the atom meets one.
   held?: Val
 
   constructor(spec: ValSpec, ctx?: AontuContext) {
@@ -74,9 +47,6 @@ class GraphAtomVal extends FeatureVal {
     this.akind = (spec as any).akind ?? 'acyclic'
     this.invname = (spec as any).invname
     this.held = (spec as any).held
-    // A settled residual, like an unmet rel(): the bare atom is its
-    // own value, and a type() body carrying one must settle. Holding
-    // an unsettled value, it is exactly as done as the value.
     this.dc = undefined === this.held || true === this.held.done
       ? DONE : 0
   }
@@ -90,7 +60,6 @@ class GraphAtomVal extends FeatureVal {
     return out
   }
 
-  // A rebuilt atom around a new held, at this atom's position.
   private carry(ctx: AontuContext, held: Val): Val {
     const out: any = new GraphAtomVal(
       { akind: this.akind, invname: this.invname, held } as any, ctx)
@@ -100,12 +69,6 @@ class GraphAtomVal extends FeatureVal {
     return out
   }
 
-  // The predicate is the key the atom sits on -- and a predicate is a
-  // D-1 NAME, by exactly fieldkey's rule: an atom landed anywhere
-  // else declares nothing. Registration is idempotent (the
-  // declaration set is a set) and happens at every drive, so
-  // whichever pass first sees the atom at its landed position records
-  // it.
   register(ctx: AontuContext): void {
     const seg = this.path[this.path.length - 1]
     if ('string' !== typeof seg || !GRAPH_ATOM_NAME.test(seg)) {
@@ -143,11 +106,6 @@ class GraphAtomVal extends FeatureVal {
         this.dc = DONE
         return this
       }
-      // The self-drive refines IN PLACE (the MapVal top-peer
-      // pattern): a fresh atom per pass changes object identity, so
-      // spread apply-once stamps and the entity merge's fast paths
-      // stop holding, and the enclosing bags re-open every pass --
-      // the service catalog never converged.
       const held = unite(ctx, this.held, undefined, 'atom-drive')
       if (true === held.isNil) {
         return held

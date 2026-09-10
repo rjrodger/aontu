@@ -1,9 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The role gate (docs/design/ALLOW.0.md): the library's answers, one
-// per rule the design states, and every refusal shape. The command
-// line around it is held by cli.test.ts; the live model is
-// use-cases/18-role-permissions.
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
@@ -80,14 +76,10 @@ describe('allow', () => {
       by: '$.roles.dev.allow.1', pattern: '$.deploy.*.replicas',
     })
     Assert.equal(decision('product', '$.services.auth.description').allowed, true)
-    // One key, not a run of them: the star does not reach further down
-    // than the entry does, and it does not cover the map above it.
     Assert.equal(decision('dev', '$.deploy.eu1').allowed, false)
     Assert.equal(decision('dev', '$.deploy').allowed, false)
     Assert.equal(decision('dev', '$.deploy.eu1.replicas.max').allowed, true)
 
-    // A star as the LAST segment: any one child, and everything below
-    // that child, and never the map the children sit in.
     const src = 'roles: r: { allow: ["$.services.*"] }'
     Assert.equal(decision('r', '$.services', src).reason, 'uncovered')
     Assert.equal(decision('r', '$.services.auth', src).reason, 'allow')
@@ -101,18 +93,13 @@ describe('allow', () => {
       path: '$.services.auth.tier', allowed: false, reason: 'deny',
       by: '$.roles.dev.deny.0', pattern: '$.services.*.tier',
     })
-    // Below it: the denied node is an ancestor.
     Assert.equal(decision('dev', '$.services.auth.tier.name').reason, 'deny')
-    // Above it: a change here could rewrite the denied node, so an
-    // allow that would otherwise cover is beaten.
     Assert.equal(decision('dev', '$.services.auth').reason, 'deny')
     Assert.equal(decision('dev', '$.services').reason, 'deny')
     Assert.equal(decision('dev', '$').reason, 'deny')
     // Beside it: a sibling of the denied node is untouched.
     Assert.equal(decision('dev', '$.services.auth.replicas').reason, 'allow')
 
-    // A role that only denies refuses by the deny, and a deny at the
-    // root refuses every path there is.
     Assert.equal(decision('r', '$.a', 'roles: r: { deny: ["$.a"] }').reason, 'deny')
     Assert.equal(decision('r', '$.b', 'roles: r: { deny: ["$.a"] }').reason, 'uncovered')
     const rootDeny = 'roles: r: { allow: ["$"] deny: ["$"] }'
@@ -132,8 +119,6 @@ describe('allow', () => {
     Assert.deepEqual(decision('qa', '$.services.auth'), {
       path: '$.services.auth', allowed: false, reason: 'uncovered',
     })
-    // A role with no allow list allows nothing: the shape's empty list
-    // is what the tree holds for it.
     Assert.equal(decision('r', '$.a', 'roles: r: {}').reason, 'uncovered')
   })
 
@@ -168,9 +153,6 @@ describe('allow', () => {
 
 
   test('an-entry-starts-at-the-root-and-does-not-end-in-a-dot', () => {
-    // The shape refuses each with the engine's constraint code at the
-    // entry's own path: an empty entry would otherwise be the widest
-    // grant there is.
     for (const bad of ['""', '"."', '"a.b"', '"$."', '"$.a."']) {
       const f = failure(`roles: dev: { allow: [${bad}] }`)
       Assert.equal(f.code, 'constraint', bad)
@@ -213,8 +195,6 @@ describe('allow', () => {
     const dotted = 'roles: { "a.b": { allow: ["$.a"] } a: { b: { allow: ["$"] } } }'
     Assert.equal(decision('a.b', '$.a.y', dotted).by, '$.roles.a.b.allow.0')
     Assert.equal(decision('a.b', '$.z', dotted).reason, 'uncovered')
-    // The map's own keys only: an empty name, a path-shaped name and a
-    // name the prototype answers to are all undeclared.
     for (const role of ['', 'dev.allow', 'admin.allow.0', '__proto__', 'constructor']) {
       const r = allow(ROLES, role, ['$.a'])
       Assert.equal(r.verdict, 'refused', role)
@@ -225,8 +205,6 @@ describe('allow', () => {
 
 
   test('the-lists-are-read-from-the-tree-hidden-or-not', () => {
-    // A hidden deny still denies: the gate reads what was written,
-    // not what generates.
     const hiddenDeny = 'roles: dev: { allow: ["$"] deny: hide(["$.a"]) }'
     Assert.equal(decision('dev', '$.a', hiddenDeny).reason, 'deny')
     Assert.equal(decision('dev', '$.b', hiddenDeny).reason, 'allow')
@@ -235,8 +213,6 @@ describe('allow', () => {
     Assert.equal(decision('dev', '$.x', 'roles: dev: type({ allow: ["$"] })').reason, 'allow')
     Assert.equal(decision('dev', '$.x', 'roles: dev: { allow: hide(["$"]) }').reason, 'allow')
     Assert.equal(decision('dev', '$.x', 'roles: dev: { allow: [hide("$")] }').reason, 'allow')
-    // A reference resolves to the string it names, and a preference
-    // answers with its default.
     const byRef = 'common: ["$.c"]\nroles: dev: { allow: [$.common.0] }'
     Assert.equal(decision('dev', '$.c.x', byRef).by, '$.roles.dev.allow.0')
     const pref = 'roles: dev: { allow: [*"$.p" | string] }'
@@ -266,7 +242,6 @@ describe('allow', () => {
     Assert.equal(bad.code, 'scalar_kind')
     Assert.equal(bad.path, '$')
 
-    // A roles map that is not a map.
     Assert.equal(failure('roles: 1').code, 'scalar_kind')
 
     // A conflict anywhere in the model, roles or not, and a model that
@@ -282,10 +257,6 @@ describe('allow', () => {
 
 
   test('the-shape-meets-the-model-whatever-its-last-line', () => {
-    // The shape is a value the model meets, not text appended to it, so
-    // a tail that would swallow an appended line -- an unclosed map, a
-    // dangling key, a trailing conjunction, a trailing comment --
-    // changes nothing about what the shape checks.
     const tails = [
       'roles: {\n  dev: { allow: ["$.a"] }\n',
       'roles: dev: { allow: ["$.a"] }\nfoo:',

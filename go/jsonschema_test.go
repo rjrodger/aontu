@@ -2,11 +2,6 @@
 
 package aontu
 
-// The package-API side of the JSON Schema export. What the two ports
-// must AGREE on is pinned by test/spec/jsonschema.tsv; the arms only
-// the LIBRARY entry can reach -- the anchor walk, and a source that
-// does not parse at all -- are here. The TypeScript twin is the
-// jsonschema block in ts/test/cli.test.ts.
 
 import (
 	"strings"
@@ -26,9 +21,6 @@ func TestJSONSchemaAnchorSelectsTheSubtree(t *testing.T) {
 		t.Fatalf("the whole document was not exported: %v", props)
 	}
 
-	// WITH one, only the named subtree -- the same anchor vet --at
-	// takes, so `--at spec` means the same thing in both verbs. The
-	// `$`-prefixed spelling is the same path.
 	for _, at := range []string{"spec", "$.spec"} {
 		part := New().JSONSchema(src, at)
 		if "ok" != part.Verdict {
@@ -43,9 +35,6 @@ func TestJSONSchemaAnchorSelectsTheSubtree(t *testing.T) {
 		}
 	}
 
-	// An anchor that names nothing is a refusal in vet's finding shape,
-	// not an empty schema: a caller redirecting stdout would otherwise
-	// write a schema that admits everything.
 	none := New().JSONSchema(src, "nope")
 	if "error" != none.Verdict || 1 != len(none.Errors) {
 		t.Fatalf("bad anchor: %+v", none)

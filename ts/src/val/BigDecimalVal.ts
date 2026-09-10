@@ -22,15 +22,6 @@ import {
 } from '../utility'
 
 
-// The exact base-10 decimal leaf of the number tower, reached only by a
-// `0d` literal carrying a `.` or an exponent (`0d1.5`, `0d1e3`) or by
-// direct construction.
-//
-// Its peg is a Decimal -- an OBJECT, so unlike every other scalar leaf
-// its identity cannot be `===` on the peg. Two bigdecimals are the same
-// value when their NUMBERS are equal (D2), which normalisation at
-// construction reduces to a two-field comparison; `samePeg` and `unify`
-// below are the two places that must not forget it.
 class BigDecimalVal extends ScalarVal {
   isBigDecimal = true
 
@@ -40,10 +31,6 @@ class BigDecimalVal extends ScalarVal {
     spec: ValSpec,
     ctx?: AontuContext
   ) {
-    // Exact-input construction (D8): a Decimal, or a decimal literal as
-    // text (`'1.5'`, `'0d1e3'`). A JS `number` is deliberately NOT
-    // accepted -- binary64 has already rounded it, so `0.1` could never
-    // arrive exact.
     let peg = spec.peg
     if ('string' === typeof peg) {
       try {
@@ -78,9 +65,6 @@ class BigDecimalVal extends ScalarVal {
         peer.kind === this.kind &&
         this.peg.equals(peer.peg)
       ) {
-        // Same kind and equal NUMBER. Never `peer.peg === this.peg`:
-        // that is object identity, and `0d0.10 & 0d0.1` (two Decimals
-        // holding one value) has to succeed.
         out = this
       }
       else if (peer.isTop) {

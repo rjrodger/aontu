@@ -23,7 +23,6 @@ import { Val } from './Val'
 import { ScalarKindVal } from './ScalarKindVal'
 
 
-
 class ScalarVal extends Val {
   kind: any
 
@@ -71,7 +70,6 @@ class ScalarVal extends Val {
         ((peer as any).kind === this.kind ? 'value' : 'kind'), this, peer)
     }
 
-    // console.log('SCALAR', this.canon, peer.canon, '->', out.canon)
 
     explainClose(te, out)
 
@@ -87,22 +85,12 @@ class ScalarVal extends Val {
 
 
   same(peer: any): boolean {
-    // Two concrete scalars are the same only when KIND and value both
-    // match. Comparing peg alone is a leftover from before integer and
-    // number were distinct kinds; without the kind test `1|1.0` would
-    // collapse to a single alternative and `(1|1.0) & 1.0` could pick
-    // the integer.
     return peer?.isScalar ?
       (peer.kind === this.kind && this.samePeg(peer.peg)) :
       super.same(peer)
   }
 
 
-  // Value comparison for this leaf's peg (D2: identity is kind AND
-  // value, NEVER the identity of the object holding the value). `===` is
-  // right for every peg that is a primitive -- including a bigint, where
-  // two separately built copies of the same number compare equal -- and
-  // wrong for a peg that is an object, so BigDecimalVal overrides it.
   samePeg(peg: any): boolean {
     return peg === this.peg
   }

@@ -21,8 +21,6 @@ class MapKindVal extends FeatureVal_1.FeatureVal {
         if (true === p.isMapKind) {
             return this;
         }
-        // The unit's own refusal code: a kind mismatch here is the same
-        // fact `{} & 1` reports, and two codes for one fact would drift.
         return (0, err_1.makeNilErr)(ctx, 'map', this, peer);
     }
     get canon() {

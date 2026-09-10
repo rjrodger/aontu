@@ -223,9 +223,7 @@ function makeUnite(r) {
     return (s) => {
         let terms = s.trim().split(/\s+/).map(x => 'undef' === x ? undefined : x);
         let pterms = PA(terms);
-        // console.log(pterms)
         let u = (0, unify_1.unite)(ctx, pterms[0], pterms[1], 'scalar-test');
-        // console.log(u)
         return u.canon;
     };
 }

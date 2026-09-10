@@ -1,17 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE QUERY SURFACE (G7 phase 2, the Go side of ts/src/query.ts):
-// select one node of an evaluated document by path and render it — the
-// slice an agent asks for, instead of the whole file as one JSON blob.
-//
-// Evaluation is still GLOBAL: the whole document is evaluated and then
-// one node is selected. What Get buys is the SIZE OF THE ANSWER, not
-// the cost of producing it.
-//
-// The projections are lattice ABSTRACTIONS: each view is a valid Aontu
-// document that SUBSUMES the truth it summarises (under the `values`
-// profile — a shape view erases defaults deliberately), which
-// test/spec/query.tsv asserts row by row in both runners.
 
 package aontu
 
@@ -116,9 +104,6 @@ func queryPathParts(path string) []string {
 	return out
 }
 
-// queryProject renders the canon-shaped views. One walk, two knobs:
-// `types` generalises each concrete leaf through the lattice, `depth`
-// elides below its level.
 func queryProject(v Val, view string, depth int) string {
 	if depth <= 0 {
 		return queryTop
@@ -168,10 +153,6 @@ func queryProject(v Val, view string, depth int) string {
 		out.WriteByte(']')
 		return out.String()
 
-	// Junctions and prefs are TRANSPARENT: not a structural tier (so
-	// they do not spend a level of depth) but not a leaf either (so
-	// `*8080|integer` generalises to `*integer|integer` rather than
-	// collapsing to `top` and throwing the alternatives away).
 	case *PrefVal:
 		return "*" + queryProject(b.peg, view, depth)
 	case *ConjunctVal:
@@ -179,12 +160,6 @@ func queryProject(v Val, view string, depth int) string {
 	case *DisjunctVal:
 		return queryJunction(b.peg, "|", view, depth)
 
-	// A LEAF. Under `types` a CONCRETE scalar lifts to its own kind --
-	// superior() is the lattice's answer, so the view subsumes the truth
-	// by construction. Everything else is already an abstraction (a kind
-	// marker, a constraint, an unresolved reference) and is left alone:
-	// lifting `integer` to `number` would generalise a shape view that
-	// was already a shape.
 	case *ScalarVal:
 		if QueryTypes == view {
 			return b.superior().Canon()
@@ -213,10 +188,6 @@ func queryJunction(members []Val, sym, view string, depth int) string {
 	return strings.Join(parts, sym)
 }
 
-// queryKeyList is the `keys` listing: the node's own key names (or list
-// indices), one per line, code-point ordered as canon orders them. A
-// leaf has none, which is an empty answer rather than an error --
-// "nothing below here" is a true statement about a scalar.
 func queryKeyList(v Val) string {
 	switch b := v.(type) {
 	case *MapVal:
@@ -248,10 +219,6 @@ func queryFinding(code, path, message, note string) VetFinding {
 	return f
 }
 
-// queryGenJSON serialises a generated value the way the CLI's own
-// renderer does: an Encoder with HTML escaping OFF (not MarshalIndent,
-// which rewrites <, > and & as \u00xx escapes the canonical TypeScript
-// emitter does not), indented by two spaces.
 func queryGenJSON(v any) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -385,13 +352,6 @@ func queryFailed(err error, path string) QueryReport {
 	}
 }
 
-// EvalFailure is the ONE FINDING a document that does not stand up
-// answers with: the engine's own diagnosis, in the finding shape every
-// verb renders. Exported for the verbs outside this package that
-// evaluate before they can do anything at all -- cmd/aontu's `hash`,
-// which said only THAT the document does not evaluate and never why,
-// while the canonical port printed the diagnosis (the review's finding
-// F). Twin: evalFailure in ts/src/query.ts.
 func EvalFailure(err error) VetFinding {
 	return queryFailed(err, "$").Findings[0]
 }
@@ -408,10 +368,6 @@ type WhyReport struct {
 // contributions that met there — the positive twin of G2's error
 // report. Mirrors why in ts/src/query.ts.
 func (a *Aontu) Why(src, path string) WhyReport {
-	// Parse and unify SEPARATELY, so the parsed tree can be stamped
-	// before the fixpoint runs: a contribution is a value the author
-	// wrote, and after unification there is no longer any way to tell
-	// one from a value the engine minted on the way.
 	parsed, perr := a.parseEntry(src)
 	if nil != perr {
 		return whyFailed(perr)

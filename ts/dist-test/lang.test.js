@@ -90,13 +90,7 @@ let P = lang.parse.bind(lang);
             return;
         }
         global.console = require('console');
-        let g0 = new lang_1.Lang({
-        // resolver: makeFileResolver((spec: any) => {
-        //   return 'string' === typeof spec ? spec : spec?.peg
-        // })
-        // debug: true,
-        // trace: true,
-        });
+        let g0 = new lang_1.Lang({});
         let t00x = g0.parse('x:@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon"');
         (0, expect_1.expect)(t00x.canon).equal('{"x":{"a":1}}');
         let t00xA = g0.parse('A:11,x:@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon"');
@@ -111,11 +105,6 @@ let P = lang.parse.bind(lang);
         (0, expect_1.expect)(t00xBs.canon).equal('{"B":22,"x":{"a":1}}');
         let t00xABs = g0.parse('A:11 x:@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon" B:22');
         (0, expect_1.expect)(t00xABs.canon).equal('{"A":11,"B":22,"x":{"a":1}}');
-        // AN INCLUDE UNIFIES IN PLACE, so the loaded document's keys join
-        // this map where the `@` stands rather than arriving as a trailing
-        // conjunct arm. The parse-level canon is therefore the same shape
-        // inlining the loaded bytes gives, and the `{}&` wrapper these
-        // expectations used to carry is gone.
         let t00v = g0.parse('@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon"');
         (0, expect_1.expect)(t00v.canon).equal('{"a":1}');
         let t00 = new unify_1.Unify(t00v);
@@ -156,9 +145,6 @@ let P = lang.parse.bind(lang);
     @"` + (0, srcpath_1.srcPath)(__dirname) + `/../test/t04.aon"
     z: 33
     `);
-        // Two includes and three local pairs fold into ONE map, in the
-        // order the statements are written, which is what inlining the two
-        // loaded files at their `@`s gives.
         (0, expect_1.expect)(t02m.canon).equal('{"a":1,"b":2,"x":11,"y":22,"z":33}');
         let t03m = g0.parse(`
     x:y:{}
@@ -309,13 +295,6 @@ let P = lang.parse.bind(lang);
         (0, expect_1.expect)(v10.canon).equal('{&:"b"&string,"a":"b"}');
         (0, expect_1.expect)(v10.unify(TOP, makeCtx()).gen(ctx)).equal({ a: 'b' });
     });
-    // PARSE-level canon of nested junctions: a junction child that is
-    // itself a junction with more than one term is parenthesised
-    // (JunctionVal.canon), so the text reparses to the same structure.
-    // No spec mode observes parse-level canon (the shared suite is
-    // unify-level), so this table is pinned by per-port twins: the Go
-    // twin with the SAME rows is TestParseCanonNestedJunctions in
-    // go/aontu_test.go. Closes the issue #30 divergence.
     (0, node_test_1.it)('parse-canon-nested-junctions', () => {
         const rows = [
             ['a:(1|2)&3', '{"a":(1|2)&3}'],

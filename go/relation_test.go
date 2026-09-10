@@ -9,11 +9,6 @@ package aontu
 
 import "testing"
 
-// `pass` OVER NO DECLARATIONS is the vacuous case, and the engine
-// knows it exactly: a caller asking "was there anything to check?"
-// should not have to evaluate the document a second time to find out.
-// The field is ABSENT unless asked for, so the report is unchanged for
-// every caller written before this phase.
 func TestRelationCheckCountsDeclarations(t *testing.T) {
 	none := "a: { b: 1 }\n"
 	graph := "a: {dependsOn: rel() & acyclic() & [path($.b)]}\nb: {}\n"

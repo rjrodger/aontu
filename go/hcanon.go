@@ -1,32 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The HASH FORM (G6 phase 0, the Go side of ts/src/hcanon.ts): exactly
-// the unify-level canon with the additions that close its semantic
-// gaps — a CLOSED map or list renders wrapped (close({...}),
-// close([...])) and the type/hide MARKS render as their builtin
-// wrappers (type(x), hide(x)). Both reuse parseable syntax, so the
-// hash form remains valid Aontu source and round-trips
-// (test/spec/hcanon.tsv). User-facing Canon() is UNCHANGED.
-//
-// An ALIAS REFERENCE left standing in a spread template renders its
-// EXPANSION through this same walk rather than through the reference's
-// own Canon, so a close() or a mark on the aliased value survives into
-// the hash. Without that the wrappers above are absent exactly where
-// the alias filter has already erased the declaration that carried
-// them (BUGS.md §60).
-//
-// The marks propagate to every descendant at unification (walkMark),
-// so a wrapper is emitted only where a mark STARTS: the walk carries
-// the inherited marks down and a child whose mark the parent already
-// carries renders bare.
-//
-// CanonHash (G6 phase 1) is the pin built on it:
-//
-//	"aon1-" + base64url( SHA-256( UTF-8( Hcanon(v) ) ) )
-//
-// (unpadded base64url, RFC 4648 section 5). The "aon1-" scheme id
-// exists so a future semantically-stronger normal form is an upgrade,
-// not a breakage.
 
 package aontu
 
@@ -42,14 +15,6 @@ type hcanonMarks struct {
 	mhide bool
 }
 
-// hcanonRender is one node's rendering, carrying the marks the
-// ANCESTORS already wrapped. Bags and junctions recurse structurally
-// (their Canon methods render children through plain Canon, which
-// would drop a nested close), and so does an expanded alias reference,
-// for the reason its own arm gives. Everything else — scalars, kinds,
-// funcs, constraints, and a reference with nothing to expand —
-// delegates to its own Canon, whose text is already in cross-port
-// parity.
 func hcanonRender(v Val, inh hcanonMarks) string {
 	if nil == v {
 		return "nil"
@@ -74,12 +39,6 @@ func hcanonRender(v Val, inh hcanonMarks) string {
 				out.WriteByte(',')
 			}
 		}
-		// Alias declarations are dropped here for the same reason
-		// MapVal.Canon drops them, and this is the surface where it
-		// counts: `aon1-` pins MEANING, so a document written with
-		// aliases and the same document written longhand must hash to
-		// one string. Two renderers, one rule -- hcanon is not Canon
-		// and does not inherit the filter.
 		keys := make([]string, 0, len(b.keys))
 		for _, k := range b.keys {
 			if !b.isAliasKey(k) {
@@ -133,25 +92,6 @@ func hcanonRender(v Val, inh hcanonMarks) string {
 	case *DisjunctVal:
 		s = hcanonJunction(b.peg, "|", inner)
 	case *RefVal:
-		// AN EXPANDED ALIAS REFERENCE IS RENDERED, NOT DELEGATED
-		// (BUGS.md §60). A reference standing after unification is one
-		// inside a spread template, and RefVal.Canon answers with the
-		// EXPANSION's plain canon -- which drops exactly what this
-		// renderer exists to keep. The declaration carrying close() or
-		// a mark is erased by the alias filter above, so a close()
-		// lost here is lost from the hash entirely: `%A =
-		// close({n:string})` and `%A = {n:string}`, used as `box: [&:
-		// %A]`, hashed to ONE STRING while refusing and admitting
-		// `{n:"x",z:1}` respectively -- a change of meaning the pin
-		// reported as no change, in the unsafe direction. Recursing
-		// through `inner` is what makes the alias form and its
-		// longhand twin agree again, ALIASES.0.md §4's own
-		// requirement.
-		//
-		// A reference with NO expansion still spells its name: a plain
-		// `$.A` names a key the hash form still carries in full, and
-		// the knot of a recursive alias inside its own template never
-		// gets one. Mirrors the same arm in ts/src/hcanon.ts render.
 		if nil != b.expansion {
 			s = hcanonRender(b.expansion, inner)
 		} else {
@@ -225,11 +165,6 @@ func Hcanon(v Val) string {
 	return hcanonRender(v, hcanonMarks{})
 }
 
-// CanonHash is the canon-hash pin. Scoped to the module evaluated
-// STANDALONE: its own include closure resolved and unified at its own
-// root, before any consumer context — which is what makes the pin
-// transitive (an edit two includes deep changes the unified root,
-// hence the hash). Mirrors canonHash in ts/src/hcanon.ts.
 func CanonHash(v Val) string {
 	sum := sha256.Sum256([]byte(Hcanon(v)))
 	return "aon1-" + base64.RawURLEncoding.EncodeToString(sum[:])

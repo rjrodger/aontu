@@ -11,12 +11,6 @@ const arith_1 = require("./arith");
 const numcmp_1 = require("./numcmp");
 const members_1 = require("./members");
 const PlusOpVal_1 = require("./PlusOpVal");
-// The children of a bag, in the order the aggregate sees them: source
-// order for a list, sorted-key order for a map -- `each`'s order, and
-// for the same reason (a map has no order of its own, so the language
-// picks one and states it).
-// The members of the bag a fold reads: what generation would emit
-// (./members.ts, BUGS.md §79), in the one map-key order (BUGS.md §62).
 function bagChildren(data, ctx) {
     return (0, members_1.memberVals)(data, ctx);
 }
@@ -24,24 +18,12 @@ class AggFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx, op) {
         super(spec, ctx);
         this.isAggFunc = true;
-        // THE STAGING RULE (G8 phase 0). A total over a bag that is still
-        // being merged into is a total of the wrong bag -- the same reason
-        // `filter` and `each` wait.
         this.staged = true;
         this.op = op;
     }
-    // NO `make` OVERRIDE, matching the other STAGED funcs (pack, each,
-    // filter, match): a staged call returns `residuate` before `unify`
-    // ever reaches the rebuild branch, so an override there would be
-    // unreachable code pretending to be a contract. The base's `make`
-    // raises `func:<name>` if that ever stops being true, which is the
-    // loud answer rather than a value that silently lost its operation.
     funcname() {
         return this.op;
     }
-    // The base does not drive the argument: `unify` drives it by hand,
-    // because a staged func must advance what it is waiting on every
-    // pass rather than only on the pass it fires.
     prepare(_ctx, _args) {
         return null;
     }
@@ -58,9 +40,6 @@ class AggFuncVal extends FuncBaseVal_1.FuncBaseVal {
             return this.place((0, err_1.makeNilErr)(ctx, 'aggregate_data', this, undefined, this.op));
         }
         if ('sum' === this.op) {
-            // Zero is addition's identity, so an empty bag has an answer and
-            // it is an integer -- the narrowest kind, which the first real
-            // operand then widens under R5 exactly as `add(0, x)` would.
             let total = new IntegerVal_1.IntegerVal({ peg: 0 });
             for (const child of children) {
                 total = (0, arith_1.arith)(ctx, 'add', this, total, child, this.op);
@@ -106,28 +85,6 @@ function unpref(v) {
     }
     return v;
 }
-// PROJECTION: `pick(d, k)` -- one element per child of `d`, being that
-// child's `k`.
-//
-// The other half of the review's finding I: "`_.field` is unspellable,
-// `filter` cannot see into lists, `unique()`-by-field is reserved but
-// absent -- so 'no two services share a port' and 'unique event ids'
-// cannot be said." Without it the aggregates above cannot reach the
-// case that motivated them, because `sum` needs a bag of NUMBERS and a
-// model holds a bag of RECORDS:
-//
-//   total: sum(pick($.lines, amountCents))
-//
-// IT IS NOT `each` WITH A CLEVER TEMPLATE. `each(d, _ & t)` MEETS each
-// child with `t`, and a meet cannot select: `each($.lines, _ & _.amount)`
-// asks for a child that is simultaneously the whole record and one of
-// its fields, which is why every spelling of it answers `no_path`.
-// Selection is a different operation and gets its own verb.
-//
-// A CHILD MISSING THE KEY IS AN ERROR, not a silently shorter list.
-// Skipping would make `sum(pick(...))` quietly total the wrong set of
-// records -- the failure mode an aggregate exists to prevent -- so the
-// refusal names the child (`pick_key`).
 class PickFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -183,22 +140,6 @@ class PickFuncVal extends FuncBaseVal_1.FuncBaseVal {
     }
 }
 exports.PickFuncVal = PickFuncVal;
-// Which of the three a value is.
-//
-// `text` -- `+` would take it, so the fold can.
-//
-// `never` -- a SETTLED value that will never become text: a map, a
-// list, a null. This is `join_member`, class `conflict`, and it names
-// the member rather than the call, because "one of these is not a
-// string" is only actionable if you are told which.
-//
-// `notyet` -- an unresolved kind, a top, a stable residue. NOT a join
-// failure at all: the call stays residual and generation reports
-// `mapval_no_gen`, class `incomplete`, exactly as docs/trust.md
-// requires ("a stable residue ... is ordinary incompleteness"). Getting
-// this split wrong in either direction is the defect that matters here:
-// refusing a residue makes `join` unusable inside a schema, and
-// deferring on a map makes a real error arrive as a shrug.
 function memberVerdict(v) {
     const u = unpref(v);
     if (undefined !== (0, PlusOpVal_1.plusText)(u)) {
@@ -209,15 +150,6 @@ function memberVerdict(v) {
     }
     return 'notyet';
 }
-// The separator is a STRING or it is nothing.
-//
-// A number would render perfectly well through `+`, and is still
-// refused: the separator is not a member of the fold, it is the
-// parameter naming the text between members, and `join(x, 5)` is far
-// likelier a mistake than an intent to separate with "5". `pick`'s key
-// argument draws the same line for the same reason. This is the
-// direction that can be loosened later without breaking a document;
-// the other direction cannot.
 function sepVerdict(v) {
     const u = unpref(v);
     if (u?.isVal && u.isScalar) {
@@ -236,22 +168,6 @@ class JoinFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // it is summed or projected.
         this.staged = true;
     }
-    // A `make` OVERRIDE, WHERE ITS AggFuncVal SIBLINGS HAVE NONE, and the
-    // difference is worth stating because it is not arbitrary. `sum`,
-    // `pick` and the rest are staged and nothing more: they residuate
-    // before `unify` reaches the rebuild branch, so a `make` there would
-    // be unreachable code pretending to be a contract, and the base's
-    // `func:<name>` refusal is the loud answer if that ever changes.
-    //
-    // `join` is the first builtin that is BOTH staged AND defers its
-    // resolution (see `deferResolve`). A deferred call has settled
-    // arguments, so it does reach the rebuild branch, and without this it
-    // raised `func:join` on the first document with an unresolved member
-    // — where the Go port residuated and reported `mapval_no_gen`.
-    // Opposite answers on `join($.m, ",")` with `m: [string]`, caught by
-    // running both engines rather than by either test suite. `super` and
-    // bare `id`, the two other deferring calls, each carry the same
-    // override for the same reason.
     make(_ctx, spec) {
         return new JoinFuncVal(spec);
     }
@@ -265,20 +181,12 @@ class JoinFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return null;
     }
     unify(peer, ctx) {
-        // BOTH arguments, unlike `pick`, which drives only its bag: `pick`'s
-        // key is a bare word the parser has already made a string, while a
-        // separator is an ordinary expression and `join($.rows, $.sep)` has
-        // to wait for it.
         const ready = this.driveStagedArgs(ctx, 2);
         if (!ready || !ctx.settle) {
             return this.residuate(peer, ctx);
         }
         return super.unify(peer, ctx);
     }
-    // The `notyet` half of the verdict, taken before `resolve` runs: with
-    // arguments settled but a member still a kind, the call rides the
-    // ordinary args-not-done path and residuates, which is what makes an
-    // unresolved member ordinary incompleteness rather than a refusal.
     deferResolve(ctx, args) {
         const children = bagChildren(args?.[0], ctx);
         if (undefined === children) {
@@ -297,27 +205,10 @@ class JoinFuncVal extends FuncBaseVal_1.FuncBaseVal {
         if (undefined === children) {
             return this.place((0, err_1.makeNilErr)(ctx, 'aggregate_data', this, undefined, 'join'));
         }
-        // Arity is [1,2], so a second argument is present or the separator
-        // is the empty string -- which makes `join(coll)` concatenation.
-        // The separator's SHAPE is settled before resolve runs: the
-        // signature gate refuses every concrete non-string
-        // (docs/design/SIGNATURES.0.md; join(d: map|list, sep?: string)),
-        // and deferResolve holds the call while sepVerdict answers notyet
-        // -- so a present separator here is text.
         let sep = '';
         if (1 < args.length) {
             sep = unpref(args[1]).peg;
         }
-        // NO NIL-MEMBER GUARD, WHERE `sum` HAS ONE, and the difference is
-        // the fold's shape rather than an oversight. `sum` folds with
-        // `arith`, which MINTS a nil part-way through — a non-numeric child
-        // or an overflow — so it has to stop and return it. `join` folds
-        // already-unified values, and a nil among a list's elements
-        // collapses the list before this call resolves: `join([least([])],
-        // ",")` reports `aggregate_empty` at the member's own path,
-        // `$.o.0`, and never reaches here. A guard was written, the
-        // ADR-002 gate found it unexecuted, and probing confirmed no
-        // spelling reaches it, so it is removed rather than excused.
         const parts = [];
         for (const child of children) {
             const u = unpref(child);
@@ -327,15 +218,10 @@ class JoinFuncVal extends FuncBaseVal_1.FuncBaseVal {
             }
             parts.push(text);
         }
-        // Every part is already a string, so this IS the `+` fold seeded
-        // with `""` -- written as one concatenation because a loop of `+`
-        // over settled strings cannot differ from it, and because the Go
-        // twin's strings.Join must produce the same bytes.
         return this.place(new StringVal_1.StringVal({ peg: parts.join(sep) }));
     }
 }
 exports.JoinFuncVal = JoinFuncVal;
-// The three the registry names. Each is its operation and nothing else.
 class SumFuncVal extends AggFuncVal {
     constructor(spec, ctx) { super(spec, ctx, 'sum'); }
 }

@@ -8,26 +8,6 @@ import (
 	"unicode/utf8"
 )
 
-// THE ESCAPE CONVENTIONS (G9 phase 6, the Go side of ts/src/escape.ts,
-// docs/design/TEMPLATE.0.md D4). esc(s, variant?) makes a string safe
-// to place inside a literal of the named convention, and usc reads it
-// back out.
-//
-// A VARIANT NAMES A CONVENTION, NOT A LANGUAGE: several languages share
-// one convention, and one language has several -- a C-family literal
-// escapes differently in each quote, and SQL spells a literal one way
-// and an identifier another. With no variant it is the C escape, JSON
-// canonical, which covers TypeScript, JavaScript, Java, C, C++, C#, Go,
-// Rust, Swift, Kotlin, Scala and JSON itself.
-//
-// EVERY CONVENTION IS SPELLED OUT HERE rather than borrowed from a host
-// function, and the reason is parity: encoding/json escapes what
-// JSON.stringify does not, and url.QueryEscape is not RFC 3986. A
-// generated file must be byte-identical whichever engine wrote it.
-//
-// usc IS THE LEFT INVERSE, AND IT IS PARTIAL. usc(esc(s)) is s for
-// every s; esc(usc(t)) is t only for canonically escaped t. Input with
-// no inverse is REFUSED (usc_malformed), never passed through.
 
 // escVariants are the variant names, in the order the reference lists
 // them. `none` is not here: it is the absent argument, and the absent
@@ -40,8 +20,6 @@ var escVariants = []string{"sq", "sql", "shell", "xml", "uri", "regex"}
 // pattern the subset accepts, which is the point of the variant.
 const escRegexPunct = `\.+*?()[]{}|^$/`
 
-// escXml are the five entities, in the order they must be APPLIED: `&`
-// first, or the ampersands of the other four are escaped a second time.
 var escXml = [][2]string{
 	{"&", "&amp;"},
 	{"<", "&lt;"},
@@ -50,10 +28,6 @@ var escXml = [][2]string{
 	{"'", "&apos;"},
 }
 
-// escUriUnreserved are the characters RFC 3986 calls unreserved.
-// Everything else is percent-encoded, byte by byte of its UTF-8, with
-// UPPERCASE hex -- the case the RFC prefers, pinned here because the
-// two ports must agree on it.
 const escUriUnreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
 	"abcdefghijklmnopqrstuvwxyz0123456789-._~"
 
@@ -179,8 +153,6 @@ func unescC(src string, quote rune) (string, bool) {
 	return out.String(), true
 }
 
-// hex4 is four hex digits at `at`, or !ok when they are not four hex
-// digits.
 func hex4(r []rune, at int) (int, bool) {
 	if len(r) < at+4 {
 		return 0, false

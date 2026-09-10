@@ -21,18 +21,6 @@ import {
 } from '../utility'
 
 
-// The unbounded exact integer leaf of the number tower, reached only by
-// a `0d` literal with no fraction and no exponent (`0d5`, `-0d5`,
-// `0d123456789012345678901234567890`) or by direct construction.
-//
-// Its peg is a native bigint: exact at any magnitude, immutable, and
-// compared by VALUE with `===` (D2 -- two separately built bigints
-// holding the same number are `===`, which is exactly the property the
-// Go port has to reproduce by hand for `*big.Int`).
-//
-// `biginteger` is DISJOINT from `integer`: `5 & 0d5` is an error, since
-// a successful meet would have to pick one of the two kinds and either
-// choice makes `&` asymmetric in kind.
 class BigIntegerVal extends ScalarVal {
   isBigInteger = true
 
@@ -42,10 +30,6 @@ class BigIntegerVal extends ScalarVal {
     spec: ValSpec,
     ctx?: AontuContext
   ) {
-    // Exact-input construction (D8): a bigint, or the digits as text. A
-    // JS `number` is deliberately NOT accepted -- it has already been
-    // rounded before this library could inspect it, so an exact value
-    // above 2^53 could never arrive that way intact.
     let peg = spec.peg
     if ('string' === typeof peg) {
       if (!/^[-+]?[0-9]+$/.test(peg)) {

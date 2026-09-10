@@ -34,37 +34,12 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// THE CAPABILITY REVIEW, HELD TO ITSELF (G11).
-//
-// `docs/capability-review/progress.md` is the single record of what has
-// been built, and until this file it said of its own update protocol:
-// "Nothing else here is machine-checked, so the discipline is the whole
-// mechanism." That is a true statement about a register whose whole
-// reason for existing is that the previous arrangement DRIFTED -- eight
-// gap documents all headed "design proposal" including three that were
-// partly implemented, an index carrying four strikethrough corrections,
-// and eight baselines quoting four different suite sizes between them.
-//
-// A register that exists because prose drifts, and is itself only
-// prose, is one editor away from the failure it was built to end. So
-// the parts of it that CAN be checked are checked here: the summary
-// table against the rows it summarises, the gap documents against the
-// register that indexes them, the range in the three files that quote
-// it, and every link. What cannot be checked -- whether a pin is
-// TRUE -- stays discipline, and the same-commit rule stays the rule.
-//
-// These pages are deliberately outside the prose gates
-// (ts/scripts/gated-docs.cjs: design notes and the capability review
-// are working documents). This gate is about STRUCTURE, not style, and
-// applies to exactly the files those gates exclude.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
 const Path = __importStar(require("node:path"));
 const REPO = Path.join(__dirname, '..', '..');
 const REVIEW = Path.join(REPO, 'docs', 'capability-review');
-// LINE ENDINGS ARE THE CHECKOUT'S BUSINESS, the rule every other gate
-// in this repository states.
 function read(...parts) {
     return Fs.readFileSync(Path.join(...parts), 'utf8')
         .replaceAll('\r\n', '\n').replaceAll('\r', '\n');
@@ -110,7 +85,6 @@ function phaseRows(md) {
     }
     return out;
 }
-// The summary table: one row per gap, four counts.
 function summaryTable(md) {
     const out = new Map();
     for (const line of md.split('\n')) {
@@ -153,11 +127,6 @@ const INDEX = read(REVIEW, 'index.md');
                 `"${row.status.slice(0, 60)}"`);
         }
     });
-    // THE SUMMARY TABLE IS DERIVED, AND NOTHING DERIVED IT. Before this
-    // gate the counts were maintained by hand beside the rows they count,
-    // and the file's own history records them disagreeing: the table
-    // "counted such rows on whichever side kept its total at sixty-five
-    // while the sections below held sixty-seven rows".
     (0, node_test_1.test)('the-summary-table-matches-the-rows-it-summarises', () => {
         const table = summaryTable(PROGRESS);
         const derived = new Map();
@@ -183,9 +152,6 @@ const INDEX = read(REVIEW, 'index.md');
         }
         Assert.deepEqual(totalRow(PROGRESS), want, 'the **total** row is not the sum of the gap rows');
     });
-    // A GAP DOCUMENT, ITS REGISTER SECTION AND ITS INDEX ROW ARE ONE
-    // THING IN THREE PLACES. Any two of them without the third is the
-    // drift this register exists to end.
     (0, node_test_1.test)('every-gap-document-is-registered-and-indexed', () => {
         const docs = gapDocs();
         const table = summaryTable(PROGRESS);
@@ -199,11 +165,6 @@ const INDEX = read(REVIEW, 'index.md');
             Assert.ok(docs.has(gap), `the summary table has a ${gap} row and no g${gap.slice(1)}-*.md`);
         }
     });
-    // A LANDED ROW CITES AN ARTIFACT. The protocol says "a pin is a path,
-    // a spec file, a symbol, or a commit hash that a reviewer can
-    // re-check in under a minute", and every one of those is written as a
-    // code span here. This cannot check that a pin is TRUE -- that stays
-    // discipline -- only that the row did not settle for a sentence.
     (0, node_test_1.test)('every-landed-row-pins-something', () => {
         for (const row of phaseRows(PROGRESS)) {
             if ('landed' !== bucketOf(row.status)) {
@@ -213,16 +174,6 @@ const INDEX = read(REVIEW, 'index.md');
                 `path, symbol or link: "${row.pin.trim().slice(0, 80)}"`);
         }
     });
-    // THE RANGE IS QUOTED IN FOUR PLACES and was stale in three of them
-    // the moment G11 was opened, which is how this case came to exist.
-    //
-    // The rule is TWO-SIDED rather than "every range is the current one",
-    // because a range can be HISTORY: index.md's "G1–G8 are the August
-    // 2026 survey" is a true sentence about what was opened when, and
-    // rewriting it to the current range would make it false. So: the
-    // current range must appear at least once in each file (which is
-    // what catches the stale copy), and no range anywhere may name a gap
-    // that does not exist (which is what catches the typo).
     (0, node_test_1.test)('the-gap-range-is-current-everywhere-it-is-quoted', () => {
         const highest = Math.max(...[...gapDocs().keys()].map((g) => +g.slice(1)));
         const want = `G1–G${highest}`;

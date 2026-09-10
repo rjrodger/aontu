@@ -1,23 +1,6 @@
-// Copyright (c) 2021-2026 Richard Rodger, MIT License
 
 package aontu
 
-// THE RUNTIME SIGNATURE CHECKER (docs/design/SIGNATURES.0.md). One
-// argument gate, run by the shared function machinery (FuncVal.Unify)
-// just before a call resolves, when its arguments are driven: for
-// each VALUE-mode argument whose declared type is scalar-kind words,
-// the driven Val must be a concrete scalar of an admitted kind. A
-// failure refuses as `func_arg`, whose hint renders the signature
-// line and names the offending argument -- the error-message builder
-// the registry exists for.
-//
-// The gate owns exactly the argument-shape refusals that were bare
-// `invalid-arg` at the call; everything with more meaning than a
-// shape mismatch keeps its own code, and what the gate refuses it
-// must POSITIVELY identify (a wrong-kinded concrete scalar, a map, a
-// list, a scalar KIND marker) -- a preference, a residual or a
-// disjunct passes through to the builtin's own logic. Mirrors
-// ts/src/siggate.ts, which carries the full reasoning.
 
 import "strings"
 
@@ -48,10 +31,6 @@ func sigGateKinds(atype string) []Kind {
 	return out
 }
 
-// sigAdmits: the declared kinds admit a driven Val when it is a
-// concrete scalar whose leaf kind is, or sits below, one of them --
-// the same walk subsumption makes, so `number` admits every numeric
-// leaf and `string` admits a path value.
 func sigAdmits(kinds []Kind, arg Val) bool {
 	sv, ok := arg.(*ScalarVal)
 	if !ok {

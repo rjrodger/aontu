@@ -1,13 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// THE FORMATTER'S OWN CASES (docs/design/FMT.0.md), the Go twin of
-// ts/test/format.test.ts. What the two ports must AGREE on -- the form
-// itself -- is pinned row by row in test/spec/fmt.tsv and executed by
-// both spec runners. What is here is the rest: the self-check's refusal
-// (reached by swapping the check, since a formatter that is right never
-// takes that arm on its own), the unified diff, and the corpus gate --
-// every document under use-cases/ and test/spec/files/ formats to a
-// fixed point.
 
 package aontu
 
@@ -26,8 +18,6 @@ func TestFormatReportsWhatChanged(t *testing.T) {
 		t.Fatalf("clean document: %+v", same)
 	}
 
-	// Line endings are the checkout's business, not the document's:
-	// CRLF formats to LF, and that IS a change.
 	crlf := a.Format("a: 1\r\n")
 	if "a: 1\n" != crlf.Text || !crlf.Changed {
 		t.Fatalf("crlf: %+v", crlf)
@@ -56,9 +46,6 @@ func TestFormatRefusesASyntaxError(t *testing.T) {
 	}
 }
 
-// THE DEPTH BUDGET: a document nested past the evaluation budget is
-// refused as a finding, in both ports at the same depth, rather than
-// left to whichever port's stack gives out first.
 func TestFormatRefusesPastTheDepthBudget(t *testing.T) {
 	nest := func(n int) string {
 		return "a:" + strings.Repeat("{b:", n) + "1" + strings.Repeat("}", n) + "\n"
@@ -73,10 +60,6 @@ func TestFormatRefusesPastTheDepthBudget(t *testing.T) {
 	}
 }
 
-// THE SELF-CHECK. The formatter re-parses what it wrote and compares
-// the two trees; a disagreement is its own defect, so it writes
-// nothing and says so, with both spellings in the finding. The check
-// is a package variable because a correct formatter never fails it.
 func TestFormatRefusesItsOwnDefect(t *testing.T) {
 	orig := formatSame
 	defer func() { formatSame = orig }()
@@ -126,10 +109,6 @@ func TestFormatRefusesItsOwnDefect(t *testing.T) {
 	}
 }
 
-// THE LAWFUL TIER'S CHECK (FMT.0.md §7.3). A merge or a repeat stays
-// only where the engine agrees the two spellings meet the same; the
-// check is a package variable so the spelling it keeps can be
-// exercised, and it sees both spellings.
 func TestFormatKeepsTheSpellingTheEngineRefuses(t *testing.T) {
 	orig := formatMeet
 	defer func() { formatMeet = orig }()
@@ -196,10 +175,6 @@ func TestFormatKeepsTheSpellingTheEngineRefuses(t *testing.T) {
 		t.Fatalf("relation verdict: %q", formatMeetOf(rel))
 	}
 
-	// The engine's own repros: §76 of use-cases/BUGS.md is a map the
-	// TypeScript port evaluates differently as one map and as three
-	// statements, so the merge is refused there and taken here. Goes
-	// with §76.
 	raw, err := os.ReadFile(filepath.Join("..", "use-cases", "repros", "key-func", "spread-key-through-deep-ref.aon"))
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +222,6 @@ func TestUnifiedDiff(t *testing.T) {
 		{"same", "a\n", "a\n", ""},
 		{"empty", "", "", ""},
 		{"one line", "a\n", "b\n", "--- a/x\n+++ b/x\n@@ -1,1 +1,1 @@\n-a\n+b\n"},
-		// Into an empty file, and out of one.
 		{"into empty", "", "a\nb\n", "--- a/x\n+++ b/x\n@@ -0,0 +1,2 @@\n+a\n+b\n"},
 		{"to empty", "a\n", "", "--- a/x\n+++ b/x\n@@ -1,1 +0,0 @@\n-a\n"},
 		// A missing final newline is a difference, and is said as diff
@@ -273,8 +247,6 @@ func TestUnifiedDiff(t *testing.T) {
 		}
 	}
 
-	// Two changes far apart are two hunks, three lines of context each;
-	// the unique lines between them are the anchors.
 	lines := make([]string, 20)
 	for i := range lines {
 		lines[i] = "line " + itoa(i)
@@ -348,10 +320,6 @@ func TestEveryCorpusDocumentFormatsToAFixedPoint(t *testing.T) {
 	}
 }
 
-// THE BUNDLED MODELS ARE HELD TO THE FORM (docs/design/MODELS.0.md D4):
-// Format leaves each of the aontu: models exactly as bundled, and the
-// lint reports nothing on it. Twin of format-bundled-models in
-// ts/test/format.test.ts.
 func TestBundledModelsAreFormatted(t *testing.T) {
 	a := New()
 	names := aontuModels()

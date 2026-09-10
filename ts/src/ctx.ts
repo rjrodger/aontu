@@ -16,7 +16,6 @@ import {
 } from './err'
 
 
-
 type AontuContextConfig = {
   cc?: number
   err?: any[] // Omit<NilVal[], "push">
@@ -27,12 +26,6 @@ type AontuContextConfig = {
   // error list is, so one run has one record.
   prov?: any
 
-  // THE READ SET (RENDER.0.md P7), or absent for an uninstrumented
-  // run: every tree path a reference resolved to, in one shared set.
-  // It is what `render --coverage` measures the model against -- a
-  // path no read reached is model the transform never consumed -- and
-  // its presence is also what switches the two render riders on
-  // (Val.origin, Val.emitted), so one flag turns the whole record on.
   reads?: Set<string>
   fs?: any
   errfs?: any
@@ -56,24 +49,6 @@ class AontuContext {
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
 
-  // THE STAGING RULE (G8 phase 0,
-  // docs/capability-review/g8-generation.md). A value whose answer
-  // depends on WHERE IT IS -- `key()` today, the generation
-  // combinators next -- must not answer while anything is still
-  // moving it: resolved early it reports the position it was WRITTEN
-  // at rather than the one it ends up at. Such a value RESIDUATES
-  // while this is false, and fires exactly once on the pass where it
-  // is true.
-  //
-  // The pass loop (ts/src/unify.ts) sets it on the first pass whose
-  // input tree is IDENTICAL to the previous pass's: everything that
-  // was going to move has moved, and what is left is the staged
-  // values themselves, which is precisely the moment they may answer.
-  // It replaces a `ctx.cc < 3` pass count in KeyFuncVal -- a magic
-  // number, right for the documents it was tuned on and silently
-  // wrong for anything that took a fourth pass to place a value. The
-  // comment it replaces said as much: "this delay makes keys in
-  // spreads and refs work, but it is a hack - find a better way".
   settle: boolean = false
   vars: Record<string, Val> = {}
   src?: string
@@ -86,18 +61,6 @@ class AontuContext {
 
   collect: boolean
 
-  // THE COMPLETENESS PROBE (the review's finding C). vet detects
-  // residue by GENERATING the anchored meet and keeping the
-  // incomplete-class failures. Generation honours the OUTPUT marks --
-  // `type()` and `hide()` say "do not emit this" -- so a `--at` anchor
-  // sitting under a mark generated nothing at all, reported nothing,
-  // and vetted VALID for data missing a required field, while the same
-  // anchor without the mark answered incomplete (use-cases/BUGS.md
-  // §14). A mark is a decision about OUTPUT; it is not a statement
-  // about what the data must satisfy, and `--at` names the truth to
-  // validate against explicitly. Under this flag the generation walk
-  // descends through marked values; nothing else changes, and no
-  // output is produced from a probe run -- only its findings are read.
   probe: boolean = false
 
   // The provenance recorder (G7 phase 3), or undefined for an
@@ -113,7 +76,6 @@ class AontuContext {
   err: any[]
   explain: any[] | null
 
-  // TODO: separate options and context!!!
   srcpath?: string
 
   deps: Record<string, any>
@@ -122,49 +84,15 @@ class AontuContext {
   _pathstr: string | undefined
   _pathidx: number | undefined
   _pathmap: Map<string, number>
-  // Trie keyed by (parentIdx, key) -> { idx, path }. Serves two
-  // jobs: (1) assign O(1) pathidx without rebuilding
-  // `path.join('\x00')` for cycle-detection; (2) cache the
-  // materialised path array so the same (parent, key) visited
-  // across fixpoint passes reuses one array instead of re-concat.
   _pathTrie: Map<number, Map<string, { idx: number, path: string[] }>>
   _pathidxNext: { n: number }
 
-  // Current `unite` recursion depth, checked against the depth budget
-  // (ts/src/unify.ts). Held in a shared mutable box, like _pathidxNext,
-  // because clone() uses Object.create: the box is inherited by
-  // reference, so a nested clone's increments are visible to the frame
-  // that will decrement them. The Go port keeps the same counter
-  // directly on its Ctx pointer (go/unify.go, maxUniteDepth).
   _depth: { n: number }
 
-  // The relation declarations this evaluation accumulates (RELATIONS
-  // P2): predicate -> what its graph atoms said. One Map per
-  // evaluation, created here and inherited by reference through
-  // clone()'s prototype chain, exactly as _depth's box is -- a clone
-  // made before the first registration must still share the registry.
   _reldecls: Map<string, { acyclic?: boolean, inverses: Set<string> }>
 
-  // The tree a recursive residual's target resolves against when the
-  // meet's own root does not contain it (RECURSION.0.md). Normally
-  // undefined: a residual expands by walking ctx.root, and the root
-  // holds the definition. An ANCHORED vet run meets a subtree LIFTED
-  // out of the settled schema, so `$.spec.Step` names nothing in the
-  // meet's root -- the residual held its peer forever and the data
-  // under it vetted VALID unchecked. Vet sets this to the settled
-  // schema root for anchored runs; RecurseVal.body falls back to it
-  // only when the root walk finds nothing. Inherited by clone()
-  // through the prototype chain.
   _fixroot: any
 
-  // The evaluation budgets (G5 trust profile, docs/trust.md): integer
-  // counts of engine events, never wall-clock. Always present, defaults
-  // from the shared spec-visible constants (test/spec/budget.tsv), so
-  // the hot-path reads in unify.ts are plain property loads. Inherited
-  // by clone() through the prototype chain. `revisits` is NOT profile
-  // surface (the Go port has no revisit counter to configure — see
-  // TrustBudget in type.ts); it is carried here so unify.ts reads one
-  // budget object, at its fixed spec constant.
   budget: { passes: number, revisits: number, depth: number }
 
   // The include manifest sink (G5, docs/trust.md): every include the
@@ -172,20 +100,8 @@ class AontuContext {
   // Aontu.parse() sorts and dedups it onto the result's `deps`.
   manifest: { path: string, capability: string }[]
 
-  // Trial mode: set by DisjunctVal.unify while each member is tried
-  // against the peer. When true, makeNilErr returns the shared
-  // TRIAL_NIL sentinel instead of allocating a fresh NilVal, and
-  // pushes TRIAL_NIL to ctx.err only once per trial (the caller's
-  // `trialErr.length > 0` check still signals failure). See err.ts.
   _trialMode?: boolean
 
-  // Per-parent descend cache: (key) -> already-descended child ctx.
-  // ~48% of descends in foo-sdk repeat the same (parent, key) pair
-  // (e.g. a MapVal.unify visits the same peer keys across fixpoint
-  // passes). The child's prototype chain, path, and pathidx are
-  // identical every time, and no code writes to a descended ctx
-  // between visits — nothing mutates per-child state — so the
-  // cached child is safe to reuse.
   _childCache?: Map<string, AontuContext>
 
 
@@ -258,9 +174,6 @@ class AontuContext {
     ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain
 
     ctx._pathstr = undefined
-    // Path didn't move unless cfg.path was supplied, so pathidx stays
-    // valid in the common case. For cfg.path-override (4 calls per
-    // run, fixpoint advances) fall back to the join-based lookup.
     if (cfg.path !== undefined) {
       ctx._pathidx = undefined
     }
@@ -269,14 +182,6 @@ class AontuContext {
   }
 
   descend(key: string): AontuContext {
-    // C3: reuse the child ctx from a previous descend with the same
-    // (parent, key). Saves one Object.create + several property
-    // writes per hit; ~48% hit rate on foo-sdk.
-    //
-    // NB: must use hasOwnProperty here — plain `this._childCache`
-    // would walk the prototype chain and read the *parent's* cache
-    // (ctxs are created via Object.create(parent)), so keys would
-    // cross-contaminate between sibling branches.
     let childCache: Map<string, AontuContext> | undefined
     if (Object.prototype.hasOwnProperty.call(this, '_childCache')) {
       childCache = this._childCache
@@ -291,11 +196,6 @@ class AontuContext {
     const ctx = Object.create(this)
     ctx._pathstr = undefined
 
-    // Trie doubles as both pathidx assignment and path-array cache.
-    // (parent_pathidx, key) uniquely identifies a descended path,
-    // and is visited many times across fixpoint passes. Caching the
-    // materialised array lets descend share references instead of
-    // allocating a fresh concat every time.
     const parentIdx = this._pathidx!
     let childMap = this._pathTrie.get(parentIdx)
     if (childMap === undefined) {
@@ -329,7 +229,6 @@ class AontuContext {
 
     this.src = ('string' === typeof this.opts.src ? this.opts.src : undefined) ?? this.src
 
-    // TODO: rename srcpath to file
     this.srcpath = this.opts.path ?? this.srcpath
   }
 
@@ -351,7 +250,6 @@ class AontuContext {
 
 
   errmsg() {
-    // return this.errlist
     return this.err
       .map((err: any) => (err && (null == err.msg || '' === err.msg)
         ? (descErr(err, this), err.msg)
@@ -405,7 +303,6 @@ class AontuContext {
       (this._pathstr = this.path.map(p => p.replaceAll('.', '\\.')).join('.'))
   }
 } /* node:coverage ignore next 8 */
-
 
 
 export {

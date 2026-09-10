@@ -1,25 +1,6 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 import { includeOpts } from './utility'
 
-// PATH-ADDRESSED DIFF (G7 phase 6,
-// docs/capability-review/g7-machine-access.md): what changed, at which
-// paths, between two documents — the dyff-style answer, which
-// deterministic canon makes possible without phantom noise. Two
-// documents that mean the same thing canon the same way, so a diff of
-// canons reports semantic change and not reformatting.
-//
-// The text compared is the HASH FORM (G6's `hcanon`), not the plain
-// canon, for the reason G6 gives: canon drops closedness and the
-// type/hide marks, so a canon diff calls `close({a:1})` and `{a:1}`
-// identical. A false "changed" costs a needless read; a false
-// "unchanged" is a change nobody reviewed, which is the one direction
-// that must not happen.
-//
-// WHETHER a change is BREAKING is a different question, and it belongs
-// to G3: `subsume` and `breaking` answer it with the lattice's own
-// rules. This verb answers "what moved", which is what a reviewer
-// reads first and what an agent needs before it can ask the other
-// question at all.
 
 import { Aontu } from './aontu'
 import type { TrustOptions } from './type'
@@ -44,7 +25,6 @@ export type DiffReport = {
   changes: DiffChange[]
   findings: VetFinding[]
   ok: boolean
-  // True when nothing moved: the two documents mean the same thing.
   same: boolean
 }
 
@@ -54,13 +34,6 @@ export type DiffOptions = {
   // Compare at this path of both documents, rather than at the root.
   at?: string
 
-  // The trust profile this run evaluates under (G5, docs/trust.md).
-  // The source arrives from a caller, so the caller must be able to
-  // say what it may reach: without this the include chain is the
-  // default one, and `@"../../etc/passwd.aon"` reads whatever the
-  // process can. (`@"x.js"` no longer executes -- ADR-012 refuses the
-  // extension -- but reading is enough.) A server passes
-  // `{include:'none'}`.
   trust?: TrustOptions
 
   // Extensions additionally read as text (the CLI's `--text-ext`).
@@ -75,11 +48,6 @@ function pathText(parts: string[]): string {
 }
 
 
-// Both sides of one node — never both absent: keys come from the
-// union of the two bags, and list indices run to the longer side, so
-// every walk has at least one value. Bags of the SAME kind recurse,
-// which is what makes the report path-addressed rather than one line
-// saying the whole document changed; everything else compares text.
 function walk(
   left: any, right: any, parts: string[], out: DiffChange[]): void {
   if (null == left) {
@@ -94,11 +62,6 @@ function walk(
   const bothMaps = true === left.isMap && true === right.isMap
   const bothLists = true === left.isList && true === right.isList
   if (bothMaps || bothLists) {
-    // The bag's OWN attributes, at pseudo-keys under it: a recursing
-    // bag never compares its own text, so what the children do not
-    // carry has to be compared here. The spread is part of what a bag
-    // MEANS; so are closedness and the marks, which is exactly why the
-    // hash form spells them (G6).
     const lc = null == left.spread.cj ? undefined : hcanon(left.spread.cj)
     const rc = null == right.spread.cj ? undefined : hcanon(right.spread.cj)
     if (lc !== rc) {
@@ -182,9 +145,6 @@ function evalSide(
 }
 
 
-// Diff two documents. Each is evaluated on its own — a document that
-// does not stand up has no meaning to compare, and the report says so
-// rather than diffing a wreck.
 export function diff(
   leftSrc: string, rightSrc: string, opts?: DiffOptions): DiffReport {
   const options = opts ?? {}

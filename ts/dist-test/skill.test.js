@@ -34,28 +34,16 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// THE SKILL SOURCES, HELD TO THE ENGINE (G7 phase 6). A skill whose
-// examples do not evaluate teaches the wrong language, and it drifts
-// the first time the surface moves. Every self-contained document in
-// docs/skill/examples.md is evaluated here, so the ladder cannot rot
-// unnoticed.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
 const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
 const SKILL_DIR = Path.join(__dirname, '..', '..', 'docs', 'skill');
-// LINE ENDINGS ARE THE CHECKOUT'S BUSINESS, not this file's -- the same
-// rule ts/test/docs.test.ts and ts/test/grammar.test.ts state at
-// length. .gitattributes pins .md to LF; this is what still holds for a
-// file that did not come from a checkout.
 function readText(...parts) {
     return Fs.readFileSync(Path.join(...parts), 'utf8')
         .replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 }
-// Fenced blocks, with the two kinds that are not documents left out:
-// a shell transcript, and a multi-file example whose `@"..."` include
-// only resolves beside its sibling.
 function documents(md) {
     const out = [];
     for (const block of md.split('```').filter((_, i) => 1 === i % 2)) {
@@ -79,9 +67,6 @@ function documents(md) {
             Assert.deepEqual(ctx.err.map((e) => e.why), [], `example does not evaluate:\n${src}`);
         }
     });
-    // The ladder's claims about what generates, checked rather than
-    // asserted: rung 3 says the defaults appear, and rung 2 says
-    // nothing does.
     (0, node_test_1.test)('the-ladder-generates-what-it-claims', () => {
         const truth = 'service: {\n  name: string\n  port: integer\n}';
         Assert.throws(() => new aontu_1.Aontu().generate(truth), /not concrete|Cannot|no_gen/i);
@@ -89,16 +74,6 @@ function documents(md) {
             '  replicas: *1 | integer\n}';
         Assert.deepEqual(new aontu_1.Aontu().generate(withDefaults), { service: { name: 'auth', port: 8080, replicas: 1 } });
     });
-    // EVERY LINK THAT ESCAPES THE SKILL DIRECTORY IS ONE prepack KNOWS
-    // ABOUT. `ts/scripts/prepack.js` copies this directory to the
-    // package root as `skill/`, two levels closer to the root than it
-    // sits here, so a `../../` link that was right in the repository
-    // resolves OUTSIDE the package once copied — under an install, into
-    // `node_modules/`. prepack rewrites the ones it knows and throws on
-    // a rewrite that no longer matches; what it cannot see is a NEW
-    // `../../` link added here later, which would ship broken and
-    // silently. This is that check, and it runs in CI rather than at
-    // pack time.
     (0, node_test_1.test)('every-escaping-link-is-rewritten-at-pack-time', () => {
         const prepack = Fs.readFileSync(Path.join(__dirname, '..', 'scripts', 'prepack.js'), 'utf8');
         let checked = 0;

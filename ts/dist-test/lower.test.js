@@ -4,13 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// The lowering's own arms (docs/design/RENDER.0.md P5): what the
-// vocabulary keeps a spec row from reaching -- a non-ASCII name (the
-// vocabulary's %name is ASCII), a container of a container (a
-// container takes leaves only, so the paren rule has no row), a
-// profile with a lowering and no type forms -- and the word splitter
-// and case styles at their edges. Twin of go/lower_test.go; what both
-// ports must agree on through the vocabulary is test/spec/render.tsv.
 const node_test_1 = require("node:test");
 const node_assert_1 = __importDefault(require("node:assert"));
 const aontu_1 = require("../dist/aontu");
@@ -94,9 +87,6 @@ function ctx(family, profile) {
         node_assert_1.default.strictEqual(report.units[0].text, 'export interface T {\n  a: (string | null)[];\n}\n');
     });
     (0, node_test_1.test)('a-body-piece-without-a-depth-nests-as-depth-zero-does', () => {
-        // renderValue takes an instance the caller built, where the
-        // vocabulary's `at: *0` default has not been filled: a line piece
-        // with no `at` in a function body nests as a line at depth 0 does.
         const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').aontu.profile;
         const unit = (piece) => ({
             aontu: { Code: {

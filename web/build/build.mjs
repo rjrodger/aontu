@@ -1,17 +1,3 @@
-/* Bundle the committed CommonJS build in ts/dist into a single
- * browser-ready IIFE (global name: AontuLib) for the playground.
- *
- *   cd web/build && npm install && node build.mjs
- *
- * Output: web/aontu-bundle.js, then web/playground.html is rebuilt
- * from web/playground.template.html with the bundle inlined (the page
- * stays a single self-contained file).
- *
- * Node builtins are shimmed for the browser (see shims/): fs is a stub
- * whose readFileSync throws a clear "no filesystem in the playground"
- * error, so @"file" includes fail with a real message; crypto is a
- * pure-JS SHA-256 so canonHash works; path/util are minimal
- * implementations; process/Buffer are injected globals. */
 
 import { build } from 'esbuild'
 import { readFileSync, writeFileSync, statSync } from 'node:fs'
@@ -35,15 +21,9 @@ await build({
   platform: 'browser',
   target: ['es2020'],
   minify: true,
-  // Class names are load-bearing language surface: ScalarKindVal.canon
-  // is the marker class's constructor name lowercased (`Integer` ->
-  // `integer`), so minification must not rename them.
   keepNames: true,
   sourcemap: false,
   logLevel: 'info',
-  // Map every Node builtin the engine (or its dependencies) touches to
-  // a browser shim. Both the plain and the `node:`-prefixed specifiers
-  // occur in the dependency closure.
   alias: {
     'fs': shim('fs.cjs'),
     'node:fs': shim('fs.cjs'),

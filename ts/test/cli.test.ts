@@ -26,11 +26,6 @@ const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js')
 
 
 function run(args: string[], input?: string): { out: string; code: number } {
-  // The child does NOT inherit NODE_V8_COVERAGE. These cases assert the
-  // packaged binary's behaviour; its coverage is contributed in-process
-  // by coverage3.test.ts, and a grandchild's coverage file is not always
-  // flushed before the runner aggregates — which made the ADR-002 gate
-  // flaky rather than measuring anything extra.
   const env = { ...process.env }
   delete env.NODE_V8_COVERAGE
 
@@ -116,11 +111,6 @@ describe('cli', () => {
   })
 
 
-  // A MISTYPED VERB IS NOT A SUCCESS. `vet2` matches no subcommand, so
-  // it falls through to the bare form as a file name; the last name
-  // used to win, and the command answered about the DATA file with
-  // exit 0 -- a plausible pass, in the one place a tool loop is
-  // reading the exit code to decide whether the data is good.
   test('cli-mistyped-verb-is-a-usage-error', () => {
     const r = run(['vet2', 'schema.aon', 'data.json'])
     Assert.equal(r.code, 2)
@@ -129,9 +119,6 @@ describe('cli', () => {
   })
 
 
-  // The same refusal, reached the other way: the bare form is
-  // documented as `aontu [options] [file]`, singular, and a second
-  // file is a usage error rather than a silent discard.
   test('cli-two-files-is-a-usage-error', () => {
     const r = run(['a.aon', 'b.aon'])
     Assert.equal(r.code, 2)
@@ -176,9 +163,6 @@ const VET_SCHEMA = 'service: { name: string, port: integer }'
 
 describe('cli-vet', () => {
 
-  // The verb's whole reason for existing: an agent emits a document,
-  // the gate says what does not hold and WHERE, and the exit code says
-  // which kind of "no" it was.
   test('vet-reports-conflicts-with-both-sites', () => {
     const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }')
     const r = vetCapture(() => runVet([f.schema, f.data]))
@@ -189,10 +173,6 @@ describe('cli-vet', () => {
   })
 
 
-  // A parent that collapses to a nil takes its subtree with it, so the
-  // sibling conflict is reported on the CONTEXT rather than standing in
-  // the tree. Both belong in the report: this is the design's own
-  // motivating example, and it used to show half of what it found.
   test('vet-reports-findings-that-never-reached-the-tree', () => {
     const f = vetFiles(
       'service: close({ name: string, port: integer, replicas: integer })',
@@ -224,18 +204,11 @@ describe('cli-vet', () => {
   })
 
 
-  // A data document that will not parse is the DATA's fault: exit 1
-  // with a finding naming the file, not exit 4, which says the schema
-  // is unusable. And one bad file among several must not blank the
-  // findings the others earned.
   test('vet-unparseable-data-exits-1-and-names-the-file', () => {
     const f = vetFiles(VET_SCHEMA, 'service: ]')
     const r = vetCapture(() => Assert.equal(runVet([f.schema, f.data]), 1))
     Assert.match(r.out, /verdict: invalid/)
     Assert.match(r.out, /\$: syntax \[parse\]/)
-    // LOCATED. The parser knows where it stopped and the site says
-    // so; it used to read -1:-1 while the human renderer drew a caret
-    // under the exact character.
     Assert.match(r.out, /data: .*data\.json:1:10 \(nil\)/)
 
     const good = Path.join(f.dir, 'good.json')
@@ -260,11 +233,6 @@ describe('cli-vet', () => {
   })
 
 
-  // A relative `@"file"` load inside either document resolves from THAT
-  // document's directory, not from wherever the command was run —
-  // which is what `aontu <file>` has always done. Before this, a
-  // modular schema vetted from another directory came back `error`,
-  // and a same-named file in the working directory was read instead.
   test('vet-resolves-includes-from-each-document', () => {
     const f = vetFiles('@"part.aon"\nname: string', 'name: "auth"\nport: 8080')
     Fs.writeFileSync(Path.join(f.dir, 'part.aon'), 'port: integer')
@@ -303,10 +271,6 @@ describe('cli-vet', () => {
   })
 
 
-  // The cap is on the REPORT, not on each file: two data files that
-  // each come in under it can still overflow it together, and only the
-  // aggregate cut catches that. Per-file capping alone would emit four
-  // findings here and call the report whole.
   test('vet-max-errors-caps-the-report-not-each-file', () => {
     const f = vetFiles('a: integer\nb: integer', 'a: "x"\nb: "y"')
     const other = Path.join(f.dir, 'other.json')
@@ -333,14 +297,6 @@ describe('cli-vet', () => {
   })
 
 
-  // …BUT A SCHEMA-SIDE FAULT IS ONE FAULT, however many data files are
-  // named. `error` means the run could not be set up from the TRUTH's
-  // side, so every data file would produce the identical finding;
-  // concatenating them repeated one broken schema per file and, past
-  // the cap, called the report `truncated` over a single underlying
-  // problem. Invisible until the `error` verdict started carrying
-  // findings at all. The twin is TestVetSchemaErrorReportsOnce in
-  // go/cmd/aontu/vet_test.go.
   test('vet-schema-error-reports-once', () => {
     const f = vetFiles(VET_SCHEMA, 'service: { name: "auth" }')
     const broken = Path.join(f.dir, 'broken.aon')
@@ -415,19 +371,9 @@ describe('cli-vet', () => {
   })
 
 
-  // An OFF-PEG value still names its document: a preference's
-  // synthesised type yardstick is not a peg entry, so provenance
-  // reaches it only because the stamp walk follows it deliberately.
-  // Before that it belonged to neither document, and the report said
-  // so by naming no file at all.
   test('vet-site-off-peg-still-names-its-document', () => {
     const f = vetFiles('a: *1', 'a: {}')
     const r = vetCapture(() => runVet([f.schema, f.data]))
-    // The DEFAULT the author wrote, sited at its star (ADR-011 R1). The
-    // finding used to name the gate the engine computed from it --
-    // `integer`, which appears nowhere in the schema text a reader
-    // opens. (It read `number` before that, while the gate widened to
-    // the numeric family; removed 2026-08-25, status report §6.)
     Assert.match(r.out, /schema: .*schema\.aon:1:\d+ \(\*1\)/)
   })
 
@@ -458,10 +404,6 @@ describe('cli-vet', () => {
 
   // --- SARIF and watch (G2 phase 5) -----------------------------------
 
-  // The interchange form: level from severity, the data site as the
-  // primary location, the schema site related, the whole native finding
-  // in properties. Shape parity with the Go port is the golden in
-  // test/spec/files/vet-sarif/ (sarif.test.ts); this is the CLI wiring.
   test('vet-sarif-format-embeds-the-finding', () => {
     const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }')
     const r = vetCapture(() => runVet(['--format', 'sarif', f.schema, f.data]))
@@ -472,9 +414,6 @@ describe('cli-vet', () => {
     Assert.equal(result.ruleId, 'aontu/no_scalar_unify')
     Assert.equal(result.level, 'error')
     Assert.equal(result.properties.path, '$.service.port')
-    // DECODED before comparing: the uri percent-encodes URI-significant
-    // bytes, and on Windows the temp path's backslashes are exactly
-    // that (%5C), so the raw string equality only held on POSIX.
     Assert.equal(
       decodeURIComponent(
         result.locations[0].physicalLocation.artifactLocation.uri),
@@ -484,9 +423,6 @@ describe('cli-vet', () => {
   })
 
 
-  // The watch loop: one report per run, one run per change, streaming.
-  // The waiter is injected so the loop is bounded; the report changing
-  // between runs proves the files are re-read each time.
   test('vet-watch-streams-a-report-per-change', async () => {
     const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }')
     let calls = 0
@@ -518,9 +454,6 @@ describe('cli-vet', () => {
   })
 
 
-  // The real waiter resolves when a watched file's mtime+size signature
-  // moves — including from "gone" to existing, which is what a file
-  // being replaced by an editor looks like mid-save.
   test('vet-watch-change-resolves-on-touch', async () => {
     const f = vetFiles(VET_SCHEMA, 'service: {}')
     const missing = Path.join(f.dir, 'not-yet.json')
@@ -545,10 +478,6 @@ describe('cli-vet', () => {
 })
 
 
-// The subsumption verbs (G3 phase 3). What the two ports must AGREE on
-// (the report itself) is pinned by test/spec/subsume.tsv; what each
-// port owns (argument handling, exit codes, the text rendering, git
-// resolution) is here. The Go twin is go/cmd/aontu/subsume_test.go.
 describe('cli-subsume', () => {
 
   function subFiles(general: string, specific: string) {
@@ -630,9 +559,6 @@ describe('cli-subsume', () => {
     ).out.includes('aontu subsume'), true)
   })
 
-  // The design's own motivating example: the v2 that renames nothing
-  // but adds a required key and moves a default is BREAKING, with both
-  // witnesses located.
   test('breaking-detects-the-designs-v1-v2-break', () => {
     const f = subFiles(
       'service: close({name:string,port:*9090|integer,owner:string})',
@@ -655,14 +581,6 @@ describe('cli-subsume', () => {
       ['--against', f.specific, '--mode', 'full', f.general]), 1))
   })
 
-  // `--at` GATES A SUBTREE. A module's top level carries the version
-  // string and the policy block, which are SUPPOSED to change between
-  // releases -- so the whole-document comparison answered about them
-  // rather than about the contract, and a release that bumped only its
-  // version self-broke the gate. `subsume` has taken `--at` since G3;
-  // `breaking` did not, so the only way to gate a subtree was to split
-  // the file (use-cases/REVIEW.md finding D). The first leg is the
-  // control: without it, the version bump alone is breaking.
   test('breaking-at-gates-a-subtree', () => {
     const f = subFiles(
       'version: "2.0.0"\nsvc: {port: integer}',
@@ -675,9 +593,6 @@ describe('cli-subsume', () => {
       runBreaking(['--at', '$.svc', '--against', f.specific, f.general]), 0))
     Assert.match(at.out, /verdict: compatible/)
 
-    // And it still gates: a narrowing INSIDE the anchor is refused.
-    // Paths are reported from the ANCHOR, which is `subsume --at`'s
-    // own convention.
     const g = subFiles(
       'version: "2.0.0"\nsvc: {port: 8080}',
       'version: "1.0.0"\nsvc: {port: integer}')
@@ -724,14 +639,6 @@ describe('cli-subsume', () => {
     Assert.match(miss.err, /absent\.aon is not in that revision/)
   })
 
-  // THE OLD SIDE IS THE OLD TREE, not old entry text meeting new
-  // includes. The git spelling used to resolve the old document's
-  // `@"..."` loads against the WORKING tree, so a breaking change made
-  // inside an included file compared against itself and answered
-  // compatible -- the CI gate silently un-gated every non-entry file
-  // (use-cases/BUGS.md §26). Both directions are asserted: the
-  // narrowing is caught, and an unchanged tree stays compatible, so a
-  // fix that simply reported breaking would fail too.
   test('breaking-git-compares-the-old-tree', () => {
     const { execFileSync } = require('node:child_process')
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-brk-tree-'))
@@ -762,21 +669,6 @@ describe('cli-subsume', () => {
     Assert.match(r.out, /verdict: breaking/)
     Assert.match(r.out, /\$\.svc\.port/)
 
-    // THE PATH TO THE ENTRY NEED NOT BE THE PATH GIT PRINTS. Reaching
-    // the same file through a SYMLINK is the shape macOS and Windows
-    // hand every run of this verb: on macOS a temp file under /var is
-    // /private/var to git, and on Windows a TMP short name is the long
-    // form -- so relativising git's toplevel against the caller's
-    // resolved path subtracted two different coordinate systems, gave
-    // a `../..` climb, and the entry was "not in that revision". Exit
-    // 2 on both platforms, green on Linux, for the documented CI
-    // spelling. The repo-relative path now comes from git itself
-    // (`rev-parse --show-prefix`), so the caller's spelling cannot
-    // matter -- and this row runs that case on every platform.
-    //
-    // Best-effort: Windows refuses a symlink without Developer Mode,
-    // which is a privilege question rather than a defect in anything
-    // being tested. Twin: TestBreakingGitEntryPathNeedNotBeGits.
     const linked = Path.join(dir, 'linked')
     let symlinked = true
     try {
@@ -807,8 +699,6 @@ describe('cli-subsume', () => {
   })
 
   test('breaking-reads-the-documents-own-policy', () => {
-    // The policy declares no compatibility promise: nothing to check,
-    // whatever --against says.
     const f = subFiles(
       'aontu_policy: hide({compat: *none|backward|forward|full})\na:1',
       'a:hello')
@@ -828,10 +718,6 @@ describe('cli-subsume', () => {
     ).out.trim(), 'verdict: compatible')
   })
 
-  // The declaration's other spellings: a preference-free disjunction
-  // declares its first alternative; a bare scalar declares itself; a
-  // value that does not spell a mode (or a document that does not stand
-  // alone) falls back to backward.
   test('breaking-policy-spellings', () => {
     const noPref = subFiles(
       'aontu_policy: hide({compat: none|backward})\na:1', 'a:hello')
@@ -855,8 +741,6 @@ describe('cli-subsume', () => {
     vetCapture(() => Assert.equal(runBreaking(
       ['--against', notMode.specific, notMode.general]), 0))
 
-    // A document that does not stand alone: the policy read yields
-    // nothing, and the backward check itself reports the error.
     const broken = subFiles('a:1 a:2', 'a:1')
     vetCapture(() => Assert.equal(runBreaking(
       ['--against', broken.specific, broken.general]), 4))
@@ -886,9 +770,6 @@ describe('cli-subsume', () => {
     ).err.includes('git# needs a revision'), true)
     vetCapture(() => Assert.equal(runBreaking(
       ['--mode', 'sideways', '--against', 'a.aon', 'b.aon']), 2))
-    // LAST, so the flag really has no argument: `--at --against x`
-    // would take '--against' as the path, which is a different (and
-    // already-covered) failure.
     vetCapture(() => Assert.equal(runBreaking(
       ['--against', 'a.aon', 'b.aon', '--at']), 2))
     vetCapture(() => Assert.equal(runBreaking(
@@ -904,10 +785,6 @@ describe('cli-subsume', () => {
     ).out.includes('aontu breaking'), true)
   })
 
-  // Deprecate-then-remove is the supported rename path: a finding
-  // about a value the old version already deprecated becomes a warning
-  // under --allow-deprecated-removal, and warnings do not move the
-  // verdict.
   test('breaking-allow-deprecated-removal', () => {
     const f = subFiles(
       'service: close({name:string, listen:integer})',
@@ -920,7 +797,6 @@ describe('cli-subsume', () => {
     Assert.match(r.out, /verdict: compatible/)
     Assert.match(r.out, /\$\.service\.port: compat_narrowed/)
 
-    // A removal the old version did NOT deprecate stays breaking.
     const g = subFiles(
       'service: close({name:string})',
       'service: close({name:string, port:integer})')
@@ -928,9 +804,6 @@ describe('cli-subsume', () => {
       ['--against', g.specific, '--allow-deprecated-removal', g.general]), 1))
   })
 
-  // The old-version reader behind the downgrade, arm by arm — the Go
-  // port exports the same reader (aontu.DeprecatedAt) and pins the same
-  // arms in go/check-adjacent tests.
   test('breaking-deprecated-at-reader', () => {
     const src = 'a:[deprecate(1,{msg:"m"})] b:{c:deprecate(2,{msg:"n"})} d:3'
     Assert.equal(deprecatedAt(src, '$.a.0', 'x.aon'), true)
@@ -959,9 +832,6 @@ describe('cli-subsume', () => {
       Assert.equal(runTrim(['--check', file]), 0)
     ).out.trim(), 'verdict: clean')
 
-    // AN `error` VERDICT SAYS WHY (the review's finding F). Exit 4 is
-    // the same as it was; what changed is that the report now carries
-    // the reason, in text and in JSON, instead of a bare verdict.
     Fs.writeFileSync(file, 'a:1 a:2')
     const broken = vetCapture(() =>
       Assert.equal(runTrim(['--check', file]), 4))
@@ -1005,10 +875,6 @@ describe('cli-subsume', () => {
     ).out.includes('aontu trim'), true)
   })
 
-  // The relation reporter (G4 phase 5). Go twin: TestRelationsVerb in
-  // go/cmd/aontu/relations_test.go. What the two ports must AGREE on
-  // (the report itself) is test/spec/relation.tsv's; what each port
-  // owns — argument handling, exit codes, the text rendering — is here.
   test('relations-reports-cycles-and-missing-inverses', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-rel-'))
     const file = Path.join(dir, 'doc.aon')
@@ -1020,9 +886,6 @@ describe('cli-subsume', () => {
     Assert.match(r.out, /cycle \$\.a -> \$\.b -> \$\.a/)
     Assert.match(r.out, /\$\.b does not list \$\.a under usedBy/)
 
-    // (The old declared-target rendering is gone with the code:
-    // rel(t) flows at the site and its refusal is the engine's own,
-    // pinned in test/spec/relation.tsv.)
 
     // Acyclic AND mirrored: nothing to report.
     Fs.writeFileSync(file,
@@ -1032,9 +895,6 @@ describe('cli-subsume', () => {
       Assert.equal(runRelations([file]), 0)
     ).out.trim(), 'verdict: pass')
 
-    // A document that does not stand up is not a document with a bad
-    // graph -- and since the review's finding F it SAYS SO: exit 4 as
-    // before, with the reason under it rather than a bare verdict.
     Fs.writeFileSync(file, 'a: 1 & 2')
     const rbroken = vetCapture(() => Assert.equal(runRelations([file]), 4))
     Assert.match(rbroken.out, /verdict: error/)
@@ -1060,12 +920,6 @@ describe('cli-subsume', () => {
     Assert.equal('errors' in report, false)
   })
 
-  // JSON SCHEMA EXPORT (the review's finding I / SUPPORT.md act 2). Go
-  // twin: TestJsonSchemaVerb and friends in
-  // go/cmd/aontu/jsonschema_test.go. What the two ports must AGREE on
-  // (the schema and the loss report) is test/spec/jsonschema.tsv's;
-  // what each port owns -- argument handling, exit codes, which stream
-  // each half goes to -- is here.
   test('jsonschema-exports-the-model-and-names-what-it-cannot-carry', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-js-'))
     const file = Path.join(dir, 'doc.aon')
@@ -1154,10 +1008,6 @@ describe('cli-subsume', () => {
     ).out.includes('aontu jsonschema'), true)
   })
 
-  // REACHABILITY (the review's finding J). Go twin:
-  // go/cmd/aontu/reaches_test.go. What the two ports must AGREE on --
-  // the verdict and the path -- is test/spec/reach.tsv; what each port
-  // owns (argument handling, exit codes, rendering) is here.
   test('reaches-answers-with-the-path-and-its-exit-code', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-rc-'))
     const file = Path.join(dir, 'doc.aon')
@@ -1223,11 +1073,6 @@ describe('cli-subsume', () => {
     Assert.match(broken.out, /scalar_value/)
   })
 
-  // THE TREE VIEW (docs/design/VIEWS.0.md). Go twin:
-  // go/cmd/aontu/view_test.go. What the two ports must AGREE on -- the
-  // rendered text and the refusals -- is test/spec/view.tsv and
-  // use-case 16's goldens; what each port owns (argument handling, exit
-  // codes, rendering) is here.
   test('view-draws-the-tree-and-its-exit-code', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vw-'))
     const file = Path.join(dir, 'doc.aon')
@@ -1249,9 +1094,6 @@ describe('cli-subsume', () => {
       runView(['tree', '--relation', 'dependsOn', '--root', '$.web', file]), 0))
     Assert.equal(sub.out, 'web\n└── db\n    └── disk\n')
 
-    // A root that is not a node of the drawn graph is a REFUSAL, on
-    // stderr, with nothing on stdout: an empty tree and a typo are the
-    // same file on disk.
     const bad = vetCapture(() => Assert.equal(
       runView(['tree', '--relation', 'dependsOn', '--root', '$.nope', file]), 4))
     Assert.equal(bad.out, '')
@@ -1305,10 +1147,6 @@ describe('cli-subsume', () => {
   })
 
 
-  // EVERY KIND THROUGH THE VERB, and the flags around the figure:
-  // --out, --check, --strict, the loss report on stderr. What each
-  // figure LOOKS like is test/spec/view.tsv's business; this is the
-  // plumbing.
   test('view-kinds-and-the-flags-around-the-figure', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vk-'))
     const file = Path.join(dir, 'doc.aon')
@@ -1385,10 +1223,6 @@ describe('cli-subsume', () => {
   })
 
 
-  // THE VIEW DOCUMENT: N figures of one document, declared as data.
-  // What the declarations MEAN, and every refusal, is
-  // test/spec/views.tsv; this is the CLI around them -- where the files
-  // land, the gate, and the all-or-nothing rule.
   test('view-document-draws-every-figure-it-declares', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vd-'))
     Fs.writeFileSync(Path.join(dir, 'model.aon'),
@@ -1400,9 +1234,6 @@ describe('cli-subsume', () => {
       '  bands: {kind: layer, groupBy: layer, out: "out/bands.txt"}\n}\n')
     Fs.mkdirSync(Path.join(dir, 'out'))
 
-    // EVERY FIGURE, AND THE FILES ARE THE DOCUMENT'S NEIGHBOURS: an
-    // `out` is resolved against the view document's own directory, so
-    // the gate passes from any working directory.
     const drew = vetCapture(() => Assert.equal(
       runView(['--views', '$.views', '--trust', 'root', file]), 0))
     Assert.equal(drew.out, '')
@@ -1565,13 +1396,6 @@ describe('cli-subsume', () => {
   })
 
 
-  // A NIL ROOT WITH AN EMPTY ERROR LIST (use-cases/BUGS.md §43). The
-  // id-spread refusal IS the root, so `ctx.err` is empty and every verb
-  // that reports "this document does not stand up" used to read
-  // `ctx.err[0]` as undefined and die with a TypeError. The path the
-  // two ports give this nil differs ($ here, $.& in Go) and is recorded
-  // in test/spec/divergent.tsv, so this asserts the CODE and the
-  // verdict -- which is what a caller acts on -- rather than the path.
   test('a-nil-root-with-no-collected-error-is-reported-not-thrown', () => {
     const f = subFiles('&:\n', 'a:1')
     for (const run of [
@@ -1676,15 +1500,6 @@ describe('cli-subsume', () => {
     Assert.equal(run(':exit').close, true)
   })
 
-  // The SESSION protocol: one JSON line per answer, so a harness can
-  // drive the REPL. Human-readable output stays the default.
-  // The flag through the SPAWNED binary, over a PIPE. The in-process
-  // test below drives replCommand with a hand-built state, so it passed
-  // while the mode was gated on process.stdin.isTTY and a piped harness
-  // got its commands parsed as Aontu SOURCE instead -- reachable only
-  // through a pty, which is to say not reachable by the thing it was
-  // built for (register, G7.7). Its Go twin is
-  // TestReplJSONLIsReachableOverAPipe.
   test('repl-jsonl-is-reachable-over-a-pipe', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-jsonl-'))
     const file = Path.join(dir, 'm.aon')
@@ -1693,13 +1508,6 @@ describe('cli-subsume', () => {
     const r = run(["--jsonl"], `:load ${file}\n:get $.a\n`)
     Assert.equal(r.code, 0, r.out)
 
-    // NO trim(). The contract is one JSON object per line, so EVERY
-    // line the stream produced has to be one -- and trimming first is
-    // exactly what let a bare closing newline sit at the end of the
-    // stream unnoticed, where a harness parsing each line as it
-    // arrived would fail after every command had succeeded. The final
-    // newline terminates the last record and is not a record itself,
-    // so it is stripped once, deliberately, and nothing else is.
     Assert.ok(r.out.endsWith('\n'), JSON.stringify(r.out))
     const lines = r.out.slice(0, -1).split('\n')
     Assert.equal(lines.length, 2, JSON.stringify(r.out))
@@ -1749,8 +1557,6 @@ describe('cli-subsume', () => {
     Assert.match(first, /^Intro prose\./)
     Assert.match(first, /<!-- aontu:end -->/)
 
-    // And re-running SPLICES rather than appending: the file after
-    // two runs is the file after one.
     vetCapture(() => Assert.equal(runAgentsMd(['--write', target, entry]), 0))
     Assert.equal(Fs.readFileSync(target, 'utf8'), first)
 
@@ -1762,13 +1568,6 @@ describe('cli-subsume', () => {
     Assert.match(Fs.readFileSync(bare, 'utf8'),
       /^no trailing newline\n\n<!-- aontu:begin -->/)
 
-    // A CRLF TARGET keeps its own endings outside the markers, and
-    // gains nothing between the end marker and the text after it. The
-    // splice used to skip one byte after the marker, which on CRLF is
-    // the CR -- the LF then survived as a blank line that grew on
-    // every regeneration. Twin: TestAgentsMdSplice in
-    // go/agentsmd_test.go, where the same one byte also ran PAST THE
-    // END of the case below and panicked.
     const crlf = Path.join(dir, 'CRLF.md')
     Fs.writeFileSync(crlf,
       'head\r\n\r\n<!-- aontu:begin -->\r\nOLD\r\n<!-- aontu:end -->\r\ntail\r\n')
@@ -1819,13 +1618,7 @@ describe('cli-subsume', () => {
     ).out.includes('aontu agentsmd'), true)
   })
 
-  // --- G11 phase 4: the vacuity signals ---
 
-  // A VERB THAT DID NOTHING AND A VERB THAT SUCCEEDED ANSWERED THE
-  // SAME. The signal is on STDERR, so no `--format json` stdout
-  // contract changes and no exit code moves: what changes is that the
-  // caller is told. The repository already ruled this for `trim` in G8
-  // phase 6 -- doing something else silently is worse than refusing.
   test('vacuity-signals-on-view-render-relations', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vacuous-'))
     const plain = Path.join(dir, 'plain.aon')
@@ -1863,10 +1656,6 @@ describe('cli-subsume', () => {
   // --- G11 phase 7: --depth on the stanza, --format json on the bare
   // command ---
 
-  // TWO LEVELS TELL AN AGENT WHAT THE DOCUMENT IS ABOUT AND NOTHING IT
-  // CAN ACT ON: `{"entity":{&:top}}` names the root key and says `top`
-  // under it. The default is unchanged, because the stanza is spliced
-  // into a file people read; a caller that wants the fields asks.
   test('agentsmd-depth-projects-the-shape', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-md-depth-'))
     const entry = Path.join(dir, 'model.aon')
@@ -1932,9 +1721,6 @@ describe('cli-subsume', () => {
     Assert.deepEqual(report2.findings, [{
       class: 'conflict',
       code: 'scalar_value',
-      // THE HEADLINE ONLY, and no hint: the frames under it are drawn
-      // for a person, and the hint tables are deliberately not in
-      // cross-port parity while the code registry is.
       message: '[aontu/scalar_value]: Cannot unify values at path $.a',
       path: '$',
       severity: 'error',
@@ -1955,14 +1741,6 @@ describe('cli-subsume', () => {
     Fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  // G7 phase 5: the overlay patch verb. What the two ports must agree
-  // on (the report) is pinned by test/spec/patch.tsv; these cases hold
-  // the command line and, above all, WHEN THE FILE IS WRITTEN.
-  // `--in-place` at the COMMAND LINE, closing the loop the status
-  // report says `set` could not: the data pins the wrong value, and
-  // appending can only contradict it. The report shape is pinned by
-  // test/spec/patch.tsv; what this holds is the flag, the `replaced:`
-  // line, and the bytes that end up on disk — comments included.
   test('set-in-place-rewrites-the-pinned-literal', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-set-'))
     const entry = Path.join(dir, 'schema.aon')
@@ -2028,10 +1806,6 @@ describe('cli-subsume', () => {
     Assert.doesNotMatch(r.err, /^replaced:/m, 'nothing was replaced')
     Assert.equal(Fs.readFileSync(overlay, 'utf8'), 'a: 1\nb: 42\n')
 
-    // A SUCCESSFUL RUN CARRYING ONLY A WARNING puts its status on
-    // STDOUT. Routing on the finding count sent this whole report to
-    // stderr and left stdout empty, so `$(aontu set ...)` captured
-    // nothing while the command exited 0 and wrote the file.
     Fs.writeFileSync(entry, 'a: integer\n')
     Fs.writeFileSync(overlay, 'a: integer\n')
     const ok = vetCapture(() => Assert.equal(runSet(
@@ -2152,19 +1926,10 @@ describe('cli-subsume', () => {
     Assert.match(r.out, /1\. \*1\|integer.*doc\.aon:2:18  \(spread\)/)
     Assert.match(r.out, /2\. 3.*doc\.aon:3:21/)
 
-    // A KEY THE AUTHOR NEVER WROTE A VALUE FOR still has a source: the
-    // template did. It used to answer "no contributions" here -- true
-    // of meets, and no answer to "where did this value come from" (the
-    // review's finding E). The template's own site is what it names,
-    // and the same one the touched sibling above names.
     const q = vetCapture(() =>
       Assert.equal(runWhy(['$.services.db.replicas', file]), 0))
     Assert.match(q.out, /1\. \*1\|integer.*doc\.aon:2:18  \(spread\)/)
 
-    // TOP IS THE UNIT ELEMENT, not something the author wrote, so a
-    // path holding it has no contribution -- the one shape that still
-    // answers "nothing met at this path" now that the value which
-    // STANDS at a path counts (the review's finding E).
     const topFile = Path.join(dir, 'top.aon')
     Fs.writeFileSync(topFile, 'a: top\n')
     const t = vetCapture(() => Assert.equal(runWhy(['$.a', topFile]), 0))
@@ -2210,10 +1975,6 @@ describe('cli-subsume', () => {
     Assert.equal(j.findings[0].code, 'no_path')
   })
 
-  // A SITELESS contribution prints no location rather than a `-1:-1`
-  // that means nothing, and an unnamed source prints row:col alone.
-  // The site shape allows both while no document has yet produced one,
-  // so the renderer is exercised directly (ADR-002).
   test('why-renders-a-siteless-contribution', () => {
     Assert.equal(
       renderWhyText({
@@ -2233,10 +1994,6 @@ describe('cli-subsume', () => {
       '$.a = 1\n  1. 1\n  2. integer  2:3  (spread)')
   })
 
-  // G7 phase 1: the query verb. The views themselves are pinned by
-  // test/spec/query.tsv in both ports; these cases hold the command
-  // line -- flag parsing, the exit classes, and where each answer
-  // goes.
   test('get-renders-one-node-per-view', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-get-'))
     const file = Path.join(dir, 'doc.aon')
@@ -2316,11 +2073,6 @@ describe('cli-subsume', () => {
     ).out.includes('aontu get'), true)
   })
 
-  // G6 phase 1: the canon-hash verb. The pin is the point, so the
-  // cases assert the SHAPE and the invariances -- reformatting,
-  // reordering and re-commenting a document leave the hash alone,
-  // while closing a map moves it -- rather than a literal digest,
-  // which test/spec/hcanon.tsv pins in both ports at once.
   test('hash-pins-meaning-not-text', () => {
     const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-hash-'))
     const file = Path.join(dir, 'doc.aon')
@@ -2426,21 +2178,6 @@ describe('cli-subsume', () => {
 })
 
 
-// --- the repair loop, end to end ---------------------------------------
-//
-// Emit -> vet -> why -> set -> re-vet, through the SPAWNED binary, with
-// the exit code asserted at every step. The whole capability review
-// exists for this loop and until now nothing executed it: the spec
-// suite pins each verb in isolation, so the verbs could each be right
-// and the loop still not close. Walking it by hand is what found the
-// two defects the loop's own status report opens with -- `Site` has no
-// extent, and `set` cannot narrow a pinned literal -- and neither was
-// visible from any single verb.
-//
-// The exit codes ARE the assertion. A harness driving this reads
-// nothing else between steps, so a step that returns the right text
-// under the wrong code is a step that misroutes the loop.
-
 describe('cli-repair-loop', () => {
 
   function loopFiles(): { dir: string; schema: string; deploy: string } {
@@ -2463,10 +2200,6 @@ describe('cli-repair-loop', () => {
     const f = loopFiles()
     const overlay = Path.join(f.dir, 'overlay.aon')
 
-    // 1. VET the emitted document. Not a contradiction — nothing
-    //    conflicts — so exit 3, the verdict that means "not satisfied
-    //    YET", which is the code that tells a harness to repair rather
-    //    than to start over.
     const vet1 = run(['vet', f.schema, f.deploy])
     Assert.equal(vet1.code, 3)
     Assert.match(vet1.out, /verdict: incomplete/)
@@ -2492,8 +2225,6 @@ describe('cli-repair-loop', () => {
     Assert.equal(Fs.readFileSync(f.deploy, 'utf8'),
       'service: { name: "auth" }\n')
 
-    // 4. RE-VET the pair. The two files together are the repaired
-    //    document, so the loop closes through an include of both.
     const all = Path.join(f.dir, 'all.aon')
     Fs.writeFileSync(all, '@"./deploy.aon"\n@"./overlay.aon"\n')
     const vet2 = run(['vet', f.schema, all])
@@ -2502,12 +2233,6 @@ describe('cli-repair-loop', () => {
   })
 
 
-  // The other arm, and the one the status report calls the loop's
-  // missing third step: unification only NARROWS, so a value the data
-  // already pinned cannot be set to a different one. The overlay is
-  // not written, the entry is not touched, and the finding names the
-  // site doing the pinning — which is where a human, not `set`, has to
-  // go.
   test('a-pinned-value-refuses-the-repair-and-writes-nothing', () => {
     const f = loopFiles()
     const overlay = Path.join(f.dir, 'overlay.aon')
@@ -2523,10 +2248,6 @@ describe('cli-repair-loop', () => {
   })
 
 
-  // And the step before the loop can start at all: a truth that does
-  // not stand up. Exit 4 says "stop, the schema is the problem" — and
-  // now says WHAT the problem is, so a harness can report it instead
-  // of retrying against a schema that will never accept anything.
   test('a-broken-schema-stops-the-loop-and-says-why', () => {
     const f = loopFiles()
     const broken = Path.join(f.dir, 'broken.aon')
@@ -2548,9 +2269,6 @@ describe('cli-repair-loop', () => {
 
 // --- the fmt verb (docs/design/FMT.0.md P1) ---------------------------
 
-// What the two ports must AGREE on -- the form -- is pinned by
-// test/spec/fmt.tsv; what each port owns (argument handling, exit
-// codes, what goes to which stream, the file rewritten or not) is here.
 
 function fmtFiles(...srcs: string[]): { dir: string, files: string[] } {
   const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-fmt-'))
@@ -2709,8 +2427,6 @@ describe('cli-fmt', () => {
 })
 
 
-// --- the servers as verbs -------------------------------------------
-
 describe('cli-servers', () => {
   // The dispatch, seen through the injectable pair: the CLI hands the
   // process to the server and gives no answer of its own.
@@ -2723,7 +2439,6 @@ describe('cli-servers', () => {
     vetCapture(() => cliMainVet(['node', 'cli', 'lsp'], servers))
     vetCapture(() => cliMainVet(['node', 'cli', 'mcp', '--root', '/tmp'], servers))
     Assert.deepEqual(calls, ['lsp', 'mcp --root /tmp'])
-    // --help is the CLI's help; an argument to lsp is a usage error.
     const h = vetCapture(() => {
       cliMainVet(['node', 'cli', 'lsp', '--help'], servers)
       Assert.equal(process.exitCode, 0)
@@ -2762,11 +2477,6 @@ describe('cli-servers', () => {
 
 // --- the render verb --------------------------------------------------
 
-// The Go twin is go/cmd/aontu/render_test.go. What the two ports must
-// AGREE on -- the bytes, the loss report, the refusals -- is
-// test/spec/render.tsv; what each port owns (argument handling, exit
-// codes, which stream each half goes to, the write confinement) is
-// here.
 describe('cli-render', () => {
 
   const TWO_UNITS =
@@ -2814,7 +2524,6 @@ describe('cli-render', () => {
   test('render-stdout-is-one-units-bytes', () => {
     const dir = renderDir({ 'doc.aon': TWO_UNITS })
     const file = Path.join(dir, 'doc.aon')
-    // Two units have no one text to print: --unit names it.
     const many = renderCode(2, ['--stdout', file])
     Assert.match(many.err, /--stdout needs exactly one unit, and the instance has 2/)
     Assert.equal(many.out, '')
@@ -2948,10 +2657,8 @@ describe('cli-render', () => {
       /scalar_kind/)
     Assert.match(renderCode(4, ['--profile', Path.join(dir, 'nil.aon'), file]).err,
       /literal_nil/)
-    // Two profiles claiming one language: the fold could not choose.
     Assert.match(renderCode(2, ['--profile', Path.join(dir, 'four.aon'),
       '--profile', Path.join(dir, 'two.aon'), file]).err, /two profiles claim text/)
-    // An unreadable profile file is I/O.
     Assert.match(renderCode(2, ['--profile', Path.join(dir, 'missing.aon'), file]).err,
       /cannot read/)
   })
@@ -2976,14 +2683,6 @@ describe('cli-render', () => {
     Assert.equal(renderCode(0, ['--help']).out.includes('aontu render'), true)
   })
 
-  // P7: THE COVERAGE REPORT is its own output mode. It writes no files,
-  // names the model paths no output consumed and the declarations no
-  // rule produced, and counts both at the end. --coverage-at measures a
-  // narrower model, and one that names nothing is the document's own
-  // no_path refusal (exit 4), as --at already is. The shared rows pin
-  // the report itself (test/spec/render.tsv); the lines and the flags
-  // are this port's. Twin of TestRenderCoverage in
-  // go/cmd/aontu/render_test.go.
   test('render-coverage-names-what-was-not-read', () => {
     const doc =
       'services: { a: { pin: "p1" } }\n' +
@@ -3034,9 +2733,6 @@ describe('cli-render', () => {
 
 describe('cli-template', () => {
 
-  // A generator in the target's own syntax: two marked lines carrying
-  // aontu, and one line of output between them. `\t` is a tab, which
-  // the round trip has to keep as one.
   const GEN =
     '//- of: [\n' +
     'export const N = 1\n' +
@@ -3064,7 +2760,6 @@ describe('cli-template', () => {
     // THE DEFAULT DIRECTION is desugar: the aontu the marked lines
     // mean, with every other line quoted as one string.
     Assert.equal(templateCode(0, [Path.join(dir, 'gen.ts')]).out, CANON)
-    // --resugar is the other one, and the file it reads is aontu.
     Assert.equal(
       templateCode(0, ['--resugar', Path.join(dir, 'canon.aon')]).out, GEN)
     // The marker comes from the extension, and --marker names one the
@@ -3076,10 +2771,6 @@ describe('cli-template', () => {
     Assert.equal(
       templateCode(0, ['--marker', ';;-', Path.join(odd, 'gen.zz')]).out,
       'of: [\n`x`\n]\n')
-    // A FILE WITH NO EXTENSION takes the default marker rather than
-    // no marker at all: a generator named `Makefile` or `Dockerfile`
-    // is an ordinary case, and the table is a convenience over a
-    // default rather than the thing that decides a file is a template.
     const bare = templateDir({ 'gen': GEN })
     Assert.equal(templateCode(0, [Path.join(bare, 'gen')]).out, CANON)
     // The dispatch: `aontu template` is the verb.
@@ -3092,12 +2783,6 @@ describe('cli-template', () => {
     const dir = templateDir({ 'gen.ts': GEN })
     Assert.equal(templateCode(0, ['--check', Path.join(dir, 'gen.ts')]).out, '')
 
-    // A MARKER LINE THE TRANSFORM WOULD NOT HAVE WRITTEN is what this
-    // catches: the marker stands at the left margin with the aontu
-    // indented after it, so a marker indented to match the code around
-    // it is moved back, and a marker written without its space gains
-    // one. The report names the first line that differs rather than
-    // diffing the whole generator.
     const bad = templateDir({ 'gen.ts': '//- of: [\n  //- {\n//- ]\n' })
     const r = templateCode(1, ['--check', Path.join(bad, 'gen.ts')])
     Assert.match(r.err, /gen\.ts:2 is not what the round trip answers/)
@@ -3108,7 +2793,6 @@ describe('cli-template', () => {
   test('template-usage-errors-exit-2', () => {
     const dir = templateDir({ 'gen.ts': GEN })
     const file = Path.join(dir, 'gen.ts')
-    // The two directions are not modes that compose.
     Assert.match(templateCode(2, ['--resugar', '--check', file]).err,
       /one of --resugar or --check/)
     Assert.match(templateCode(2, []).err, /template needs one file/)
@@ -3153,11 +2837,6 @@ describe('cli-template', () => {
   })
 
   test('fmt-formats-a-generator-through-the-template-surface', () => {
-    // A FILE THAT IS NOT `.aon` IS A GENERATOR, as it is for render:
-    // the aontu its marker lines carry is formatted, the marker stands
-    // at the left margin with the aontu indented after it, and every
-    // line of output is held on a line of its own -- `puts 1` here,
-    // which the packing budget would otherwise put inside the list.
     const dir = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' })
     const file = Path.join(dir, 'gen.rb')
     Assert.equal(
@@ -3197,8 +2876,6 @@ describe('cli-template', () => {
 })
 
 
-// --- the old module layout ------------------------------------------
-
 describe('cli-mod-layout', () => {
   // A project that still carries the lockfile or the vendor tree at
   // its root, from before they moved under aontu_meta/, is told so
@@ -3214,19 +2891,12 @@ describe('cli-mod-layout', () => {
     Fs.writeFileSync(Path.join(dir2, 'mod.aon'), 'mod: { path: "corp.example/app" }\n')
     Fs.writeFileSync(Path.join(dir2, 'mod-lock.aon'), '# mod-lock.aon\n{"lock":{}}\n')
     Assert.match(vetCapture(() => runMod(['verify', dir2])).err, /now live under aontu_meta\//)
-    // A project on the new layout hears nothing of it.
     const dir3 = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-layout-'))
     Fs.writeFileSync(Path.join(dir3, 'mod.aon'), 'mod: { path: "corp.example/app" }\n')
     Assert.doesNotMatch(vetCapture(() => runMod(['verify', dir3])).err, /aontu_meta\//)
   })
 })
 
-
-// --- the allow verb (docs/design/ALLOW.0.md) --------------------------
-//
-// The gate's answers are held by allow.test.ts; these cases hold the
-// command line -- flag parsing, the exit classes, the two formats, and
-// the assignment spelling a skill hands straight through from `set`.
 
 describe('cli-allow', () => {
 
@@ -3373,7 +3043,6 @@ describe('cli-allow', () => {
     vetCapture(() => Assert.equal(runAllow(['--role']), 2))
     vetCapture(() => Assert.equal(runAllow(['--role', 'dev', '--at']), 2))
 
-    // A role is one key.
     for (const role of ['', '.', 'dev.allow', 'a.b']) {
       const r = vetCapture(() => Assert.equal(runAllow(['--role', role, file, '$.a']), 2))
       Assert.match(r.err, /--role needs one key, without dots/)
@@ -3409,12 +3078,6 @@ describe('cli-allow', () => {
     Assert.match(run(['--help']).out, /Allow exit codes/)
   })
 
-
-  // THE COVERAGE FLAGS (G11 phase 5,
-  // docs/capability-review/g11-agent-onramp.md). The accounting itself
-  // is pinned by the shared rows in test/spec/vet.tsv; what the COMMAND
-  // owns -- the flags, the text block, the exit class -- is here, and
-  // go/cmd/aontu/vet_test.go holds the twin.
 
   // The star schema is a key NAMED `*`, so it constrains nothing.
   const COV_STAR = 'entity: { "*": { name: string, table: string } }'
@@ -3520,9 +3183,6 @@ describe('cli-allow', () => {
       `a declaration another file met was called unused: ${r.out}`)
   })
 
-  // THE TEXT FORM CAPS EACH LIST at ten and counts the rest: a report a
-  // reader scrolls past is a report nobody reads. The JSON form carries
-  // every path, which is what a machine wants.
   test('vet-coverage-text-caps-the-lists', () => {
     let data = '{'
     for (let i = 0; i < 14; i++) {

@@ -53,6 +53,7 @@ and the CHANGELOG still resolve. Numbers are never reused.
 | [ADR-029](#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root) | A bundled model lands under `$.aontu`, not at the document root | Accepted |
 | [ADR-030](#adr-030--the-path-of-a-meet-is-the-slot-it-was-driven-at) | The path of a meet is the slot it was driven at | Accepted |
 | [ADR-031](#adr-031--a-path-part-that-names-a-type-is-camelcase) | A path part that names a type is CamelCase | Relocated to [#190](https://github.com/aontu-lang/aontu/issues/190) |
+| [ADR-032](#adr-032--code-comments-are-sparse-and-terse-intent-lives-in-names-requirements-live-in-documents) | Code comments are sparse and terse: intent lives in names, requirements live in documents | Accepted |
 
 ---
 
@@ -3082,3 +3083,149 @@ describes, not among the decisions everything is built on.
 `.View`/`.Code`/`.Profile` with it, while the scheme name stays
 lowercase. The full record is
 [#190](https://github.com/aontu-lang/aontu/issues/190).
+
+---
+
+## ADR-032 — Code comments are sparse and terse: intent lives in names, requirements live in documents
+
+**Date:** 2026-09-10
+**Status:** Accepted
+
+### Context
+
+A comment is the only artifact in this repository that nothing executes
+and nothing checks. Every other claim is held up by something: the
+shared spec runs in both engines (ADR-001), the coverage floor is
+measured (ADR-002), the documented examples are executed by
+`ts/test/docs.test.ts`, the progress register's structure is derived
+from its own rows by `ts/test/capability-review.test.ts`. A comment is
+asserted once, at the moment it is written, and from then on it drifts
+as the code beneath it changes. Nothing announces the drift.
+
+Measured on 2026-09-10, before this decision, the first-party source
+carried 35,762 comment lines against 88,227 lines of code — two lines
+of unchecked prose for every five lines of checked code — and a
+mechanical scan of that prose found 50 comments naming symbols the code
+no longer defines, 27 naming paths that do not exist, and 1,098 stating
+counts that nothing recomputes. Those are the failures that can be
+found by machine. The ones that cannot be found by machine are the
+reason for this entry: a comment that describes what the code *used to*
+do, or what a rule *is supposed to* be, reads exactly like one that is
+still true.
+
+Three kinds of comment fail in three distinct ways, and all three were
+present at scale:
+
+- **The requirement in the code.** A comment stating a business rule or
+  a requirement duplicates a document. When the rule changes, the
+  document is edited and the ticket is closed; the comment is not, and
+  the codebase now carries two answers with no way to tell which is
+  current.
+- **The restatement.** A comment that says what the next line says adds
+  a second thing to keep in sync and pays nothing for it. It is the
+  cheapest comment to write and the first to go wrong under a rename.
+- **The biography.** What broke, what was tried, what a review said,
+  what the author expected — a commit message stranded in the working
+  tree. It is unfalsifiable by construction: nothing in the tree can
+  contradict a claim about the past.
+
+Against that sits the one case that genuinely pays: code that is
+intricate, or whose correct form is *surprising* — where a reader's
+first instinct is to simplify it and thereby break it. There, two lines
+of prose are cheaper than the defect they prevent.
+
+### Decision
+
+**Code comments are sparse and terse. They exist only for code that is
+intricate or surprising. Semantic intent is carried by identifier
+names; business logic and requirements are carried by documents.**
+
+1. **A comment must say something the code cannot.** Why an unobvious
+   form is required, what invariant a maintainer would otherwise break,
+   what outside this file forces this shape. If a competent reader
+   reaches the same understanding from the code itself, the comment is
+   noise and is deleted.
+
+2. **Intent goes in the name.** Renaming a value, extracting a function,
+   or introducing a named constant is always preferred to a comment
+   explaining the unnamed version. A comment that could be a name is a
+   defect in the name.
+
+3. **Business logic and requirements go in documents** — `docs/`, this
+   register, the design notes — never in code comments. Code implements
+   a rule; the rule's statement and its reasoning live where they can be
+   read whole, reviewed as prose, and cited.
+
+4. **Terse means terse.** A comment that runs to paragraphs is a
+   document in the wrong file. Move what is durable into a document and
+   delete the rest.
+
+5. **What a comment says must be checkable at the point of reading.**
+   Paths, symbols and decision numbers it names must resolve. Issue
+   numbers, dates, version numbers and counts must not appear: each was
+   true once, and a reader has no way to test it now.
+
+6. **History belongs to git.** The narrative of how the code came to be
+   is recorded in commit messages, in issues, and — when it is
+   fundamental — in this register. The working tree carries the code,
+   not its biography.
+
+7. **A coverage exclusion's justification (ADR-002, rule 3) is a
+   comment like any other.** It is still required, and it is still held
+   to this entry: state the unreachable state in a line or two, not in
+   an essay.
+
+### Consequences
+
+- **Deletion is the default.** When a comment fails any rule above, the
+  first move is to remove it, not to rewrite it. Prose worth keeping is
+  moved to a document in the same commit; prose not worth a document is
+  not worth a comment either.
+- **Some rationale leaves the tree and lands nowhere.** That is accepted
+  deliberately: it remains in git history, which is where a question
+  about the past is answered. `git log -L` and `git blame` are the
+  supported way to read it.
+- **The gate is not only about form.** Its accuracy rules — resolvable
+  paths, resolvable symbols, resolvable decision numbers, no
+  unverifiable claims — mean a comment that has gone stale fails the
+  build in the same way a broken test does. This is the point of the
+  entry: comments become checkable, or they do not survive.
+- **A dense file fails even when every comment in it is defensible.**
+  The budget is a property of the file, and a file that needs a great
+  deal of explanation is reporting a defect in its structure or its
+  names, which is the finding.
+- **Reviewers and agents stop asking for explanation in code.** "Add a
+  comment explaining this" is, under this entry, a request to rename
+  something or to write a document.
+
+### Enforcement
+
+`ts/scripts/comment-gate.cjs` is the checker; `make comments` runs it,
+`ts/test/comments.test.ts` fails the suite on any finding — so the gate
+runs in CI on every push and pull request, inside the TypeScript job —
+and `.githooks/pre-push` (installed by `make hooks`) refuses the push
+locally before CI is spent on it. One implementation, three callers, so
+the local gate and the CI gate cannot disagree.
+
+Scope is first-party source: `ts/src`, `ts/test`, `ts/scripts`, `go`,
+`web/build` and `editors`. Generated sources (`ts/src/sigdecl.ts`,
+`ts/src/helpdoc.ts`) and the committed build output (`ts/dist`,
+`ts/dist-test`) are out — their comments belong to their generators —
+as are the worked-example corpora (`use-cases/`, `test/system/`),
+which are fixtures written to be read as models rather than as code.
+License headers and tool directives (`//go:build`, `//go:embed`,
+`/* node:coverage ignore */`, `@ts-`, `eslint`) are not prose and are
+exempt.
+
+| rule | fails when |
+|------|-----------|
+| `long-block` | a comment block runs longer than 5 lines |
+| `dense-file` | comment lines exceed 12 % of a file's code lines |
+| `narrative` | first person, history, or a reference to a review, issue or commit |
+| `requirements` | requirement or business-rule vocabulary |
+| `commented-code` | code that has been commented out rather than deleted |
+| `count-claim` | a count nothing recomputes ("three passes", "48 builtins") |
+| `dated-claim`, `issue-ref`, `version-claim` | a claim a reader cannot check from the tree |
+| `stale-path` | a path that does not resolve |
+| `stale-symbol` | a backticked symbol the code does not define |
+| `stale-adr` | a decision number this register does not carry |

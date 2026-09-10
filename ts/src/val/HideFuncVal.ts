@@ -47,21 +47,6 @@ class HideFuncVal extends FuncBaseVal {
   }
 
 
-  /*
-  unify(peer: Val, ctx: AontuContext): Val {
-    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'HideFunc', this, peer)
-    let out: Val | undefined = this.resolved
-
-    if (null == out) {
-      out = this.resolve(ctx, this.peg)
-    }
-
-    explainClose(te, out)
-    return out
-  }
-  */
-
-
   resolve(ctx: AontuContext, args: Val[]) {
     let out = args[0] ?? makeNilErr(ctx, 'arg', this)
     if (!out.isNil) {

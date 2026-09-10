@@ -1,12 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// Concurrent construction must be race-free. The tabnas engine's
-// instance-id counter was a bare package-global increment — a data race
-// under -race whenever two goroutines constructed parsers, which forced
-// downstream projects to serialize ALL construction behind a global
-// mutex. parser 0.8.0 made the counter atomic; this pins that aontu's
-// own construction path (New -> mustMakeLang -> jsonic.Make + plugins)
-// stays safe, so no such mutex is ever needed here.
 
 package aontu
 

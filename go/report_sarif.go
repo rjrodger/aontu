@@ -1,22 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// SARIF rendering for a vet report (G2 phase 5): the Go twin of
-// ts/src/report-sarif.ts.
-//
-// A MINIMAL SARIF 2.1.0 profile, and deliberately nothing more: one
-// run, one `result` per finding, the finding's first site as the
-// primary location, its remaining sites under `relatedLocations`, and
-// the whole finding object embedded in `properties` so a SARIF consumer
-// still holds the native contract. No fixes, no code flows, no
-// baselines.
-//
-// The struct fields are declared in LEXICOGRAPHIC order because the
-// canonical emitter sorts object keys (exactJSON) while Go's encoder
-// writes declaration order — the same rule the JSON report renderer
-// already follows (cmd/aontu/vet.go). The two ports are held to byte
-// parity over the shared fixture pair in test/spec/files/vet-sarif/,
-// with message text and producer version redacted, exactly as
-// test/spec/vet.tsv carves the message out of its goldens.
 
 package aontu
 
@@ -84,22 +67,12 @@ type sarifRegion struct {
 	StartLine   int `json:"startLine"`
 }
 
-// SARIF levels are error/warning/note; the report's severities are
-// error/warning/info. Only `info` needs translating, but the map spells
-// out all three so a new severity fails loudly here rather than
-// silently emitting itself.
 var sarifLevel = map[string]string{
 	"error":   "error",
 	"warning": "warning",
 	"info":    "note",
 }
 
-// sarifURI percent-encodes a filesystem path as a SARIF URI reference:
-// `#`, `%`, spaces and every other URI-significant byte would otherwise
-// change the path's meaning to a consumer (text after `#` becomes a
-// fragment). Encoded BY BYTE over UTF-8, with RFC 3986's unreserved and
-// path characters kept literal — the identical loop to the canonical
-// port's sarifUri (ts/src/report-sarif.ts), so the bytes agree.
 func sarifURI(path string) string {
 	var b strings.Builder
 	for i := 0; i < len(path); i++ {
@@ -128,11 +101,6 @@ func sarifLocationOf(site VetSite) sarifLocation {
 }
 
 func sarifResultOf(finding VetFinding) sarifResult {
-	// The engine orders sites data-first (the thing to fix), so the
-	// first site is the primary location and the rest are related —
-	// which for a two-site conflict puts the schema's declaration under
-	// `relatedLocations`, exactly where a code-scanning UI shows "the
-	// other side".
 	result := sarifResult{
 		Level:      sarifLevel[finding.Severity],
 		Locations:  []sarifLocation{sarifLocationOf(finding.Sites[0])},
@@ -146,11 +114,6 @@ func sarifResultOf(finding VetFinding) sarifResult {
 	return result
 }
 
-// SarifReport renders a vet report as SARIF 2.1.0 text (a minimal
-// profile: one run, one result per finding, the finding embedded in
-// `properties`). The version parameter fills `tool.driver.version` —
-// the CLI passes VERSION; the two ports' version series are independent
-// by design.
 func SarifReport(report VetReport, version string) string {
 	results := make([]sarifResult, 0, len(report.Findings))
 	for _, finding := range report.Findings {

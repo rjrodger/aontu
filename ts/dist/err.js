@@ -12,17 +12,6 @@ const jsonic_1 = require("@tabnas/jsonic");
 const NilVal_1 = require("./val/NilVal");
 const hints_1 = require("./hints");
 const { errmsg, strinject } = jsonic_1.util;
-// COLOUR IS A DECISION ABOUT THE DESTINATION, not about the message.
-// Every error frame hardcoded the ANSI escapes, so a piped report and
-// a `--jsonl` answer carried terminal control codes into whatever read
-// them -- a log file, a CI annotation, an agent's parser (the review's
-// finding F).
-//
-// NO_COLOR (no-color.org: set, to anything, means no colour) turns them
-// off everywhere, library callers included. The CLI additionally turns
-// them off when its stderr is not a terminal, through setColor: a
-// library cannot see the destination, and a caller who has one is the
-// only one who can say.
 let COLOR;
 function setColor(on) {
     COLOR = on;
@@ -31,13 +20,6 @@ function colorActive() {
     if (null != COLOR) {
         return COLOR;
     }
-    // `globalThis` always exists; `process` need not (this library runs
-    // in a browser too), so the optional chain starts at the part that
-    // can actually be missing -- and stays a CHAIN rather than becoming
-    // an `if`, because the browser arm is unreachable from any test this
-    // suite can run and ADR-002 does not accept an arm nothing takes.
-    // Set-but-EMPTY is the documented exception and does not disable
-    // colour (no-color.org).
     const no = globalThis.process?.env?.NO_COLOR;
     return null == no || '' === no;
 }
@@ -49,15 +31,6 @@ function getHint(why, details) {
     return undefined;
 }
 function makeNilErr(ctx, why, av, bv, attempt, details) {
-    // C1-inner: when a DisjunctVal trial is in progress, failures are
-    // transient markers — none of the NilVal fields (site, path,
-    // primary, secondary, details) ever surface to the user because
-    // DisjunctVal replaces the oval entry with TRIAL_NIL and filters
-    // by isNil. Allocating a fresh NilVal per failure (~60k per
-    // foo-sdk run from IntegerVal/BooleanVal/ScalarVal.unify et al.)
-    // is pure waste. Short-circuit to the shared sentinel; push once
-    // to ctx.err so the caller's `trialErr.length > 0` check still
-    // signals failure.
     if (ctx !== undefined && ctx._trialMode === true) {
         if (ctx.err.length === 0)
             ctx.err.push(NilVal_1.TRIAL_NIL);
@@ -66,7 +39,6 @@ function makeNilErr(ctx, why, av, bv, attempt, details) {
     const nilval = NilVal_1.NilVal.make(ctx, why, av, bv, attempt, details);
     return nilval;
 }
-// TODO: move to utility?
 function descErr(err, errctx) {
     if (err?.isNil) {
         if (null == err.msg || '' === err.msg) {
@@ -74,15 +46,6 @@ function descErr(err, errctx) {
             let v2 = err.secondary;
             let v1src = resolveSrc(v1, errctx);
             let v2src = resolveSrc(v2, errctx);
-            // STRICT `!==` against the empty string. The loose `!=` here dropped
-            // the list index 0, because `'' != 0` is FALSE in JavaScript ('' and
-            // 0 are both coerced to 0): `a:[1]&[2]` reported its conflict at
-            // `$.a` while `a:[1,5]&[1,6]` reported `$.a.1`, so the one index a
-            // reader is most likely to meet was the one silently erased, and a
-            // nested `a:[[1]]&[[2]]` lost both segments (issue #37). Numeric
-            // segments arrive here as numbers, so only `===`/`!==` compares them
-            // for what they are. `null != p` stays loose on purpose -- it is the
-            // idiomatic null-and-undefined test.
             let path = ['$', ...err.path].filter((p) => null != p && '' !== p);
             // '$' is neither null nor '', so the filter always leaves it.
             let valpath = path.join('.');
@@ -103,7 +66,6 @@ function descErr(err, errctx) {
                 }),
                 '\n',
                 (null != v1 && errmsg({
-                    // TODO: color should come from jsonic config
                     color: { active: colorActive(), line: '\x1b[34m' },
                     txts: {
                         msg: 'Cannot ' + attempt + ' value: ' + v1.canon +
@@ -118,7 +80,6 @@ function descErr(err, errctx) {
                     col: v1.site.col,
                 })),
                 (null != v2 && errmsg({
-                    // TODO: color should come from jsonic config
                     color: { active: colorActive(), line: '\x1b[34m' },
                     txts: {
                         msg: 'Cannot ' + attempt + ' value: ' + v2.canon +
@@ -135,7 +96,6 @@ function descErr(err, errctx) {
             ]
                 .filter((n) => null != n && false !== n)
                 .join('\n')
-                // TODO: update jsonic errmsg to avoid multiple empty lines
                 .replace(/\n\n/g, '\n');
         }
         return err;

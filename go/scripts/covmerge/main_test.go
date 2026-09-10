@@ -2,27 +2,6 @@
 
 package main
 
-// WHAT A MARKER REACHES, pinned from both directions, because both
-// directions have been wrong.
-//
-// Too SHORT: `go tool cover` decides where an if-body's coverage block
-// begins and it moved -- go1.24 opened it at the `{`, on the `if` line,
-// a later release at the body's first statement. A marker that covered
-// only its own line matched the first and not the second, so every
-// guard in the tree silently lost its exclusion and forty-two justified
-// sites came back as ADR-002 failures. Nothing caught it until the
-// coverage gate first ran in CI, on a newer toolchain than the
-// contributor machines.
-//
-// Too LONG: widening to the whole statement instead reached past the
-// if-body into the `else` chain -- a SIBLING arm the author never
-// marked -- and excused genuinely untested code. That is the one
-// failure this tool must never have, and it is invisible: the gate goes
-// green.
-//
-// So the reach is the BODY, brace to brace, compared by position rather
-// than by line -- because a closing brace shares its line with the
-// `else if` that follows it.
 
 import (
 	"os"
@@ -32,10 +11,6 @@ import (
 	"testing"
 )
 
-// sample is written with LINE MARKERS in it (@name), so the assertions
-// below name lines by meaning rather than by number: adding a line to
-// the source cannot silently decouple a hard-coded key from what its
-// comment claims it is.
 const sample = `package sample
 
 func guard(s string) bool {
@@ -95,7 +70,6 @@ func TestLineMarkerCoversBothBlockSpellings(t *testing.T) {
 		name string
 		key  string
 	}{
-		// go1.24: the block opens at the `{` on the `if` line.
 		{"go1.24 spelling", key(at["if"], 16, at["elseif"], 3)},
 		// later: the block opens at the body's first statement.
 		{"later spelling", key(at["ifbody"], 3, at["elseif"], 1)},
@@ -112,9 +86,6 @@ func TestLineMarkerCoversBothBlockSpellings(t *testing.T) {
 	}
 }
 
-// ...AND STOPS AT THE BODY. The `else if` arm is a sibling the author
-// did not mark, and it begins on the SAME LINE as the if-body's closing
-// brace -- so a line-wide reach swallowed it and excused untested code.
 func TestLineMarkerDoesNotReachTheElseArm(t *testing.T) {
 	at := world(t)
 	ig := newIgnorer()
@@ -148,14 +119,9 @@ func TestUnmarkedStatementIsNotDropped(t *testing.T) {
 	}
 }
 
-// A MARKER THAT NAMES NOTHING SAYS SO. It used to reach its own line
-// and quietly match nothing, which is precisely how a toolchain moving
-// its block boundaries showed up as forty-two unrelated-looking
-// coverage failures instead of "your markers stopped working".
 func TestAMarkerThatMatchesNothingIsReported(t *testing.T) {
 	at := world(t)
 	ig := newIgnorer()
-	// Drive the two markers that DO match, so only the orphan is left.
 	ig.skip(key(at["ifbody"], 3, at["elseif"], 1))
 	ig.skip(key(at["blockbody"], 3, at["blockbody"]+1, 1))
 

@@ -4,161 +4,42 @@ package aontu
 
 import "strings"
 
-// hide marking is mark-based (see RefVal.find and FuncVal.Unify): the
-// move() machinery sets the hide mark on the found source node and the
-// bag unify loops ratchet marks down one level per pass, mirroring the
-// TS _hide_found + propagateMarks flow.
 
 // Ctx carries unification state: the root Val (for path resolution,
 // once references are ported) and the collected error list.
 type Ctx struct {
 	root Val
-	// src is the entry source text, used by error rendering to compute
-	// row/col from a value's byte offset and to excerpt source lines
-	// (NilVal.FullMessage frames). Values loaded from @"file" includes
-	// carry offsets into their own file; with no per-value url tracking
-	// their frames fall back to this text — the same fallback TS's
-	// resolveSrc makes when a site's file cannot be read.
 	src string
 	// file is the display name of the entry source for error frames
 	// (Aontu.File); empty renders <no-file>.
 	file string
-	// texts is THE TEXT OF EVERY SOURCE THIS PARSE READ, by full path
-	// (Aontu.IncludeText). A value's position is a byte offset into the
-	// file it was PARSED from, so a frame for a value that came through
-	// an include needs that file's text to turn the offset into a row
-	// and a column, and to excerpt the line. Without it every frame was
-	// rendered against the entry text, which named the entry file over
-	// another file's coordinates -- the case
-	// docs/reference-api.md forbids in the same words it uses to
-	// require the name. TypeScript reads the file through its own `fs`
-	// option; this port already has the text in hand.
 	texts map[string]string
 	err   []*NilVal
 	depth int // unite recursion depth (cycle guard)
 	cc    int // current fixpoint pass (for late-resolving funcs)
-	// trial marks a disjunct-member trial in progress (the TS
-	// _trialMode): a refusal inside one is a failed alternative, not a
-	// user-visible error, and ListVal's alternative-length gate reads
-	// it.
 	trial bool
-	// reldecls is the relation-declaration registry (RELATIONS P2):
-	// predicate -> what its graph atoms said. Lazily made by
-	// GraphAtomVal.register; one map per evaluation, shared through
-	// the *Ctx pointer exactly as err is.
 	reldecls map[string]*relDecl
-	// fixroot is the tree a recursive residual's target resolves
-	// against when the meet's own root does not contain it
-	// (RECURSION.0.md; the Go side of AontuContext._fixroot). Normally
-	// nil: a residual expands by walking ctx.root. Vet's ANCHORED meet
-	// unifies a subtree LIFTED out of the settled schema, so
-	// `$.spec.Step` names nothing in the meet's root -- vet sets this
-	// to the settled schema root, and RecurseVal.body falls back to it
-	// only when the root walk finds nothing.
 	fixroot Val
-	// settle is THE STAGING RULE (G8 phase 0,
-	// docs/capability-review/g8-generation.md, and the Go side of
-	// AontuContext.settle). A value whose answer depends on WHERE IT IS
-	// -- key() today, the generation combinators next -- residuates
-	// while this is false and fires exactly once on the pass where it
-	// is true. unifyRoot sets it on the first pass whose input model is
-	// identical to the previous pass's: everything that was going to
-	// move has moved. It replaces a `ctx.cc < 3` pass count, a magic
-	// number that was right for the documents it was tuned on and
-	// silently wrong for anything that took a fourth pass to place a
-	// value.
 	settle bool
 	vars   map[string]Val // user-provided variables, resolved by $name
-	// collect: generation inside an optional subtree — failures are
-	// isolated (skipped/partial output) instead of raised, mirroring
-	// the cctx clone({err: [], collect: true}) in TS BagVal.gen.
 	collect bool
-	// THE COMPLETENESS PROBE (the review's finding C). Vet detects
-	// residue by GENERATING the anchored meet and keeping the
-	// incomplete-class failures. Generation honours the OUTPUT marks --
-	// type() and hide() say "do not emit this" -- so a --at anchor
-	// sitting under a mark generated nothing at all, reported nothing,
-	// and vetted VALID for data missing a required field, while the same
-	// anchor without the mark answered incomplete (use-cases/BUGS.md
-	// §14). A mark is a decision about OUTPUT; it is not a statement
-	// about what the data must satisfy, and --at names the truth to
-	// validate against explicitly. Under this flag the generation walk
-	// descends through marked values; nothing else changes, and no
-	// output is produced from a probe run -- only its findings are read.
-	// The twin of AontuContext.probe in ts/src/ctx.ts.
 	probe bool
-	// snapmap caches structural snapshots of ref spreads (see
-	// snapshotRefSpread in mapval.go), keyed by the ref's canon + source
-	// position — mirroring the snapmap on the TS unify root ctx.
 	snapmap map[string]Val
-	// referflows records every refer(t) TYPE FLOW: target path -> the
-	// type unified into it, replayed onto each pass's result by
-	// applyFlows in go/unify.go. A pass BUILDS a new tree from the old
-	// one, so a write made during the pass does not survive a subtree
-	// the pass rebuilds — which is exactly what happens when a link sits
-	// inside its own target, or when two nodes link at each other. Keyed
-	// by PATH, so there is no registry of names to collide in (ADR-014).
-	// Same lifetime and placement as snapmap above: one evaluation.
-	// Mirrors `ctx.referflows` on the TS unify root ctx.
 	referflows map[string]Val
-	// referflow is the set of target paths a refer(t) type-flow is
-	// currently INSIDE — the Go twin of `ctx._referflow` in
-	// ts/src/val/ReferFuncVal.ts. Uniting a target drives the target's
-	// own subtree, so a pair that links back at each other flows into
-	// each other without bound; a flow that would re-enter a node is
-	// skipped, because the flow one frame up is already uniting it. Same
-	// lifetime as `referflows` above: one evaluation.
 	referflow map[string]bool
-	// slot is the location the next Unify target is being driven at —
-	// the TS ctx.path equivalent. Producers (bag child loops, func arg
-	// loops, junction folds) set it right before a unite call; unite
-	// scopes it to the single dispatched Unify; consumers (FuncVal,
-	// MapVal, ListVal) read it at entry. nil means "unknown — fall back
-	// to the Val's own stored path", which is correct whenever the Val
-	// actually sits at its slot (everything except shared/transplanted
-	// clones, whose stored paths carry overlay tails).
 	slot []string
 
-	// argsnap is set by stagedDrive while a staged func's data argument
-	// is being driven (the Go side of the `argsnap` flag TS's
-	// driveStagedArgs sets on the drive ctx): a reference resolving
-	// inside such an argument is the generator's SNAPSHOT of its
-	// source, outside the tree, so RefVal.find defers the copy until
-	// the target has finished resolving IN THE TREE — where its own
-	// spreads and relative references answer at their real location.
-	// Copied earlier, the snapshot's rebased relative refs dangle
-	// under the generator and it never fires (the spread-then-pack
-	// defect, use-cases/BUGS.md pack-refs family).
 	argsnap bool
 
-	// The evaluation budgets (G5 trust profile, docs/trust.md): integer
-	// counts of engine events, never wall-clock. ZERO MEANS THE DEFAULT
-	// — the shared spec-visible constants test/spec/budget.tsv pins (9
-	// passes, depth 1000) — so a bare &Ctx{} behaves exactly as before;
-	// only aontu.go sets them, from the trust profile.
 	budgetPasses int
 	budgetDepth  int
 
-	// prov is the provenance recorder (G7 phase 4), or nil for an
-	// uninstrumented run. One run has one recorder: the Ctx is shared
-	// by reference all the way down, as the error list is.
 	prov *Provenance
 
-	// reads is THE READ SET (RENDER.0.md P7), or nil for an
-	// uninstrumented run: every tree path a reference resolved to, in
-	// one shared map. It is what `render --coverage` measures the model
-	// against -- a path no read reached is model the transform never
-	// consumed -- and its presence is also what switches the two render
-	// riders on (base.origin, base.emitted), so one flag turns the
-	// whole record on. Mirrors AontuContext.reads in ts/src/ctx.ts.
 	reads map[string]bool
 }
 
 func (c *Ctx) adderr(n *NilVal) {
-	// An operand-less nil becomes its own primary (the TS ctx.adderr
-	// rule), so it still renders a located section — e.g. the
-	// budget_passes frame, whose siteless `-1:-1` arrow the shared
-	// budget rows pin.
 	if n.primary == nil {
 		n.primary = n
 	}
@@ -170,11 +51,6 @@ func (c *Ctx) adderr(n *NilVal) {
 	c.err = append(c.err, n)
 }
 
-// genErr is the RAISING shape: the failure GenerateVars reports. A
-// refusal that stopped the walk (a disjunct's, which TypeScript throws
-// from DisjunctVal.gen) leads; otherwise the refusals the bags
-// RECORDED and walked past are raised together, first one first.
-// Mirrors the `0 < ac.err.length` raise in ts/src/aontu.ts.
 func genErr(ctx *Ctx, gerr error) error {
 	if nil != gerr {
 		return gerr
@@ -185,15 +61,6 @@ func genErr(ctx *Ctx, gerr error) error {
 	return nil
 }
 
-// genCollect generates and answers the FIRST refusal that generation
-// RECORDED, falling back to one it returned. The bags record and walk
-// on (BagVal.gen files a nil and breaks its own loop, in
-// ts/src/val/BagVal.ts), so the report-building callers read the
-// context rather than the return value, exactly as their twins do in
-// ts/src/query.ts, ts/src/view.ts and ts/src/format.ts. The fallback
-// covers a refusal that was already on the context before this
-// generation and so records nothing new -- a nil member the parse left
-// in the tree.
 func genCollect(ctx *Ctx, v Val) (any, error) {
 	before := 0
 	if nil != ctx {
@@ -216,9 +83,6 @@ func genCollect(ctx *Ctx, v Val) (any, error) {
 func (c *Ctx) errmsg() string {
 	parts := make([]string, 0, len(c.err))
 	for _, e := range c.err {
-		// The thrown-error surface renders the full TS-style message
-		// (marker, headline, hint, value line, frames); the LSP/Problem
-		// surface keeps the short Message. See NilVal.FullMessage.
 		parts = append(parts, e.FullMessage(c.src, c.file, c.texts))
 	}
 	return strings.Join(parts, "\n------\n")

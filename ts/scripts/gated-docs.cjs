@@ -1,31 +1,9 @@
-// The reader-facing page set, in one place.
-//
-// TWO GATES READ THIS. `ts/test/docs.test.ts` requires it for the style
-// checks it runs locally, and `make prose` / `.github/workflows/docs.yml`
-// run it to build Vale's argument list. Keeping the set in one module is
-// what stops the fast gate and the CI gate disagreeing about which pages
-// they cover -- a page added to one and not the other is a page nothing
-// checks, and nothing announces that.
-//
-// It cannot live in `.vale.ini`. Vale's `[section]` headers select by
-// file EXTENSION, not by path, so `[docs/design/**]` matches nothing and
-// silently lints the working documents anyway. Passing an explicit list
-// is the only scoping Vale honours.
-//
-// Scope is docs/STYLE-GUIDE.md, "How this guide is enforced": the
-// Diátaxis pages, the how-to guides, the three contributor references
-// that ship under docs/, the eighteen published use cases, and the two
-// package READMEs. Design notes, the capability review, the defect
-// ledgers and the repro corpus are working documents and are out.
 
 const Fs = require('node:fs')
 const Path = require('node:path')
 
 const REPO = Path.join(__dirname, '..', '..')
 
-// Every Diátaxis page, in reading order, plus the three references
-// written for contributors. STYLE-GUIDE.md is absent on purpose: it
-// quotes the banned phrases in order to ban them.
 const DOC_PAGES = [
   'index.md',
   'tutorial.md',
@@ -64,9 +42,6 @@ function gatedDocs() {
       .map((f) => `docs/how-to/${f}`)
     : []
 
-  // The site renders each numbered case at /use-cases/<dir>, so its
-  // README is published prose. `repros/` is a review artifact and the
-  // site does not render it.
   const ucDir = Path.join(REPO, 'use-cases')
   const cases = Fs.existsSync(ucDir)
     ? Fs.readdirSync(ucDir)

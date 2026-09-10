@@ -10,31 +10,7 @@ import (
 	"testing"
 )
 
-// PROPERTY-BASED DIFFERENTIAL TESTING OF THE CONSTRAINT ALGEBRA
-// (docs/capability-review/g1-constraint-algebra.md, "Ongoing":
-// property-based differential testing of the algebra laws --
-// commutativity, idempotence, normalisation convergence -- across TS
-// and Go, seeded from the atom vocabulary).
-//
-// The corpus is ENUMERATED, not random: the atom vocabulary is read
-// from test/spec/files/constraint-atoms.txt, shared with
-// ts/test/constraint-laws.test.ts, so both ports cross identical terms
-// and the two lists cannot drift apart.
-//
-// These tests check each engine against ITSELF -- a law that breaks in
-// one port breaks visibly in that port's suite. That is deliberately
-// only half the guarantee: two ports could normalise the same meet
-// differently and each still be internally lawful. The cross-port half
-// is test/spec/constraint-product.tsv, which pins the observable for
-// every cell of the same corpus and is run by both runners.
-//
-// The observable is canon, or the error CODE when the meet is empty --
-// both order-independent, unlike error message text (whose primary site
-// is deliberately later-in-source, so it is NOT expected to commute).
 
-// lawAtoms is read from the SHARED vocabulary file so this list and the
-// TypeScript twin's cannot drift apart, and so the probed cross-product
-// in test/spec/constraint-product.tsv is over the same corpus.
 var lawAtoms = loadLawAtoms()
 
 func loadLawAtoms() []string {
@@ -58,14 +34,6 @@ func loadLawAtoms() []string {
 // the same prefix length as the TypeScript twin.
 var lawTripleAtoms = lawAtoms[:8]
 
-// lawObs evaluates to an order-independent observable: the canonical
-// form, or the error code when the meet is empty.
-//
-// The code comes from AontuError.Code, never from a pattern over the
-// message: codes are not all `\w+` (`scalar-type` carries a hyphen), so
-// matching the headline silently truncates them and would make two
-// distinct codes compare equal. The TypeScript twin reads the collected
-// error's `why` for the same reason.
 func lawObs(src string) string {
 	v, err := New().Unify(src)
 	if err != nil {

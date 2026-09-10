@@ -1,27 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// THE SOURCE FORMATTER (docs/design/FMT.0.md), the Go side of
-// ts/src/format.ts: `aontu fmt`, in the tradition of gofmt. One agreed
-// form for Aontu source, so that layout is never argued about and a
-// diff shows only what changed.
-//
-// It reads the token stream the parser reads -- the lex subscriber the
-// parser stack exposes -- so it sees what the value tree throws away:
-// comments, blank lines, the quote a string used, the spelling of a
-// number. From that stream it builds a layout tree, decides the shape
-// of every container by the rules of the note's §3, and emits. Before
-// returning it re-parses what it wrote and compares the two parse
-// trees: a formatter that cannot prove its output is the same document
-// refuses rather than return it.
-//
-// Two tiers. The syntactic (P1): whitespace, commas, quotes, bare
-// keys, chains and pair elements, none of which changes the parse
-// tree. The lawful (P2), over it: repeat the prefix, and merge what
-// repeats -- rewrites that rest on the meet, each checked by the meet
-// in isolation and kept only where the engine agrees.
-//
-// Function for function with the TypeScript; the shared behaviour is
-// test/spec/fmt.tsv, executed by both spec runners.
 
 package aontu
 
@@ -37,23 +15,10 @@ import (
 	multisource "github.com/tabnas/multisource/go"
 )
 
-// The packing budget (§3.1). It decides which of two legal spellings
-// to use, one line or several, and nothing else: the formatter never
-// breaks a line, so a value wider than this stays as wide as it is.
 const formatBudget = 80
 
-// THE DEPTH BUDGET. The layout is recursive, as the tree it reads is,
-// and the canonical port's stack is finite: past the evaluation budget
-// of 1000 levels -- the depth at which unification itself refuses --
-// the formatter stops reading and refuses, so a pathological document
-// is a finding rather than a crash, at the same depth in both ports.
 const formatMaxDepth = 1000
 
-// FormatReport is what Format returns: the text in the agreed form and
-// whether it differs from what was given, or the findings that say why
-// the document was not formatted; and, when asked, the style findings
-// of the lint. Field order is LEXICOGRAPHIC, the canonical emitter's
-// order.
 type FormatReport struct {
 	Changed  bool          `json:"changed"`
 	Errors   []VetFinding  `json:"errors,omitempty"`
@@ -67,11 +32,6 @@ type FormatReport struct {
 // acts on them. Mirrors FormatOptions in ts/src/format.ts.
 type FormatOptions struct {
 	Lint bool
-	// Template: THE SOURCE IS A GENERATOR, and this is its marker
-	// (docs/design/TEMPLATE.0.md; FMT.0.md §3.14). The file is
-	// desugared, formatted and resugared, so Text is a template again
-	// -- the aontu in the agreed form, indented after the marker, and
-	// every line of output exactly where it was.
 	Template string
 }
 
@@ -95,10 +55,6 @@ type fmtTok struct {
 	sI   int
 }
 
-// EVERY INCLUDE RESOLVES TO NOTHING. The formatter reads the file it is
-// given and no other (§3.13), so `@"..."` is answered from memory with
-// an empty source: the directive parses, the include is a token like
-// any other, and no capability is needed because no file is read.
 func formatResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOptions, ctx *jsonic.Context) multisource.Resolution {
 	res := multisource.Resolution{PathSpec: spec}
 	res.Kind = "aon"
@@ -107,11 +63,6 @@ func formatResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOpti
 	return res
 }
 
-// ONE PARSER, ONE SUBSCRIBER. The parser's subscriber list is
-// append-only, so the subscription is made once and writes to
-// whichever sink the current parse installed; the sink is cleared
-// before the parse returns, so the check's re-parse collects nothing.
-// The parser is shared, so Format serialises: one document at a time.
 var (
 	formatOnce sync.Once
 	formatLang *jsonic.Jsonic
@@ -123,10 +74,6 @@ func formatParser() *jsonic.Jsonic {
 	formatOnce.Do(func() {
 		j := mustMakeLang("", formatResolver)
 		j.Sub(func(tkn *jsonic.Token, rule *jsonic.Rule, ctx *jsonic.Context) {
-			// Spaces carry nothing the layout needs, and the end token
-			// arrives once per nested parse -- the stub's empty includes
-			// among them -- so both are dropped here rather than skipped
-			// everywhere below.
 			if nil != formatSink && "#SP" != tkn.Name && "#ZZ" != tkn.Name {
 				*formatSink = append(*formatSink,
 					fmtTok{name: tkn.Name, src: tkn.Src, val: tkn.Val, sI: tkn.SI})
@@ -164,8 +111,6 @@ func formatParse(src, file string, sink *[]fmtTok) (Val, *AontuError) {
 	return root, nil
 }
 
-// ---------------------------------------------------------------------
-// The layout tree
 
 // One node shape for the whole tree, as the TypeScript has one: the
 // kind says which fields are meaningful. Where the TypeScript leaves a
@@ -174,12 +119,8 @@ func formatParse(src, file string, sink *[]fmtTok) (Val, *AontuError) {
 type fmtNode struct {
 	t string
 
-	// atom, include, comment, note, op, prefix: the text as written,
-	// normalised where §3.9 says (quotes), and nothing else.
 	text string
 
-	// pair: the key as it will be written, the optional marker, and the
-	// value; spread: the value.
 	key string
 	opt bool
 	// pair: written with `=`, the alias declaration operator, rather
@@ -202,7 +143,6 @@ type fmtNode struct {
 	// comment inside the expression), in source order.
 	items []*fmtNode
 
-	// op: the author broke the line at this operator (§3.11).
 	brk bool
 
 	// A comment on the last line of this entry.
@@ -630,11 +570,6 @@ func fmtUnwrap(root []*fmtNode) []*fmtNode {
 // ---------------------------------------------------------------------
 // The layout
 
-// D1: a one-pair map in value position is written as a chain, and a
-// one-pair map as a list element as a pair element. A map whose only
-// entry is a spread keeps its braces (X-7), and one holding a comment
-// keeps them too, because the comment needs the lines. A trailing
-// comment on the map's line joins the pair's own.
 func fmtChain(node *fmtNode) *fmtNode {
 	if "map" != node.t || "" != node.open || 1 != len(node.body) ||
 		"pair" != node.body[0].t {
@@ -838,9 +773,6 @@ func (w *fmtWriter) since(mark int) string {
 	return strings.Join(out, "\n") + "\n"
 }
 
-// A blank line above the line at an index: the gap of §3.8, opened
-// once the statement below it turns out to be a tree. Never at the top
-// of the page, and never a second time.
 func (w *fmtWriter) gap(at int) {
 	if 0 < at && "" != w.lines[at-1] {
 		w.lines = append(w.lines[:at], append([]string{""}, w.lines[at:]...)...)
@@ -870,20 +802,9 @@ func fmtRtrim(s string) string {
 	return strings.TrimRight(s, " ")
 }
 
-// The entries of a body, one per line at the indentation, with the
-// blank lines the author kept between them (§3.8) -- never at the
-// start or the end. In STATEMENT position (`stmt`: the root, and the
-// body of a plain map that is itself the value of a statement) a pair
-// is laid out by §3.4, which may repeat its key; anywhere else -- a
-// list, an operand, an argument -- by §3.5 alone.
 func fmtEmitBody(w *fmtWriter, body []*fmtNode, indent int, stmt *fmtStmt, root bool) {
 	pending := false
 	count := 0
-	// Where the run being written begins: a statement, with the
-	// comments standing directly above it, so that the gap below opens
-	// ABOVE the comments rather than between them and what they
-	// describe. A blank line ends a run -- comments across a gap belong
-	// to what is above.
 	head := 0
 	noted := false
 	for _, node := range body {
@@ -914,15 +835,6 @@ func fmtEmitBody(w *fmtWriter, body []*fmtNode, indent int, stmt *fmtStmt, root 
 				w.text(" " + e.trail)
 			}
 		}
-		// A TOP-LEVEL STATEMENT WRITTEN AS A TREE STANDS APART (§3.8).
-		// A document states several things -- a service, then its
-		// entities, then its errors -- and where one of them is a tree
-		// rather than a line, the eye finds it by the space around it.
-		// What counts as a tree is measured rather than guessed: the
-		// statement took more than one line to write. So `a: 1` beside
-		// `b: 2` is left alone, and this rule cannot fire below the
-		// root, where a blank line is the author's (§3.8) and nothing
-		// else.
 		if root && from < w.mark() {
 			w.gap(head)
 			pending = true
@@ -962,18 +874,6 @@ func fmtEmitValue(w *fmtWriter, node *fmtNode, indent int) {
 	}
 }
 
-// A call, or a parenthesis, that has no one-line form or is too wide
-// for the budget. Three shapes. Arguments that are all FLAT -- none
-// holds a container -- stay on the one line however wide it is: a
-// scalar is no narrower on a line of its own, and the formatter never
-// breaks a line. The last argument HUGS the parentheses, `hide({` ...
-// `})`, `close($.E & {` ... `})`, when it is a container, or an
-// expression the author did not break that ends in one, and the
-// arguments before it fit on the opener's line: the container decides
-// its own lines. Otherwise the parenthesis opens a block: one argument
-// per line one level in, the closer alone at the opener's level. A
-// call whose last argument hugs is hugged in turn, `type(close({` ...
-// `}))`: the schema idiom.
 func fmtEmitCall(w *fmtWriter, node *fmtNode, indent int) {
 	items := node.inner
 	open := "("
@@ -1099,15 +999,6 @@ func fmtEmitBlock(w *fmtWriter, open, close string, node *fmtNode, indent int, s
 	w.text(close)
 }
 
-// An expression that has no one-line form, or one too wide for the
-// budget: the author's breaks are kept, each at its operator, which
-// leads its continuation line (§3.11). The continuation is one level
-// in when the expression follows a key on its line, and level with
-// the first operand when the expression has the line to itself -- an
-// argument of a block call, say -- so a disjunction of alternatives
-// reads as the list it is. A container operand that does not fit from
-// where it stands is a block whose closer lines up with the line that
-// opened it.
 func fmtEmitExpr(w *fmtWriter, items []*fmtNode, indent int) {
 	cont := indent + 2
 	if w.fresh() {
@@ -1153,25 +1044,7 @@ func fmtEmitExpr(w *fmtWriter, items []*fmtNode, indent int) {
 	}
 }
 
-// ---------------------------------------------------------------------
-// The lawful tier (§3.4): repeat the prefix, and merge what repeats.
-//
-// Both rewrites rest on the meet. `s: a: 1` / `s: b: 2` is one document
-// with `s: { a:1 b:2 }`, because a key written twice is a meet and the
-// meet of two maps with disjoint keys is their union. So they apply
-// only to a PLAIN map in STATEMENT position -- an entry of the root, or
-// of a map that is itself the plain value of such an entry -- and never
-// to a map that is an operand, an argument or a list element, where
-// splitting it would change the document (`close({a:1})` /
-// `close({b:2})` does not evaluate at all). And every statement the
-// tier rewrites is checked by unification, locally (§7.3): the spelling
-// before and the spelling after must come to the same meet, or the
-// statement keeps the spelling before. The check is the engine's
-// agreement, not the formatter's self-check -- the engine's own repros
-// hold maps whose two spellings it evaluates differently -- so failing
-// it is no refusal.
 
-// The check of one rewrite: the spelling before and the spelling after.
 type fmtMeet func(before, after string) bool
 
 // Statement position: the check, and whether the statement being laid
@@ -1226,17 +1099,6 @@ func fmtMembers(p *fmtNode) ([]*fmtNode, bool) {
 	return append(append([]*fmtNode{}, entries[:len(entries)-1]...), &sunk), true
 }
 
-// Adjacent statements naming one key, whose values are plain maps, are
-// one map: their entries in order, with the comments and blank lines
-// between the statements travelling with the statement they preceded.
-// Only ADJACENT statements merge -- a `server:` line, something else,
-// then another `server:` line stays as it is, because merging them
-// would move a statement, and the formatter never reorders (§3.13).
-// Nor do two statements merge into a map with two spreads: the engine
-// keeps those as a conjunction, which is not the meet of the two maps.
-// The tree is not changed: a merged statement is a new node that keeps
-// the statements it replaces as its `orig`, its spelling before, and a
-// statement merged somewhere below is copied the same way.
 func fmtMergeRuns(body []*fmtNode) []*fmtNode {
 	out := []*fmtNode{}
 	i := 0
@@ -1330,15 +1192,6 @@ func fmtMergeDeep(p *fmtNode) *fmtNode {
 	return &out
 }
 
-// Whether a value is a RECORD: a braced map of several entries, every
-// one of them a VALUE rather than another map. A field, an error, a
-// rule row -- something whose keys are what it IS, as against a level
-// of the tree, whose keys are a way through to something else.
-//
-// A CHAIN IS NOT ONE, whatever it holds: a one-entry map is D1's, and
-// D1 writes it as a chain at every width. Nor is a map holding a
-// spread, which says something about the map's MEMBERS and which D1's
-// exception already gives a spelling of its own inside a repeat.
 func fmtRecord(v *fmtNode, entries []*fmtNode) bool {
 	if "map" != v.t {
 		return false
@@ -1359,24 +1212,6 @@ func fmtRecord(v *fmtNode, entries []*fmtNode) bool {
 	return 1 < pairs
 }
 
-// The lines of a map repeated under a prefix (§3.4, rule 2): every
-// entry written with the prefix in front of it as one line, or --
-// where an entry's value is a map that does not fit -- descended into
-// under the longer prefix. Comments and blank lines are kept where
-// they stood. False where an entry cannot be one line: a list that
-// does not fit, a value that spans lines, a comment closing the map
-// (which a repeat could not keep in the map) -- and where the map holds
-// two spreads, which repeated would be two maps, and a different meet.
-//
-// A DESCENT ENDS AT A RECORD (§3.4, D2's amendment). The prefix reaches
-// through maps that hold maps, because those keys are a path and a line
-// carrying the whole path says where it is. It stops at a map that
-// holds only values: there the keys are the thing's own fields, the
-// prefix in front of each of them is the same prefix again, and the
-// map is written as a braced BLOCK under the prefix instead --
-// `entity: planet: field: id: {` and its seven facts indented once.
-// The statement's own map is not an entry of anything and is
-// unaffected, so a flat `service: host: …` is still one repeat.
 type fmtLine struct {
 	t     string
 	text  string
@@ -1431,12 +1266,6 @@ func fmtRepeatLines(entries []*fmtNode, prefix string, indent int) ([]fmtLine, b
 		if !ok {
 			return nil, false
 		}
-		// THE DESCENT COULD GO ON, AND WHAT IT REACHES IS A RECORD: it
-		// stops, and the record is a block under the prefix instead. The
-		// deeper repeat is asked for first and thrown away deliberately --
-		// the block REPLACES a descent that would have worked, and never
-		// rescues one that would not, so a map this rule cannot reach two
-		// ways round is laid out exactly as it was before the amendment.
 		if fmtRecord(e.value, sub) {
 			out = append(out, fmtLine{t: "block", text: head, node: e.value, trail: trail})
 			continue
@@ -1461,18 +1290,6 @@ func fmtFits(indent int, text string) bool {
 	return indent+fmtWidth(text) <= formatBudget
 }
 
-// A pair in statement position, by §3.4. `prefix` is what stands
-// before it on its line: the heads of the chain it hangs from, not yet
-// written. Its value is laid out by §3.5 unless it is a plain map, and
-// then in this order: a chain, when the map holds exactly one pair
-// (D1); one line, when that fits the budget; the key repeated over the
-// entries, when every entry can be one line that way; a braced block
-// otherwise, whose entries are statements in turn. Whether the
-// statement was rewritten by this tier -- merged, or repeated -- is
-// returned, and the outermost such statement is checked: its spelling
-// on the page against what the syntactic tier writes for the
-// statements it came from, at the same indentation, which is what
-// stays on the page when the check fails.
 func fmtEmitStatement(w *fmtWriter, p *fmtNode, indent int, stmt *fmtStmt, prefix string) bool {
 	mark := w.mark()
 	rewritten := nil != p.orig
@@ -1559,12 +1376,6 @@ func fmtEmit(root []*fmtNode, meet fmtMeet) string {
 	return w.finish()
 }
 
-// ---------------------------------------------------------------------
-// The lint (§4): what the formatter points at and never touches. Two
-// rules, both advice: the formatter never renames a key (§4.1) and
-// never introduces an alias (§4.2), and a rule with a mechanical fix
-// that keeps the document would belong to §3 instead (§4.3). Mirrors
-// the lint of ts/src/format.ts.
 
 // The shape width at which a repeat is worth an alias (§4.2): below
 // it, `{ a:1 }` twice is the shorter spelling. Measured over the use
@@ -1628,11 +1439,6 @@ func fmtLintChildren(node *fmtNode) []*fmtNode {
 	return nil
 }
 
-// D4 (§4.1): keys are lower-case words, or CamelCase when a key is
-// several. A bare key holding `_`, or beginning with two capitals, is
-// reported with the spelling that would follow the form; a quoted key
-// is a deliberate spelling and a key of underscores alone names
-// nothing the rule can respell.
 func fmtKeyCase(node *fmtNode, text string, out *[]LintFinding) {
 	if "pair" == node.t && fmtBare.MatchString(node.key) && fmtLetters.MatchString(node.key) {
 		why := ""
@@ -1655,9 +1461,6 @@ func fmtKeyCase(node *fmtNode, text string, out *[]LintFinding) {
 	}
 }
 
-// The key as lower-case words or CamelCase: `credit_cents` is
-// `creditCents`, `HTTP_PORT` is `httpPort`, `HTTPServer` is
-// `httpServer`, `ID` is `id`.
 func fmtCamel(key string) string {
 	words := []string{}
 	for _, w := range strings.Split(key, "_") {
@@ -1686,12 +1489,6 @@ func fmtCamel(key string) string {
 	return out
 }
 
-// D3 (§4.2): a shape written twice can drift, and an alias names it
-// once. Every map or list whose shape recurs in the file, and whose
-// shape is fmtRepeatMinWidth or wider, is reported once, at its first
-// site, with the count and the other sites; the naming is the
-// author's. A repeat inside a repeat is the outer one's: the walk does
-// not descend into a shape it reports.
 func fmtRepeats(nodes []*fmtNode, text string, out *[]LintFinding) {
 	counts := map[string]int{}
 	var tally func(node *fmtNode)
@@ -1746,9 +1543,6 @@ func fmtRepeats(nodes []*fmtNode, text string, out *[]LintFinding) {
 	}
 }
 
-// A node's shape: its spelling with the layout, the comments and, for
-// a map, the order of its entries taken out, so that two spellings of
-// one value are one shape, as they are one canon.
 func fmtShape(node *fmtNode) string {
 	switch node.t {
 	case "map":
@@ -1794,11 +1588,6 @@ func fmtShapes(nodes []*fmtNode, entries bool) []string {
 // ---------------------------------------------------------------------
 // The verb's library surface
 
-// The check: the output parses, and to the same tree. Pre-unification
-// canon is that tree, positions aside, and every rewrite of this tier
-// leaves it unchanged (§7.3). A package variable so the refusal it
-// guards can be exercised: a formatter that is right never takes that
-// arm on its own.
 var formatSame = formatSameDocument
 
 func formatSameDocument(root Val, after string) bool {
@@ -1806,16 +1595,6 @@ func formatSameDocument(root Val, after string) bool {
 	return nil == err && root.Canon() == v.Canon()
 }
 
-// The check of a lawful rewrite: the spelling before and the spelling
-// after, evaluated in isolation, come to the same canon, the same
-// kinds of failure, and the same outcome of generation (§7.3). Local,
-// so it needs no include and no capability, and it applies whether or
-// not the document as a whole evaluates. The kinds, not the count: how
-// often one unresolved reference is reported depends on the order the
-// meet took. Generation too, because the engine generates from more
-// than the canon: a meet of maps with a nil member has refused a key
-// the same map written once generates. A package variable so the
-// spelling before it keeps can be exercised.
 var formatMeet = formatSameByMeet
 
 func formatSameByMeet(before, after string) bool {
@@ -1904,13 +1683,7 @@ func (a *Aontu) FormatWith(src string, opts FormatOptions) FormatReport {
 	formatMu.Lock()
 	defer formatMu.Unlock()
 
-	// Invalid UTF-8 becomes U+FFFD, as it does when the canonical port
-	// reads the file: the two CLIs then print the same bytes.
 	text := strings.ReplaceAll(toValidSource(src), "\r\n", "\n")
-	// A GENERATOR IS FORMATTED AS THE DOCUMENT IT CARRIES (§3.14): the
-	// template surface's two transforms stand either side of the
-	// formatter, and between them is what happens to any other
-	// document.
 	mark := opts.Template
 	doc := text
 	if "" != mark {
@@ -1956,12 +1729,6 @@ func (a *Aontu) FormatWith(src string, opts FormatOptions) FormatReport {
 	return report
 }
 
-// THE TARGET'S OWN LINES ARE HELD ON LINES OF THEIR OWN (§3.14). The
-// desugaring is line for line, so a line of output is known by the
-// offset it begins at, and the node beginning there -- the quoted
-// string the desugaring wrote -- is marked. From there on it has no
-// one-line form, so every container holding it opens, and no two lines
-// of the generated file are ever packed onto one.
 func fmtHoldOutput(nodes []*fmtNode, at map[int]bool) {
 	for _, node := range nodes {
 		if at[node.at] {
@@ -1990,11 +1757,6 @@ func fmtOutputAt(doc string, flags []bool) map[int]bool {
 	return at
 }
 
-// A finding's column in the TEMPLATE rather than in the document it
-// carries (§3.14): the marker and its one space stand before the aontu
-// on every line the resugaring writes. Every finding is on such a line
-// -- the two rules point at a key or at a container, and a line of
-// output is a bare string, which is neither.
 func fmtShiftFindings(findings []LintFinding, mark string) []LintFinding {
 	if "" == mark {
 		return findings
@@ -2007,8 +1769,6 @@ func fmtShiftFindings(findings []LintFinding, mark string) []LintFinding {
 	return out
 }
 
-// ---------------------------------------------------------------------
-// The unified diff of `--diff`
 
 // A patience diff: lines unique to both sides, in order, are the
 // anchors, and the gaps between them recurse. Not always the shortest
@@ -2020,11 +1780,6 @@ type fmtEdit struct {
 	text string
 }
 
-// The lines of a text, with a marker on the last when the text does
-// not end in a newline: such a line never equals its
-// newline-terminated twin, which is how the diff reports the
-// difference, and the marker is rendered as diff renders it. NUL,
-// which no source line ends in.
 var fmtNoNewline = string(rune(0))
 
 func fmtTextLines(text string) []string {
@@ -2136,9 +1891,6 @@ func fmtPatience(a []string, x0, x1 int, b []string, y0, y1 int, out *[]fmtEdit)
 	}
 }
 
-// UnifiedDiff is the diff of two texts in unified format, three lines
-// of context, the file named on both sides. Empty when the texts are
-// the same. Mirrors unifiedDiff in ts/src/format.ts.
 func UnifiedDiff(name, before, after string) string {
 	a := fmtTextLines(before)
 	b := fmtTextLines(after)
@@ -2172,8 +1924,6 @@ func UnifiedDiff(name, before, after string) string {
 		if len(edits) < to {
 			to = len(edits)
 		}
-		// Everything between two hunks is context -- a change would have
-		// opened a hunk -- so both sides advance together.
 		for ; next < from; next++ {
 			ai++
 			bi++

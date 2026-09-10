@@ -70,10 +70,6 @@ func TestExplainAnswersForEveryRegisteredCode(t *testing.T) {
 	}
 }
 
-// The list is the REGISTRY, not the hint table: the registry is in
-// cross-port parity and the hint tables are not, so listing from the
-// hint table would make the two ports differ over something that is
-// not about what either can report.
 func TestExplainListIsTheRegistry(t *testing.T) {
 	out, _, code := explainRun("--list")
 	if 0 != code {

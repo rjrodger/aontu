@@ -4,41 +4,10 @@ exports.parseNodePath = parseNodePath;
 exports.reachCheck = reachCheck;
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 const utility_1 = require("./utility");
-// REACHABILITY OVER THE LINK GRAPH (the review's finding J,
-// use-cases/REVIEW.md): "ship a transitive `reaches(a, b)` check verb".
-//
-// `relations` answers questions about the edge set as a whole --- is it
-// acyclic, does every edge have its inverse, is every far end what the
-// relation says it is. This answers the question that needs the CLOSURE
-// rather than the edges: does anything `a` depends on, at any remove,
-// end up at `b`? That is the shape of every blast-radius question an
-// operator asks ("if the billing database goes, what falls over?") and
-// every containment question a policy asks ("nothing in the public tier
-// may reach the ledger"), and neither can be expressed by looking one
-// edge at a time.
-//
-// It is a VERB and not a constraint, for the same reason acyclicity is
-// (docs/reference-language.md, "Declared relations"): reachability is
-// global and non-monotone. One more edge can make an unreachable pair
-// reachable, so a lattice citizen asserting non-reachability could be
-// true and then false, and the lattice guarantee is that more
-// information never falsifies what has already been observed.
-//
-// TRANSITIVE, NOT REFLEXIVE-TRANSITIVE: `reaches(a, a)` is true only
-// when a path of one or more edges returns to `a`, which is the useful
-// answer (it says the graph has a cycle through `a`) rather than the
-// vacuous one.
-//
-// The Go twin is go/reach.go; what the two ports must agree on --- the
-// verdict and the path --- is test/spec/reach.tsv.
 const aontu_1 = require("./aontu");
 const vet_1 = require("./vet");
 const graph_1 = require("./graph");
 const keyorder_1 = require("./keyorder");
-// The segments a `$.dotted` endpoint spells, or undefined when it is
-// not one. Reachability is between TREE POSITIONS (ADR-014), so an
-// endpoint is a path and nothing else --- the same spelling the report
-// prints back.
 function parseNodePath(s) {
     if ('$' === s) {
         return [];
@@ -49,9 +18,6 @@ function parseNodePath(s) {
     const parts = s.slice(2).split('.');
     return parts.every((p) => /^[A-Za-z0-9_-]+$/.test(p)) ? parts : undefined;
 }
-// Whether a path names a node of the evaluated tree. An endpoint that
-// exists but has no edges is a perfectly good question with the answer
-// `unreachable`; only one that names NOTHING is an error.
 function nodeAt(root, path) {
     let node = root;
     for (const seg of path) {
@@ -71,10 +37,6 @@ function endpointFinding(name, known) {
         class: 'reference',
         severity: 'error',
         path: '$',
-        // NOT "unreachable". An endpoint that names no node is a question
-        // the document cannot answer, and answering it `no` would report a
-        // typo as a fact about the model --- the fail-open shape this
-        // review exists to retire.
         message: `${name} names no node in this document.`,
         sites: [],
         ...(0 === known.length ? {} : {
@@ -133,11 +95,6 @@ function reachCheck(src, from, to, opts) {
     for (const list of succ.values()) {
         list.sort(keyorder_1.cmpCodePoint);
     }
-    // BREADTH-FIRST, so the path reported is a SHORTEST one --- the
-    // evidence an operator wants is the tightest chain, not whichever the
-    // walk happened to find first --- and, with the successors sorted, a
-    // determined one: among shortest paths, the first in code-point order
-    // at the first step that distinguishes them.
     const prev = new Map();
     const seen = new Set();
     let front = [from];

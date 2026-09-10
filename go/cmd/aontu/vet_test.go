@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the cli-vet suite in ts/test/cli.test.ts: the same
-// cases, asserting the same output. What the two ports must AGREE on
-// (the report itself) is pinned by test/spec/vet.tsv; what each port
-// owns (argument handling, exit codes, the text rendering) is here.
 
 import (
 	"bytes"
@@ -170,8 +166,6 @@ func TestVetJSONFormatNamesItsProducer(t *testing.T) {
 		"data" != report.Findings[0].Sites[0].Role {
 		t.Fatalf("findings: %+v", report.Findings)
 	}
-	// The keys are emitted in the order the canonical emitter sorts
-	// them, so a consumer diffing the two ports' reports sees no noise.
 	if !strings.Contains(out, "\"aontu\": {") ||
 		strings.Index(out, "\"findings\"") < strings.Index(out, "\"aontu\"") ||
 		strings.Index(out, "\"truncated\"") < strings.Index(out, "\"findings\"") ||
@@ -238,10 +232,6 @@ func TestVetMaxErrorsTruncatesAndSaysSo(t *testing.T) {
 	vetMatch(t, out, `findings truncated`)
 }
 
-// The cap is on the REPORT, not on each file: two data files that each
-// come in under it can still overflow it together, and only the
-// aggregate cut catches that. Per-file capping alone would emit four
-// findings here and call the report whole.
 func TestVetMaxErrorsCapsTheReportNotEachFile(t *testing.T) {
 	dir, s, d := vetFiles(t, "a: integer\nb: integer", "a: \"x\"\nb: \"y\"")
 	other := filepath.Join(dir, "other.json")
@@ -277,13 +267,6 @@ func TestVetTakesMoreThanOneDataFile(t *testing.T) {
 	vetMatch(t, out, `bad\.json`)
 }
 
-// ...BUT A SCHEMA-SIDE FAULT IS ONE FAULT, however many data files are
-// named. `error` means the run could not be set up from the TRUTH's
-// side, so every data file would produce the identical finding;
-// concatenating them repeated one broken schema per file and, past the
-// cap, called the report `truncated` over a single underlying problem.
-// Invisible until the `error` verdict started carrying findings at all.
-// The twin is vet-schema-error-reports-once in ts/test/cli.test.ts.
 func TestVetSchemaErrorReportsOnce(t *testing.T) {
 	dir, _, d := vetFiles(t, vetSchemaSrc, `service: { name: "auth" }`)
 	broken := filepath.Join(dir, "broken.aon")
@@ -400,17 +383,9 @@ func TestVetNoteAndAlternativesReachTheTextReport(t *testing.T) {
 	vetMatch(t, out, `actual: +80`)
 }
 
-// An OFF-PEG value still names its document: a preference's
-// synthesised type yardstick is not a peg entry, so provenance reaches
-// it only because the stamp walk follows it deliberately.
 func TestVetSiteOffPegStillNamesItsDocument(t *testing.T) {
 	_, s, d := vetFiles(t, "a: *1", "a: {}")
 	out, _, _ := vetRun(s, d)
-	// The DEFAULT the author wrote, sited at its star (ADR-011 R1). The
-	// finding used to name the gate the engine computed from it --
-	// `integer`, which appears nowhere in the schema text a reader
-	// opens. (It read `number` before that, while the gate widened to
-	// the numeric family; removed 2026-08-25, status report §6.)
 	vetMatch(t, out, `schema: .*schema\.aon:1:\d+ \(\*1\)`)
 }
 
@@ -567,11 +542,6 @@ func TestVetWatchWaitSeesAChange(t *testing.T) {
 	}
 }
 
-// THE COVERAGE FLAGS (G11 phase 5,
-// docs/capability-review/g11-agent-onramp.md). The accounting itself
-// is pinned by the shared rows in test/spec/vet.tsv; what the COMMAND
-// owns -- the flags, the text block, the exit class -- is here, and
-// ts/test/cli.test.ts holds the twin.
 
 func vetCovFiles(t *testing.T, schema, data string) (string, string) {
 	t.Helper()
@@ -731,9 +701,6 @@ func TestVetCoverageAcrossSeveralDataFiles(t *testing.T) {
 	}
 }
 
-// THE TEXT FORM CAPS EACH LIST at ten and counts the rest: a report a
-// reader scrolls past is a report nobody reads. The JSON form carries
-// every path, which is what a machine wants.
 func TestVetCoverageTextCapsTheLists(t *testing.T) {
 	data := "{"
 	for i := 0; i < 14; i++ {

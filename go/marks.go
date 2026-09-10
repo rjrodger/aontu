@@ -15,12 +15,6 @@ func propagateMarks(from, to Val) {
 	}
 }
 
-// canonRiders renders a value's canonical form wrapped in the RIDER it
-// carries — the deprecation record (G3 phase 4) — reparseably, so
-// `deprecate(x, m)`
-// survive canon. Bags render their children through this
-// (MapVal/ListVal Canon), which is where a marked FIELD — the realistic
-// case — lives. Mirrors canonRiders in ts/src/utility.ts.
 func canonRiders(v Val) string {
 	c := v.Canon()
 	d := v.deprecRec()
@@ -58,11 +52,6 @@ func walkMark(v Val, setType, typeVal, setHide, hideVal bool) {
 	})
 }
 
-// walkMarkVals applies fn to a value and every value under it — the one
-// recursion shape the mark walks share. It descends into junction terms
-// and FUNCTION ARGUMENTS as well as bag children, because the TS `walk`
-// in ts/src/utility.ts does: a mark walk that stopped at bags would
-// miss the (possibly shared) arg trees of a pending call.
 func walkMarkVals(v Val, fn func(Val)) {
 	fn(v)
 	switch n := v.(type) {
@@ -91,10 +80,6 @@ func walkMarkVals(v Val, fn func(Val)) {
 	}
 }
 
-// hasMark reports whether a value or anything under it carries a
-// type/hide mark — the question `refer`'s flow asks before paying for a
-// clone (G4 phase 2): a flow type with no marks needs no clearing, and
-// cloning one anyway moved the site an error names.
 func hasMark(v Val) bool {
 	out := false
 	walkMarkVals(v, func(n Val) {

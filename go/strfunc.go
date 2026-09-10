@@ -7,28 +7,6 @@ import (
 	"strings"
 )
 
-// THE STRING BUILTINS the rule layer needs (G9 phase 6, the Go side of
-// ts/src/val/StrFuncVal.ts, docs/design/TEMPLATE.0.md D4 and D5).
-//
-//	esc(s, variant?)      make s safe inside a literal
-//	usc(s, variant?)      read it back out
-//	rep(s, pattern, sub)  replace every match
-//	split(s, sep)         a list of fields
-//
-// All four are ORDINARY string builtins beside upper and lower: they
-// return values, compose with `+`, and know nothing about generation,
-// which is why they can land before the renderer does.
-//
-// THE PATTERN IS THE PORTABLE SUBSET re() TAKES, normalised before
-// either engine compiles it. One regexp language in the document, not
-// two -- and the subset's linear-time guarantee matters more here than
-// in a constraint, because a generator runs this over model data.
-//
-// The MATCHING and SPLITTING semantics are this package's, and the
-// TypeScript twin writes the loops out by hand to reach them:
-// JavaScript inserts a pattern's capture groups into a split result and
-// reads `$1x` as group 1 then x where an Expand-style template reads
-// the name `1x`.
 
 // funcText is the string a value carries, or !ok when it is not a
 // string. Mirrors stringLeaf: a path is a string too, so a spelled
@@ -57,11 +35,6 @@ func funcVariant(args []Val, at int) (string, bool) {
 	return s, true
 }
 
-// reGroupCount is the number of CAPTURING groups in a normalised
-// pattern. Counted by scanning rather than by asking the host, because
-// the count decides whether a substitution is refused and the two ports
-// must refuse the same ones. The subset admits no named groups, so a
-// capturing group is exactly `(` that is not `(?`.
 func reGroupCount(norm string) int {
 	count := 0
 	inClass := false
@@ -103,12 +76,6 @@ func compileSubsetRe(src string) (*regexp.Regexp, string) {
 	return re, ""
 }
 
-// expandSub is a substitution template expanded against one match.
-// $1..$9 are the numbered groups, $& the whole match and $$ a literal
-// $; anything else after a $ names nothing, and naming nothing is a
-// REFUSAL rather than a silent literal. A group the pattern does not
-// have is the same refusal -- a generator that expands it to the empty
-// string writes a file with a hole in it and says nothing.
 func expandSub(sub string, src string, m []int, groups int) (string, bool) {
 	var out strings.Builder
 	r := []rune(sub)

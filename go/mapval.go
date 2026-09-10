@@ -17,34 +17,9 @@ type MapVal struct {
 	spread   Val      // &: spread constraint applied to every key (nil if none)
 	optional []string // keys marked optional (a?:1) — dropped if unresolved
 
-	// ALIAS DECLARATIONS, by key. `%uint8 = …` binds a name for this
-	// file and is not a field of the document: it does not generate and
-	// does not appear in canon, so a document using aliases and its
-	// longhand twin are the SAME document and hash identically
-	// (docs/design/ALIASES.0.md §4).
-	//
-	// Keyed on the map rather than marked on the value, because a
-	// reference COPIES the value it resolves to -- a mark riding the
-	// value would erase the referring field along with the declaration.
-	// Twin of MapVal.aliasKeys / BagVal.aliasKeys in the TS port.
 	aliasKeys []string
 }
 
-// aliasDeclarationsAreRooted refuses a map that carries ALIAS
-// DECLARATIONS anywhere but the document root, returning the nil to
-// raise or nil when the map is clean.
-//
-// Stated on the VALUE rather than at the parse, because the parse
-// cannot see it: an INCLUDED file's declarations are at the root of
-// their own text, and only once the loaded map is placed does it become
-// apparent that root is not the document's. `%name` is spelled as a
-// reference from the document root, so an included file's own `%b`
-// would otherwise reach the INCLUDER's `%b` -- cross-file capture, the
-// hazard the sigil exists to prevent, one level up.
-//
-// P1 is single-file by construction; carrying a name ACROSS files is
-// what `export` and the destructure are for (P2, not built), and this
-// refusal is what keeps the two from being confused meanwhile.
 func (m *MapVal) aliasDeclarationsAreRooted(ctx *Ctx) Val {
 	if 0 == len(m.aliasKeys) || 0 == len(m.path) {
 		return nil
@@ -96,12 +71,7 @@ func mergeVals(a, b Val) Val {
 	return newConjunct([]Val{a, b})
 }
 
-// superior answers top for a bag, as it always has. Its one caller
-// was the preference gate, which asks superOf now (ADR-011 R4) and
-// lifts a bag child by child instead; the method stays because the
-// Val interface requires it.
-// (superOf answers for this type before the fallthrough.)
-func (m *MapVal) superior() Val { return top() } //coverage:ignore
+func (m *MapVal) superior() Val { return top() } //coverage:ignore no caller: superOf lifts a bag child by child (ADR-011 R4)
 
 func (m *MapVal) Canon() string {
 	var b strings.Builder
@@ -113,17 +83,8 @@ func (m *MapVal) Canon() string {
 			b.WriteByte(',')
 		}
 	}
-	// Keys are emitted alphabetically so the canonical form is independent
-	// of insertion/unification order (matching the TypeScript canon and the
-	// JSON marshaling, which also sorts keys). A copy is sorted so the
-	// internal m.keys order — used by the determinism driver in Unify —
-	// is left untouched.
 	keys := make([]string, 0, len(m.keys))
 	for _, k := range m.keys {
-		// An alias declaration is not part of the document, so canon
-		// does not render it: a document with aliases and the same
-		// document written longhand must produce one text, and
-		// therefore one `aon1-` hash.
 		if !m.isAliasKey(k) {
 			keys = append(keys, k)
 		}
@@ -148,13 +109,6 @@ func (m *MapVal) Canon() string {
 	return b.String()
 }
 
-// snapshotRefSpread snapshots a path-dependent *ref* spread to its
-// structural target once, while inner key()/path() funcs are still
-// unresolved (port of snapshotRefSpread in ts/src/val/MapVal.ts). Later
-// fixpoint passes reuse the snapshot instead of re-resolving the ref
-// against the mutated tree, which would leak the source's resolved
-// key()/path() literals into the spread destinations. Keyed by canon +
-// source position (clones of the ref must find the same snapshot).
 func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 	if ctx.snapmap == nil {
 		ctx.snapmap = map[string]Val{}
@@ -171,12 +125,6 @@ func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 	if fv, ok := tgt.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
 		tgt = fv.peg[0]
 	}
-	// A pending type()/hide() CALL is not yet a value to snapshot
-	// (ADR-005, the same rule find's non-snap path defers on): cached
-	// here it resolves at every destination and STAMPS marks the
-	// clearing walk ran too early to clear -- a mutual recursive
-	// schema's members vanished from generation this way. No cache;
-	// retry once the wrapper has resolved at its own field.
 	if nil != tgt && pendingMarkWrapper(tgt) {
 		return nil
 	}
@@ -193,22 +141,6 @@ func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 	return nil
 }
 
-// hasPathFunc reports whether v's unification depends on its own path —
-// the exact port of the TS `isPathDependent` getter, INCLUDING its
-// recursion quirks. TS walks `this.peg`: an ARRAY peg (func args,
-// junction members, list elements) recurses into Val elements; an
-// OBJECT peg recurses into Val-valued properties — for a bag that is
-// the children map, but for a PrefVal the peg IS a Val, so the walk
-// only reaches the inner Val's Val-typed properties. The observable
-// consequence: `*copy($.z)` (pref of a func whose args ARRAY hides the
-// ref) counts as path-INdependent, so such a spread template is shared
-// (tier 1) and advances in place; only `*<pref>` chains see through one
-// level. Faithfully mirrored here — do not "fix" the recursion.
-//
-// Like the TS getter, the answer is memoized per Val (base.pdep): an
-// in-place refinement can resolve a key()/ref after the first
-// classification, and the clone-vs-share decision must stay stable
-// across passes.
 func hasPathFunc(v Val) bool {
 	switch v.(type) {
 	case *MapVal, *ListVal, *FuncVal, *ConjunctVal, *DisjunctVal, *PrefVal,
@@ -256,11 +188,6 @@ func computePathFunc(v Val) bool {
 			return true
 		}
 	case *ConstraintVal:
-		// A residual's unresolved arguments live in pending (an atom
-		// endpoint still waiting on a reference), its predicates in
-		// musts, and the sizing residual in count. TS reaches the same
-		// values through the generic peg walk (ConstraintVal keeps its
-		// arguments as peg).
 		if nil != n.pending {
 			for _, a := range n.pending.args {
 				if hasPathFunc(a) {
@@ -286,14 +213,6 @@ func computePathFunc(v Val) bool {
 			return true
 		}
 	case *PlusOpVal:
-		// The TS getter walks any ARRAY peg, and an operator's operands
-		// are one -- so `"acme/" + key()` is path-dependent there, and a
-		// template holding it is CLONED per destination rather than
-		// shared. This arm was missing, so the Go port shared such a
-		// template and every destination got the FIRST one's key. Found
-		// by G8 phase 1: a generator's template is the one place a
-		// wrongly shared op is visible in the output rather than merely
-		// in a canon.
 		for _, t := range n.peg {
 			if hasPathFunc(t) {
 				return true
@@ -312,10 +231,6 @@ func computePathFunc(v Val) bool {
 			}
 		}
 	case *PrefVal:
-		// TS's property-walk over a Val-typed peg reaches only the
-		// inner Val's Val-typed properties: a nested PrefVal's own peg
-		// is one, but a func's args array / a ref's parts / a bag's
-		// children map are not.
 		if inner, ok := n.peg.(*PrefVal); ok {
 			return hasPathFunc(inner.peg)
 		}
@@ -324,31 +239,10 @@ func computePathFunc(v Val) bool {
 	return false
 }
 
-// spreadCloneFor returns a per-key copy of the spread constraint,
-// following the spreadClone tiers in TS MapVal/Val:
-//   - TOP needs no cloning;
-//   - a path-independent constraint (no key()/path()/move()/super()/ref
-//     anywhere below) is SHARED — nothing in the unify path depends on
-//     its stored paths, and sharing lets the template advance in place
-//     as destinations resolve it (the TS tier-1 `return this`);
-//   - otherwise a clone re-pathed to the destination (for funcs the
-//     clone shares its args — Val.clone semantics — so e.g. a
-//     close({k:key()}) spread's template map is shared across all
-//     destinations, exactly as in TS).
 func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	if isTop(s) {
 		return s
 	}
-	// The one place a spread is APPLIED, so the one place that knows a
-	// contribution came from a template rather than from the key
-	// itself (G7 phase 4). Only when someone is recording: the walk is
-	// O(template) per key per pass, which is real money on a large
-	// model and buys nothing when no one is recording.
-	// The share-when-path-independent tier exists only on bags (TS
-	// overrides spreadClone on MapVal/ListVal alone); every other
-	// constraint kind — prefs, funcs, refs, junctions — clones per
-	// application (Val.spreadClone = this.clone), so e.g. a `*open(x)`
-	// template is never resolved in place by its applications.
 	switch s.(type) {
 	case *MapVal, *ListVal:
 		if !hasPathFunc(s) {
@@ -356,36 +250,11 @@ func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 			return s
 		}
 	}
-	// A FULL INSTANCE per application (instanceClone, ADR-005): a
-	// spread constraint is applied once per destination child, and each
-	// application must own its path-dependent innards — a bare clone
-	// shared a call's arguments and a preference's inner value across
-	// destinations, so a spread like `&: id(key(0)) & $.schema.C`
-	// resolved its one shared key() at the first child it met
-	// (use-cases/BUGS.md §12's id_name form). Mirrors Val.spreadClone.
 	out := instanceClone(s, path)
 	markSpread(out, ctx)
 	return out
 }
 
-// markSpread marks a spread clone and everything inside it, so a
-// contribution several levels down a template is still known to have
-// come from the template. Instrumented runs only (see spreadCloneFor).
-// Mirrors markSpread in ts/src/provenance.ts.
-//
-// THE GUARD IS A CYCLE GUARD, NOT A "DONE" FLAG, and that distinction
-// is the whole of the review's finding E for sibling position. A
-// template is applied once per destination, and the fixpoint advances
-// values IN PLACE between those applications (AGENTS.md, the mutation
-// caveat): by the time the second key is spread, the template's child
-// is no longer the value the first key saw but the one that meet
-// produced. Skipping the walk because the CONTAINER was already marked
-// left every such replacement unmarked, so `why` at the first sibling
-// reported the written `*1|integer` as one contribution and at the
-// second reported `*1` and `integer` as two -- identical statements,
-// different answers, decided by which key the fixpoint reached first
-// (use-cases/BUGS.md §22). Marking is idempotent, so re-walking costs
-// a pass and changes nothing where nothing moved.
 func markSpread(v Val, ctx *Ctx) {
 	markSpreadSeen(v, ctx, map[Val]bool{})
 }
@@ -406,10 +275,6 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 		return nil, nil
 	}
 	out := map[string]any{}
-	// Iterate alphabetically (mirrors the entries sort in TS
-	// BagVal.gen): the JSON output is order-independent, but the
-	// collect-mode truncating break must keep the same sorted prefix
-	// in both implementations.
 	keys := append([]string(nil), m.keys...)
 	sort.Strings(keys)
 	for _, k := range keys {
@@ -420,38 +285,21 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 		if (child.markedType() || child.markedHide()) && !probing(ctx) {
 			continue
 		}
-		// An alias declaration contributes no field, and unlike a marked
-		// one it is skipped even under `probe`: the probe descends
-		// through output marks to see what a `--at` anchor really holds,
-		// and an alias is not part of the document at all.
 		if m.isAliasKey(k) {
 			continue
 		}
 		optional := m.isOptional(k)
 
-		// Non-generable child kinds (top, kinds, funcs, vars, ops,
-		// conjuncts) fail at the bag level (mirrors the branch list in
-		// TS BagVal.gen): dropped when optional, a truncating break
-		// under collect, an error otherwise.
 		if !genable(child) {
 			if optional {
 				continue
 			}
-			// Code follows the TS BagVal.gen choice: an expect child is
-			// spread-required residue (issue #27); otherwise a closed
-			// bag makes the residue a missing REQUIRED value, an open
-			// one merely non-generable.
 			code := "mapval_no_gen"
 			if m.closed {
 				code = "mapval_required"
 			}
 			va, vb := child, Val(nil)
 			if ev, ok := child.(*ExpectVal); ok {
-				// The TS isExpect branch: code *_spread_required, and the
-				// operands are the EXPECTATION (va = expect.peg) and a
-				// fresh nil PLACED at the creating bag's site (vb) — the
-				// placed nil sits later in the source, so it wins the
-				// primary slot and the first frame points at the bag.
 				code = "mapval_spread_required"
 				if ev.parent != nil {
 					// place() copies the parent's whole site — position
@@ -466,24 +314,6 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 				va = ev.peg
 			}
 			details := map[string]string{"key": k}
-			// UNDER COLLECT the bag stops at its first non-generable
-			// child, and RECORDS it: truncation limits the report to one
-			// finding per bag, it does not suppress it. TS makes the same
-			// two moves in the same order (makeNilErr, which files the
-			// nil on the context, then break) in both modes — Go's error
-			// return is the difference below, not this. The validation
-			// verb reads these off an isolated context to tell "the data
-			// has not yet satisfied the truth" from "the data
-			// contradicts it" (vet.go).
-			// RECORD AND WALK ON, in both modes. TypeScript's
-			// BagVal.gen files the refusal on the context and `break`s
-			// its OWN key loop; the parent bag then carries on to its
-			// next key, so sibling subtrees each contribute a finding
-			// and the report names every one. Returning here instead
-			// aborted the whole walk at the first refusal, which is why
-			// the two ports could report DIFFERENT first failures for
-			// one document. The raise is now the caller's, out of what
-			// the context collected (Ctx.genErr).
 			makeNilErrFull(ctx, code, va, vb, "", details)
 			break
 		}
@@ -528,14 +358,6 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 	return out, nil
 }
 
-// genable mirrors the generable-child branch list in TS BagVal.gen.
-//
-// A CONJUNCT IS GENERABLE WHEN IT IS A SETTLED SIZING RESIDUE (the
-// review's finding C, use-cases/BUGS.md §16). `length` and `unique`
-// over a container keep the readings more members could still change,
-// so `a: length(3) a:[1,2,3]` is a conjunct of the atom and the list
-// right up to generation -- which is where the atom decides, in
-// ConjunctVal.Gen. Any OTHER conjunct is unresolved residue as before.
 func genable(v Val) bool {
 	switch v.(type) {
 	case *ScalarVal, *MapVal, *ListVal, *PrefVal, *RefVal,
@@ -545,12 +367,6 @@ func genable(v Val) bool {
 	if _, _, ok := sizingResidue(v); ok {
 		return true
 	}
-	// A graph atom (RELATIONS P2) is exactly as generable as the value
-	// it carries: the atom is transparent at generation, so wrapping a
-	// field's value in acyclic() must not change whether the bag
-	// accepts it -- an unmet rel() refuses required generation with or
-	// without the atom, and a BARE atom generates nothing and is
-	// dropped, exactly as an unmet rel() under an optional key is.
 	if ga, ok := v.(*GraphAtomVal); ok {
 		return nil == ga.held || genable(ga.held)
 	}
@@ -563,10 +379,6 @@ func genable(v Val) bool {
 	return false
 }
 
-// sizingResidue reports a conjunct of exactly one sizing constraint and
-// one container: the shape admitContainer leaves when its reading is
-// still provisional, and the one ConjunctVal.Gen knows how to finish.
-// Mirrors sizingResidue in ts/src/val/BagVal.ts.
 func sizingResidue(v Val) (*ConstraintVal, Val, bool) {
 	cj, ok := v.(*ConjunctVal)
 	if !ok || 2 != len(cj.peg) {
@@ -597,12 +409,6 @@ func gensNull(ctx *Ctx, v Val) bool {
 	case *PrefVal:
 		return gensNull(ctx, n.peg)
 	case *DisjunctVal:
-		// A disjunction generates whatever the member Gen would pick, so
-		// ask for that member rather than the wrapper. Without this case
-		// a key whose value was a disjunction resolving to null was read
-		// as "generated nothing" and silently dropped from the output --
-		// and a list element with it. An UNRESOLVED disjunction generates
-		// nothing at all (ADR-007), which is not JSON null.
 		member, unresolved := n.forGen(ctx)
 		if unresolved {
 			return false
@@ -630,12 +436,6 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	if nv := m.aliasDeclarationsAreRooted(ctx); nv != nil {
 		return nv
 	}
-	// A sizing residual (`length`, `unique`) sorts AFTER containers in a
-	// conjunct so that it counts the MERGED map rather than the first
-	// fragment (sizingCjo in constraint.go). That makes the map the
-	// accumulator and the constraint its peer, the reverse of the usual
-	// order -- and the reading belongs to the constraint either way, so
-	// hand it straight back.
 	if pc, ok := peer.(*ConstraintVal); ok {
 		return pc.Unify(m, ctx)
 	}
@@ -661,19 +461,11 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	}
-	// The location this map is being driven at (the TS ctx.path): the
-	// caller's slot hint when present, else the map's own path. Child
-	// drives descend from it (ctx.descend), which matters when a shared
-	// clone with an overlay-tailed stored path is driven as a func arg.
 	dbase := ctx.slot
 	if dbase == nil {
 		dbase = m.path
 	}
 
-	// A TOP peer refines the map IN PLACE (the `out = peer.isTop ? this
-	// : new MapVal(...)` fast-path in TS MapVal.unify): children write
-	// back into m.peg, so shared references to this map — a frozen
-	// func's arg, a spread template — observe the refinement.
 	var out *MapVal
 	if isTop(peer) {
 		out = m
@@ -698,19 +490,8 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		if out.spread == nil {
 			out.spread = pm.spread
 		} else if pm.spread != nil && out.spread.Canon() != pm.spread.Canon() {
-			// Combine two spread constraints. Identical templates (same canon)
-			// collapse to one: re-unifying resolves key()/path() at the shared
-			// intermediate path, producing spurious values (f1bb1063). Distinct
-			// templates are unified in place — unite is idempotent, whereas
-			// deferring the distinct case into newConjunct (as f1bb1063 did)
-			// re-wraps every fixpoint pass, growing the conjunct without bound
-			// and non-terminating on real models (the apidef/sdkgen entity
-			// schemas each contribute a `&:` spread with `name: key()`).
 			out.spread = unite(ctx, out.spread, pm.spread)
 		}
-		// An alias declaration is additive for the same reason optional
-		// keys are: two statements for one map are one map, and a name
-		// declared in either is declared in the result.
 		for _, ak := range pm.aliasKeys {
 			if !out.isAliasKey(ak) {
 				out.aliasKeys = append(out.aliasKeys, ak)
@@ -743,12 +524,6 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		spreadCj = fv.peg[0]
 	}
 
-	// Own children. The spread constraint applies ONCE per child
-	// (mirrors the `_spr` stamp in TS MapVal.unify): the first
-	// application merges the template into the child, so later passes
-	// only self-unify against TOP — where pending funcs in hidden
-	// subtrees freeze (see FuncVal.Unify) instead of being re-fed
-	// template clones, and already-resolved values are not re-clobbered.
 	for _, k := range m.keys {
 		child := m.peg[k]
 		// Map marks ratchet onto children each pass (the
@@ -789,10 +564,6 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 
 	if pm, ok := peer.(*MapVal); ok {
 		out.closed = m.closed || pm.closed
-		// Self-unify the peer against TOP first (the `upeer` step in TS
-		// MapVal.unify): a shared peer — e.g. a tier-1 spread template —
-		// refines in place, so its resolvable children advance where the
-		// template itself is stored too.
 		if pm.Dc() != DONE {
 			ctx.slot = dbase
 			if upm, uok := unite(ctx, pm, top()).(*MapVal); uok {
@@ -802,14 +573,6 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		for _, pk := range pm.keys {
 			pc := pm.peg[pk]
 			if _, allowed := m.peg[pk]; m.closed && !allowed {
-				// RECORDED, and the loop goes on. Returning here made the
-				// first surplus key the last thing the map ever said: a
-				// closed bag meeting a typo AND a kind conflict reported
-				// the typo and stopped, so the second mistake only
-				// appeared once the first was fixed. TS keeps the nil in
-				// `bad` and hands it back after unifying every peer key,
-				// which is what puts BOTH on the context — the case the
-				// validation verb exists for.
 				bad = makeNilErr(ctx, "closed", pc, nil)
 			}
 			pkslot := append(cp(dbase), pk)
@@ -819,35 +582,6 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 				ctx.slot = pkslot
 				uv = unite(ctx, ex, pc)
 			} else if !expectGenable(pc) && !pcIsOp && !pc.markedType() && !pc.markedHide() {
-				// A MARKED value is carried, never expected (the second
-				// guard; ADR-005 era, BUGS.md §12's include form): a
-				// type()/hide()-marked child legitimately participates in
-				// unification without ever generating — the marks
-				// contract — so wrapping one as an expectation turned a
-				// schema field arriving through an include's map meet
-				// into a bogus mapval_spread_required naming a spread
-				// that exists in neither file. The bag's Gen already
-				// skips marked children. Mirrors handleExpectedVal in
-				// ts/src/val/BagVal.ts.
-				// An OPERATOR is carried too (the pcIsOp guard; BUGS.md
-				// §36): an expression resolves by itself once its
-				// operands do — the own-key loop drives it every pass —
-				// so `m:{y:.x+1}` arriving as a peer key keeps computing
-				// exactly as it does written inline. Wrapping it froze
-				// the op and the residue reported a phantom
-				// mapval_spread_required naming a spread that exists
-				// nowhere. Mirrors handleExpectedVal in
-				// ts/src/val/BagVal.ts.
-				// TS handleExpectedVal: a peer key whose value cannot
-				// generate on its own (a kind, top, a var, a constraint —
-				// typically a spread template field) is wrapped, so the
-				// bag's Gen can distinguish spread-required residue from
-				// ordinary *_no_gen (issue #27). Not united with TOP: the
-				// wrap must hold the raw expectation, exactly as in TS.
-				// An expectation baked into a combined spread template
-				// (the spread-combination meet above) is re-wrapped
-				// FRESH, so key/parent name THIS bag and the template's
-				// own node is never stored at a destination.
 				peg := pc
 				if ev, isex := pc.(*ExpectVal); isex {
 					peg = ev.peg
@@ -874,14 +608,6 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	} else if !isTop(peer) {
-		// The meet is the MAP against a non-map, so it happens at the
-		// map's own slot -- restore it. The key loops above overwrite
-		// ctx.slot with a child slot and only the in-branch paths put it
-		// back, so a stale key survived into this branch and
-		// makeNilErr's slot-extension then stamped it: the map twin of
-		// the list case in BUGS.md 47, which reported an element that is
-		// not party to the failure where TypeScript reported the
-		// container.
 		ctx.slot = dbase
 		// The container KIND delegates to its own arm, exactly as a
 		// scalar delegates to a ScalarKindVal peer (PATHS.0.md).

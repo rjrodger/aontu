@@ -1,17 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The trim reporter (G3 phase 6, the Go side of ts/src/trim.ts):
-// report REDUNDANT map entries — entries whose removal leaves the
-// evaluated result unchanged, the spread-implied case included — as
-// paths. Report-only, deliberately: canon discards comments and
-// layout, so REWRITING the file needs G7's format-preserving patch
-// surface.
-//
-// The test is EVALUATE-AND-COMPARE: for each candidate entry, re-parse
-// the source, delete the entry from the parsed tree, evaluate, and
-// compare canons. A removal that ERRORS is not redundant: the entry is
-// load-bearing. Parsed trees are single-use, so every probe is its own
-// parse.
 
 package aontu
 
@@ -27,12 +15,6 @@ const (
 
 // TrimReport is the whole answer: one verdict, and the redundant paths.
 type TrimReport struct {
-	// Errors is WHY the run could not be made, in the same finding shape
-	// Vet reports in (the review's finding F). An `error` verdict used
-	// to arrive with an empty report -- something is wrong with the
-	// document, and nothing about what -- which is the one answer a
-	// repair loop cannot act on. Present ONLY on an `error` verdict, so
-	// a clean report stays exactly the two fields it always was.
 	Errors    []VetFinding `json:"errors,omitempty"`
 	Redundant []string     `json:"redundant"`
 	Verdict   string       `json:"verdict"`
@@ -112,13 +94,6 @@ func trimDeleteAt(root Val, path []string) bool {
 	return true
 }
 
-// trimEvalCanon parses (deleting the entry at delPath, when given),
-// evaluates, and answers the canon — with ok=false when the source does
-// not stand up, which for the baseline is the caller's error verdict
-// and for a probe means "load-bearing".
-// The third result is WHY, for the one caller that reports it, and nil
-// for a failure that is an ANSWER rather than a fault: a probe whose
-// deletion cannot land means "load-bearing".
 func (a *Aontu) trimEvalCanon(
 	src string, delPath []string) (string, bool, *VetFinding) {
 	v, perr := a.parseEntry(src)

@@ -2,32 +2,6 @@
 
 package aontu
 
-// THE DECLARATION LOWERING (docs/design/RENDER.0.md D5, D6, P5): the
-// one place in the renderer where "a new language is data" does not
-// hold. A record becoming `export interface X {` or `type X struct {`
-// is a per-language-family function here, selected by the profile's
-// lowering field and parameterised by the profile's data -- the
-// indent, the comment forms, the string quote and its escape table,
-// the identifier rules and the type forms. Two families ship,
-// typescript and go; a third language with declarations is a change
-// here, in both ports (ts/src/lower.ts is the twin, function for
-// function).
-//
-// Everything produced is PIECES -- lines at a depth, blanks -- that
-// the fragment fold then turns into bytes, so a lowered declaration
-// and a fragment take the same path to the file: one indent rule, one
-// terminator rule, nothing trimmed.
-//
-// THE PARITY GUARDS (G9 section 3), each a rule both ports keep: case
-// conversion is ASCII-only, and a code point at or above U+0080 rides
-// into the current word verbatim, never split and never converted;
-// string escaping is one pass, per code point, through the profile's
-// table, keyed by decimal code point, with a control character the
-// table does not name spelled as a \u escape; a reserved word is
-// matched by exact equality on the converted name; parenthesisation
-// is by prec/childPrec; numbers go through the one number formatter;
-// nothing here sorts, and nothing iterates a map -- every profile
-// list is a slice, and every map is looked up.
 
 import (
 	"strconv"
@@ -78,13 +52,6 @@ func lowerIsUpper(c rune) bool { return 'A' <= c && c <= 'Z' }
 func lowerIsLower(c rune) bool { return 'a' <= c && c <= 'z' }
 func lowerIsDigit(c rune) bool { return '0' <= c && c <= '9' }
 
-// lowerSplitWords is THE ASCII WORD SPLITTER. Words break at `_`, `-`
-// and space, at a lower-to-upper boundary (creditLimit), at a
-// letter-to-digit boundary in either direction (utf8String), and
-// before the last capital of a capital run that a lower case letter
-// follows (HTTPServer is HTTP, Server). A code point at or above
-// U+0080 rides into the current word and never starts, ends or
-// converts one.
 func lowerSplitWords(name string) []string {
 	words := []string{}
 	cur := []rune{}
@@ -186,15 +153,6 @@ func lowerCaseName(name, style string, acronyms []string) string {
 	return lowerASCII(words[0]) + strings.Join(caps[1:], "")
 }
 
-// lowerIdent is an identifier in a ROLE (record, field, enum, member,
-// const, func, param, alias): the profile's case style for the role,
-// then -- for the names that become bare identifiers, declarations
-// and parameters -- the reserved-word rule on the converted name,
-// exact equality, so Go's `Type` is not `type`. A reserved name is
-// renamed with a trailing underscore and the report says so, since
-// code that named the original will not compile against the rename.
-// A field is a property, and a property may spell what its target's
-// string form admits.
 func lowerIdent(name, role string, ctx *lowerCtx, path string, bare bool) string {
 	rules := lowerMap(ctx.profile, "ident")
 	style := lowerStr(lowerMap(rules, "case"), role)
@@ -377,8 +335,6 @@ func lowerTypeExpr(t map[string]any, ctx *lowerCtx, path string) lowerExpr {
 		f := lowerForm(ctx, "map")
 		key := lowerUnder(lowerTypeExpr(lowerMap(t, "key"), ctx, path+".key"), f)
 		of := lowerUnder(lowerTypeExpr(lowerMap(t, "of"), ctx, path+".of"), f)
-		// The two families spell a map differently between the key and
-		// the value: map[K]V and Record<K, V>.
 		sep := ", "
 		if "go" == ctx.family {
 			sep = "]"
@@ -468,8 +424,6 @@ func lowerDoc(d map[string]any, at int, ctx *lowerCtx) []any {
 	return out
 }
 
-// lowerChecks: every check a target's type system cannot enforce is
-// tier-1 loss, one entry per check, addressed at the check.
 func lowerChecks(list any, path string, ctx *lowerCtx) {
 	checks, _ := list.([]any)
 	for i, c := range checks {

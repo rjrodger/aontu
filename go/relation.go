@@ -8,38 +8,11 @@ import (
 	"strings"
 )
 
-// RELATION GRAPH VERDICTS (RELATIONS.0.md §3.3, replacing the G4
-// phase 5 magic-key pass; the Go side of ts/src/relation.ts):
-// acyclicity and inverse consistency over the edge set, DECLARED by
-// the graph atoms -- `acyclic()` and `inverse(name)` conjoined at the
-// field whose key is the predicate -- and decided AFTER unification,
-// never by it.
-//
-// Why not in the lattice. Both properties are GLOBAL and NON-MONOTONE:
-// an acyclic graph becomes cyclic when one more edge unifies in, and an
-// inverse that is present becomes absent when the far side is narrowed.
-// The lattice guarantee is that more information never falsifies what
-// has been observed, so a constraint that could be true and then false
-// is not a constraint the lattice may hold. The atoms therefore only
-// REGISTER during unification (GraphAtomVal.register, onto
-// Ctx.reldecls), and the verdict lands at GENERATION -- the sizing
-// atoms' model -- where no more information can arrive. The
-// `relations` verb reports the same verdict from the same
-// declarations: one decision, two surfaces. The old `relations:`
-// magic key is GONE, discharging ADR-010's grandfather clause.
 
-// RelationFinding is one broken relation property.
-// Field order is LEXICOGRAPHIC, the canonical emitter's order — the
-// TypeScript port's exactJSON sorts keys, and a report is read by a
-// machine that diffs it.
 type RelationFinding struct {
 	// At is where the offending edge is written, as a `$.dotted.path`.
 	At   string `json:"at"`
 	Code string `json:"code"`
-	// Detail is, for a cycle, the entities it runs through in the order
-	// the walk found them, closing back on the first; for a missing
-	// inverse, the two ends and the relation that should have mirrored
-	// it.
 	Detail []string `json:"detail"`
 	// Relation the finding is about.
 	Relation string `json:"relation"`
@@ -47,20 +20,7 @@ type RelationFinding struct {
 
 // RelationReport is the relation checks for one document.
 type RelationReport struct {
-	// Declared is how many relation declarations the document makes
-	// (G11 phase 4). ZERO is the answer that matters: `pass` over no
-	// declarations means nothing was checked, and without this the two
-	// are one word. A POINTER, because `omitempty` would drop the zero
-	// that carries the meaning; nil is "the run did not ask", &0 is
-	// "asked, and there were none". Absent unless RelationOptions.Count
-	// asked for it, so no existing caller's report changes shape.
 	Declared *int `json:"declared,omitempty"`
-	// Errors is WHY the graph could not be looked at, in the same
-	// finding shape Vet reports in (the review's finding F). Findings is
-	// about the GRAPH and stays that way; a document that does not stand
-	// up has no graph to have findings about, and an `error` verdict
-	// used to arrive with an empty list -- something is wrong, and
-	// nothing about what. Present ONLY on an `error` verdict.
 	Errors   []VetFinding      `json:"errors,omitempty"`
 	Findings []RelationFinding `json:"findings"`
 	Verdict  string            `json:"verdict"`
@@ -107,16 +67,9 @@ func findCycle(start string, succ map[string][]string, done map[string]bool) []s
 	return walk(start)
 }
 
-// RelationCheck runs the relation checks over one document.
-// relationFindings is the verdict itself, pure over what the
-// evaluation produced: the registered declarations and the edge set.
-// Shared by the generation hook (relationErrors) and the `relations`
-// verb, so the two surfaces cannot disagree. Mirrors relationFindings
-// in ts/src/relation.ts.
 func relationFindings(decls map[string]*relDecl, graph Graph) []RelationFinding {
 	findings := []RelationFinding{}
 
-	// The edge set, indexed the two ways the checks read it.
 	byRelation := map[string][]Edge{}
 	pairs := map[string]bool{}
 	for _, e := range graph.Edges {
@@ -196,10 +149,6 @@ func relationFindings(decls map[string]*relDecl, graph Graph) []RelationFinding 
 		}
 	}
 
-	// SORTED, because a report is read by a machine that diffs it: by
-	// the position of the offending edge, then by code, then by the
-	// detail (two inverse declarations on one predicate can flag one
-	// edge twice).
 	sort.SliceStable(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
 		if a.At != b.At {
@@ -214,14 +163,6 @@ func relationFindings(decls map[string]*relDecl, graph Graph) []RelationFinding 
 	return findings
 }
 
-// relationErrors is the generation hook (Aontu.GenerateVars, between
-// unification success and value generation): the first finding becomes
-// a LOCATED evaluation error at the offending edge, exactly as an
-// unmet sizing atom refuses at generation. Findings name entities and
-// positions the document spelled, so the walk to the site cannot miss.
-// Mirrors relationErrors in ts/src/relation.ts (which files every
-// finding; the Go generation path returns its first error, as the bag
-// walks do).
 func relationErrors(ctx *Ctx, root Val) error {
 	if nil == ctx || 0 == len(ctx.reldecls) {
 		return nil
@@ -230,11 +171,6 @@ func relationErrors(ctx *Ctx, root Val) error {
 	if 0 == len(findings) {
 		return nil
 	}
-	// EVERY finding becomes a collected error, exactly as the TS hook
-	// adderr's each one (two inverse declarations on one predicate
-	// refuse twice, and the report says both names); makeNilErrFull
-	// records on ctx, and errmsg renders them all, `------`-joined,
-	// as any multi-error document renders.
 	for _, f := range findings {
 		node := root
 		if 2 < len(f.At) {
@@ -257,11 +193,6 @@ func relationErrors(ctx *Ctx, root Val) error {
 					node = n.peg[ix]
 				}
 			}
-			// No unwrap AFTER the walk: a finding's At names an edge
-			// element, and an edge's element is a string -- an
-			// atom-wrapped element mints no edge in the first place
-			// (the graph visit descends atoms only at field values),
-			// so the walk cannot end on an atom.
 		}
 		makeNilErrFull(ctx, f.Code, node, nil, "relate", map[string]string{
 			"relation": f.Relation,
@@ -277,19 +208,12 @@ func (a *Aontu) RelationCheck(src string) RelationReport {
 	return a.RelationCheckOpts(src, nil)
 }
 
-// RelationCheckOpts is RelationCheck with the run's knobs. Split from
-// it rather than folded into it because every existing caller wants
-// the default run, and the Vet precedent is a package surface whose
-// options are a pointer that may be nil.
 func (a *Aontu) RelationCheckOpts(
 	src string, opts *RelationOptions) RelationReport {
 	options := RelationOptions{}
 	if nil != opts {
 		options = *opts
 	}
-	// Parsed and unified in two steps rather than through Unify, so the
-	// failure can be REPORTED: the context carries the engine's own
-	// first error, and Unify hands back only that something went wrong.
 	parsed, perr := a.parseEntry(src)
 	if nil != perr {
 		return RelationReport{Verdict: "error", Findings: []RelationFinding{},
@@ -306,10 +230,6 @@ func (a *Aontu) RelationCheckOpts(
 			Errors: []VetFinding{failureFinding(ctx, a.File, src, root)}}
 	}
 
-	// The count rides every report from here down: the engine knows it
-	// at exactly this point, and a caller asking "was there anything to
-	// check?" should not have to evaluate the document a second time to
-	// find out.
 	var declared *int
 	if options.Count {
 		n := len(ctx.reldecls)
@@ -320,15 +240,6 @@ func (a *Aontu) RelationCheckOpts(
 			Findings: []RelationFinding{}}
 	}
 
-	// NOR IS A DOCUMENT THAT CANNOT BE GENERATED. Unification can
-	// succeed over a tree that still holds an unsettled disjunction --
-	// more than one alternative admitted, which disjunct_no_gen
-	// refuses at generation -- and the graph walk cannot read inside
-	// one: the links in every alternative are invisible, so a mirror
-	// the document plainly writes is missing from the edge set and
-	// inverse(n) calls it missing. Generation is therefore asked
-	// FIRST, on a collecting context of its own, and what it says is
-	// the answer. Mirrors ts/src/relation.ts.
 	gcopy := *ctx
 	gctx := &gcopy
 	gctx.err = nil

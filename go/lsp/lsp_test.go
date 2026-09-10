@@ -55,8 +55,6 @@ func TestDiagnosticsUnknownFunctionPosition(t *testing.T) {
 }
 
 func TestDiagnosticsMultiByteColumn(t *testing.T) {
-	// A multi-byte rune before the error must not shift the column off:
-	// LSP characters are UTF-16 units, so "é" counts as 1.
 	d := Diagnostics("a:\"é\"\nb:1 b:2")
 	if len(d) != 1 {
 		t.Fatalf("expected 1 diagnostic, got %d: %+v", len(d), d)
@@ -234,13 +232,6 @@ func srcPath(p string) string {
 	return strings.ReplaceAll(p, "\\", "/")
 }
 
-// fileURI is the uri a real editor sends for a directory: file://,
-// then the ABSOLUTE PATH with its own leading slash. On Windows that
-// makes three slashes before the drive letter
-// (file:///C:/Users/me/project), which is the shape uriToPath has to
-// undo. These tests used to build "file://" + path -- two slashes --
-// which is not what any client sends and which quietly hid the
-// drive-letter defect uriToPath now handles.
 func fileURI(p string) string {
 	p = srcPath(p)
 	if !strings.HasPrefix(p, "/") {
@@ -310,12 +301,6 @@ func TestTrustLspWorkspaceRootConfines(t *testing.T) {
 	}
 }
 
-// trustHovers is every hover the document answers, concatenated. EVERY
-// column of the line is probed rather than one chosen one: a hover span
-// is measured in the INCLUDED document's own coordinates, so which
-// column carries the value is an artefact of the include's text, and the
-// invariant is that NO cursor position on a confined document reveals
-// the outside value.
 func trustHovers(t *testing.T, h *Handler, text string) string {
 	t.Helper()
 	trustDiags(t, h, text)
@@ -339,11 +324,6 @@ func trustHovers(t *testing.T, h *Handler, text string) string {
 	return all
 }
 
-// HOVER, not only diagnostics. The server confined the diagnostics it
-// published and left hover on the full system resolver, so a
-// workspace-confined session still resolved an escaping include the
-// moment a cursor rested on it (use-cases/REVIEW.md finding G). Twin:
-// workspace-root-confines-hover in ts/test/trust.test.ts.
 func TestTrustLspWorkspaceRootConfinesHover(t *testing.T) {
 	dir, root := trustLspWorld(t)
 	confined := trustInit(t,
@@ -427,14 +407,6 @@ func TestTrustLspExplicitOptionWins(t *testing.T) {
 	}
 }
 
-// A REAL CLIENT'S URI, on both platforms. The three-slash form is what
-// every editor sends: file:// then the absolute path, whose own leading
-// slash makes the third. On Windows that slash sits before the drive
-// letter and is uri syntax, not path -- and stripping only "file://"
-// left "/C:/Users/..." for the confinement to compare real paths
-// against. The two-slash form these tests used to build kept working
-// by accident and is kept here so the accident stays covered.
-// The twin is lsp-uri-to-path in ts/test/lsp.test.ts.
 func TestUriToPathHandlesDriveLetters(t *testing.T) {
 	for _, c := range []struct{ uri, want string }{
 		{"file:///tmp/proj", "/tmp/proj"},
@@ -453,17 +425,6 @@ func TestUriToPathHandlesDriveLetters(t *testing.T) {
 		// answer undefined, because its chain uses `??` and '' would
 		// survive it (ts/src/lsp.ts).
 		{"file://", ""},
-		// AN ESCAPE THAT DOES NOT DECODE TO TEXT IS LEFT ALONE, and
-		// there are two ways to fail. `%ZZ` is malformed and
-		// url.PathUnescape rejects it, where the canonical port's
-		// decodeURIComponent THREW a URIError until it was made to
-		// swallow it (ts/src/lsp.ts, percentDecode). `%FF` is
-		// well-formed and decodes to a raw byte -- a perfectly good
-		// Linux filename that a JavaScript string cannot hold, so
-		// TypeScript refuses it and this port used to accept it. Two
-		// ports, two workspace roots, for a uri a byte-oriented client
-		// really sends. They agree on BOTH classes now, and both
-		// classes are pinned here so neither can drift back.
 		{"file:///%ZZ/x", "/%ZZ/x"},
 		{"file:///C:/%ZZ", "C:/%ZZ"},
 		{"file:///tmp/%FF", "/tmp/%FF"},
@@ -486,13 +447,6 @@ func TestTrustLspNoRootStaysUnconfined(t *testing.T) {
 	}
 }
 
-// ONE BAD FIELD COSTS THAT FIELD, not the whole trust configuration.
-// The params were decoded into typed fields on a single struct, so a
-// client sending `"rootUri": 42` failed the Unmarshal outright and the
-// session opened UNCONFINED -- failing open on the one surface that
-// must not. The canonical port reads each field through its own
-// `typeof` guard and confines to rootPath regardless; the twin is
-// trust-lsp's malformed-field case in ts/test/trust.test.ts.
 func TestTrustLspOneBadFieldDoesNotDiscardTheRest(t *testing.T) {
 	_, root := trustLspWorld(t)
 

@@ -1,10 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The fold alone (docs/design/RENDER.0.md D9): the arms a spec row
-// cannot reach, because `render` hands the fold an instance the
-// vocabulary has shaped -- every default filled, every unit a map.
-// A caller of `renderValue` may hand it less, and the fold answers
-// for what it is given.
 
 import { test, describe } from 'node:test'
 import Assert from 'node:assert'

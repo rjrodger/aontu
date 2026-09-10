@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the cli-fmt cases in ts/test/cli.test.ts. What the two
-// ports must AGREE on -- the form -- is pinned by test/spec/fmt.tsv;
-// what each port owns (argument handling, exit codes, what goes to
-// which stream, the file rewritten or not) is here.
 
 import (
 	"bytes"
@@ -160,11 +156,6 @@ func TestFmtSyntaxErrorExits4(t *testing.T) {
 	}
 }
 
-// Standard input, formatted onto standard output, or listed under the
-// name <stdin>.
-// --lint points at the style the formatter never touches: the findings
-// on stderr as `file:line:col: rule: message`, nothing on stdout, and
-// the exit code left alone unless --strict asks.
 func TestFmtLintAndStrict(t *testing.T) {
 	_, files := fmtFiles(t, "credit_cents: 1\n", "x:{y:1}\n")
 	where := files[0] + ":1:1: style/key-case: key credit_cents holds an underscore; " +

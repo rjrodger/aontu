@@ -22,9 +22,6 @@ class GraphAtomVal extends FeatureVal_1.FeatureVal {
         this.akind = spec.akind ?? 'acyclic';
         this.invname = spec.invname;
         this.held = spec.held;
-        // A settled residual, like an unmet rel(): the bare atom is its
-        // own value, and a type() body carrying one must settle. Holding
-        // an unsettled value, it is exactly as done as the value.
         this.dc = undefined === this.held || true === this.held.done
             ? type_1.DONE : 0;
     }
@@ -36,7 +33,6 @@ class GraphAtomVal extends FeatureVal_1.FeatureVal {
         out.dc = this.dc;
         return out;
     }
-    // A rebuilt atom around a new held, at this atom's position.
     carry(ctx, held) {
         const out = new GraphAtomVal({ akind: this.akind, invname: this.invname, held }, ctx);
         (0, utility_1.propagateMarks)(this, out);
@@ -44,12 +40,6 @@ class GraphAtomVal extends FeatureVal_1.FeatureVal {
         out.path = this.path;
         return out;
     }
-    // The predicate is the key the atom sits on -- and a predicate is a
-    // D-1 NAME, by exactly fieldkey's rule: an atom landed anywhere
-    // else declares nothing. Registration is idempotent (the
-    // declaration set is a set) and happens at every drive, so
-    // whichever pass first sees the atom at its landed position records
-    // it.
     register(ctx) {
         const seg = this.path[this.path.length - 1];
         if ('string' !== typeof seg || !GRAPH_ATOM_NAME.test(seg)) {
@@ -85,11 +75,6 @@ class GraphAtomVal extends FeatureVal_1.FeatureVal {
                 this.dc = type_1.DONE;
                 return this;
             }
-            // The self-drive refines IN PLACE (the MapVal top-peer
-            // pattern): a fresh atom per pass changes object identity, so
-            // spread apply-once stamps and the entity merge's fast paths
-            // stop holding, and the enclosing bags re-open every pass --
-            // the service catalog never converged.
             const held = (0, unify_1.unite)(ctx, this.held, undefined, 'atom-drive');
             if (true === held.isNil) {
                 return held;

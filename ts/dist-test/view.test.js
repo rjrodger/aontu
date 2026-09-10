@@ -34,12 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// The views beyond what the shared rows can reach from an inline
-// source: files and includes (the layers panel's document names, the
-// ladder's file order, the poset's labels), and a verdict matrix the
-// subsumption checker cannot be made to produce. What the two ports
-// must AGREE on -- every figure, byte for byte, and every refusal --
-// is test/spec/view.tsv; the Go twin of this file is go/view_test.go.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
@@ -53,10 +47,6 @@ const write = (dir, name, src) => {
     Fs.writeFileSync(file, src);
     return file;
 };
-// A RECORDER THAT NAMES A PATH THE DOCUMENT DOES NOT HAVE
-// (use-cases/BUGS.md 70, the Go recorder's template ghost), and a
-// record nothing contributed to. This port's recorder writes neither,
-// so a recorder that does is handed in through the seam.
 class Ghostly extends provenance_1.Provenance {
     record(path, a, b, out) {
         super.record(path, a, b, out);
@@ -72,9 +62,6 @@ class Ghostly extends provenance_1.Provenance {
     }
 }
 (0, node_test_1.describe)('view', () => {
-    // A MULTI-FILE DOCUMENT: the layers panel names the files an include
-    // wrote into relative to the entry, and the ladder's rungs sort by
-    // file and then by column.
     (0, node_test_1.test)('view-over-included-files', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-view-'));
         write(dir, 'lib/base.aon', 'a: {x: **1 & integer, y: 2}\n');
@@ -89,9 +76,6 @@ class Ghostly extends provenance_1.Provenance {
         Assert.ok(layers.text.includes(Path.join('lib', 'base.aon')), layers.text);
         Assert.equal((0, view_1.view)(src, { kind: 'layers', path: entry, trust, maxRows: 1 })
             .errors?.[0].code, 'view_rows_exceeded');
-        // The rank-1 rung first; then the rank-0 rungs by file -- the FULL
-        // path, so `<dir>/entry.aon` before `<dir>/lib/base.aon` -- and,
-        // within entry.aon's one row, by column.
         const ladder = (0, view_1.view)(src, { kind: 'ladder', at: '$.a.x', path: entry, trust });
         Assert.equal(ladder.verdict, 'rendered');
         Assert.ok(ladder.text.includes('c0["**1<br/>pref | base.aon:1:8"]\n' +
@@ -124,11 +108,6 @@ class Ghostly extends provenance_1.Provenance {
         Assert.match(r.text, /^# layers {2}file=- {2}documents=2/);
         Assert.ok(r.text.includes('lib.aon'), r.text);
     });
-    // THE PROVENANCE RECORD CAN NAME A PATH THE DOCUMENT DOES NOT HAVE
-    // (use-cases/BUGS.md 70, the Go recorder's template ghost), and a
-    // record nothing contributed to. Neither is a row of the panel. This
-    // port's recorder writes neither, so a recorder that does is handed
-    // in through the seam.
     (0, node_test_1.test)('view-layers-skips-paths-the-document-lacks', () => {
         const r = (0, view_1.view)('a: {b: 1}', { kind: 'layers' }, { provenance: () => new Ghostly() });
         Assert.equal(r.verdict, 'rendered', JSON.stringify(r.errors));
@@ -148,9 +127,6 @@ class Ghostly extends provenance_1.Provenance {
         Assert.equal(r.errors?.[0].code, 'syntax');
         Assert.deepEqual(r.loss, []);
     });
-    // THE VIEW DOCUMENT'S TWO CALLER ERRORS, which the CLI cannot make:
-    // it always passes a path. What the declarations MEAN is
-    // test/spec/views.tsv.
     (0, node_test_1.test)('view-set-needs-the-path-of-its-declarations', () => {
         for (const opts of [undefined, { views: '' }]) {
             const r = (0, view_1.viewSet)('a: 1', opts);
@@ -159,10 +135,6 @@ class Ghostly extends provenance_1.Provenance {
             Assert.equal(r.errors?.[0].code, 'view_document_shape');
         }
     });
-    // A VERDICT MATRIX THE CHECKER CANNOT BE MADE TO PRODUCE: a chain
-    // the closure implies but the checker measured as does_not_subsume
-    // is reported as order_intransitive rather than absorbed, and a
-    // class label with a line terminator is refused.
     (0, node_test_1.test)('view-poset-injected-verdicts', () => {
         const compare = (g, s) => {
             const pair = g.label + s.label;

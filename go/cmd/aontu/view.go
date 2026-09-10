@@ -33,27 +33,10 @@ var viewEdges = []string{"upward", "all", "none"}
 // error frames.
 var viewStyles = []string{"auto", "none", "ansi", "css"}
 
-// viewStyleFor is `--style auto` resolved, which only the command can
-// do. The mechanism is the PROFILE's and the library knows it -- an SVG
-// carries its stylesheet, which is what makes a figure stand alone.
-// What the library cannot know is whether the DESTINATION is a
-// terminal, so that is the only thing decided here: escapes on the text
-// profile when stdout is a terminal and NO_COLOR is unset, the same two
-// conditions the error frames use. An empty answer leaves the profile's
-// own default in place. Mirrors viewStyleOf in ts/src/cli.ts.
 func viewStyleFor(asked, as string, stdout io.Writer) string {
 	if "" != asked && "auto" != asked {
 		return asked
 	}
-	// STDOUT'S OWN TERMINAL-NESS, and NO_COLOR read here rather than
-	// through the library's colour gate. The figure goes to STDOUT and
-	// the error frames go to STDERR, and they are not the same
-	// destination: run() has already called SetColor for stderr, so
-	// asking the library would answer the wrong question twice -- no
-	// escapes for `aontu view tree m.aon 2>/dev/null` at a terminal, and
-	// escapes into the pipe for `aontu view tree m.aon | less`. The
-	// NO_COLOR rule is the one no-color.org states: set, to anything but
-	// empty, means no colour.
 	if "text" == as && nil == colorFor(stdout) && "" == os.Getenv("NO_COLOR") {
 		return "ansi"
 	}
@@ -200,12 +183,6 @@ func runView(argv []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// ESCAPES NEVER GO INTO A FILE. A pinned golden holding terminal
-	// control codes is not a golden anybody can read, and a byte
-	// comparison against one would fail on the reader's terminal
-	// settings. `auto` resolves to nothing there on its own; asking for
-	// `ansi` explicitly is a usage error rather than a silent
-	// downgrade, so a script that wanted colour is told where it went.
 	if "ansi" == style && ("" != out || "" != opts.Views) {
 		io.WriteString(stderr,
 			"aontu: --style ansi writes to a terminal, not to a file\n")
@@ -215,10 +192,6 @@ func runView(argv []string, stdout, stderr io.Writer) int {
 	// THE VIEW DOCUMENT draws every figure a document declares, so it
 	// names no kind: the declarations do, one each.
 	if "" != opts.Views {
-		// A declaration names its own profile, so the style is left to
-		// each figure's own default; `--style none` still reaches every
-		// one of them, which is how a host page that binds the CSS
-		// variables asks for eight figures without eight stylesheets.
 		opts.Style = viewStyleFor(style, "", stdout)
 		return runViewSet(rest, &opts, trust, format, check, strict, out, stdout, stderr)
 	}
@@ -291,18 +264,6 @@ func runView(argv []string, stdout, stderr io.Writer) int {
 
 	report := aontuForFileTrust(files[0], trust).View(srcs[0], &opts)
 
-	// AN EMPTY FIGURE IS THE SAME BYTES AS A DRAWN ONE MINUS ITS
-	// CONTENT, and every profile spells "empty" differently: text draws
-	// nothing at all, mermaid still draws its `flowchart LR` header, the
-	// matrix still prints its count line. Rather than teach this one
-	// place each of those spellings -- a list that goes stale the first
-	// time a profile gains a header -- ASK THE SAME KIND TO DRAW AN
-	// EMPTY DOCUMENT and compare. Equal texts mean this document
-	// contributed nothing to the figure, whatever the profile.
-	//
-	// It costs one drawing of `{}`, which is the cheapest document
-	// there is, and only on a run that produced a figure at all.
-	// Mirrors ts/src/cli.ts.
 	if "error" != report.Verdict && nil != report.Text {
 		bare := aontuForFileTrust(files[0], trust).View("{}", &opts)
 		if "error" != bare.Verdict && nil != bare.Text &&
@@ -355,13 +316,6 @@ func runView(argv []string, stdout, stderr io.Writer) int {
 	return viewExit[report.Verdict]
 }
 
-// `aontu view --views <path> <file>`: every figure the document
-// declares, from one evaluation, all or nothing.
-//
-// A declared `out` is resolved against the DOCUMENT's own directory,
-// not the caller's: a view document is committed beside the figures it
-// gates, and a gate that only passes from one working directory is not
-// a gate.
 func runViewSet(rest []string, opts *aontu.ViewOptions, trust trustArg,
 	format string, check, strict bool, out string,
 	stdout, stderr io.Writer) int {

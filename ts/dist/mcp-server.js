@@ -4,28 +4,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LineCodec = void 0;
 exports.parseArgs = parseArgs;
 exports.main = main;
-// Aontu MCP server (stdio).
-//
-//   aontu-mcp [--root <dir>]
-//
-// Speaks the Model Context Protocol over stdio: newline-delimited
-// JSON-RPC 2.0, one message per line. This binary is intentionally
-// thin — every tool and every protocol decision lives in the reusable
-// library ./mcp, the same three-layer split the language server uses
-// (docs/lsp.md).
-//
-// NDJSON, not the LSP's Content-Length framing: MCP stdio transport
-// is line-delimited, and a server that invented its own framing would
-// not be reachable by any client.
-//
-// The one startup decision is the PATH CAPABILITY: `--root <dir>`
-// grants the served evaluation the CLI's `--trust root:<dir>` posture
-// — includes resolve confined below the root, and every tool's
-// document arguments accept `<name>Path` file alternatives, confined
-// the same way. Without it the server denies all includes and refuses
-// path arguments (./mcp). The root is realpath'd HERE, once, so the
-// confinement prefix the library compares against is the real
-// directory, not a spelling of it.
 const node_fs_1 = require("node:fs");
 const mcp_1 = require("./mcp");
 const aontu_1 = require("./aontu");
@@ -121,10 +99,6 @@ function main(stdin = process.stdin, write = (line) => void process.stdout.write
         exit(2);
         return undefined;
     }
-    // FAIL FAST on a root that is not a real directory: every later
-    // call would refuse anyway, but a misconfigured server that answers
-    // a thousand confusing refusals is worse than one that says so at
-    // startup.
     let root;
     if (null != args.root) {
         try {

@@ -5,46 +5,6 @@ exports.viewDefaultProfile = viewDefaultProfile;
 exports.view = view;
 exports.viewTree = viewTree;
 exports.viewSet = viewSet;
-// THE VIEWS (docs/design/VIEWS.0.md and VIEWS-ORDER.0.md): figures of
-// an evaluated document, drawn as deterministic text a golden diff can
-// check. Nine kinds:
-//
-//   doc      the shape of the document itself
-//   lattice  the language's value lattice, with the document's own
-//            values placed on it
-//   tree     the dependency tree of one relation
-//   matrix   the dependency matrix over one relation, in canon or
-//            partition order, with closure and the unmirrored mark
-//   graph    the node-link drawing, as Mermaid, DOT or an ER diagram
-//   layer    the architecture layers: stacked bands, one per value of
-//            a field, with the relation's upward edges called out
-//   sets     the set-intersection panel over a named set family
-//   layers   which document contributed which path (provenance)
-//   ladder   the meet ladder at one path (the `why` record, drawn)
-//   poset    the subsumption order over a set of documents
-//
-// A view consumes a REPORT, never the Val tree: the edge set `graphOf`
-// derives (ts/src/graph.ts), the relation declarations, the generated
-// value, the provenance record, the subsumption verdict. That is what
-// keeps the two ports at parity -- Go's exported Val interface is five
-// methods, and a Val-walking view would be TypeScript-only on the day
-// it landed.
-//
-// Everything here is deterministic: nodes and edges are sorted by code
-// point before emission, nothing iterates a map in insertion order, no
-// coordinate is computed and no number is formatted beyond its decimal
-// digits. The Go twin is go/view.go; what the two ports must agree on
-// -- the rendered text, the loss report and the refusals -- is
-// test/spec/view.tsv.
-//
-// EVERY RUN CARRIES A LOSS REPORT: what the figure could not draw, or
-// drew differently from the model, aggregated by code with a count.
-// Three codes are informational -- `edges_deduped` (several written
-// positions, one fact), `inverse_suppressed` (a declared mirror,
-// implied by the edge drawn) and `crossings` (a property of the
-// emitted order, not of the model) -- and leave the verdict `rendered`. Every
-// other code makes it `lossy`, which `--strict` refuses: a figure that
-// quietly omits things is the failure this capability exists to avoid.
 const node_path_1 = require("node:path");
 const aontu_1 = require("./aontu");
 const vet_1 = require("./vet");
@@ -54,9 +14,6 @@ const provenance_1 = require("./provenance");
 const query_1 = require("./query");
 const subsume_1 = require("./subsume");
 const utility_1 = require("./utility");
-// The text profile's mechanism: the eight named colours, `bold` and
-// `dim`, and nothing else. `label` is unstyled -- an entity's own name
-// is the figure's content, not a mark about it.
 const SGR = {
     label: '', muted: '2', rule: '2', direct: '1', closure: '36',
     unmirrored: '33', upward: '31', repeat: '2', bar: '36', hole: '2',
@@ -65,10 +22,6 @@ const PLAIN = (_role, text) => text;
 const ANSI = (role, text) => '' === SGR[role] || '' === text
     ? text : `\x1b[${SGR[role]}m${text}\x1b[0m`;
 const painter = (style) => 'ansi' === style ? ANSI : PLAIN;
-// The style a figure gets when the caller named none. An SVG carries
-// its stylesheet, which is what makes it standalone and what every
-// pinned golden holds; everything else carries no mechanism, since a
-// library cannot see whether its output is a terminal.
 const styleOf = (style, as) => style ?? ('svg' === as ? 'css' : 'none');
 // Each kind's profiles, the first being its default. There is no
 // global default, because there is no sensible text form of a
@@ -109,18 +62,9 @@ function finding(code, cls, path, message, note) {
         ...(undefined === note ? {} : { note }),
     };
 }
-// A relation that draws nothing is a typo, and is refused for the same
-// reason a misspelled root is: an empty figure and a misspelled name
-// are the same file on disk, so the one that means nothing must not be
-// renderable. NOT `refer_unresolved`: a relation name is not an
-// address.
 function relationFinding(relation, have) {
     return finding('view_relation_unknown', 'reference', '$', `${relation} names no relation with edges in this document.`, 'relations with edges: ' + have.join(', '));
 }
-// A root is a node of the DRAWN graph, the rule the node set follows:
-// a path that exists in the document but takes no part in the relation
-// is not in the drawing, and a root naming it is refused rather than
-// drawn as an empty tree.
 function rootFinding(root, relation, nodes) {
     return finding('refer_unresolved', 'reference', '$', `${root} is not a node of the ` +
         `${undefined === relation ? '' : relation + ' '}graph.`, 0 === nodes.length ? undefined : 'nodes in the graph: ' + nodes.join(', '));
@@ -141,20 +85,6 @@ function lineBreakFinding(path) {
 function under(path, at) {
     return undefined === at || path === at || path.startsWith(at + '.');
 }
-// The deduplicated edge set, with the hidden contributions and the
-// out-of-scope edges removed and the loss report told.
-//
-// `graphOf` emits one edge per WRITTEN POSITION by design, because each
-// `at` is an editable site, and an identity-merged model declares each
-// entity at two positions. Deduplication is part of the extraction
-// contract, not a renderer's private cleverness, and the count is
-// reported so nobody has to guess which number they are looking at.
-//
-// A HIDDEN edge -- one written inside a `hide()`-marked subtree -- is
-// not drawn. A figure is committed to a repository, so anything drawn
-// is disclosed, and the subtree's whole purpose is to say "not
-// output". It is reported with its path instead, and `--strict`
-// refuses the figure.
 function triplesOf(graph, at, loss) {
     const edges = graph.edges;
     const hidden = [];
@@ -177,10 +107,6 @@ function triplesOf(graph, at, loss) {
             detail: hidden.sort(keyorder_1.cmpCodePoint),
         });
     }
-    // A link under an UNRESOLVED DISJUNCTION is not an edge (ADR-007),
-    // and the figure says so rather than dropping it in silence: the
-    // document has not decided, and a drawing that quietly picked an arm
-    // would be inventing the decision.
     const undecided = (graph.disjunct ?? []).filter((p) => under(p, at));
     if (0 < undecided.length) {
         loss.push({
@@ -211,21 +137,6 @@ function nodesOf(triples) {
     }
     return [...ns].sort(keyorder_1.cmpCodePoint);
 }
-// THE SHORTEST SUFFIX THAT IS STILL UNIQUE, as a node's visible label.
-//
-// A node's name IS its path (ADR-014), and the paths in a real model
-// are long: eight nodes labelled `$.catalog.domains.identity.services.auth`
-// and its siblings is a correct diagram nobody can read. The label is
-// therefore the fewest trailing segments that still tell this node from
-// every other in the same drawing -- `auth` where that is unambiguous,
-// `identity.auth` where it is not.
-//
-// The rule is a function of the node SET, so a drawing is deterministic
-// while two drawings of different slices may label the same node
-// differently -- which is correct, because uniqueness is a property of
-// the set being drawn. The search is unbounded on purpose: at the full
-// segment count the candidate is the whole path, which no other node
-// shares, so it always ends.
 function labelsOf(nodes) {
     const segs = new Map(nodes.map((n) => [n, n.replace(/^\$\.?/, '').split('.')]));
     const out = new Map();
@@ -272,13 +183,6 @@ const lpad = (s, n) => ' '.repeat(Math.max(0, n - s.length)) + s;
 const widest = (ss) => ss.reduce((w, s) => Math.max(w, s.length), 0);
 // ---------------------------------------------------------------------
 // Identifiers and escapes (VIEWS.0.md, "The renderers and the profiles")
-// Injective by construction, with two disjoint prefixes and one
-// predicate: `n_` + the name when its first code point is an ASCII
-// letter and every code point is an ASCII letter, digit or `_`;
-// otherwise `nq_` + the name with every other code point replaced by
-// `_` and its lower-case hex. A code-point class test, not a regular
-// expression: pattern matching is the one subsystem with a stated
-// RE2-versus-RegExp divergence, and an encoder runs on every name.
 function ident(name) {
     const letter = (c) => (65 <= c && c <= 90) || (97 <= c && c <= 122);
     const digit = (c) => 48 <= c && c <= 57;
@@ -295,11 +199,6 @@ function ident(name) {
     }
     return out;
 }
-// One pass, per code point, from a table keyed by DECIMAL CODE POINT.
-// Mermaid: numeric entities only, never HTML names, so there is no
-// name table to diverge; 124 is in it because `|` is the edge-label
-// delimiter. DOT: the two escapes that also make it impossible for user
-// text to forge DOT's own `\n` / `\l` / `\r` justification escapes.
 const MERMAID_ESC = {
     34: '#34;', 35: '#35;', 38: '#38;', 60: '#60;', 62: '#62;',
     123: '#123;', 124: '#124;', 125: '#125;',
@@ -313,21 +212,9 @@ function escape(text, table) {
     }
     return out;
 }
-// U+000A, U+000D, U+2028 and U+2029: the four code points that end a
-// line somewhere.
 function hasLineBreak(text) {
     return /[\n\r\u2028\u2029]/.test(text);
 }
-// ---------------------------------------------------------------------
-// SVG (VIEWS.0.md, "No SVG in v1" -- the phase after the text kinds)
-//
-// The cell-based kinds draw into SVG under the INTEGER RULE: every
-// coordinate is a whole number of a fixed cell -- 8 units per
-// character, 20 per line -- from the same counts that lay the text
-// figure out, so no font is measured and both ports emit the same
-// bytes. The reader's browser shapes the text; the geometry is ours.
-// A figure is standalone (its own style block, with default colours)
-// and themeable (every colour a CSS variable a host page can set).
 const CH = 8;
 const LH = 20;
 const PAD = 8;
@@ -353,11 +240,6 @@ const svgEsc = (s) => escape(s, SVG_ESC);
 // The document: a viewBox the size of the figure, the style, and the
 // parts, one per line, so the bytes read as a figure and diff as one.
 function svgDoc(w, h, about, parts, style) {
-    // The CLASSES are structure and are always written -- a rect that
-    // does not say whether it is a direct cell or a closure cell is not
-    // a figure. What `--style none` drops is the STYLESHEET, for a host
-    // page that has already bound the variables and would otherwise
-    // carry one copy of these rules per embedded figure.
     return [
         `<svg xmlns="http://www.w3.org/2000/svg" class="av" viewBox="0 0 ${w} ${h}" ` +
             `width="${w}" height="${h}" role="img" aria-label="${svgEsc(about)}">`,
@@ -381,17 +263,6 @@ function svgRect(x, y, w, h, cls) {
 function svgPath(d, cls) {
     return `<path d="${d}" class="${cls}"/>`;
 }
-// THE EDGE SET WITH DECLARED INVERSE PAIRS COLLAPSED to one logical
-// edge, the tree's way: a relation with a declared inverse arrives
-// twice -- once per direction -- and drawing it raw doubles every such
-// relation.
-//
-// WHAT IS NOT COLLAPSED IS A MUTUAL RELATION: `a dependsOn b` and `b
-// dependsOn a` are two facts under ONE key, and folding them into a
-// single undirected edge erases the shortest cycle a model can have.
-// The collapse is therefore per KEY PAIR rather than per node pair --
-// two keys facing each other are an inverse, one key facing itself is
-// a loop -- which is what makes `acyclic()`'s refusal drawable.
 function collapse(triples, relation) {
     const pairs = new Map();
     for (const e of triples) {
@@ -406,15 +277,6 @@ function collapse(triples, relation) {
     }
     const out = [];
     for (const group of pairs.values()) {
-        // ONE KEY WINS THE PAIR, and every edge written under it stands.
-        // The named relation wins; otherwise the code-point-least key,
-        // which is arbitrary but stable. Keeping every edge under the
-        // winner is what preserves a MUTUAL relation, while the losing keys
-        // are the declared inverses, implied by the winner and not drawn
-        // again. With a relation named, its inverse is implied and naming
-        // both would double the label; without one, every key is shown,
-        // because picking silently would hide that two predicates are in
-        // play.
         const keys = keysOf(group);
         const named = undefined !== relation && keys.includes(relation);
         const winner = named ? relation : keys[0];
@@ -430,11 +292,6 @@ function collapse(triples, relation) {
 }
 function drawTree(all, relation, roots, max, as, style) {
     const paint = painter(style);
-    // With a relation named, the tree is OVER THAT RELATION. A node-link
-    // diagram can label each edge and so draw every relation at once; a
-    // tree cannot without becoming unreadable, and walking two relations
-    // as though they were one would draw a containment the model does
-    // not state.
     const kept = undefined === relation
         ? all : all.filter((e) => e.label === relation);
     if (undefined !== relation && 0 === kept.length && 0 < all.length) {
@@ -459,10 +316,6 @@ function drawTree(all, relation, roots, max, as, style) {
     for (const list of kids.values()) {
         list.sort((x, y) => (0, keyorder_1.cmpCodePoint)(label(x.to), label(y.to)));
     }
-    // The relation is named on the branch only where more than one is
-    // drawn. Naming the single relation on every line of a tree that has
-    // exactly one is noise; leaving it off where there are two would
-    // hide which edge was walked.
     const many = 1 < new Set(kept.map((e) => e.label)).size;
     const byLabel = (a, b) => (0, keyorder_1.cmpCodePoint)(label(a), label(b));
     let named;
@@ -474,10 +327,6 @@ function drawTree(all, relation, roots, max, as, style) {
         named = [...new Set(roots)].sort(byLabel);
     }
     else {
-        // A root is a node nothing depends on. A SELF-EDGE does not make a
-        // node depended upon for this purpose: a module that names itself
-        // would otherwise stop being a root and take its whole subtree out
-        // of the drawing.
         const depended = new Set(kept.filter((e) => e.to !== e.from).map((e) => e.to));
         named = nodes.filter((n) => !depended.has(n)).sort(byLabel);
     }
@@ -492,11 +341,6 @@ function drawTree(all, relation, roots, max, as, style) {
         out.push(label(root));
         rows.push({ depth: 0, text: label(root), mark: '', parent: rows.length });
         expanded.add(root);
-        // ITERATIVE, with the ancestor chain carried as a set that is added
-        // to on the way down and removed from on the way up. A recursive
-        // walk is O(depth) stack frames and a deep dependency chain is a
-        // real shape, so the drawing of a model must not depend on how deep
-        // the interpreter lets it go.
         const chain = new Set([root]);
         const stack = [{ node: root, prefix: '', at: 0, row: rows.length - 1 }];
         while (0 < stack.length) {
@@ -533,13 +377,6 @@ function drawTree(all, relation, roots, max, as, style) {
     for (const root of named) {
         draw(root);
     }
-    // EVERY NODE IS DRAWN. A component whose nodes all depend on each
-    // other has no node nothing depends on, so the derived roots miss it
-    // entirely -- and a graph with roots elsewhere would drop it in
-    // silence, which is the one thing a drawing must not do. The
-    // least-labelled node left is taken as a root of its own, until
-    // nothing is left. An explicitly named root is a request for one
-    // subtree and is left alone.
     if (0 === roots.length) {
         for (const n of nodes) {
             if (!expanded.has(n)) {
@@ -553,10 +390,6 @@ function drawTree(all, relation, roots, max, as, style) {
             : out.join('\n'),
     };
 }
-// The tree as SVG: one line per row, each node indented one unit per
-// depth, joined to its parent by a path that drops from the parent's
-// row and turns in to the child. The marks are muted text after the
-// label.
 function treeSvg(rows, about, style) {
     const U = 24;
     const parts = [];
@@ -581,40 +414,6 @@ function treeSvg(rows, about, style) {
 }
 // ---------------------------------------------------------------------
 // The document tree
-// THE SHAPE OF THE MODEL ITSELF, which no other kind draws. Every
-// other figure here reads a REPORT -- the edge set, the provenance
-// record, the subsumption order -- and so can only draw a document
-// that has links, contributions or peers. A reader meeting a model for
-// the first time wants the plainer thing first: what is in it, and how
-// it is arranged.
-//
-// This is `get --keys --types` as a picture, and it reads the same
-// walk: map keys in code-point order, list indices in order, and a
-// leaf's KIND rather than its value -- the canon of a scalar's type,
-// not the scalar. Values are what the document is for; the shape is
-// what a reader needs before any of them mean anything.
-//
-// DEPTH IS A BOUND, NOT AN ELISION MARK. Below it the subtree is not
-// drawn and the row says how many keys were not drawn, because a tree
-// that stops without saying so is the one thing a structural drawing
-// must not be.
-// ---------------------------------------------------------------------
-// THE VALUE LATTICE, and where this document's values sit on it.
-//
-// THE SCAFFOLD IS THE LANGUAGE'S, NOT THE DOCUMENT'S: `top` at the
-// join, the four kind families under it, `path()` under `string`, the
-// four numeric leaves under `number`, and `nil` at the meet. Every
-// Aontu document is drawn against the SAME shape, which is what makes
-// two of these figures comparable -- and what makes this a view of the
-// language that a document annotates, rather than a picture assembled
-// out of whatever the document happened to contain.
-//
-// See docs/unification.md for what the ordering means.
-// The scaffold: each kind and the one above it. The ENGINE decides
-// which kind sits under which -- kindParent in ts/src/val/ScalarKindVal.ts,
-// and its twin in go/scalar.go -- and a test in each port holds this
-// table to it, so adding a kind to the engine makes the figure grow a
-// node rather than quietly leave one out.
 const LATTICE_PARENT = [
     ['string', 'top'],
     ['path()', 'string'],
@@ -626,12 +425,6 @@ const LATTICE_PARENT = [
     ['boolean', 'top'],
     ['null', 'top'],
 ];
-// The columns, left to right: the MINIMAL kinds, the ones with nothing
-// under them. Everything else is drawn centred over the columns it
-// covers, so this list alone fixes the figure's horizontal order -- and
-// it puts the kinds that reach the bottom from higher up (`boolean`,
-// `null`) on the outside, where their lines pass the numeric fan
-// rather than crossing it.
 const LATTICE_COLS = ['path()', 'integer', 'float', 'biginteger', 'bigdecimal', 'boolean',
     'null'];
 // The rows, top to bottom. `top` and `nil` are the endpoints and are
@@ -656,10 +449,6 @@ function latticeAncestors(name) {
     }
     return out;
 }
-// The columns one node covers: its own if it is minimal, otherwise
-// every column beneath it. `nil` is beneath everything and above
-// nothing, so the walk finds no column under it and the whole width is
-// its span -- which is where it belongs.
 function latticeSpan(name) {
     const own = LATTICE_COLS.indexOf(name);
     if (-1 !== own) {
@@ -670,27 +459,11 @@ function latticeSpan(name) {
         .filter((i) => -1 !== i);
     return 0 === under.length ? LATTICE_COLS.map((_, i) => i) : under;
 }
-// True when `parent` is immediately above `child`. NIL IS COVERED BY
-// EVERY MINIMAL KIND: it is the meet of all of them, and the only node
-// the parent table does not name, because nothing in the engine ever
-// answers `nil` as a superior.
 function latticeCovers(parent, child) {
     return 'nil' === child
         ? -1 !== LATTICE_COLS.indexOf(parent)
         : LATTICE_PARENT.some(([c, p]) => c === child && p === parent);
 }
-// WHERE ONE VALUE SITS, or undefined for a value that is not at a
-// single point. The answers are the kinds of thing a document holds:
-//
-//   a CONCRETE scalar sits at its kind -- `8080` is an `integer`, and
-//   `superior()` is the lattice's own answer to which;
-//   a KIND MARKER sits AT that kind -- `integer` written as a schema
-//   is the node itself, not a value under it;
-//   everything else -- a constraint, an unresolved disjunction, a
-//   reference -- is not one point. `integer & min(1)` is a REGION of
-//   the lattice and `*8080 | integer` is two places at once, so
-//   drawing either at a node would be a claim the figure cannot
-//   support. Both are counted into the loss report instead.
 function latticePoint(v) {
     const node = throughDoc(v);
     if (true === node?.isNil) {
@@ -699,10 +472,6 @@ function latticePoint(v) {
     if (true === node?.isTop) {
         return 'top';
     }
-    // A kind marker names its own node; a concrete scalar names the node
-    // above it. Either way the name has to BE one of the figure's: a
-    // kind the scaffold does not draw has nowhere to go, and saying so
-    // through the loss report is the only honest answer.
     const name = true === node?.isScalarKind ? String(node.canon)
         : true === node?.isScalar ? String(node.superior?.().canon) : '';
     return LATTICE_NODES.includes(name) ? name : undefined;
@@ -749,21 +518,10 @@ function latticeCensus(root, at) {
     unplaced.sort(keyorder_1.cmpCodePoint);
     return { counts, unplaced };
 }
-// What one node is written as: its name, and the count of the
-// document's values that landed on it. A node with nothing at it is
-// still drawn -- the shape is the language's, and a figure that left
-// the empty nodes out would be a different lattice for every document.
 function latticeCell(counts, name) {
     const n = (counts.get(name) ?? []).length;
     return 0 === n ? name : `${name} (${n})`;
 }
-// The horizontal layout, in characters: one column per minimal kind,
-// each as wide as the widest cell drawn over it plus a gutter, and the
-// centre of each. The spanning nodes are narrower than the span they
-// cover, so none of them needs a width of its own. The gutter is THREE
-// because the SVG draws a box a character wider than its text: two of
-// those characters are the box's own padding and the third is the gap
-// between one box and the next.
 const LATTICE_GUTTER = 3;
 function latticeCols(counts) {
     const w = LATTICE_COLS.map((col) => LATTICE_GUTTER + Math.max(...LATTICE_ROWS.flat()
@@ -785,23 +543,12 @@ function latticeAt(name, cx) {
     const span = latticeSpan(name);
     return Math.round((cx[span[0]] + cx[span[span.length - 1]]) / 2);
 }
-// The box-drawing glyph for one column of a rule, from the four facts
-// that meet there: whether the rule continues left and right, and
-// whether a stem leaves upward and downward. Deciding it this way is
-// what lets `number` -- which is BOTH one of the many under `top` and
-// the one above the numeric leaves -- come out as the join it is,
-// without a case written for it. The table is total, so no column has
-// to be asked whether it has a glyph.
 const LATTICE_GLYPH = {
     '....': '─', '...d': '│', '..u.': '│', '..ud': '│',
     '.r..': '─', '.r.d': '┌', '.ru.': '└', '.rud': '├',
     'l...': '─', 'l..d': '┐', 'l.u.': '┘', 'l.ud': '┤',
     'lr..': '─', 'lr.d': '┬', 'lru.': '┴', 'lrud': '┼',
 };
-// The figure is PAINTED rather than assembled from padded strings: the
-// nodes have to line up with the rules that join them, and a count
-// changes a cell's width -- so the geometry is settled first, in
-// columns, and every glyph is then written at a place already known.
 function latticeText(counts, style) {
     const paint = painter(style);
     const { cx, width } = latticeCols(counts);
@@ -817,9 +564,6 @@ function latticeText(counts, style) {
             roles[y][x + i] = role;
         }
     };
-    // A cell is its name and, where the document reached it, the count:
-    // two roles, so a terminal can mute the second without touching the
-    // first.
     const cell = (y, name) => {
         const text = latticeCell(counts, name);
         const left = latticeAt(name, cx) - Math.floor(text.length / 2);
@@ -844,9 +588,6 @@ function latticeText(counts, style) {
         }
         stems(y, by);
     };
-    // Four node rows and three joins. `open` is every node whose line
-    // downward has not been drawn yet, which is what carries `boolean`
-    // and `null` past the numeric row to the bottom rule.
     let open = [];
     let y = 0;
     for (let r = 0; r < LATTICE_ROWS.length; r++) {
@@ -880,14 +621,6 @@ function latticeText(counts, style) {
         return out;
     }).join('\n');
 }
-// The same figure as SVG, off the same column layout, so the two
-// profiles are one drawing in two grammars rather than two drawings.
-// A node the document REACHES is drawn with the ordinary rule stroke
-// (`av-box`) and one it does not with the faint one (`av-cell`),
-// because every node is drawn whether this document reaches it or not
-// and a reader has to see which is which without counting. NO NEW
-// CLASS: those two already mean a box and a faint box, so a host page
-// that themed the other figures gets this one for nothing.
 function latticeSvg(counts, at, style) {
     const ROWH = 3 * LH;
     const BOXH = 26;
@@ -897,11 +630,6 @@ function latticeSvg(counts, at, style) {
     LATTICE_ROWS.forEach((row, r) => row.forEach((name) => rowOf.set(name, r)));
     const x = (name) => PAD + latticeAt(name, cx) * CH;
     const y = (name) => PAD + BOXH / 2 + rowOf.get(name) * ROWH;
-    // Edges first, so a box always sits over the lines that reach it.
-    // The horizontal jog is placed just above the CHILD rather than
-    // halfway down, which is what keeps `boolean` and `null` -- three
-    // rows from `top` to `nil` with nothing between -- clear of the
-    // numeric row they pass.
     const edges = [...LATTICE_PARENT,
         ...LATTICE_COLS.map((col) => ['nil', col])];
     for (const [child, parent] of edges) {
@@ -913,9 +641,6 @@ function latticeSvg(counts, at, style) {
         const text = latticeCell(counts, name);
         const w = (text.length + 2) * CH;
         parts.push(svgRect(x(name) - w / 2, y(name) - BOXH / 2, w, BOXH, name === text ? 'av-cell' : 'av-box'));
-        // The name and the count in ONE text element, as the tree does it:
-        // two runs on one baseline, so the count is muted without the
-        // figure having to place it.
         parts.push(`<text x="${x(name)}" y="${y(name) + 5}" text-anchor="middle">` +
             `<tspan class="av-t">${svgEsc(name)}</tspan>` +
             `<tspan class="av-m">${svgEsc(text.slice(name.length))}</tspan></text>`);
@@ -923,11 +648,6 @@ function latticeSvg(counts, at, style) {
     const placed = [...counts.values()].reduce((n, p) => n + p.length, 0);
     return svgDoc(width * CH + 2 * PAD, 2 * PAD + BOXH + (LATTICE_ROWS.length - 1) * ROWH, `Value lattice at ${at}: ${placed} value(s) placed`, parts, style);
 }
-// The figure. The row count is fixed -- the lattice is the language's,
-// and no option makes it smaller -- so `--max-rows` below it is still a
-// refusal, because a figure that quietly overran a stated bound is the
-// thing every other kind here refuses to be; the message says raise
-// rather than narrow.
 const LATTICE_LINES = 3 * LATTICE_ROWS.length - 2;
 function drawLattice(root, o, max, loss) {
     const at = o.at ?? '$';
@@ -966,13 +686,6 @@ const DEFAULT_DOC_DEPTH = 3;
 function docKids(v) {
     const node = throughDoc(v);
     if (true === node?.isMap) {
-        // AN ALIAS DECLARATION IS NOT PART OF THE DOCUMENT
-        // (docs/reference-language.md, "Aliases"): it does not generate
-        // and it does not appear in canon. It IS a key of the root map in
-        // the value tree, which `get --keys` reports and this does not --
-        // a figure of the document's shape that showed `%Cents` beside
-        // `customers` would be drawing the declaration as data
-        // (use-cases/BUGS.md 74).
         return Object.keys(node.peg)
             .filter((k) => !k.startsWith('%')).sort(keyorder_1.cmpCodePoint);
     }
@@ -995,13 +708,6 @@ function throughDoc(v) {
 // is the constraint and for a scalar its value. Long canons are cut,
 // since the figure is the shape and not the data.
 function docLeaf(v) {
-    // A CONTAINER WITH NOTHING IN IT IS NOT A LEAF, and calling it one
-    // by writing nothing after the key would make it read as a value the
-    // figure declined to describe. Its canon says what it is -- `{}`,
-    // `[]`, or a template a spread wrote and no member filled.
-    //
-    // `canon` is a string on every Val, so there is no other-type arm to
-    // take; the cut is the only decision here.
     const canon = throughDoc(v).canon;
     return 32 < canon.length ? canon.slice(0, 29) + '...' : canon;
 }
@@ -1037,11 +743,6 @@ function drawDoc(root, o, max, loss) {
         const child = throughDoc(throughDoc(frame.node).peg[key]);
         const kids = docKids(child);
         const under = stack.length < depth;
-        // A container the depth bound stops at says how many keys are not
-        // drawn; a leaf says what it is.
-        // A leaf says what it is and a stopped container says how many
-        // keys it holds; both are written after the key with one space,
-        // and neither is ever empty (a canon has at least one character).
         const mark = 0 === kids.length ? ' ' + docLeaf(child)
             : under ? '' : ` (${kids.length})`;
         if (0 < kids.length && !under) {
@@ -1074,15 +775,6 @@ function drawDoc(root, o, max, loss) {
 }
 // ---------------------------------------------------------------------
 // The matrix (Ghoniem et al. 2004; Sangal et al. 2005)
-// THE PARTITION ORDER: leaves first. Repeatedly take every unplaced
-// node whose every successor is placed, in label order, as the next
-// layer. That is a topological sort with a canonical tiebreak, and on
-// an acyclic relation it yields a perfect lower triangle -- which IS
-// the acyclicity proof, in the picture's own shape. Where nothing can
-// be placed the relation has a cycle: the least unplaced node is
-// placed alone, the strongly connected component it sits in is
-// reported as `cycle_block`, and the walk continues -- the cycle's
-// above-diagonal cell is then the acyclicity violation, drawn.
 function partition(nodes, succ, reach, label, loss) {
     const order = nodes.slice().sort((a, b) => (0, keyorder_1.cmpCodePoint)(label(a), label(b)));
     const placed = new Set();
@@ -1111,9 +803,6 @@ function partition(nodes, succ, reach, label, loss) {
     }
     return out;
 }
-// The relation a matrix draws: the one named, else the only one with
-// edges, else a refusal -- a matrix over two predicates at once would
-// draw a containment the model does not state.
 function pickRelation(relation, keys) {
     if (undefined !== relation) {
         return keys.includes(relation) || 0 === keys.length
@@ -1205,11 +894,6 @@ const CELL_CLASS = {
     X: 'av-direct', '!': 'av-unmirrored', '+': 'av-closure',
     '.': 'av-cell', '\\': 'av-cell',
 };
-// The same five states as ROLES, for the text profile. One table per
-// mechanism rather than one shared one, because the two vocabularies
-// are not in step: SVG needs a class for the empty cell (it draws a
-// rect there) and the text profile has nothing to say about a `.`
-// beyond that it is not a mark.
 const CELL_ROLE = {
     X: 'direct', '!': 'unmirrored', '+': 'closure',
     '.': 'muted', '\\': 'rule',
@@ -1342,9 +1026,6 @@ function drawGraph(triples, decls, root, o, max, loss) {
     const drawn = edges.slice().sort((a, b) => (0, keyorder_1.cmpCodePoint)(node(a.from).label, node(b.from).label)
         || (0, keyorder_1.cmpCodePoint)(node(a.to).label, node(b.to).label)
         || (0, keyorder_1.cmpCodePoint)(a.key, b.key));
-    // Crossings in the emitted order: two edges cross when their spans
-    // interleave. A count, not a layout -- the consumer lays the picture
-    // out, and this says how tangled the order it is handed is.
     let crossings = 0;
     const span = (e) => {
         const a = at.get(e.from);
@@ -1401,14 +1082,6 @@ function drawGraph(triples, decls, root, o, max, loss) {
         out.push('}');
     }
     else {
-        // Entity relationships, as Mermaid's own erDiagram. Cardinality is
-        // not something the model states, so every relationship is drawn
-        // many-to-many and the label carries the predicate: drawing a
-        // cardinality the model does not assert would be an invention. An
-        // erDiagram has no separate label -- the identifier IS what the
-        // reader sees -- so it is the encoded label, unique by the label
-        // rule. Every node is in some relationship, since the node set is
-        // what the edges connect.
         const esc = (s) => escape(s, MERMAID_ESC);
         out.push('erDiagram');
         for (const e of drawn) {
@@ -1417,19 +1090,6 @@ function drawGraph(triples, decls, root, o, max, loss) {
     }
     return { text: out.join('\n') };
 }
-// THE LAYER DIAGRAM every architecture document has a hand-drawn
-// version of: one band per layer, the layers stacked with the one
-// nothing depends on at the top, each module in its band, and the
-// rule -- dependencies point DOWN -- read off the bands. The band a
-// node belongs to is the value of `--group-by`; the order of the
-// bands is DERIVED from the relation, as the partition order over the
-// layer-level graph (a layer depends on the layers its modules depend
-// on), so it is a function of the model and not of a list somebody has
-// to keep in step with it -- unless the model has an upward edge, when
-// the layer graph is cyclic and no order is derivable, which is what
-// `--layers` (top first) is for. A sideways edge (within one band) is
-// ordinary engineering and counted; an UPWARD edge is the violation
-// the drawing exists to show, and is named under the figure.
 function drawLayer(triples, root, o, max, loss) {
     if (undefined === o.groupBy) {
         return {
@@ -1536,9 +1196,6 @@ function drawLayer(triples, root, o, max, loss) {
     }
     const out = [];
     if ('svg' === o.as) {
-        // The description says WHAT WAS DRAWN, because two layer figures of
-        // one model on one page differ by exactly that, and a reader who
-        // cannot see them has only this to tell them apart.
         const drew = 'all' === edges
             ? `${shown.length} edges drawn, ${upward} of them upward`
             : 'none' === edges
@@ -1590,14 +1247,6 @@ function drawLayer(triples, root, o, max, loss) {
     }
     return { text: out.join('\n') };
 }
-// The layers as SVG: one band per row, its modules as boxes laid left
-// to right, and every SHOWN edge drawn between them -- an upward one
-// dashed and alert-coloured, because it is the violation the bands
-// cannot show on their own; a downward one straight down from the
-// bottom of its box to the top of the one it names; a sideways one
-// dipped below the boxes, since two modules of one band sit on the
-// same line and a straight edge between them would cross whatever
-// stands between.
 function layerSvg(bands, shown, footer, about, style) {
     const BH = 44;
     const gutter = widest(bands.map((b) => b.name)) * CH + 16;
@@ -1886,20 +1535,10 @@ function docName(file, entry) {
         ? (0, node_path_1.relative)((0, node_path_1.dirname)((0, node_path_1.resolve)(entry)), file) : file;
 }
 function drawLayers(prov, root, entry, o, max, loss) {
-    // Every path something met at AND THE DOCUMENT HAS A VALUE AT,
-    // mapped to the documents that met there. A meet can happen at a
-    // position the finished document does not have -- a template's own
-    // child, folded into each key it is spread over -- and the panel is
-    // about the document, so only its paths are rows. A path is shown
-    // as `a.b.c`; the root as `$`.
     const members = new Map();
     const paths = [];
     const atParts = undefined === o.at ? [] : (0, query_1.pathParts)(o.at);
     for (const [key, rec] of prov.paths) {
-        // A record at a position the document does not have is the Go
-        // recorder's template ghost (use-cases/BUGS.md 70); this port's
-        // recorder does not write one, and the two ports must skip the
-        // same rows.
         if (0 === rec.conjuncts.length || null == (0, vet_1.anchorAt)(root, '$.' + key)) {
             continue;
         }
@@ -1947,13 +1586,6 @@ function drawLayers(prov, root, entry, o, max, loss) {
 }
 // ---------------------------------------------------------------------
 // The meet ladder (VIEWS-ORDER.0.md)
-// The descent from `top` through each contribution to the resolved
-// value, one rung per conjunct. Where the contributions are ranked
-// preferences the ladder IS the arbitration: fewer stars win, so the
-// rungs read weakest-first and the winner is the last before the
-// value. `why`'s record is in source order, which is not rank order,
-// so the rungs are SORTED -- an emitter that trusted the record would
-// draw an arbitration that did not happen.
 function drawLadder(src, options, as, max) {
     if (undefined === options.at) {
         return {
@@ -2075,11 +1707,6 @@ function drawPoset(docs, options, as, max, loss, compare) {
             if (!closure[lo][hi]) {
                 continue;
             }
-            // A pair the closure implies but the checker measured as
-            // `does_not_subsume` is reported rather than absorbed: the
-            // measured relation is a conservative under-approximation, and
-            // an under-approximation of a transitive relation need not be
-            // transitive.
             if ('does_not_subsume' === verdict[rep(hi)][rep(lo)]) {
                 intransitive.push(`${classes[lo].label} < ${classes[hi].label}`);
             }
@@ -2220,12 +1847,6 @@ function view(src, opts, hooks) {
             errors: [finding('view_profile_unknown', 'reference', '$', `The ${kind} figure does not render as ${as}.`, `profiles: ${profiles.join(', ')}`)],
         });
     }
-    // ONE MECHANISM PER PROFILE (VIEWS.0.md, "7. Styling"). `ansi` is
-    // the text profile's and `css` the SVG's; asking for one on a
-    // profile that has no way to carry it is a usage error rather than a
-    // silent no-op, so a script that asks for colour and gets none is
-    // told why. `none` is always available -- it is the absence of a
-    // mechanism.
     const style = styleOf(options.style, as);
     const carrier = { ansi: 'text', css: 'svg' };
     if (undefined !== carrier[style] && carrier[style] !== as) {
@@ -2260,13 +1881,6 @@ function view(src, opts, hooks) {
     }
     return done(drawLoaded(loaded.root, loaded.ctx, undefined, prov, kind, as, options, max, loss));
 }
-// THE KINDS THAT DRAW FROM A LOADED MODEL, so a view document can load
-// once and draw N figures from the one evaluation. `gen` is the
-// generated value where the caller already holds it -- a view document
-// reads its own declarations out of one -- and undefined where the set
-// panel must generate its own. It is a BOX rather than the value, so
-// that a document generating `undefined` is still a value the panel
-// has rather than one it must recompute.
 function drawLoaded(root, ctx, gen, prov, kind, as, options, max, loss) {
     const style = styleOf(options.style, as);
     if ('doc' === kind) {
@@ -2332,19 +1946,6 @@ function drawLoaded(root, ctx, gen, prov, kind, as, options, max, loss) {
 function viewTree(src, opts) {
     return view(src, { ...(opts ?? {}), kind: 'tree' });
 }
-// ---------------------------------------------------------------------
-// The view document (VIEWS.0.md, "6. The view document")
-//
-// A projection that runs in CI belongs in a file. A view document is an
-// ORDINARY document that includes the model and declares its figures as
-// data; `views` is the AUTHOR's key and nothing here knows the name
-// (ADR-010), which is why `--views` names the path.
-//
-// The declaration keys ARE the library's option names, which are the
-// CLI's flag names without the dashes: one vocabulary, three doors. A
-// declaration must name its `kind` and its `out` -- a figure in a file
-// that a review reads should say what it draws and where it goes,
-// rather than inheriting a default from whoever ran the verb.
 const DECL_TEXT = [
     'kind', 'as', 'out', 'at', 'relation', 'order', 'groupBy', 'label',
     'sets', 'member', 'universe', 'edges',
@@ -2419,9 +2020,6 @@ function planOf(name, decl, at) {
         errors.push(documentFinding(`${where}.kind`, `${kind} is not a figure kind.`, 'kinds: ' + Object.keys(PROFILES).join(', ')));
     }
     else if ('poset' === kind) {
-        // The poset is an order over SEVERAL documents, and a view document
-        // declares figures of the one it includes. `aontu view poset` draws
-        // it, naming the documents on the command line.
         errors.push(documentFinding(`${where}.kind`, 'A view document draws figures of one document; ' +
             'the poset compares several.'));
     }
@@ -2448,13 +2046,6 @@ function planOf(name, decl, at) {
         errors: [],
     };
 }
-// N FIGURES OF ONE DOCUMENT. The document is evaluated ONCE, with the
-// provenance recorder on, and every figure but the ladder draws from
-// that one root; the ladder re-runs `why` by construction.
-//
-// The caller writes the files, and only when the whole set rendered:
-// N figures of one model are only meaningful together, so a set whose
-// third figure refuses must not leave the first two on disk.
 function viewSet(src, opts, hooks) {
     const options = opts ?? {};
     const at = options.views;
@@ -2465,11 +2056,6 @@ function viewSet(src, opts, hooks) {
                     'the map that declares the figures; name it with --views.')],
         };
     }
-    // ONE EVALUATION, and it is INSTRUMENTED: the layers panel reads the
-    // provenance record, which is written during unification, so a set
-    // that declares one would otherwise need a second run. Recording it
-    // always costs a little and makes the one-evaluation claim true for
-    // every kind but the ladder, which re-runs `why` by construction.
     const prov = (hooks?.provenance ?? (() => new provenance_1.Provenance()))();
     const loaded = load(src, options.path, options, prov);
     if (undefined !== loaded.errors) {

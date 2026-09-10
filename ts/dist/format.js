@@ -3,51 +3,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.format = format;
 exports.unifiedDiff = unifiedDiff;
-// THE SOURCE FORMATTER (docs/design/FMT.0.md): `aontu fmt`, in the
-// tradition of gofmt. One agreed form for Aontu source, so that layout
-// is never argued about and a diff shows only what changed.
-//
-// It reads the token stream the parser reads -- the lex subscriber the
-// parser stack exposes -- so it sees what the value tree throws away:
-// comments, blank lines, the quote a string used, the spelling of a
-// number. From that stream it builds a layout tree, decides the shape
-// of every container by the rules of the note's §3, and emits. Before
-// returning it re-parses what it wrote and compares the two parse
-// trees: a formatter that cannot prove its output is the same document
-// refuses rather than return it.
-//
-// Two tiers. The syntactic (P1): whitespace, commas, quotes, bare
-// keys, chains and pair elements, none of which changes the parse
-// tree. The lawful (P2), over it: repeat the prefix, and merge what
-// repeats -- rewrites that rest on the meet, each checked by the meet
-// in isolation and kept only where the engine agrees.
-//
-// The Go twin is go/format.go, function for function; the shared
-// behaviour is test/spec/fmt.tsv, executed by both spec runners.
 const aontu_1 = require("./aontu");
 const vet_1 = require("./vet");
 const template_1 = require("./template");
-// The packing budget (§3.1). It decides which of two legal spellings
-// to use, one line or several, and nothing else: the formatter never
-// breaks a line, so a value wider than this stays as wide as it is.
 const BUDGET = 80;
-// THE DEPTH BUDGET. The layout is recursive, as the tree it reads is,
-// and the canonical port's stack is finite: past the evaluation budget
-// of 1000 levels -- the depth at which unification itself refuses --
-// the formatter stops reading and refuses, so a pathological document
-// is a finding rather than a crash.
 const MAX_DEPTH = 1000;
-// EVERY INCLUDE RESOLVES TO NOTHING. The formatter reads the file it is
-// given and no other (§3.13), so `@"..."` is answered from memory with
-// an empty source: the directive parses, the include is a token like
-// any other, and no capability is needed because no file is read.
 const stubResolver = ((spec) => ({
     ...spec, kind: 'aon', full: '__fmt__.aon', src: '', found: true, search: [],
 }));
-// ONE ENGINE, ONE SUBSCRIBER. The parser's subscriber list is
-// append-only, so the subscription is made once and writes to
-// whichever sink the current parse installed; the sink is cleared
-// before the parse returns, so the check's re-parse collects nothing.
 let ENGINE;
 let SINK;
 function engine() {
@@ -55,10 +18,6 @@ function engine() {
         ENGINE = new aontu_1.Aontu({ resolver: stubResolver });
         ENGINE.lang.jsonic.sub({
             lex: (tkn) => {
-                // Spaces carry nothing the layout needs, and the end token
-                // arrives once per nested parse -- the stub's empty includes
-                // among them -- so both are dropped here rather than skipped
-                // everywhere below.
                 if (undefined !== SINK && '#SP' !== tkn.name && '#ZZ' !== tkn.name) {
                     SINK.push({ name: tkn.name, src: tkn.src, val: tkn.val, sI: tkn.sI });
                 }
@@ -148,10 +107,6 @@ class Reader {
         return KEYISH[this.name(0)] && ('#CL' === this.name(1) ||
             ('#QM' === this.name(1) && '#CL' === this.name(2)));
     }
-    // The entries of a container up to its closer, or of the document up
-    // to its end. Comments attach by the rules of §3.7: on the line of
-    // the entry that precedes them, or of the opener, they trail it;
-    // alone on a line they stand as entries and precede what follows.
     body(close, opened) {
         const body = [];
         let open;
@@ -448,11 +403,6 @@ function unwrap(root) {
 }
 // ---------------------------------------------------------------------
 // The layout
-// D1: a one-pair map in value position is written as a chain, and a
-// one-pair map as a list element as a pair element. A map whose only
-// entry is a spread keeps its braces (X-7), and one holding a comment
-// keeps them too, because the comment needs the lines. A trailing
-// comment on the map's line joins the pair's own.
 function chain(node) {
     if ('map' !== node.t || undefined !== node.open || 1 !== node.body.length ||
         'pair' !== node.body[0].t) {
@@ -475,10 +425,6 @@ function pairHead(node, tight) {
     }
     return node.key + (node.opt ? '?' : '') + (tight ? ':' : ': ');
 }
-// The one-line spelling of a node, or undefined where it has none: a
-// comment, a blank line, a break the author kept, a string that spans
-// lines. `tight` is the inline form of a pair, `a:1`, used inside a
-// container; a statement's pair is `a: 1`.
 function inline(node, tight) {
     if (undefined !== node.trail || node.held) {
         return undefined;
@@ -606,9 +552,6 @@ class Writer {
     since(mark) {
         return this.lines.slice(mark).concat([this.line]).map(rtrim).join('\n') + '\n';
     }
-    // A blank line above the line at an index: the gap of §3.8, opened
-    // once the statement below it turns out to be a tree. Never at the
-    // top of the page, and never a second time.
     gap(at) {
         if (0 < at && '' !== this.lines[at - 1]) {
             this.lines.splice(at, 0, '');
@@ -636,19 +579,9 @@ class Writer {
 function rtrim(s) {
     return s.replace(/ +$/, '');
 }
-// The entries of a body, one per line at the indentation, with the
-// blank lines the author kept between them (§3.8) -- never at the
-// start or the end. In STATEMENT position (`stmt`: the root, and the
-// body of a plain map that is itself the value of a statement) a pair
-// is laid out by §3.4, which may repeat its key; anywhere else -- a
-// list, an operand, an argument -- by §3.5 alone.
 function emitBody(w, body, indent, stmt, root) {
     let pending = false;
     let count = 0;
-    // Where the run being written begins: a statement, with the comments
-    // standing directly above it, so that the gap below opens ABOVE the
-    // comments rather than between them and what they describe. A blank
-    // line ends a run -- comments across a gap belong to what is above.
     let head = 0;
     let noted = false;
     for (const node of body) {
@@ -680,14 +613,6 @@ function emitBody(w, body, indent, stmt, root) {
                 w.text(' ' + e.trail);
             }
         }
-        // A TOP-LEVEL STATEMENT WRITTEN AS A TREE STANDS APART (§3.8). A
-        // document states several things -- a service, then its entities,
-        // then its errors -- and where one of them is a tree rather than a
-        // line, the eye finds it by the space around it. What counts as a
-        // tree is measured rather than guessed: the statement took more
-        // than one line to write. So `a: 1` beside `b: 2` is left alone,
-        // and this rule cannot fire below the root, where a blank line is
-        // the author's (§3.8) and nothing else.
         if (root && from < w.mark()) {
             w.gap(head);
             pending = true;
@@ -734,18 +659,6 @@ function emitValue(w, node, indent) {
             w.text(node.text);
     }
 }
-// A call, or a parenthesis, that has no one-line form or is too wide
-// for the budget. Three shapes. Arguments that are all FLAT -- none
-// holds a container -- stay on the one line however wide it is: a
-// scalar is no narrower on a line of its own, and the formatter never
-// breaks a line. The last argument HUGS the parentheses, `hide({` ...
-// `})`, `close($.E & {` ... `})`, when it is a container, or an
-// expression the author did not break that ends in one, and the
-// arguments before it fit on the opener's line: the container decides
-// its own lines. Otherwise the parenthesis opens a block: one argument
-// per line one level in, the closer alone at the opener's level. A
-// call whose last argument hugs is hugged in turn, `type(close({` ...
-// `}))`: the schema idiom.
 function emitCall(w, node, indent) {
     const items = 'call' === node.t ? node.args : node.inner;
     const open = ('call' === node.t ? node.name : '') + '(';
@@ -841,21 +754,8 @@ function emitBlock(w, open, close, node, indent, stmt) {
     w.open(indent, false);
     w.text(close);
 }
-// An expression that has no one-line form, or one too wide for the
-// budget: the author's breaks are kept, each at its operator, which
-// leads its continuation line (§3.11). The continuation is one level
-// in when the expression follows a key on its line, and level with
-// the first operand when the expression has the line to itself -- an
-// argument of a block call, say -- so a disjunction of alternatives
-// reads as the list it is. A container operand that does not fit from
-// where it stands is a block whose closer lines up with the line that
-// opened it.
 function emitExpr(w, items, indent) {
     const cont = w.fresh() ? indent : indent + 2;
-    // Whether the last item was an operand: a comment after one is a
-    // space away, and after an operator or the colon it is not. An
-    // operand is never directly after an operand (the reader ends a
-    // value there), so operands need no such check.
     let operand = false;
     let cur = indent;
     for (const it of items) {
@@ -892,10 +792,6 @@ function emitExpr(w, items, indent) {
         operand = true;
     }
 }
-// The entries of a plain map value: a braced map, or a chain, which is
-// a one-entry map. A map with a comment on its opener keeps its braces
-// (§3.7), so it is not plain here; nor is a map holding an include,
-// which the local check cannot follow.
 function plainEntries(v) {
     if ('pair' === v.t) {
         return [v];
@@ -921,17 +817,6 @@ function members(p) {
     const trail = undefined === last.trail ? p.trail : last.trail + ' ' + p.trail;
     return entries.slice(0, -1).concat([{ ...last, trail }]);
 }
-// Adjacent statements naming one key, whose values are plain maps, are
-// one map: their entries in order, with the comments and blank lines
-// between the statements travelling with the statement they preceded.
-// Only ADJACENT statements merge -- a `server:` line, something else,
-// then another `server:` line stays as it is, because merging them
-// would move a statement, and the formatter never reorders (§3.13).
-// Nor do two statements merge into a map with two spreads: the engine
-// keeps those as a conjunction, which is not the meet of the two maps.
-// The tree is not changed: a merged statement is a new node that keeps
-// the statements it replaces as its `orig`, its spelling before, and a
-// statement merged somewhere below is copied the same way.
 function mergeRuns(body) {
     const out = [];
     let i = 0;
@@ -993,15 +878,6 @@ function mergeDeep(p) {
     }
     return { ...p, value: 'pair' === v.t ? body[0] : { ...v, body }, orig: [p] };
 }
-// Whether a value is a RECORD: a braced map of several entries, every
-// one of them a VALUE rather than another map. A field, an error, a
-// rule row -- something whose keys are what it IS, as against a level
-// of the tree, whose keys are a way through to something else.
-//
-// A CHAIN IS NOT ONE, whatever it holds: a one-entry map is D1's, and
-// D1 writes it as a chain at every width. Nor is a map holding a
-// spread, which says something about the map's MEMBERS and which D1's
-// exception already gives a spelling of its own inside a repeat.
 function record(v, entries) {
     if ('map' !== v.t) {
         return false;
@@ -1061,12 +937,6 @@ function repeatLines(entries, prefix, indent) {
         if (undefined === lines) {
             return undefined;
         }
-        // THE DESCENT COULD GO ON, AND WHAT IT REACHES IS A RECORD: it
-        // stops, and the record is a block under the prefix instead. The
-        // deeper repeat is asked for first and thrown away deliberately --
-        // the block REPLACES a descent that would have worked, and never
-        // rescues one that would not, so a map this rule cannot reach two
-        // ways round is laid out exactly as it was before the amendment.
         if (record(e.value, sub)) {
             out.push({ t: 'block', text: head, node: e.value, trail });
             continue;
@@ -1090,18 +960,6 @@ function repeatLines(entries, prefix, indent) {
 function fits(indent, text) {
     return indent + width(text) <= BUDGET;
 }
-// A pair in statement position, by §3.4. `prefix` is what stands
-// before it on its line: the heads of the chain it hangs from, not yet
-// written. Its value is laid out by §3.5 unless it is a plain map, and
-// then in this order: a chain, when the map holds exactly one pair
-// (D1); one line, when that fits the budget; the key repeated over the
-// entries, when every entry can be one line that way; a braced block
-// otherwise, whose entries are statements in turn. Whether the
-// statement was rewritten by this tier -- merged, or repeated -- is
-// returned, and the outermost such statement is checked: its spelling
-// on the page against what the syntactic tier writes for the
-// statements it came from, at the same indentation, which is what
-// stays on the page when the check fails.
 function emitStatement(w, p, indent, stmt, prefix) {
     const mark = w.mark();
     let rewritten = undefined !== p.orig;
@@ -1177,11 +1035,6 @@ function emit(root, meet) {
     emitBody(w, undefined === meet ? root : mergeRuns(root), 0, undefined === meet ? undefined : { meet, covered: false }, true);
     return w.finish();
 }
-// ---------------------------------------------------------------------
-// The lint (§4): what the formatter points at and never touches. Two
-// rules, both advice: the formatter never renames a key (§4.1) and
-// never introduces an alias (§4.2), and a rule with a mechanical fix
-// that keeps the document would belong to §3 instead (§4.3).
 // The shape width at which a repeat is worth an alias (§4.2): below
 // it, `{ a:1 }` twice is the shorter spelling. Measured over the use
 // cases when the lint landed (§7.10).
@@ -1228,11 +1081,6 @@ function lineCol(text, at) {
     const before = text.slice(0, at);
     return { line: before.split('\n').length, col: at - before.lastIndexOf('\n') };
 }
-// D4 (§4.1): keys are lower-case words, or CamelCase when a key is
-// several. A bare key holding `_`, or beginning with two capitals, is
-// reported with the spelling that would follow the form; a quoted key
-// is a deliberate spelling and a key of underscores alone names
-// nothing the rule can respell.
 function keyCase(node, text, out) {
     if ('pair' === node.t && BARE.test(node.key) && /[A-Za-z]/.test(node.key)) {
         const why = node.key.includes('_') ? 'holds an underscore'
@@ -1248,9 +1096,6 @@ function keyCase(node, text, out) {
         keyCase(child, text, out);
     }
 }
-// The key as lower-case words or CamelCase: `credit_cents` is
-// `creditCents`, `HTTP_PORT` is `httpPort`, `HTTPServer` is
-// `httpServer`, `ID` is `id`.
 function camel(key) {
     const words = key.split('_').filter((w) => '' !== w)
         .map((w) => /^[A-Z]+$/.test(w) ? w.toLowerCase() : w);
@@ -1258,12 +1103,6 @@ function camel(key) {
     return head.charAt(0).toLowerCase() + head.slice(1) +
         words.slice(1).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 }
-// D3 (§4.2): a shape written twice can drift, and an alias names it
-// once. Every map or list whose shape recurs in the file, and whose
-// shape is REPEAT_MIN_WIDTH or wider, is reported once, at its first
-// site, with the count and the other sites; the naming is the
-// author's. A repeat inside a repeat is the outer one's: the walk does
-// not descend into a shape it reports.
 function repeats(nodes, text, out) {
     const counts = new Map();
     const tally = (node) => {
@@ -1298,9 +1137,6 @@ function repeats(nodes, text, out) {
         }
     }
 }
-// A node's shape: its spelling with the layout, the comments and, for
-// a map, the order of its entries taken out, so that two spellings of
-// one value are one shape, as they are one canon.
 function shape(node) {
     switch (node.t) {
         case 'map':
@@ -1336,15 +1172,6 @@ function sameDocument(root, after) {
     const p = parseDoc(after, undefined, undefined);
     return undefined === p.errors && root.canon === p.root.canon;
 }
-// The check of a lawful rewrite: the spelling before and the spelling
-// after, evaluated in isolation, come to the same canon, the same
-// kinds of failure, and the same outcome of generation (§7.3). Local,
-// so it needs no include and no capability, and it applies whether or
-// not the document as a whole evaluates. The kinds, not the count: how
-// often one unresolved reference is reported depends on the order the
-// meet took. Generation too, because the engine generates from more
-// than the canon: a meet of maps with a nil member has refused a key
-// the same map written once generates.
 function sameByMeet(before, after) {
     return meetOf(before) === meetOf(after);
 }
@@ -1386,12 +1213,6 @@ function checkFinding(path, expected, actual) {
         actual,
     };
 }
-// THE TARGET'S OWN LINES ARE HELD ON LINES OF THEIR OWN (§3.14). The
-// desugaring is line for line, so a line of output is known by the
-// offset it begins at, and the node beginning there -- the quoted
-// string the desugaring wrote -- is marked. From there on it has no
-// one-line form, so every container holding it opens, and no two lines
-// of the generated file are ever packed onto one.
 function holdOutput(nodes, at) {
     for (const node of nodes) {
         if (undefined !== node.at && at.has(node.at)) {
@@ -1419,11 +1240,6 @@ function outputAt(doc, flags) {
     }
     return at;
 }
-// A finding's column in the TEMPLATE rather than in the document it
-// carries (§3.14): the marker and its one space stand before the aontu
-// on every line the resugaring writes. Every finding is on such a
-// line -- the two rules point at a key or at a container, and a line of
-// output is a bare string, which is neither.
 function shiftFindings(findings, mark) {
     return undefined === mark ? findings :
         findings.map((f) => ({ ...f, col: f.col + mark.length + 1 }));
@@ -1433,9 +1249,6 @@ function shiftFindings(findings, mark) {
 // what `--check` and `--list` report.
 function format(src, opts, hooks) {
     const text = lf(src);
-    // A GENERATOR IS FORMATTED AS THE DOCUMENT IT CARRIES (§3.14): the
-    // template surface's two transforms stand either side of the
-    // formatter, and between them is what happens to any other document.
     const mark = opts?.template;
     const doc = undefined === mark ? text : (0, template_1.desugarTemplate)(text, mark);
     const toks = [];
@@ -1468,11 +1281,6 @@ function format(src, opts, hooks) {
         findings: opts?.lint ? shiftFindings(lintOf(root, doc), mark) : [],
     };
 }
-// The lines of a text, with a marker on the last when the text does
-// not end in a newline: such a line never equals its
-// newline-terminated twin, which is how the diff reports the
-// difference, and the marker is rendered as diff renders it. NUL,
-// which no source line ends in.
 const NO_NEWLINE = String.fromCharCode(0);
 function textLines(text) {
     if ('' === text) {
@@ -1569,8 +1377,6 @@ function patience(a, x0, x1, b, y0, y1, out) {
         out.push({ op: ' ', text: a[x1 + k] });
     }
 }
-// The diff in unified format, three lines of context, the file named
-// on both sides. Empty when the texts are the same.
 function unifiedDiff(name, before, after) {
     const a = textLines(before);
     const b = textLines(after);
@@ -1600,8 +1406,6 @@ function unifiedDiff(name, before, after) {
     for (const [s, e] of hunks) {
         const from = Math.max(s - 3, 0);
         const to = Math.min(e + 4, edits.length);
-        // Everything between two hunks is context -- a change would have
-        // opened a hunk -- so both sides advance together.
         for (; next < from; next++) {
             ai++;
             bi++;

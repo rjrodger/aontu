@@ -2,13 +2,6 @@
 
 package main
 
-// The Go twin of the cli hash cases in ts/test/cli.test.ts. What the
-// two ports must AGREE on (the hash form and the digest itself) is
-// pinned by test/spec/hcanon.tsv; what each port owns (argument
-// handling, exit codes, the rendering) is here. The pin is the point,
-// so these cases assert the SHAPE and the invariances -- reformatting
-// leaves the hash alone, closing a map moves it -- rather than a
-// literal digest.
 
 import (
 	"bytes"

@@ -1,13 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE RENDER VERB (the Go side of runRender in ts/src/cli.ts;
-// docs/design/RENDER.0.md D8): evaluate a document, vet the value at
-// --at against aontu:code, fold code.units into bytes, and put them
-// where the flag says -- one unit on stdout, every unit below --out
-// (all or nothing), or compared against --check. Exit codes mirror
-// jsonschema's: 0 ok; 1 lossy under --strict or drift under --check;
-// 2 usage or I/O, a refused unit path included; 4 the document does
-// not stand up or the instance is not aontu:code.
 
 package main
 
@@ -145,12 +137,6 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	// THE ENTRY MAY BE A TEMPLATE (TEMPLATE.0.md; P8), and its EXTENSION
-	// decides, as an include's extension decides what the include is
-	// (ADR-012): a generator is a file in the target's own syntax, so it
-	// carries the target's extension and never `.aon`. Desugared here
-	// rather than anywhere deeper, because a template is an entry
-	// spelling and not a value: an include is still aontu.
 	if !strings.HasSuffix(files[0], ".aon") {
 		mark := marker
 		if "" == mark {
@@ -159,11 +145,6 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 		src = []byte(aontu.DesugarTemplate(string(src), mark))
 	}
 
-	// THE PROFILES (D5): each --profile file is a document whose root is
-	// `profile: {lang, ...}`, evaluated under the verb's trust and
-	// vetted against aontu:profile as a settled value before the fold
-	// reads it (RenderProfile, which also fills the defaults). Two files
-	// claiming one lang is a usage error: the fold could not choose.
 	profiles := []map[string]any{}
 	langs := map[string]string{}
 	for _, pf := range profileFiles {
@@ -240,12 +221,6 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 		}
 		io.WriteString(stdout, report.Units[0].Text)
 	case "" != out:
-		// EVERY UNIT BELOW <dir>, OR NOTHING: every unit rendered first
-		// (the report above), and no file touched unless all did. The
-		// directory is realpath-confined; a unit path is already a
-		// relative descent (render_path refuses the rest), and the
-		// check here is against the symlink inside it. render never
-		// deletes.
 		for _, u := range report.Units {
 			full := filepath.Join(out, filepath.FromSlash(u.Path))
 			if outsideDir(out, full) {

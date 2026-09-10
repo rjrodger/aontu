@@ -2,11 +2,6 @@
 
 package main
 
-// The Go twin of the repl cases in ts/test/cli.test.ts (G7 phase 7).
-// The command handler is a pure function of (state, line), so every
-// answer the session gives is as checkable as the CLI's — and the two
-// ports were diffed line by line over the same script before these
-// were written.
 
 import (
 	"bytes"

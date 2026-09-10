@@ -1,9 +1,3 @@
-/* Injected globals for the browser bundle: a minimal `process` (the
- * pkg include-resolver calls process.cwd() when probing node_modules
- * paths) and a minimal `Buffer.from(text, 'utf8')` (report-sarif
- * measures UTF-8 byte lengths with it). Injected by esbuild, so free
- * references to `process` / `Buffer` in the bundled CJS resolve here
- * without touching a real Node runtime. */
 
 const proc = {
   cwd: () => '/',

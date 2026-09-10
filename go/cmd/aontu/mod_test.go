@@ -2,13 +2,6 @@
 
 package main
 
-// The Go twin of the mod-tool cases in ts/test/mod.test.ts. Both
-// subcommands are LOCAL, and both are file operations, so they are
-// proved here rather than in the shared suite — which has no mode for
-// "run a command in a directory". The two ports were diffed over the
-// same sixteen invocations (text and JSON, every usage error, the
-// lockfile bytes and the vendor tree): identical but for the version
-// field, G2 phase 3's standing carve-out.
 
 import (
 	"bytes"
@@ -372,12 +365,6 @@ func TestModTidyJSONIsTheReport(t *testing.T) {
 	}
 }
 
-// THE VERIFY VERB (the review's finding H, use-cases/BUGS.md §32): a
-// gate that answers whether the stores still mean what the lockfile
-// pins, and changes nothing. Tidy cannot be that gate -- it recomputes
-// and rewrites by design, so it makes the lockfile agree with whatever
-// the store now holds, tampering included. The TypeScript twin is
-// `verify-catches-a-tampered-store-and-changes-nothing`.
 func TestModVerifyCommand(t *testing.T) {
 	dir := modProject(t, "\"corp.example/schemas/service@1\": {v: \"1.4.2\"}")
 	modVendorTree(t, dir, "corp.example/schemas/service@1", map[string]string{
@@ -425,8 +412,6 @@ func TestModVerifyCommand(t *testing.T) {
 		t.Fatal("verify rewrote the lockfile")
 	}
 
-	// A module that no longer stands up says so, rather than reporting
-	// the hash of nil as though it were a meaning.
 	modWrite(t, svc, "a: 1\na: 2\n")
 	if out, _, code = modRun("verify", dir); 1 != code ||
 		!strings.Contains(out, "it does not evaluate") {
@@ -440,20 +425,6 @@ func TestModVerifyCommand(t *testing.T) {
 	}
 }
 
-// TestModVendorRefusesAnEscapingPath is the regression test for the
-// defect this gate exists to close: `vendor` copied a module tree
-// OUTSIDE the project entirely and reported `verdict: ok`, exit 0.
-//
-// The path routes -- it is domain-shaped and carries a major -- and
-// then `..` elements walked the store path up out of `aontu_meta/vendor/`,
-// because filepath.Join CLEANS `..` rather than refusing it. The
-// lockfile is the delivery vehicle: a hostile repository ships one,
-// and vendoring it writes wherever the path points.
-//
-// Asserted on the FILESYSTEM, not on the message. A report that says
-// the right thing while the write still happened is the failure this
-// test exists to catch. Twin of `vendor-refuses-an-escaping-path` in
-// ts/test/mod.test.ts.
 func TestModVendorRefusesAnEscapingPath(t *testing.T) {
 	dir := modProject(t, "")
 	v, _ := aontu.New().Unify(modToolSource)
@@ -523,7 +494,6 @@ func TestModNamesTheOldLayout(t *testing.T) {
 	if !strings.Contains(errw.String(), "now live under aontu_meta/") {
 		t.Fatalf("no hint for the lockfile: %q", errw.String())
 	}
-	// A project on the new layout hears nothing of it.
 	dir3 := t.TempDir()
 	modWrite(t, filepath.Join(dir3, "mod.aon"), "mod: { path: \"corp.example/app\" }\n")
 	errw.Reset()

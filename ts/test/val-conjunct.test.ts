@@ -15,8 +15,6 @@ import {
 } from '../dist/ctx'
 
 
-
-
 import { expect } from './expect'
 import { MapVal } from '../dist/val/MapVal'
 
@@ -31,23 +29,17 @@ const TOP = top()
 const lang = new Lang()
 const PL = lang.parse.bind(lang)
 const P = (x: string, ctx?: any) => PL(x, ctx)
-// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
 const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
-// const V = (x: any) => console.dir(x, { depth: null })
-
-
 
 
 describe('val-conjunct', function() {
 
   test('basic', () => {
     let g0 = G('1&number')
-    // console.log(g0)
     expect(g0).equal(1)
 
     let g1 = G('{a:1}&{b:2}&{c:3}')
-    // console.log(g0)
     expect(g1).equal({ a: 1, b: 2, c: 3 })
 
   })
@@ -83,9 +75,6 @@ describe('val-conjunct', function() {
     let u2 = UC('a:*1|number,a:*2|number')
     expect(u2).equal('{"a":*2|*1|number}')
 
-    // TODO: fix syntax (*)
-    // let u3 = UC('(*1|number) & (*2|number)')
-    // expect(u3).equal('2|1|number')
 
     let u4 = UC('(number|*1) & (number|*2)')
     expect(u4).equal('number|*1|*2')
@@ -134,7 +123,6 @@ describe('val-conjunct', function() {
 
   test('clone', () => {
     let v0 = P('{x:1}&{y:2}&{z:3}')
-    // console.log(v0.canon)
     expect(v0.canon).equal('({"x":1}&{"y":2})&{"z":3}')
 
     let ctx = makeCtx(v0)

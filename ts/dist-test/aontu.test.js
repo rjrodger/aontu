@@ -61,23 +61,8 @@ w1: b: {y:2,z:3} & $.q.a
             w0: { b: { x: 1, y: 2, z: 3 } },
             w1: { b: { x: 1, y: 2, z: 3 } },
         });
-        // TODO: fix in jsonic
         (0, expect_1.expect)(a0.unify('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}');
     });
-    // TODO: create ctx.test.ts
-    /*
-    test('util', async () => {
-      expect(util.options('x')).include({ src: 'x', print: 0 })
-      expect(util.options('x', { print: 1 })).include({ src: 'x', print: 1 })
-      expect(util.options({ src: 'x' }, { print: 1 })).include({
-        src: 'x',
-        print: 1,
-      })
-      expect(
-        util.options({ src: 'x', print: 1 }, { src: 'y', print: 2 })
-      ).include({ src: 'y', print: 2 })
-    })
-    */
     (0, node_test_1.test)('file', async () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
@@ -204,12 +189,6 @@ def: garage: {
         });
         const fs = mfs.fs;
         fs.aaa = 1;
-        /*
-        let v0 = a0.unify(`a:@"/foo.aon"`, { fs })
-        expect(v0.canon).equal(
-          '{"a":{"f":11}}'
-        )
-        */
         let v1 = a0.unify(`a:@"foo.aon"`, { fs, path: '/' });
         (0, expect_1.expect)(v1.canon).equal('{"a":{"f":11}}');
     });
@@ -387,7 +366,6 @@ def: garage: {
                 r4: { c: { d: { val: 1 } } },
             }
         });
-        // Refs through 4 levels of nesting
         (0, expect_1.expect)(a0.generate(`
       a: b: c: d: v: 7
       x: $.a.b.c.d.v
@@ -424,7 +402,6 @@ def: garage: {
             b: { pv: 10, qv: 20, rv: 30 },
             c: { pv: 10, qv: 20, rv: 30 },
         });
-        // Diamond: two paths merge at a common ref target
         (0, expect_1.expect)(a0.generate(`
       base: { k: 1 }
       left: $.base

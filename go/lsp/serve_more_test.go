@@ -33,9 +33,6 @@ func TestServeBadJSON(t *testing.T) {
 	}
 }
 
-// A failing output stream turns into a write error and exit 1. The
-// first response overflows the buffered writer via a second request
-// after the sticky flush failure.
 func TestServeWriteError(t *testing.T) {
 	var logw bytes.Buffer
 	in := strings.NewReader(

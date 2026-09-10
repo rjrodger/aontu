@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// The lowering's own arms (docs/design/RENDER.0.md P5): what the
-// vocabulary keeps a spec row from reaching -- a non-ASCII name (the
-// vocabulary's %name is ASCII), a container of a container (a
-// container takes leaves only, so the paren rule has no row), a
-// profile with a lowering and no type forms -- and the word splitter
-// and case styles at their edges. Twin of go/lower_test.go; what both
-// ports must agree on through the vocabulary is test/spec/render.tsv.
 
 import { test, describe } from 'node:test'
 import Assert from 'node:assert'
@@ -111,9 +104,6 @@ describe('lower', () => {
   })
 
   test('a-body-piece-without-a-depth-nests-as-depth-zero-does', () => {
-    // renderValue takes an instance the caller built, where the
-    // vocabulary's `at: *0` default has not been filled: a line piece
-    // with no `at` in a function body nests as a line at depth 0 does.
     const profile = new Aontu().generate('@"aontu:lang/typescript"').aontu.profile
     const unit = (piece: any) => ({
       aontu: { Code: {

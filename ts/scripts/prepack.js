@@ -1,28 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Stage the two out-of-package trees the tarball ships: the published
-// grammar and the agent skill. `files` in package.json names `grammar`
-// and `skill`, and neither lives under `ts/` in the repository — the
-// grammar is consumed by anything doing constrained decoding and the
-// skill is the docs' own copy, so both belong at the top level and are
-// COPIED here at pack time rather than duplicated in the tree.
-//
-// AND THE LINKS ARE REWRITTEN, which is the part a plain copy got
-// wrong. A relative link is relative to where the file SITS, and these
-// files move two directories closer to the root:
-//
-//   docs/skill/grammar-card.md  ->  <pkg>/skill/grammar-card.md
-//
-// so `../../grammar/aontu.gbnf` — correct in the repository — resolved
-// outside the package once copied (under an install, to
-// `node_modules/grammar`). Worse, `../../test/spec/errcodes.tsv` names
-// a tree the tarball does not ship at ALL, so no relative spelling of
-// it can work: that one becomes a canonical repository URL.
-//
-// Every rewrite is asserted to have applied. A link that silently
-// stops matching — because the source moved, or the text around it
-// changed — would ship broken, which is exactly the failure this
-// script exists to prevent, so a miss is a pack failure.
 
 const Fs = require('node:fs')
 const Path = require('node:path')

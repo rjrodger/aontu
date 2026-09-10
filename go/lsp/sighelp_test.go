@@ -1,10 +1,6 @@
-// Copyright (c) 2021-2026 Richard Rodger, MIT License
 
 package lsp
 
-// signatureHelp serves the declared signature of the enclosing call
-// from the registry (docs/design/SIGNATURES.0.md). Mirrors the
-// signature-help cases in ts/test/lsp.test.ts.
 
 import (
 	"encoding/json"
@@ -79,9 +75,6 @@ func TestSignatureHelp(t *testing.T) {
 		t.Fatalf("map help: %+v", r)
 	}
 
-	// Positions clamp: a line beyond the document and a character
-	// beyond the line both land at the nearest real place, and a
-	// multi-line document counts earlier lines into the offset.
 	multi := "a: 1\nb: each($.a,\nc: 2"
 	r = SignatureHelp(multi, 1, 99)
 	if nil == r || "each(d: map|list, template t: any) : list" != r.Signatures[0].Label ||
@@ -103,8 +96,6 @@ func TestSignatureHelp(t *testing.T) {
 		t.Fatalf("nested: %+v", r)
 	}
 
-	// The scan stops at the line start: a paren on an earlier line is
-	// not this line's enclosing call.
 	if nil != SignatureHelp("a: add(1, 2)\nb: 3", 1, 4) {
 		t.Fatal("earlier line's paren should not enclose")
 	}

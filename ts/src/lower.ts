@@ -1,29 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE DECLARATION LOWERING (docs/design/RENDER.0.md D5, D6, P5): the
-// one place in the renderer where "a new language is data" does not
-// hold. A `%record` becoming `export interface X {` or `type X struct
-// {` is a per-language-family function here, selected by the profile's
-// `lowering` field and parameterised by the profile's data -- the
-// indent, the comment forms, the string quote and its escape table, the
-// identifier rules and the type forms. Two families ship, `typescript`
-// and `go`; a third language with declarations is a change here, in
-// both ports (go/lower.go is the twin, function for function).
-//
-// Everything produced is PIECES -- lines at a depth, blanks -- that the
-// fragment fold then turns into bytes, so a lowered declaration and a
-// fragment take the same path to the file: one indent rule, one
-// terminator rule, nothing trimmed.
-//
-// THE PARITY GUARDS (G9 section 3), each a rule both ports keep: case
-// conversion is ASCII-only, and a code point at or above U+0080 rides
-// into the current word verbatim, never split and never converted;
-// string escaping is one pass, per code point, through the profile's
-// table, keyed by decimal code point, with a control character the
-// table does not name spelled as a \u escape; a reserved word is
-// matched by exact equality on the converted name; parenthesisation is
-// by `prec`/`childPrec`; numbers go through `exactJSON`; nothing here
-// sorts, and nothing iterates a map.
 
 import { exactJSON } from './exactjson'
 import type { RenderLoss } from './render'
@@ -64,12 +40,6 @@ function isASCII(c: string): boolean {
   return (c.codePointAt(0) as number) < 0x80
 }
 
-// THE ASCII WORD SPLITTER. Words break at `_`, `-` and space, at a
-// lower-to-upper boundary (`creditLimit`), at a letter-to-digit
-// boundary in either direction (`utf8String`), and before the last
-// capital of a capital run that a lower case letter follows
-// (`HTTPServer` is HTTP, Server). A code point at or above U+0080
-// rides into the current word and never starts, ends or converts one.
 export function splitWords(name: string): string[] {
   const words: string[] = []
   let cur = ''
@@ -152,14 +122,6 @@ export function caseName(name: string, style: string, acronyms: string[]): strin
   return lowerASCII(words[0]) + caps.slice(1).join('')
 }
 
-// An identifier in a ROLE (record, field, enum, member, const, func,
-// param, alias): the profile's case style for the role, then -- for
-// the names that become bare identifiers, declarations and parameters
-// -- the reserved-word rule on the converted name, exact equality, so
-// Go's `Type` is not `type`. A reserved name is renamed with a trailing
-// underscore and the report says so, since code that named the
-// original will not compile against the rename. A field is a property,
-// and a property may spell what its target's string form admits.
 export function ident(
   name: string, role: string, ctx: LowerCtx, path: string, bare: boolean
 ): string {
@@ -234,14 +196,6 @@ function form(ctx: LowerCtx, name: string): any {
   return ctx.profile.types?.[name] ?? { open: '', close: '', prec: 9, childPrec: 0 }
 }
 
-// An inner expression under a form, in parens when its precedence is
-// below the form's childPrec: TypeScript's `(string | null)[]`.
-//
-// A FORM ALWAYS CARRIES ITS childPrec, so there is nothing to fall back
-// to: the profile vocabulary declares it `*0`, so every type form of a
-// profile met with `aontu:profile` has one, and `form()`'s own fallback
-// spells it. The default lives in the model, which is the point of
-// putting it there.
 function under(inner: Expr, f: any): string {
   return inner.prec < f.childPrec ? '(' + inner.text + ')' : inner.text
 }
@@ -295,8 +249,6 @@ export function typeExpr(t: any, ctx: LowerCtx, path: string): Expr {
     const f = form(ctx, 'map')
     const key = under(typeExpr(t.key, ctx, path + '.key'), f)
     const of = under(typeExpr(t.of, ctx, path + '.of'), f)
-    // The two families spell a map differently between the key and
-    // the value: `map[K]V` and `Record<K, V>`.
     const sep = 'go' === ctx.family ? ']' : ', '
     return { text: f.open + key + sep + of + f.close, prec: f.prec }
   }
@@ -358,8 +310,6 @@ function doc(d: any, at: number, ctx: LowerCtx): any[] {
   return out
 }
 
-// Every check a target's type system cannot enforce is tier-1 loss,
-// one entry per check, addressed at the check.
 function checks(list: any[] | undefined, path: string, ctx: LowerCtx): void {
   (list ?? []).forEach((c: any, i: number) => {
     loss(ctx, path + '.check.' + i, 'check',

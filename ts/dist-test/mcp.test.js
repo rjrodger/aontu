@@ -34,15 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// The MCP tool library and its stdio wiring (G7 phase 6, completed to
-// the full CLI verb surface by the use-case review's MCP
-// recommendation). The tools return the SAME contracts the CLI prints
-// — vet's report, get's slice, why's record, diff's changes, the
-// subsume/breaking verdicts, patch's overlay — so what is asserted
-// here is the protocol around them, not the verbs, which the shared
-// suite already pins in both ports. The exceptions are the served
-// confinement (every tool, both trust postures) and the --root path
-// capability, which exist only here.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const node_stream_1 = require("node:stream");
@@ -58,7 +49,6 @@ const ALL_TOOLS = [
     'reaches', 'relations', 'render',
     'set', 'subsume', 'summary', 'trim', 'vet', 'view', 'why',
 ];
-// The text payload of a tool result, decoded.
 function payload(result) {
     return JSON.parse(result.content[0].text);
 }
@@ -86,16 +76,10 @@ function hostileModule(dir) {
         Assert.equal(init.result.serverInfo.name, 'aontu');
         Assert.equal(init.result.serverInfo.version, '9.9.9');
         Assert.deepEqual(init.result.capabilities, { tools: {} });
-        // The handshake says which confinement mode the server is in:
-        // without a root, path arguments are refused and the client is
-        // told how to enable them.
         Assert.match(init.result.instructions, /--root <dir>/);
         Assert.equal(init.result.instructions, (0, mcp_1.serverInstructions)());
         const list = (0, mcp_1.handle)({ id: 2, method: 'tools/list' }, '9.9.9');
         Assert.deepEqual(list.result.tools.map((t) => t.name).sort(), ALL_TOOLS);
-        // Every tool declares its arguments, and every required argument
-        // is one of them: a schema that asks for what it does not describe
-        // is a schema no client can satisfy. Both postures.
         for (const tools of [(0, mcp_1.toolList)(), (0, mcp_1.toolList)('/tmp')]) {
             for (const t of tools) {
                 Assert.equal(t.inputSchema.type, 'object');
@@ -104,11 +88,6 @@ function hostileModule(dir) {
                 }
             }
         }
-        // WITHOUT a root the file alternatives are not advertised — a
-        // client cannot use them. WITH one, every document property gains
-        // its `<name>Path` twin and comes off `required` (JSON Schema
-        // cannot say "one of the two"; the tool's own check still refuses
-        // a call with neither).
         const bare = (0, mcp_1.toolList)().find((t) => 'vet' === t.name);
         Assert.equal(bare.inputSchema.properties.schemaPath, undefined);
         Assert.deepEqual(bare.inputSchema.required, ['schema', 'data']);
@@ -141,9 +120,6 @@ function hostileModule(dir) {
         // The optional arguments: `at` on vet and on diff.
         Assert.equal(payload((0, mcp_1.callTool)('vet', { schema: 'a: {b: integer}', data: 'b: 1', at: '$.a' })).verdict, 'valid');
         Assert.equal(payload((0, mcp_1.callTool)('diff', { left: 'a: {b: 1}', right: 'a: {b: 2}', at: '$.a' })).changes[0].path, '$.b');
-        // An argument of the wrong TYPE is read as absent rather than
-        // coerced: a client that sends a number for a path gets the empty
-        // path, which is the root — the same answer as sending nothing.
         Assert.equal(payload((0, mcp_1.callTool)('diff', { left: 'a: 1', right: 'a: 1', at: 7 })).same, true);
         Assert.equal(payload((0, mcp_1.callTool)('canon', { src: 'a: 1.0' })).canon, '{"a":1.0}');
         const s = payload((0, mcp_1.callTool)('summary', { src: 'b: 2\na: 1' }));
@@ -168,38 +144,16 @@ function hostileModule(dir) {
         Assert.equal(payload(broken).ok, false);
         const bsum = (0, mcp_1.callTool)('summary', { src: 'a:1 a:2' });
         Assert.equal(payload(bsum).ok, false);
-        // A missing tool, or a missing required argument, IS one — and a
-        // call with no argument object at all is the same call as one
-        // with an empty one.
         Assert.equal((0, mcp_1.callTool)('nope', {}).isError, true);
         Assert.equal((0, mcp_1.callTool)('get', { src: 'a:1' }).isError, true);
         Assert.equal((0, mcp_1.callTool)('vet', {}).isError, true);
         Assert.equal((0, mcp_1.callTool)('canon', undefined).isError, true);
     });
     (0, node_test_1.test)('served-evaluation-is-confined', () => {
-        // A served document may not reach the filesystem: text arrives
-        // from a caller, and an include is exactly what a server must not
-        // run unconfined (G5).
         const r = payload((0, mcp_1.callTool)('canon', { src: 'a: @"/etc/passwd"' }));
         Assert.equal(r.ok, false);
         Assert.equal(r.findings[0].code, 'include_denied');
     });
-    // EVERY tool, not one of them. This test exists because the version
-    // above it -- which asserted `canon` alone -- passed for weeks while
-    // four of the six original tools evaluated caller source with NO
-    // trust profile, so `@"x.js"` was require()d in the server process.
-    // One tool proving itself confined says nothing about its siblings.
-    //
-    // The table is derived from the LIVE tool list rather than written
-    // out, so a tool added later is covered the day it is added, and the
-    // assertion is on the security property itself (the module was not
-    // executed) rather than on any one report's wording, which differs
-    // per tool: vet answers a broken schema with verdict `error`, where
-    // canon names `include_denied`.
-    //
-    // BOTH POSTURES: without a root every include is denied outright;
-    // with one, the hostile module sits OUTSIDE the root, so the root
-    // capability must deny it too.
     (0, node_test_1.test)('every-tool-is-confined', () => {
         const dir = scratchDir('aontu-mcp-trust-');
         const { canary, hostile } = hostileModule(dir);
@@ -208,11 +162,6 @@ function hostileModule(dir) {
             for (const t of (0, mcp_1.toolList)()) {
                 const args = {};
                 for (const req of t.inputSchema.required) {
-                    // A path argument must stay a path, and a structured
-                    // argument keeps its shape — with the hostile document as
-                    // the assignment VALUE, which is appended into the overlay
-                    // and must be confined there too. Every other required
-                    // string is a document, and gets the hostile one.
                     args[req] = 'path' === req ? '$'
                         : 'array' === t.inputSchema.properties[req].type
                             ? [{ path: '$.a', value: hostile }]
@@ -228,10 +177,6 @@ function hostileModule(dir) {
             }
         }
     });
-    // The SHIPPED binary, spawned as a client would run it. The
-    // in-process tests above prove the library confines; this proves the
-    // thing in `bin/` does, which is what an operator actually runs and
-    // what the npm package installs.
     (0, node_test_1.test)('spawned-server-is-confined', () => {
         const dir = scratchDir('aontu-mcp-spawn-');
         const { canary, hostile } = hostileModule(dir);
@@ -253,9 +198,6 @@ function hostileModule(dir) {
         Assert.equal(answers[1].id, 2);
         Assert.ok(JSON.stringify(answers[1]).includes('include_denied'));
     });
-    // ------------------------------------------------------------------
-    // The evolution and change verbs (the use-case review's "MCP is a
-    // read-only subset" recommendation).
     (0, node_test_1.test)('subsume-answers-the-cli-report', () => {
         Assert.deepEqual(payload((0, mcp_1.callTool)('subsume', { general: 'a: integer', specific: 'a: 1' })), { verdict: 'subsumes', findings: [] });
         // A narrowing has a witness, sited with the default provenance
@@ -276,9 +218,6 @@ function hostileModule(dir) {
         })).verdict, 'subsumes');
         // A bad profile is a call that could not be made.
         Assert.equal((0, mcp_1.callTool)('subsume', { general: 'a:1', specific: 'a:1', profile: 'zag' }).isError, true);
-        // A document the served profile cannot read is REFUSED with the
-        // engine's own error verdict — and the pre-parse finding, which
-        // the engine's bare `{verdict:'error'}` answer lacks.
         const denied = payload((0, mcp_1.callTool)('subsume', { general: 'a: @"/etc/passwd"', specific: 'a: 1' }));
         Assert.equal(denied.verdict, 'error');
         Assert.equal(denied.findings[0].code, 'include_denied');
@@ -287,22 +226,14 @@ function hostileModule(dir) {
         Assert.deepEqual(payload((0, mcp_1.callTool)('subsume', { general: 'a: 1 & 2', specific: 'a: 1' })), { verdict: 'error', findings: [] });
     });
     (0, node_test_1.test)('breaking-wraps-subsume-with-the-cli-policy', () => {
-        // The default mode is backward: every old instance must still be
-        // admitted by the new document (cli.ts runBreaking's rule).
         Assert.deepEqual(payload((0, mcp_1.callTool)('breaking', { old: 'a: 1', new: 'a: 1' })), { verdict: 'compatible', mode: 'backward', findings: [] });
         const b = payload((0, mcp_1.callTool)('breaking', { old: 'a: 5', new: 'a: integer & min(10)' }));
         Assert.equal(b.verdict, 'breaking');
         Assert.equal(b.mode, 'backward');
         Assert.equal(b.findings[0].class, 'compat');
-        // full checks both directions; a: 1 -> a: 1|2 widens (backward
-        // holds) but the old document does not admit the new one.
         const full = payload((0, mcp_1.callTool)('breaking', { old: 'a: 1', new: 'a: 1|2', mode: 'full' }));
         Assert.equal(full.verdict, 'breaking');
         Assert.equal(full.mode, 'full');
-        // THE DOCUMENT'S OWN POLICY: $.aontu_policy.compat — a plain
-        // string, a preferred disjunct, or a disjunction whose first
-        // member decides. The mode argument overrides it; nothing means
-        // backward.
         Assert.deepEqual(payload((0, mcp_1.callTool)('breaking', {
             old: 'a: 5', new: 'aontu_policy: compat: "none"\na: min(10)',
         })), { verdict: 'compatible', mode: 'none', findings: [] });
@@ -313,34 +244,25 @@ function hostileModule(dir) {
         Assert.equal(payload((0, mcp_1.callTool)('breaking', {
             old: 'a: 1', new: 'aontu_policy: compat: "backward"|"full"\na: 1',
         })).mode, 'backward');
-        // A policy that does not spell a mode declares nothing — a wrong
-        // word and a wrong kind both.
         Assert.equal(payload((0, mcp_1.callTool)('breaking', {
             old: 'a: 1', new: 'aontu_policy: compat: "sideways"\na: 1',
         })).mode, 'backward');
         Assert.equal(payload((0, mcp_1.callTool)('breaking', {
             old: 'a: 1', new: 'aontu_policy: compat: 42\na: 1',
         })).mode, 'backward');
-        // The mode ARGUMENT wins over the policy.
         Assert.equal(payload((0, mcp_1.callTool)('breaking', {
             old: 'a: 5', new: 'aontu_policy: compat: "none"\na: min(10)',
             mode: 'backward',
         })).verdict, 'breaking');
-        // A new version that parses but does not stand up: the policy
-        // read fails quietly (mode backward), and subsume answers error.
         Assert.deepEqual(payload((0, mcp_1.callTool)('breaking', { old: 'a: 1', new: 'a: 1 & 2' })), { verdict: 'error', mode: 'backward', findings: [] });
         // A bad mode is a call that could not be made.
         Assert.equal((0, mcp_1.callTool)('breaking', { old: 'a:1', new: 'a:1', mode: 'zig' }).isError, true);
-        // A document the served profile cannot read is refused, with the
-        // mode the policy logic could still establish.
         const denied = payload((0, mcp_1.callTool)('breaking', { old: 'a: @"/etc/passwd"', new: 'a: 1' }));
         Assert.equal(denied.verdict, 'error');
         Assert.equal(denied.mode, 'backward');
         Assert.equal(denied.findings[0].code, 'include_denied');
     });
     (0, node_test_1.test)('set-returns-the-new-overlay-and-never-writes', () => {
-        // Append: the report carries the NEW OVERLAY TEXT — the server
-        // owns no files, so the caller owns the write.
         const r = payload((0, mcp_1.callTool)('set', {
             entry: 'a: integer', overlay: '',
             assignments: [{ path: '$.a', value: '1' }],
@@ -366,9 +288,6 @@ function hostileModule(dir) {
         Assert.equal(rip.overlay, 'a: 3\n');
         Assert.equal(rip.replaced[0].from, '2');
         Assert.equal(rip.replaced[0].to, '3');
-        // The assignment list is structured, and a malformed one is a
-        // call that could not be made: empty, a missing half, a path that
-        // would move the `<path>=<value>` split, or not a list at all.
         Assert.equal((0, mcp_1.callTool)('set', { entry: 'a:1', overlay: '', assignments: [] }).isError, true);
         Assert.equal((0, mcp_1.callTool)('set', { entry: 'a:1', overlay: '', assignments: [{ path: '$.a' }] }).isError, true);
         Assert.equal((0, mcp_1.callTool)('set', {
@@ -376,10 +295,6 @@ function hostileModule(dir) {
             assignments: [{ path: 'a=b', value: '1' }],
         }).isError, true);
         Assert.equal((0, mcp_1.callTool)('set', { entry: 'a:1', overlay: '', assignments: 'x' }).isError, true);
-        // AN ASSIGNMENT VALUE IS A DOCUMENT TOO: it is appended into the
-        // overlay and evaluated there, so a value that smuggles an
-        // include is refused by the same confined pre-parse — including
-        // the newline-injection spelling.
         for (const value of ['@"/etc/passwd"', '1\nz: @"/etc/passwd"']) {
             const rv = (0, mcp_1.callTool)('set', {
                 entry: 'a: integer', overlay: '',
@@ -415,20 +330,12 @@ function hostileModule(dir) {
         const dot = payload((0, mcp_1.callTool)('view', { source: doc, as: 'dot' }));
         Assert.equal(dot.verdict, 'error');
         Assert.equal((dot.errors ?? dot.findings)[0].code, 'view_profile_unknown');
-        // `edges` chooses which of a layer figure's edges are drawn, and a
-        // value that is not one of the three is a call that could not be
-        // made.
         Assert.match(payload((0, mcp_1.callTool)('view', {
             source: 'a: {layer: "x", dependsOn: [&: refer(), path($.b)]}\n' +
                 'b: {layer: "y"}\n',
             kind: 'layer', groupBy: 'layer', edges: 'all',
         })).text, /# dependsOn: 1 downward/);
         Assert.equal((0, mcp_1.callTool)('view', { source: doc, edges: 'sideways' }).isError, true);
-        // `style` names the mechanism a figure carries its marks' meaning
-        // with, and `depth` bounds the document tree. A style that is not
-        // one of the three is a call that could not be made; `auto` is not
-        // among them on purpose, since resolving it needs a terminal and a
-        // server has none.
         Assert.match(payload((0, mcp_1.callTool)('view', {
             source: doc, relation: 'dependsOn', kind: 'tree', style: 'ansi',
         })).text, /\x1b\[2m/);
@@ -439,8 +346,6 @@ function hostileModule(dir) {
         // The tree as SVG, through the tool: the figure is the bytes the
         // CLI writes, and the shared rows pin them.
         Assert.match(payload((0, mcp_1.callTool)('view', { source: doc, relation: 'dependsOn', as: 'svg' })).text, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" class="av" /);
-        // EVERY OTHER KIND, through the tool, with every option named: the
-        // figures themselves are test/spec/view.tsv's business.
         const matrix = payload((0, mcp_1.callTool)('view', {
             source: doc, kind: 'matrix', relation: 'dependsOn', order: 'partition',
             closure: true, at: '$', maxRows: 10,
@@ -472,9 +377,6 @@ function hostileModule(dir) {
         Assert.equal(payload((0, mcp_1.callTool)('view', {
             source: doc, kind: 'tree', maxRows: 1,
         })).errors[0].code, 'view_rows_exceeded');
-        // A root that is not a node of the drawn graph, and a document that
-        // does not stand up, are both refusals in vet's finding shape --
-        // with the kind still named, because the report is the answer.
         const bad = payload((0, mcp_1.callTool)('view', { source: doc, root: ['$.nope'] }));
         Assert.equal(bad.verdict, 'error');
         Assert.equal(bad.kind, 'tree');
@@ -521,9 +423,6 @@ function hostileModule(dir) {
         Assert.equal(denied.errors[0].code, 'include_denied');
     });
     (0, node_test_1.test)('jsonschema-tool-exports-and-refuses', () => {
-        // The MCP surface of the export (the review's finding I): the
-        // schema, the loss report beside it rather than instead of it, the
-        // anchor, and the two refusals every tool here shares.
         const ok = payload((0, mcp_1.callTool)('jsonschema', {
             source: 'a: string & re("^x$")\nb?: integer\n',
         }));
@@ -556,9 +455,6 @@ function hostileModule(dir) {
         Assert.equal(denied.errors[0].code, 'include_denied');
     });
     (0, node_test_1.test)('render-tool-renders-and-never-writes', () => {
-        // The MCP surface of the renderer (RENDER.0.md D8): the units as
-        // text, the loss report beside them, the verb's own flags -- and
-        // no file anywhere, since the caller places the units itself.
         const r = payload((0, mcp_1.callTool)('render', {
             source: 'aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", ' +
                 'of: ["x", { k: "line", at: 1, of: ["y"] }] }] }]\n',
@@ -610,10 +506,6 @@ function hostileModule(dir) {
         Assert.equal(cyc.verdict, 'fail');
         Assert.equal(cyc.findings[0].code, 'relation_cycle');
         Assert.deepEqual(cyc.findings[0].detail, ['$.a', '$.b', '$.a']);
-        // An `error` verdict now SAYS WHY (the review's finding F). The
-        // graph list stays the graph's own vocabulary -- a document with no
-        // graph has no graph findings -- and the reason rides `errors`, in
-        // vet's finding shape.
         const broken = payload((0, mcp_1.callTool)('relations', { source: 'a: 1 & 2' }));
         Assert.equal(broken.verdict, 'error');
         Assert.deepEqual(broken.findings, []);
@@ -653,8 +545,6 @@ function hostileModule(dir) {
         Assert.equal(hb.hash, '');
         Assert.ok(0 < hb.findings.length);
     });
-    // ------------------------------------------------------------------
-    // The path capability (--root).
     (0, node_test_1.test)('path-arguments-need-a-root', () => {
         // Without a root, a path argument is refused with the remedy.
         const r = (0, mcp_1.callTool)('vet', { schemaPath: 'schema.aon', data: 'a: 1' });
@@ -677,9 +567,6 @@ function hostileModule(dir) {
         Fs.symlinkSync(Path.join(outside, 'evil.aon'), Path.join(root, 'link.aon'));
         // Reads below the root are served.
         Assert.equal(payload((0, mcp_1.callTool)('vet', { schemaPath: 'schema.aon', dataPath: 'data.aon' }, { root })).verdict, 'valid');
-        // An escape is denied — the dotted spelling and the symlink both,
-        // because confinement is realpath-then-prefix (the include
-        // resolver's own rule).
         const dots = (0, mcp_1.callTool)('vet', {
             schemaPath: `../${Path.basename(outside)}/evil.aon`, data: 'a: 1',
         }, { root });
@@ -696,21 +583,11 @@ function hostileModule(dir) {
         const neither = (0, mcp_1.callTool)('vet', { data: 'a: 1' }, { root });
         Assert.equal(neither.isError, true);
         Assert.match(neither.content[0].text, /schema \(or schemaPath\)/);
-        // WITH a root, includes resolve — confined below it: the served
-        // file's own relative include loads, an inline document may load
-        // a root file, and a file outside the root stays denied.
         Assert.deepEqual(payload((0, mcp_1.callTool)('canon', { srcPath: 'main.aon' }, { root })), { ok: true, canon: '{"x":{"b":2}}', findings: [] });
-        // srcPath, not the native join: inside an @"..." include a
-        // BACKSLASH IS AN ESCAPE, so a Windows path interpolated raw is
-        // eaten by the lexer and the include resolves to nothing. The
-        // helper is shared with the trust suite for exactly this.
         Assert.equal(payload((0, mcp_1.callTool)('canon', { src: `x: @"${(0, srcpath_1.srcPath)(Path.join(root, 'inc.aon'))}"` }, { root })).canon, '{"x":{"b":2}}');
         const esc = payload((0, mcp_1.callTool)('canon', { src: `x: @"${(0, srcpath_1.srcPath)(Path.join(outside, 'evil.aon'))}"` }, { root }));
         Assert.equal(esc.ok, false);
         Assert.equal(esc.findings[0].code, 'include_denied');
-        // The pre-parsed engines take file pairs too, include closures
-        // included — the confined pre-parse proves the closure in bounds
-        // and the engine then reads the same files.
         Assert.equal(payload((0, mcp_1.callTool)('subsume', { generalPath: 'gen.aon', specificPath: 'spec.aon' }, { root })).verdict, 'subsumes');
         Assert.equal(payload((0, mcp_1.callTool)('trim', { sourcePath: 'main.aon' }, { root })).verdict, 'clean');
         Assert.deepEqual(payload((0, mcp_1.callTool)('breaking', { oldPath: 'spec.aon', newPath: 'spec.aon' }, { root })), { verdict: 'compatible', mode: 'backward', findings: [] });
@@ -720,8 +597,6 @@ function hostileModule(dir) {
         Assert.equal(sum.ok, true);
         Assert.deepEqual(sum.keys, ['x']);
         Assert.equal(payload((0, mcp_1.callTool)('hash', { sourcePath: 'main.aon' }, { root })).hash, sum.hash);
-        // set via paths: the replacement is sited in the REAL overlay
-        // file, and the new text is returned, not written.
         const rip = payload((0, mcp_1.callTool)('set', {
             entryPath: 'entry.aon', overlayPath: 'over.aon',
             assignments: [{ path: '$.a', value: '3' }], inPlace: true,
@@ -737,13 +612,6 @@ function hostileModule(dir) {
         Assert.ok(init.result.instructions.includes(`--root ${root}`));
     });
     (0, node_test_1.test)('a-throwing-tool-does-not-take-the-server-down', () => {
-        // A stdio server serves one client for a whole session, so an
-        // unhandled throw inside a tool loses every later call as well.
-        // isError is the contract for "this call could not be made".
-        //
-        // No document reaches this path -- every verb answers with a
-        // report rather than throwing -- so the tool table is injected,
-        // the way the watch loop injects its waiter.
         const boom = [{
                 name: 'boom',
                 description: 'throws',
@@ -785,7 +653,6 @@ function hostileModule(dir) {
         Assert.equal(exited, 0);
     });
     (0, node_test_1.test)('server-startup-arguments', () => {
-        // The parser: nothing, a root, and the three refusals.
         Assert.deepEqual((0, mcp_server_1.parseArgs)([]), { root: undefined });
         Assert.deepEqual((0, mcp_server_1.parseArgs)(['--root', '/tmp']), { root: '/tmp' });
         Assert.match((0, mcp_server_1.parseArgs)(['--root']).err, /needs a directory/);
@@ -807,9 +674,6 @@ function hostileModule(dir) {
         Assert.equal((0, mcp_server_1.main)(stdin, write, exit, '9', ['--zig'], (l) => void errs.push(l)), undefined);
         Assert.equal(code, 2);
         Assert.match(errs[0], /unknown option --zig/);
-        // So does a root that is not a directory — checked at startup,
-        // not per call. The default errwrite (real stderr) is exercised
-        // here by omission.
         const se = process.stderr.write;
         const caught = [];
         try {
@@ -828,10 +692,6 @@ function hostileModule(dir) {
         Assert.equal((0, mcp_server_1.main)(stdin, write, exit, '9', ['--root', Path.join(filedir, 'f.txt')], (l) => void errs.push(l)), undefined);
         Assert.equal(code, 2);
         Assert.match(errs[errs.length - 1], /is not a directory/);
-        // A real root reaches the codec, realpath'd, and rides into the
-        // handshake. Read it back OUT of the JSON rather than substring-
-        // matching the line: a Windows path is backslash-escaped on the
-        // way in, so the raw path is not a substring of its own encoding.
         const root = scratchDir('aontu-mcp-args-');
         const codec = (0, mcp_server_1.main)(stdin, write, exit, '9', ['--root', root]);
         Assert.ok(codec instanceof mcp_server_1.LineCodec);
@@ -861,7 +721,6 @@ function hostileModule(dir) {
             const codec = (0, mcp_server_1.main)(stdin, (line) => lines.push(line), (code) => (exited = code, resolve()), '9.9.9', []);
             Assert.ok(codec instanceof mcp_server_1.LineCodec);
         });
-        // Two messages in one chunk, and one split across chunks.
         stdin.write('{"id":1,"method":"ping"}\n{"id":2,"method":"tools/list"}\n');
         stdin.write('{"id":3,"method":"ini');
         stdin.write('tialize"}\n');

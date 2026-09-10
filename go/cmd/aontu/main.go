@@ -1,12 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// Command aontu is the command-line interface for the Aontu unifier.
-//
-//	aontu [options] [file]
-//
-// With a file argument, the file is evaluated and the result printed.
-// With no file on an interactive terminal, a REPL is started. With no
-// file and piped input, the source is read from stdin.
 package main
 
 import (
@@ -438,57 +431,19 @@ func render(a *aontu.Aontu, src, mode string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// An Encoder with HTML escaping OFF, not json.MarshalIndent: Marshal
-	// rewrites <, > and & as their \u00xx escapes, which the
-	// canonical TypeScript CLI (exactJSON, and JSON.stringify before it)
-	// does not — so `x:"<b>&</b>"` printed different bytes in the two
-	// CLIs. The shared suite's gens mode already turned this escaping off
-	// for exactly this reason (specGens in spec_test.go); the CLI must
-	// make the same choice or the parity probe in AGENTS.md, which
-	// compares the two command lines, reads a divergence on any document
-	// containing those three characters.
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(out); err != nil { //coverage:ignore no generated value is unencodable
-		// UNREACHABLE, and kept anyway. The only values the encoder ever
-		// refused were the non-finite floats `+` could produce, and the
-		// engine now refuses those itself with float_overflow
-		// (go/arith.go, use-cases/BUGS.md 39) -- so nothing that
-		// generates reaches here unencodable. Dropping the check would
-		// buy nothing and would silently print a partial buffer if a
-		// future leaf ever escaped the same way.
 		return "", err
 	}
 	// Encode always appends a newline; emit adds its own.
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-// evalANSI matches the terminal colour escapes the parser puts in its
-// message text. A machine-readable report is no place for them, which
-// is the rule the engine's own findings follow (ansiRe in go/vet.go);
-// carried here rather than imported because that one is not exported
-// to this command. Mirrors EVAL_ANSI in ts/src/cli.ts.
 var evalANSI = regexp.MustCompile("\u001b\\[[0-9;]*m")
 
-// THE ENGINE'S DIAGNOSIS AS A FINDING (G11 phase 7). The bare command
-// was the one verb whose failure had no machine-readable form, so the
-// default entry point was the one an agent had to parse with a regular
-// expression.
-//
-// THE HEADLINE ONLY, and no `hint`. Both are parity decisions rather
-// than economies: the frames under the headline are drawn for a person
-// reading a terminal and only the first line is held to byte parity
-// between the ports, and the hint TABLES are deliberately not in
-// parity while the code registry is -- so a hint here would make the
-// two ports answer differently for a code only one of them explains.
-// `aontu explain <code>` is where the hint lives, which is what phase
-// 3 built it for.
-//
-// The CLASS comes from the registry rather than from the nil, because
-// the registry is what both ports hold set-equal
-// (test/spec/errcodes.tsv). Mirrors evalFinding in ts/src/cli.ts.
 func evalFinding(err error) []aontu.VetFinding {
 	ae, ok := err.(*aontu.AontuError)
 	if !ok { //coverage:ignore Unify and Generate return an *AontuError on every failure path
@@ -505,10 +460,6 @@ func evalFinding(err error) []aontu.VetFinding {
 		Message:  message,
 		Path:     "$",
 		Severity: "error",
-		// NO SITE. The bare command's failure is the whole document not
-		// standing up, and the two sites a conflict names are in the
-		// frames the text form prints; naming one of them here would be
-		// a choice the engine has not made.
 		Sites: []aontu.VetSite{},
 	}}
 }
@@ -523,11 +474,6 @@ type evalReportJSON struct {
 	Out      string              `json:"out"`
 }
 
-// emit renders src to out (or the error to errw) and returns the
-// process exit code. The text form is what it has always printed, on
-// the stream the verdict chooses; `--format json` is the same answer
-// as one object, on stdout, so a harness reads one stream and one
-// shape either way. Mirrors emitEval in ts/src/cli.ts.
 func emit(a *aontu.Aontu, src, mode, format string, out, errw io.Writer) int {
 	text, err := render(a, src, mode)
 
@@ -562,12 +508,6 @@ func emit(a *aontu.Aontu, src, mode, format string, out, errw io.Writer) int {
 	return 0
 }
 
-// EVERY VERB THIS PORT DISPATCHES, for the nearest-verb suggestion
-// G11 phase 2 prints. It is a separate list from the if-chain below
-// because the chain's arms have three different signatures and cannot
-// be a table; main_test.go's TestKnownVerbsAllDispatch keeps the two
-// from drifting by running each name and requiring it not to fall
-// through to the bare command.
 var knownVerbs = []string{
 	"agentsmd", "breaking", "explain", "fmt", "get", "hash", "help",
 	"init", "jsonschema", "lsp", "mcp", "mod", "reaches", "relations",
@@ -584,54 +524,16 @@ func looksLikeVerb(arg string) bool {
 		!strings.HasPrefix(arg, "-")
 }
 
-// VACUITY SIGNALS (G11 phase 4,
-// docs/capability-review/g11-agent-onramp.md).
-//
-// The same principle phase 5 applied to `vet`: a verb that did NOTHING
-// and a verb that did its job answer the same. `aontu view tree` over a
-// document declaring no relations printed one newline and exited 0;
-// `aontu render` with no profile printed nothing and exited 0; `aontu
-// relations` over a document declaring none answered `verdict: pass`.
-// For a person at a terminal that is a shrug. For an unattended agent
-// it is a green check mark on an empty box.
-//
-// ON STDERR, ALWAYS. stdout is a report contract -- a --format json
-// consumer parses it -- and the exit code is a verdict class that
-// callers already branch on. Neither changes here: what changes is
-// that the caller is TOLD. A caller who wants it to be fatal has
-// `vet --strict-coverage`, and the same argument would give the other
-// verbs a flag of their own if one is ever asked for.
-//
-// The repository already ruled this for one verb, in G8 phase 6 on
-// `trim`: "doing something else silently is worse than refusing".
-// Mirrors ts/src/cli.ts.
 func vacuous(stderr io.Writer, what, why string) {
 	fmt.Fprintf(stderr, "aontu: %s: %s\n", what, why)
 }
 
-// trustArg is the include capability the main verb runs with (G5,
-// docs/trust.md). `--trust` and `--include-root` set it explicitly; the
-// default is 'system' WITH the warning window: every resolution that
-// escapes the entry root prints a one-line stderr warning naming the
-// flag a future default will require (phase 6, the staged flip).
 type trustArg struct {
 	kind string // "system-warn", "system", "none", "root"
 	dir  string // root's directory ("" = the entry root)
-	// EXTENSIONS READ AS TEXT ride with the capability rather than
-	// beside it: both answer "what may an include read", both are
-	// stripped by takeTrust before a verb parses its own tail, and a
-	// verb that threads one and not the other is the defect --trust
-	// itself had, where the bare command honoured a flag and the verbs
-	// did not.
 	textExt []string
 }
 
-// parseTextExt reads a --text-ext value: `md,sql` or `.md,.sql`, the
-// dot accepted and dropped because a reader who has just written
-// @"notes.txt" reaches for one. An empty or non-extension element is a
-// usage error rather than a silently ignored word -- a flag that
-// quietly does nothing is how a document ends up refused with no
-// reason visible. The twin is parseTextExt in ts/src/cli.ts.
 func parseTextExt(arg string) ([]string, bool) {
 	out := []string{}
 	for _, raw := range strings.Split(arg, ",") {
@@ -708,17 +610,6 @@ func applyTrust(a *aontu.Aontu, trust trustArg, entryRoot string, stderr io.Writ
 	}
 }
 
-// aontuForFile builds an Aontu whose relative @"file" loads resolve
-// against the directory containing file, so `aontu /path/to/main.aontu`
-// works regardless of the current working directory (matching the
-// TypeScript CLI, which passes the resolved entry path).
-// EVERY VERB honours the include capability, not just the bare
-// command. G5 wired --trust/--include-root to `aontu <file>` alone, so
-// `aontu vet schema.aon data.json` -- the surface an agent scripts --
-// ran the full system resolver with no way to confine it (the review's
-// finding G). takeTrust strips the flags before each verb parses its
-// tail; verbTrust turns the parsed argument into the capability, and
-// aontuForFileTrust applies it to the engine every verb builds.
 func takeTrust(argv []string, stderr io.Writer) ([]string, trustArg, bool) {
 	rest := []string{}
 	trust := trustArg{kind: "system-warn"}
@@ -841,14 +732,6 @@ func repl(
 		fmt.Fprintf(out,
 			"aontu v%s REPL — :help for commands, :quit to exit\n", aontu.VERSION)
 	}
-	// The closing newline is for a HUMAN, so it is written only for
-	// one: it moves the terminal off the prompt line the loop left
-	// hanging. In --jsonl there is no prompt, every answer already ends
-	// in its own newline, and this one appended a bare empty line to
-	// the stream -- a record that is not JSON, at the end of a protocol
-	// whose whole contract is one JSON object per line. A harness
-	// parsing every line it receives failed on it, after the commands
-	// had all succeeded. Mirrors runRepl in ts/src/cli.ts.
 	closing := func() {
 		if !jsonl {
 			fmt.Fprintln(out)
@@ -885,13 +768,6 @@ func main() { //coverage:ignore run under GOCOVERDIR by `make cov-go`
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, !stdinIsPipe()))
 }
 
-// colorFor decides the colour override for a destination: nil ("leave
-// it to NO_COLOR") when the writer is a TERMINAL, and a forced off for
-// everything else -- a pipe, a file, /dev/null, a test buffer. The
-// TypeScript twin is `true === process.stderr.isTTY ? undefined :
-// false`, and isTerminal is how Go asks that same question. It used to
-// ask a DIFFERENT one, whether the inode is a character device, which
-// is also true of /dev/null.
 func colorFor(w io.Writer) *bool {
 	if f, isFile := w.(*os.File); isFile && isTerminal(f) {
 		return nil
@@ -904,18 +780,8 @@ func colorFor(w io.Writer) *bool {
 // returning the process exit code. Separated from main so tests can
 // drive the whole command with in-memory pipes.
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int {
-	// COLOUR OFF WHEN THE DESTINATION IS NOT A TERMINAL. Error frames
-	// hardcoded their ANSI escapes, so a piped report carried terminal
-	// control codes into whatever read them (the review's finding F).
-	// NO_COLOR is honoured by the library itself; only the command can
-	// see whether its stderr is a terminal, so only the command can
-	// make this call. Mirrors ts/src/cli.ts main().
 	aontu.SetColor(colorFor(stderr))
 
-	// Subcommand dispatch, and deliberately only for a FIRST argument:
-	// `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
-	// what it always did. A file named `vet` is still reachable as
-	// `aontu ./vet`.
 	if 0 < len(args) && "vet" == args[0] {
 		return runVet(args[1:], stdout, stderr)
 	}
@@ -994,13 +860,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	// reports.
 	format := "text"
 	jsonl := false
-	// A LIST, though the bare command evaluates exactly one document.
-	// It used to be one variable and the last argument won, which made
-	// a MISTYPED VERB a silent success: `aontu vet2 schema.aon
-	// good.json` printed good.json and exited 0, because `vet2` matched
-	// no subcommand, fell through to this loop as a file name, and was
-	// overwritten twice. In a tool loop that reads as a passing
-	// validation. Counting them is what lets the refusal below happen.
 	var files []string
 	trust := trustArg{kind: "system-warn"}
 	textExt := []string{}
@@ -1018,20 +877,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 			}
 			format = args[i]
 		case "--jsonl":
-			// The REPL's machine-drivable mode. helpText has advertised
-			// this since G7 phase 7, and repl.go carried the whole
-			// machinery behind it, but the switch had no case: `aontu
-			// --jsonl` answered "unknown option" and exited 2, so the
-			// flag was unreachable and the suite stayed green over it
-			// because repl_test.go built replState{JSONL: true} by hand
-			// (register, G7.7).
 			jsonl = true
-			// A JSONL answer is machine-read by definition, even when
-			// the session happens to be attached to a terminal, so this
-			// is a harder gate than the stderr test in run() rather
-			// than a repeat of it: escapes inside the answer string are
-			// noise the harness has to strip before it can compare
-			// anything.
 			off := false
 			aontu.SetColor(&off)
 		case "-h", "--help":
@@ -1080,14 +926,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 		}
 	}
 
-	// ONE DOCUMENT. The bare form has always been `aontu [options]
-	// [file]`, singular, and anything past the first was silently
-	// discarded rather than refused -- so every way of getting the verb
-	// wrong (a typo, a verb this port does not have, a verb spelled for
-	// another tool) ended in a plausible answer about the wrong file.
-	// Exit 2, the usage class, and the message names the cause rather
-	// than the symptom: nothing here can tell a mistyped verb from a
-	// second file, but the reader can.
 	if 1 < len(files) {
 		fmt.Fprintf(stderr,
 			"aontu: the bare command evaluates one document, and %d were given\n"+
@@ -1096,9 +934,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 		return 2
 	}
 
-	// The extensions ride with the capability from here on, so the
-	// three entry shapes below (file, REPL, stdin) each get them by
-	// threading the one value they already thread.
 	trust.textExt = textExt
 
 	file := ""
@@ -1109,18 +944,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	if file != "" {
 		src, err := os.ReadFile(file)
 		if err != nil {
-			// A MISTYPED VERB READS AS A FILE NAME, and until G11 phase 2
-			// that was only said when there were TWO of them. The
-			// one-argument case is the one an agent actually produces --
-			// `aontu help`, `aontu init`, `aontu ontology` -- and it
-			// answered `cannot read help: open help: no such file or
-			// directory`, which describes the symptom and hides the cause.
-			//
-			// The test is SHAPE, not existence: a bare word (no separator,
-			// no extension) that cannot be read was meant as a verb, while
-			// `./help`, `help.aon` and `/tmp/help` were meant as paths and
-			// keep the file diagnosis and its exit 1. That is the same
-			// escape hatch the subcommand dispatch documents.
 			if looksLikeVerb(file) {
 				fmt.Fprintf(stderr,
 					"aontu: `%s` is not a file, and not a verb this port knows\n",

@@ -2,20 +2,6 @@
 
 package aontu
 
-// Exact cross-leaf numeric comparison for the constraint algebra
-// (docs/reference-language.md, "The constraint algebra"): order is a
-// property of the number line, not the leaf, so a bound must compare
-// an integer, a float, a biginteger and a bigdecimal EXACTLY, with no
-// rounding anywhere. Every finite binary64 is exactly a rational —
-// mant * 2^exp — and 2^-k = 5^k * 10^-k, so every leaf converts
-// losslessly to a signed scaled-decimal (unscaled / 10^scale) and
-// comparison is big.Int arithmetic. The TS mirror is
-// ts/src/val/numcmp.ts.
-//
-// The scaled forms built here are comparison-internal: never stored,
-// never rendered, and deliberately NOT subject to the exact leaves'
-// 4096-digit budget (a float's exact expansion can need ~770 digits
-// and that is fine for a compare).
 
 import (
 	"math"
@@ -52,8 +38,6 @@ func scaledOfFloat(f float64) scaled {
 	expBits := int((bits >> 52) & 0x7ff)
 	frac := new(big.Int).SetUint64(bits & 0xfffffffffffff)
 
-	// Normal: implicit leading bit, exponent bias 1023 plus the 52
-	// fraction bits. Subnormal: no implicit bit, fixed exponent -1074.
 	var mant *big.Int
 	var exp int
 	if 0 == expBits {
@@ -97,7 +81,6 @@ func pow10big(n int) *big.Int {
 	return new(big.Int).Exp(ten, big.NewInt(int64(n)), nil)
 }
 
-// cmpScaled is the exact three-way comparison of two scaled decimals.
 func cmpScaled(a, b scaled) int {
 	if 0 != a.inf || 0 != b.inf {
 		if a.inf < b.inf {
@@ -118,15 +101,10 @@ func cmpScaled(a, b scaled) int {
 	return au.Cmp(bu)
 }
 
-// cmpNumeric is the exact three-way comparison of two numeric leaf
-// scalars, any leaves.
 func cmpNumeric(a, b *ScalarVal) int {
 	return cmpScaled(scaledOfNumeric(a), scaledOfNumeric(b))
 }
 
-// towerRank is the tower order integer < float < biginteger <
-// bigdecimal, used when two endpoints at the SAME point meet: the
-// survivor is the tower-lowest spelling.
 func towerRank(v *ScalarVal) int {
 	switch v.kind {
 	case KindBigDecimal:

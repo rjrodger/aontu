@@ -60,7 +60,6 @@ describe('val-ref', function() {
     })
 
     let r3 = new RefVal({ peg: ['a'] })
-    // console.log(r0)
     expect(r3.canon).equal('.a')
     expect(r3).include({
       path: [],
@@ -69,7 +68,6 @@ describe('val-ref', function() {
     })
 
     let r4 = new RefVal({ peg: ['a', 'b'] })
-    // console.log(r0)
     expect(r4.canon).equal('.a.b')
     expect(r4).include({
       path: [],
@@ -78,7 +76,6 @@ describe('val-ref', function() {
     })
 
     let r5 = new RefVal({ peg: ['a', 'b', 'c'] })
-    // console.log(r0)
     expect(r5.canon).equal('.a.b.c')
     expect(r5).include({
       path: [],
@@ -87,7 +84,6 @@ describe('val-ref', function() {
     })
 
     let r6 = new RefVal({ peg: ['a', 'b', 'c'], absolute: true })
-    // console.log(r0)
     expect(r6.canon).equal('$.a.b.c')
     expect(r6).include({
       path: [],
@@ -476,14 +472,12 @@ describe('val-ref', function() {
 
     let s1 = 'a:$.x.y,x:y:1'
     let v1 = P(s1)
-    // console.log(v1.peg.a)
     expect(v1.peg.a.peg).equal(['x', 'y'])
     expect(v1.canon).equal('{"a":$.x.y,"x":{"y":1}}')
     expect(G(s1)).equal({ a: 1, x: { y: 1 } })
 
     let s2 = 'a:$.x.y.z,x:y:z:1'
     let v2 = P(s2)
-    // console.log(v0)
     expect(v2.peg.a.peg).equal(['x', 'y', 'z'])
     expect(v2.canon).equal('{"a":$.x.y.z,"x":{"y":{"z":1}}}')
     expect(G(s2)).equal({ a: 1, x: { y: { z: 1 } } })
@@ -493,14 +487,12 @@ describe('val-ref', function() {
   test('relative-sibling', () => {
     let s0 = 'a:{b:.c,c:1}'
     let v0 = P(s0)
-    // console.log(v0)
     expect(v0.peg.a.peg.b.peg).equal(['c'])
     expect(v0.canon).equal('{"a":{"b":.c,"c":1}}')
     expect(G(s0)).equal({ a: { b: 1, c: 1 } })
 
     let s1 = 'a:{b:.c.d,c:d:1}'
     let v1 = P(s1)
-    // console.log(v0)
     expect(v1.peg.a.peg.b.peg).equal(['c', 'd'])
     expect(v1.canon).equal('{"a":{"b":.c.d,"c":{"d":1}}}')
     expect(G(s1)).equal({ a: { b: 1, c: { d: 1 } } })
@@ -532,14 +524,6 @@ describe('val-ref', function() {
     let s3 = 'a:b:c:key()'
     expect(G(s3)).equal({ a: { b: { c: 'b' } } })
 
-    // THE ONE READING THAT CHANGED. Under `key()` this answered 'a' at
-    // BOTH sites, and the test carried the note "correct as `a` tree is
-    // a normal tree" -- the early-bound reading, fixed at the position
-    // the reference was WRITTEN. `key()` is late-bound: `$.a` copies the
-    // subtree, and the copy answers for where it LANDED. Same rule that
-    // makes key() work under move() and inside a spread template, now
-    // reaching a plain reference too. Pinned as ref.tsv's
-    // key-under-a-reference-answers-at-the-destination.
     let s4 = `
 a: { n: key(), x:1 }
 b: { c: $.a }
@@ -584,7 +568,6 @@ b: { c1: { k:1 }}
   })
 
 
-
   test('ref', () => {
     let ctx = makeCtx()
 
@@ -617,12 +600,7 @@ b: { c1: { k:1 }}
 
 
   test('unify', () => {
-    // let r1 = new RefVal({ peg: ['a'] })
-    // let r2 = new RefVal({ peg: ['a'] })
 
-    // let ctx = makeCtx()
-    // let u12 = r1.unify(r2, ctx)
-    // // console.log(u12, r1.id, r2.id)
 
     // expect(r1).equal(u12)
 
@@ -636,7 +614,6 @@ b: { c1: { k:1 }}
     let s2 = `a:$.x,a:$.x`
     expect(UC(s2)).equal('{"a":nil}')
   })
-
 
 
   test('spreadable', () => {
@@ -731,8 +708,6 @@ b: { c1: { k:1 }}
     expect(G('q:&:k:key() q:&:p:2 q:a:{x:11}', c0)).equal({ q: { a: { k: 'a', p: 2, x: 11 } } })
     expect(G('&:k:key() &:p:2 a:{x:11}', c0)).equal({ a: { k: 'a', p: 2, x: 11 } })
 
-    // expect(G('&:k:key() &:p:2 a:{x:11} b:{x:22}'))
-    //   .equal({ a: { k: 'a', p: 2, x: 11 }, b: { k: 'b', p: 2, x: 22 } })
 
     expect(G('&:k:key() &:p:2 a:{x:11} b:{x:22}'))
       .equal({ a: { k: 'a', p: 2, x: 11 }, b: { k: 'b', p: 2, x: 22 } })
@@ -769,16 +744,6 @@ a: q: v: { m: { w:{}, y:{} } }
       }
     })
 
-    // Pref folding through a spread, read through a reference to a
-    // SIBLING subtree. Back at the FOUR levels it was written with:
-    // this was shallowed to three while §50 stood, because at four the
-    // spread re-applied inside the already-resolved field and
-    // TypeScript raised scalar_value at a doubled path
-    // ($.a.b.f.x.n.n) where Go answered. Fixed 2026-08-30 by giving a
-    // spread template a stable identity across clones, so the bag
-    // loops' apply-once mark survives the reference's clone; the depth
-    // ladder is pinned in test/spec/gen-key.tsv
-    // (key-spread-through-ref-2..5).
     expect(G(`
 a: b: c: d: e: $.a.b.f
 

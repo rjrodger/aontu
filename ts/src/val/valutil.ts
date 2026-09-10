@@ -13,7 +13,6 @@ import { Decimal } from './Decimal'
 import { isIntegerKind } from './numkind'
 
 
-// TODO: move to FuncBaseVal
 export function makeScalar(scalar: any): ScalarVal {
   const st = typeof scalar
   const spec = { peg: scalar }
@@ -36,21 +35,6 @@ export function makeScalar(scalar: any): ScalarVal {
 }
 
 
-// Like makeScalar, but for a numeric result that must not narrow the
-// kind of the value it was derived from (kind contagion: upper(2) is an
-// integer 2, upper(1.1) is a number 2). `like` is the source Val whose
-// kind is being carried over; anything that is not integer kind — and
-// any result that has left the int64 range — yields a NumberVal.
-//
-// The two EXACT leaves need no `like`: unlike integer and float, which
-// share the JavaScript `number` type and so can only be told apart by
-// the value they came from, a bigint is a biginteger and a Decimal is a
-// bigdecimal. Carrying the kind is automatic because the exact result
-// types ARE the kinds — an exact ceiling of a bigdecimal is a Decimal,
-// so upper(0d1.1) is bigdecimal 0d2.0 and upper(0d5) is biginteger 0d5.
-//
-// makeScalar keeps its own contract (every number becomes a NumberVal)
-// for callers that have no kind to preserve.
 export function makeScalarLike(scalar: any, like: any): ScalarVal {
   if ('bigint' === typeof scalar) {
     return new BigIntegerVal({ peg: scalar })

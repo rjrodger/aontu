@@ -1,21 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// CONTAINER KINDS (docs/design/PATHS.0.md). `{}` and `[]` are the
-// container UNITS: they admit any map (or list) AND generate empty
-// when nothing arrives. `map()` and `list()` are the container KINDS
-// proper: they admit exactly the same values and default to NOTHING,
-// as `string` does -- the spelling of "this must be a map, and it
-// must be supplied", which the unit cannot say because an unmet unit
-// silently manufactures its empty value.
-//
-// The vacuous call is the kind; the literal is the unit. That is the
-// whole convention, and it is why neither function takes arguments:
-// element constraints already belong to the spreads (`{&: V}`,
-// `[&: V]`), and a second spelling of them here would drift.
-//
-// No null/top/nil arms, as RelVal records: unite's dispatch ladder
-// absorbs those peers before any Val's own unify is consulted, and
-// FuncBaseVal returns a done resolution directly against a top peer.
 
 import type {
   Val,
@@ -53,8 +37,6 @@ class MapKindVal extends FeatureVal {
     if (true === p.isMapKind) {
       return this
     }
-    // The unit's own refusal code: a kind mismatch here is the same
-    // fact `{} & 1` reports, and two codes for one fact would drift.
     return makeNilErr(ctx, 'map', this, peer)
   }
 

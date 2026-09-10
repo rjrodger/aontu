@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the reaches cases in ts/test/cli.test.ts. What the two
-// ports must AGREE on (the verdict and the path) is pinned by
-// test/spec/reach.tsv; what each port owns (argument handling, exit
-// codes, rendering) is here.
 
 import (
 	"bytes"
@@ -130,15 +126,6 @@ func TestReachesArgumentErrors(t *testing.T) {
 	}
 }
 
-// A NIL ROOT WITH AN EMPTY ERROR LIST (use-cases/BUGS.md §43). The
-// id-spread refusal IS the root, so ctx.err is empty and every verb
-// that reports "this document does not stand up" used to index err[0]
-// and PANIC. The path the two ports give this nil differs ($.& here,
-// $ in TypeScript) and is recorded in test/spec/divergent.tsv, so this
-// asserts the CODE and the exit -- what a caller acts on -- not the
-// path. The TypeScript twin is
-// `a-nil-root-with-no-collected-error-is-reported-not-thrown` in
-// ts/test/cli.test.ts.
 func TestANilRootWithNoCollectedErrorIsReportedNotPanicked(t *testing.T) {
 	file := reachesFile(t, "&:\n")
 	for _, args := range [][]string{

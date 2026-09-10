@@ -21,11 +21,6 @@ function includeOpts(options) {
             ? {} : { textExt: options.textExt }),
     };
 }
-// Default walk() depth limit. High enough that real configs are never
-// silently truncated (the old default of 32 dropped marks on deeply
-// nested refs/funcs → wrong output), while still bounding runaway or
-// accidentally-cyclic walks (walk has no cycle detection). Pass null for
-// truly unbounded.
 const WALK_DEFAULT_MAXDEPTH = 9999;
 // Mark value in source is propagated to target (true ratchets).
 function propagateMarks(source, target) {
@@ -37,12 +32,6 @@ function propagateMarks(source, target) {
         target.mark[name] = target.mark[name] || source.mark[name];
     }
 }
-// Collect every value in the tree carrying the deprecation record (G3
-// phase 4), with its path — the one walk behind vet's `deprecated`
-// warnings and the LSP's Deprecated tags. The record travels on meets
-// (the unite rider) and clones, so this sees the declaration and every
-// use resolving through it. The non-Val guard is for a bag's raw peg
-// entries, which degenerate parses can leave behind.
 function collectDeprecations(root) {
     const out = [];
     walkBagVals(root, (v, path) => {
@@ -79,17 +68,6 @@ function deprecationMessage(d) {
         ('string' === typeof d.use ? ' (use ' + d.use + ')' : '') +
         ('string' === typeof d.since ? ' (since ' + d.since + ')' : '');
 }
-// The canonical form of a value, wrapped in the RIDER it carries —
-// the deprecation record (G3 phase 4) — reparseably, so
-// `deprecate(x, m)` survives canon. Bags render their children through
-// this (MapVal/ListVal canon), which is where a marked FIELD — the
-// realistic case — lives.
-//
-// The rider renders HERE and not in the value's own `canon` for the
-// same reason the guard at the MapVal call site tests the isVal flag:
-// a bag's canon recursion visits each child once, and a child that
-// wrapped itself as well would render its subtree twice per level —
-// 2^depth on a nested document.
 function canonRiders(v) {
     const c = v.canon;
     const d = v.deprecation;

@@ -2,14 +2,6 @@
 
 package aontu
 
-// SVG (VIEWS.0.md, "No SVG in v1" -- the phase after the text kinds).
-//
-// The cell-based kinds draw into SVG under the INTEGER RULE: every
-// coordinate is a whole number of a fixed cell -- 8 units per
-// character, 20 per line -- from the same counts that lay the text
-// figure out, so no font is measured and both ports emit the same
-// bytes. See the SVG section of ts/src/view.ts, which this mirrors
-// function for function.
 
 import (
 	"strings"
@@ -43,14 +35,6 @@ const svgStyle = "<style>" +
 
 func viewSvgEsc(s string) string { return viewEscape(s, svgEsc) }
 
-// svgDoc is the document: a viewBox the size of the figure, the style,
-// and the parts, one per line, so the bytes read as a figure and diff
-// as one.
-// The CLASSES are structure and are always written -- a rect that does
-// not say whether it is a direct cell or a closure cell is not a
-// figure. What `--style none` drops is the STYLESHEET, for a host page
-// that has already bound the variables and would otherwise carry one
-// copy of these rules per embedded figure.
 func svgDoc(w, h int, about string, parts []string, style string) string {
 	all := []string{
 		"<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"av\" viewBox=\"0 0 " +
@@ -147,12 +131,6 @@ func treeSvg(rows []*treeRow, about, style string) string {
 // ---------------------------------------------------------------------
 // The matrix
 
-// matrixCellClass maps each glyph of the text grid to its cell's class.
-// The same five states as ROLES, for the text profile. One table per
-// mechanism rather than one shared one, because the two vocabularies
-// are not in step: SVG needs a class for the empty cell (it draws a
-// rect there) and the text profile has nothing to say about a `.`
-// beyond that it is not a mark.
 var matrixCellRole = map[string]string{
 	"X": roleDirect, "!": roleUnmirrored, "+": roleClosure,
 	".": roleMuted, "\\": roleRule,
@@ -206,14 +184,6 @@ type viewDrawing struct {
 	way  string
 }
 
-// layerSvg is the layers as SVG: one band per row, its modules as boxes
-// laid left to right, and every SHOWN edge drawn between them -- an
-// upward one dashed and alert-coloured, because it is the violation the
-// bands cannot show on their own; a downward one straight down from the
-// bottom of its box to the top of the one it names; a sideways one
-// dipped below the boxes, since two modules of one band sit on the same
-// line and a straight edge between them would cross whatever stands
-// between.
 func layerSvg(bands []viewBand, shown []viewDrawing, footer []string, about, style string) string {
 	const BH = 44
 	names := []string{}
@@ -290,9 +260,6 @@ func panelColumnLine(p viewPanel, i int, c viewColumn) string {
 		panelColumnNone(p, c)
 }
 
-// The three parts of that line, split because the TEXT profile paints
-// them differently: the head and the "(in no set)" note are muted, the
-// elements are the figure's own content and are left alone.
 func panelColumnHead(p viewPanel, i int, c viewColumn) string {
 	head := "col " + itoa(i+1)
 	if !p.bars {

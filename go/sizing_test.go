@@ -2,12 +2,6 @@
 
 package aontu
 
-// THE SIZING RESIDUE (the review's finding C, use-cases/BUGS.md §16).
-// What the two ports must AGREE on is test/spec/vet.tsv's vet-sizing-*
-// and vet-must-* rows and constraint-length.tsv's canon rows. This file
-// holds the arms that are this port's own: the shape test itself, the
-// paths a Go nil would take where TypeScript has a thrown value, and
-// the anchor walking through a residue.
 
 import (
 	"strings"
@@ -15,9 +9,6 @@ import (
 )
 
 func TestSizingResidueRecognisesOnlyTheResidueShape(t *testing.T) {
-	// NOT a residue: a conjunct of two constraints, a conjunct of two
-	// containers, and a conjunct that is not two terms at all. Each
-	// falls through to the ordinary unresolved-conjunct handling.
 	for _, terms := range [][]Val{
 		{newConstraint("min", []Val{newInteger(1)}, 0), newConstraint("min", []Val{newInteger(1)}, 0)},
 		{newMap(), newMap()},
@@ -34,10 +25,6 @@ func TestSizingResidueRecognisesOnlyTheResidueShape(t *testing.T) {
 }
 
 func TestASizingResidueRefusesOutsideACollectingContext(t *testing.T) {
-	// The RAISE arm: a bare evaluation gets the constraint's own code
-	// and message, not a generic `conjunct` residue error. A collecting
-	// caller reads the same refusal off the context instead, which the
-	// shared vet rows cover.
 	a := New()
 	_, err := a.Generate("a: length(min(2))\na: [1]\n")
 	if nil == err {
@@ -53,10 +40,6 @@ func TestASizingResidueRefusesOutsideACollectingContext(t *testing.T) {
 }
 
 func TestAnAnchorStepsThroughASizingResidue(t *testing.T) {
-	// `--at` and `get` name the same node whether or not the container
-	// still carries its atom: a path that stopped at the residue would
-	// report no_path for a key the document plainly has (use case 06's
-	// service ports).
 	a := New()
 	root, err := a.Unify("a: unique() & [{p: 1}]\n")
 	if nil != err {
@@ -76,9 +59,6 @@ func TestAnAnchorStepsThroughASizingResidue(t *testing.T) {
 }
 
 func TestASizingResidueGenArms(t *testing.T) {
-	// The two arms a document cannot reach through the CLI: a
-	// COLLECTING caller, which reads the refusal off the context
-	// instead of being handed it, and a caller with NO context at all.
 	build := func() *ConjunctVal {
 		a := New()
 		root, err := a.Unify("a: length(min(2)) & [1]\n")

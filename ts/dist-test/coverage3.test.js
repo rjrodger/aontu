@@ -34,15 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// Coverage round 5 (ADR-002): the last reachable lines, branches and
-// functions in ts/src. Each case here exists because an investigation
-// proved the path IS reachable — the ones that are not are marked in the
-// source with a `node:coverage ignore` directive and a justification, and
-// listed in docs/test-coverage.md.
-//
-// Language behaviour belongs in test/spec/*.tsv (ADR-001); what is left
-// here is engine-internal: API-only guards, debug/inspect rendering,
-// editor-facing formatting, and process plumbing.
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
@@ -130,10 +121,6 @@ function capture(fn) {
 }
 (0, node_test_1.describe)('coverage3-public-surface', () => {
     (0, node_test_1.test)('every-re-export-resolves', () => {
-        // The package entry re-exports these from their own modules, which
-        // tsc emits as property getters — reading each one here keeps the
-        // public surface pinned without depending on which other test
-        // happens to touch it.
         const api = require('../dist/aontu');
         for (const name of [
             'Aontu', 'AontuContext', 'AontuError', 'Lang',
@@ -189,10 +176,6 @@ function capture(fn) {
         Assert.equal(out.canon, '1');
     });
     (0, node_test_1.test)('base-unify-is-identity', () => {
-        // No concrete Val inherits Val.unify — every leaf overrides it — but
-        // the base contract is that an unhandled Val stands.
-        // `canon` is abstract on Val, so even a stand-in has to render
-        // something; this one is never canoned.
         class PlainVal extends FeatureVal_1.FeatureVal {
             get canon() { return ''; }
         }
@@ -268,25 +251,11 @@ function capture(fn) {
         Assert.deepEqual(new ListVal_1.ListVal({ peg: [1, 'x'] }, ctx).clone(ctx).peg, [1, 'x']);
     });
     (0, node_test_1.test)('optional-list-element-canon', () => {
-        // A list canon carries no optional markers, even when the value is
-        // built by hand with one recorded (issue #40): a key:value pair is
-        // not a list element, so there is no optional element for a marker to
-        // describe, and the Go port's ListVal.Canon has no arm for one.
         const lv = new ListVal_1.ListVal({ peg: [new IntegerVal_1.IntegerVal({ peg: 1 })] }, CTX());
         lv.optionalKeys.push('0');
         Assert.equal(lv.canon, '[1]');
     });
     (0, node_test_1.test)('func-no-arg-guards-via-api', () => {
-        // Every built-in's missing-argument guard, reached the only way that
-        // is left: through the programmatic API (issue #51).
-        //
-        // A wrong argument count is refused at PARSE now, so no source can
-        // reach these guards -- but a caller constructing a func Val by hand
-        // still can, and they are what keeps that a clean nil rather than a
-        // TypeError on `undefined`. The value of the test is that surface,
-        // not the counter: the guards became unreachable from source the
-        // moment arity was checked, and deleting them would have moved the
-        // failure from a refusal to a crash for anyone building Vals.
         const ctx = CTX();
         const cases = [
             ['close', new CloseFuncVal_1.CloseFuncVal({ peg: [] }), 'no_first_arg'],
@@ -301,9 +270,6 @@ function capture(fn) {
             Assert.equal(out.isNil, true, name + ': expected a nil');
             Assert.equal(out.why, why, name + ': why');
         }
-        // path() with no argument is the path KIND
-        // (docs/design/PATHS.0.md): prepare answers the empty argument
-        // list and resolve mints the kind.
         const pf = new PathFuncVal_1.PathFuncVal({ peg: [] });
         const prepared = pf.prepare(ctx, []);
         Assert.equal(prepared.length, 0);
@@ -338,10 +304,6 @@ function capture(fn) {
         e2.parent = new MapVal_1.MapVal({ peg: {} });
         e2.key = 'a';
         Assert.ok(e2.inspection(0).includes('parent='));
-        // A non-escaping peer rides a NEW node (pure unify — the
-        // unequal-spread crosswire, BUGS.md §6-§7): the met expectation
-        // stays untouched, and the carried node's inspection renders the
-        // accumulated peer.
         const e3 = new ExpectVal_1.ExpectVal({ peg: new ScalarKindVal_1.ScalarKindVal({ peg: ScalarKindVal_1.Integer }) }, ctx);
         const out3 = e3.unify(new ScalarKindVal_1.ScalarKindVal({ peg: Number }), ctx);
         Assert.ok(out3.isExpect && out3 !== e3 && undefined !== out3.peer);
@@ -362,9 +324,6 @@ function capture(fn) {
         Assert.equal(n2.why, 'nil_gen');
     });
     (0, node_test_1.test)('scalar-against-top', () => {
-        // Every leaf stands against TOP. The engine reaches these arms only
-        // through whichever document happens to unify a bare leaf with top;
-        // asserting them here keeps the ADR-002 gate independent of that.
         const ctx = CTX();
         const leaves = [
             new NumberVal_1.NumberVal({ peg: 1.5 }),
@@ -379,7 +338,6 @@ function capture(fn) {
     });
     (0, node_test_1.test)('scalar-rendering-edges', () => {
         Assert.equal(new ScalarVal_1.ScalarVal({ peg: undefined }).canon, 'undefined');
-        // -0 generates as +0, so JSON round-trips it.
         Assert.equal(Object.is(new NumberVal_1.NumberVal({ peg: -0 }).gen(undefined), 0), true);
     });
     (0, node_test_1.test)('decimal-compare-and-budget', () => {
@@ -426,10 +384,6 @@ function capture(fn) {
         const ctx = CTX();
         // No argument at all is the path KIND (docs/design/PATHS.0.md).
         Assert.equal(new PathFuncVal_1.PathFuncVal({ peg: [] }, ctx).resolve(ctx, []).isPathKind, true);
-        // A string argument is ADDRESS TEXT: an anchored spelling
-        // captures, an anchorless one converts as RELATIVE, and text that
-        // spells nothing once anchored refuses. prepare answers a fresh
-        // argument list -- the parsed one may be shared by clones.
         const pfs = new PathFuncVal_1.PathFuncVal({ peg: [new StringVal_1.StringVal({ peg: '.a' })] }, ctx);
         const sout = pfs.prepare(ctx, [new StringVal_1.StringVal({ peg: '.a' })]);
         Assert.equal(sout[0].isPath, true);
@@ -454,11 +408,6 @@ function capture(fn) {
         Assert.equal(rout.why, 'invalid-arg');
     });
     (0, node_test_1.test)('case-func-fallback-arm', () => {
-        // The signature gate refuses every concrete non-string/number
-        // BEFORE resolve, so the case family's fallback arm is reachable
-        // only through a direct call with an exotic argument -- an API
-        // shape, pinned here for both twins (upper's is also reached via
-        // the placeholder rows, lower's only here).
         const ctx = new ctx_1.AontuContext({});
         const barg = new BooleanVal_1.BooleanVal({ peg: true });
         const lout = new LowerFuncVal_1.LowerFuncVal({ peg: [barg] }, ctx).resolve(ctx, [barg]);
@@ -472,21 +421,12 @@ function capture(fn) {
         Assert.equal(new UpperFuncVal_1.UpperFuncVal({ peg: [] }).superior().isTop, true);
         Assert.equal(new LowerFuncVal_1.LowerFuncVal({ peg: [] }).superior().isTop, true);
     });
-    // The arms unite's fast path hides from source (PATHS.0.md). Two
-    // DONE container kinds with equal (absent) pegs short-circuit in
-    // unite before either unify runs, so the kind-meets-kind arms are
-    // reachable only through the API -- and the Go port needs them (its
-    // dispatcher has no such fast path), so they stay, mirrored, rather
-    // than being deleted as dead.
     (0, node_test_1.test)('container-kind-api-only-arms', () => {
         const ctx = CTX();
         const mk = new ContainerKindVal_1.MapKindVal({}, ctx);
         Assert.equal(mk.unify(new ContainerKindVal_1.MapKindVal({}, ctx), ctx), mk);
         const lk = new ContainerKindVal_1.ListKindVal({}, ctx);
         Assert.equal(lk.unify(new ContainerKindVal_1.ListKindVal({}, ctx), ctx), lk);
-        // same() feeds unite's fast path and disjunct dedupe; the fast
-        // path answers before same() runs for two DONE kinds, so it too
-        // is API-only.
         Assert.equal(mk.same(lk), false);
         Assert.equal(mk.same(new ContainerKindVal_1.MapKindVal({}, ctx)), true);
         Assert.equal(lk.same(mk), false);
@@ -500,10 +440,6 @@ function capture(fn) {
         Assert.equal(lf.funcname(), 'list');
         Assert.equal(lf.make(ctx, { peg: [] }).isListFunc, true);
     });
-    // path()'s API-only arms: make() (a path call resolves before any
-    // residuation could clone it), the second prepare (the first pass
-    // always resolves), and a capture whose reference holds no named
-    // segment at all (no source spelling parses to one).
     (0, node_test_1.test)('path-func-api-only-arms', () => {
         const ctx = CTX();
         const pf = new PathFuncVal_1.PathFuncVal({ peg: [] }, ctx);
@@ -621,10 +557,6 @@ function capture(fn) {
         Assert.deepEqual(t, before);
         (0, utility_2.explainClose)(t, new IntegerVal_1.IntegerVal({ peg: 2 }));
         Assert.ok(t.some((e) => 'string' === typeof e && /^-> \d+=2$/.test(e)));
-        // An outcome that is NOT yet done is marked `!`, which is the whole
-        // point of the slot when reading an explain trace: it distinguishes a
-        // frame that settled from one still deferring. A scalar is always
-        // done, so only an unresolved value reaches this arm.
         (0, utility_2.explainClose)(t, new RefVal_1.RefVal({ peg: ['zz'], absolute: true }));
         Assert.ok(t.some((e) => 'string' === typeof e && /^-> \d+!=/.test(e)));
         // A missing frame is a no-op (explain disabled).
@@ -657,22 +589,12 @@ function capture(fn) {
             },
         });
         Assert.equal(lang.parse('x:@"m0.aon"').canon, '{"x":{"a":1}}');
-        // A `.json` include is AONTU SOURCE (ADR-012), so it arrives as
-        // Vals like any other include -- not as the raw JS object the
-        // upstream json processor used to hand back, which was the one
-        // shape the tree could not convert (BUGS §49b).
         const pkg = new lang_1.Lang().parse('p:@"@tabnas/jsonic/package.json"');
         Assert.equal(pkg.peg.p.peg.name.peg, '@tabnas/jsonic');
         const none = new lang_1.Lang().parse('a:@');
         Assert.equal(none.canon, 'nil');
         Assert.match(none.err[0].msg, /source not found/);
         Assert.throws(() => new lang_1.Lang().parse('a:@1'));
-        // A HOST-SUPPLIED resolver never passed through gateExtension --
-        // that gate lives inside makeModelResolver, which this replaces --
-        // so the processor map is what holds the rule for it. Without the
-        // refusing entries the kind below would fall to multisource's
-        // default and the file would arrive as TEXT (and a `.js` one would
-        // be require()d), which is exactly what ADR-012 refuses.
         const host = new lang_1.Lang({
             resolver: () => ({
                 found: true, path: 'x.csv', full: '/nowhere/x.csv',
@@ -683,10 +605,6 @@ function capture(fn) {
         Assert.equal(refused.canon, 'nil');
         Assert.equal(refused.err[0].why, 'include_extension');
         Assert.match(refused.err[0].msg, /extension: \.csv/);
-        // ... and the same road for a kind the table DOES name as text:
-        // the processor map is built from the table, so a host resolution
-        // of `.txt` arrives as one string scalar rather than being parsed
-        // or refused.
         const hostText = new lang_1.Lang({
             resolver: () => ({
                 found: true, path: 'x.txt', full: '/nowhere/x.txt',
@@ -694,10 +612,6 @@ function capture(fn) {
             }),
         });
         Assert.equal(hostText.parse('v:@"x.txt"').canon, '{"v":"a:1"}');
-        // A WIDENING REACHES THE HOST ROAD TOO, and stops where the table
-        // says: `--text-ext md` reads a host-resolved `.md`, and no
-        // spelling of the flag reaches `.js`, which multisource's own
-        // default would EXECUTE.
         const hostMd = (ext, textExt) => new lang_1.Lang({
             textExt,
             resolver: () => ({
@@ -726,32 +640,14 @@ function capture(fn) {
         const fixture = (name) => Path.join(__dirname, '..', 'test', name).split(Path.sep).join('/');
         const raw = fixture('raw.json');
         const rawfn = fixture('raw-fn.js');
-        // An elided element is REFUSED, in an implicit top-level list as
-        // anywhere else (issue #48). It canons as the nil it now is.
         Assert.equal(lang.parse('1,,2').canon, '[1,nil,2]');
         // A JSON include is Aontu source (ADR-012), and every JSON kind is
         // a kind the grammar already has.
         Assert.equal(lang.parse('1, @"' + raw + '"').canon, '[1,{"a":1,"b":"s","c":true,"d":[1,2],"e":null,"f":1.5}]');
-        // A `.js` include is REFUSED, NOT EXECUTED. `.js` is not on
-        // INCLUDE_KINDS, so the resolver throws before anything reads the
-        // file -- where the upstream processor used to require() it in this
-        // process and hand its export to rawToVal as a parse_unknown nil.
-        // The fixture still exports a function, so a regression here would
-        // show as `[1,nil]` again rather than as an error.
         const js = lang.parse('1, @"' + rawfn + '"');
         Assert.equal(js.canon, 'nil');
         Assert.equal(js.err[0].why, 'include_extension');
         Assert.match(js.err[0].msg, /extension: \.js/);
-        // An operator expression in an implicit top-level list is REDUCED,
-        // not left as a raw op array: `k2.b` is the relative reference
-        // `.k2.b`, which is what it canons as standalone too. Before
-        // @tabnas/expr 0.5.4 this parsed as the nonsense list
-        // [nil,"k2","b"] -- the op descriptor as a nil, its operands
-        // trailing behind it -- and unify then produced that list as a
-        // VALUE in Go while TypeScript raised no_path. Both now raise.
-        // The trailing pair is an ELEMENT (`K:1` is `{"K":1}`): pairs in
-        // list position are single-key map elements, per list.tsv's
-        // list-pair-element block.
         Assert.equal(lang.parse('k2.b K:1').canon, '[.k2.b,{"K":1}]');
     });
 });
@@ -820,23 +716,10 @@ function capture(fn) {
         // The unguarded self-reference is a RESIDUAL now (RECURSION.0.md):
         // hover shows the symbolic fixpoint, not an error.
         Assert.match(label('a:$.a', 2), /\*recurse\*/);
-        // A value that collapsed to a nil still hovers, as *error* -- the
-        // label the residual used to carry here.
         Assert.match(label('a:$.nope', 2), /\*error\*/);
-        // A REFERENCE that survives unification: a chain deeper than the
-        // pass budget stalls unresolved without erroring. A cycle no longer
-        // works here — with multi-error collection (G2 phase 6) the pass
-        // loop continues past the erroring pass, and the cycle's members
-        // absorb the one cycle nil rather than staying references.
         Assert.match(label('a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:$.l l:1', 2), /\*reference\*/);
         Assert.match(label('n:1.5', 2), /\*float\*/);
         Assert.match(label('x:null', 2), /\*scalar\*/);
-        // A DISJUNCTION LABELS ITSELF. `x:null|top` used to hover as
-        // *scalar*: the disjunct arrived unsited, so the hover walk found
-        // the null MEMBER under the cursor instead. Carrying the site
-        // through the meet (ts/src/val/DisjunctVal.ts, the review's finding
-        // F) makes the disjunction the thing at that position, which is
-        // what is written there.
         Assert.match(label('x:null|top', 2), /\*disjunct\*/);
         Assert.match(label('x:top|top', 2), /\*top\*/);
     });
@@ -861,18 +744,10 @@ function capture(fn) {
 });
 (0, node_test_1.describe)('coverage3-process', () => {
     (0, node_test_1.test)('eval-source-error-shapes', () => {
-        // evalSource never throws: it renders whatever came out of the
-        // engine. The three shapes are an AontuError, a foreign object that
-        // claims to be one (`aontu: true`, as a cross-realm error would),
-        // and a throw with no message at all.
         const thrower = (err) => ({
             unify() { throw err; },
             generate() { throw err; },
         });
-        // AN AontuError WITH NO COLLECTED NILS carries no finding rather
-        // than an invented code (G11 phase 7): the engine collects them
-        // before it throws, and a refusal raised outside that collection
-        // (exactJSON's circular structure) has none to report.
         const aerr = (0, cli_1.evalSource)(thrower(new err_1.AontuError('real-aontu')), 'a:1', 'json');
         Assert.deepEqual(aerr, { findings: [], ok: false, text: 'real-aontu' });
         const foreign = (0, cli_1.evalSource)(thrower({ aontu: true, message: 'foreign-aontu' }), 'a:1', 'json');
@@ -887,10 +762,6 @@ function capture(fn) {
         Assert.deepEqual(real.findings.map((f) => [f.code, f.class, f.path]), [['scalar_value', 'conflict', '$']]);
     });
     (0, node_test_1.test)('cli-version-without-a-version-field', () => {
-        // A package.json with no version field falls back rather than
-        // printing "undefined" (the read is patched, not the file).
-        // require(), not the import namespace: the CJS module object is
-        // mutable, and cli.js reads the property at call time.
         const fs = require('node:fs');
         const orig = fs.readFileSync;
         let r;
@@ -904,10 +775,6 @@ function capture(fn) {
         Assert.equal(r.out.trim(), '0.0.0');
     });
     (0, node_test_1.test)('include-opts-carries-both-and-omits-neither', () => {
-        // includeOpts is the ONE place the include options reach an engine
-        // (ts/src/utility.ts). Absent means ABSENT rather than
-        // present-and-undefined, so an engine's options bag is what it was
-        // before either option existed.
         const { includeOpts } = require('../dist/utility');
         Assert.deepEqual(includeOpts({}), {});
         Assert.deepEqual(includeOpts({ textExt: [] }), {});
@@ -947,11 +814,6 @@ function capture(fn) {
         Assert.equal(r.out, '');
         Assert.match(r.err, /Cannot unify value/);
     });
-    // THE BARE COMMAND'S MACHINE-READABLE REPORT (G11 phase 7),
-    // IN-PROCESS. `ts/test/cli.test.ts` asserts it through the packaged
-    // binary, which is a child whose coverage is deliberately not
-    // counted; this drives the same three arms here so the emitter is
-    // measured where the gate can see it.
     (0, node_test_1.test)('cli-bare-format-json', () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-cov3-json-'));
         const good = Path.join(dir, 'good.aontu');
@@ -997,10 +859,6 @@ function capture(fn) {
     });
 });
 (0, node_test_1.describe)('coverage3-deprecate', () => {
-    // The internals no source reaches (G3 phase 4): make() is the
-    // multi-pass rebuild contract every FuncBaseVal keeps; the argless
-    // and nil-argument resolve arms are the defensive shape the
-    // type()/hide() lesson fixed (refusal over corruption, D7).
     (0, node_test_1.test)('deprecate-func-internals', () => {
         const ctx = new ctx_1.AontuContext({ root: (0, top_1.top)() });
         const d = new DeprecateFuncVal_1.DeprecateFuncVal({ peg: [] });
@@ -1030,11 +888,6 @@ function capture(fn) {
     });
 });
 (0, node_test_1.describe)('coverage3-subsume', () => {
-    // The no-rule fold at the walk's tail (ts/src/subsume.ts): total in
-    // practice for every evaluated former, so unreachable through
-    // subsume() — pinned directly, with a nil, which also pins the "a nil
-    // folds to undecided" claim the walk's top comment makes. The Go port
-    // pins the same fold in TestSubsumeNoRuleFold.
     (0, node_test_1.test)('subsume-no-rule-fold', () => {
         const state = {
             profile: 'values', findings: [],
@@ -1078,13 +931,6 @@ function capture(fn) {
     });
 });
 (0, node_test_1.describe)('coverage3-hcanon', () => {
-    // The hash-form arms no SOURCE reaches (G6 phase 0): a bag's raw peg
-    // entry, which degenerate parses can leave behind, and the junction
-    // parenthesisation rule -- post-unification junctions are flattened
-    // by norm, so only a constructed tree still nests one. The rule has
-    // to hold anyway: a hash form that rendered `(1|2)&3` as the
-    // differently-parsing `1|2&3` would be a pin that silently agrees
-    // with a document it should not.
     (0, node_test_1.test)('hcanon-internals', () => {
         const ctx = new aontu_1.Aontu().ctx({});
         const raw = new MapVal_1.MapVal({ peg: {} }, ctx);
@@ -1113,12 +959,6 @@ function capture(fn) {
     });
 });
 (0, node_test_1.describe)('coverage3-query', () => {
-    // The projection arm no SOURCE reaches (G7 phase 1): a junction
-    // member that is itself a junction of more than one term. Post-
-    // unification junctions are flattened by norm, so only a constructed
-    // tree still nests one — and the rule has to hold anyway, because a
-    // view is a DOCUMENT: rendering `(1|2)&3` as the differently-parsing
-    // `1|2&3` would be a view that no longer subsumes what it summarises.
     (0, node_test_1.test)('query-nested-junction-keeps-its-parens', () => {
         const ctx = new aontu_1.Aontu().ctx({});
         const root = new MapVal_1.MapVal({ peg: {} }, ctx);
@@ -1137,13 +977,6 @@ function capture(fn) {
     });
 });
 (0, node_test_1.describe)('coverage3-provenance', () => {
-    // The last tiebreak of the contribution order (G7 phase 3): two
-    // UNSITED contributions, which is now the only way two of them share
-    // a "position" — a real site identifies one written token and the
-    // record is deduplicated on it (finding E). The order still has to
-    // be TOTAL, because a partial one would leave the record's tail in
-    // meet order, which is the fixpoint's business and differs between
-    // the ports.
     (0, node_test_1.test)('provenance-orders-same-site-contributions-by-canon', () => {
         const ctx = new aontu_1.Aontu().ctx({});
         const zed = new StringVal_1.StringVal({ peg: 'z' }, ctx);
@@ -1158,13 +991,6 @@ function capture(fn) {
         // A path nothing met has no record at all.
         Assert.deepEqual(prov.at(['nowhere']), []);
     });
-    // THE SPREAD MARK'S GUARD IS A CYCLE GUARD, not a "done" flag: it
-    // must stop the walk revisiting a value it has already reached in
-    // THIS walk, and must not stop a later application re-walking a
-    // template the fixpoint has advanced in place (finding E, BUGS.md
-    // §22). A tree holding one child under two keys is the shape that
-    // exercises it, and no source builds one -- the parser gives every
-    // key its own value -- so it is built here.
     (0, node_test_1.test)('mark-spread-visits-a-shared-child-once', () => {
         const ctx = new aontu_1.Aontu().ctx({});
         const shared = new StringVal_1.StringVal({ peg: 'x' }, ctx);
@@ -1180,13 +1006,6 @@ function capture(fn) {
         (0, provenance_1.markSpread)(tree);
         Assert.equal(replaced._fromSpread, true);
     });
-    // ONE WRITTEN TOKEN IS ONE CONTRIBUTION (the review's finding E).
-    // The same written value reaches a path more than once now that
-    // provenance travels through clones -- as the template application
-    // and as the value written at the key, or at two stages of narrowing
-    // -- and the SITE is what says they are one thing. The role is not
-    // part of that identity, so the more informative one survives. The
-    // Go twin is TestProvenanceDeduplicatesBySite.
     (0, node_test_1.test)('one-written-token-is-one-contribution', () => {
         const ctx = new aontu_1.Aontu().ctx({});
         const at = (v) => {
@@ -1216,10 +1035,6 @@ function capture(fn) {
         Assert.equal(prov2.at(['u']).length, 2);
     });
 });
-// G4 phase 2 — the ADDRESS grammar, at the shapes no document reaches.
-// An address is a tree path (ADR-014), so what is pinned here is the
-// spellings the parser accepts and refuses, and the relative
-// resolution's own edge: a climb off the top of the tree.
 (0, node_test_1.describe)('coverage3-address', () => {
     (0, node_test_1.test)('address-spellings', () => {
         // Absolute, from the root.
@@ -1229,10 +1044,6 @@ function capture(fn) {
         // Relative: the sibling scope, then one step up per further dot.
         Assert.deepEqual((0, PathVal_1.parseAddress)('.b'), { absolute: false, up: 0, parts: ['b'] });
         Assert.deepEqual((0, PathVal_1.parseAddress)('..b.c'), { absolute: false, up: 1, parts: ['b', 'c'] });
-        // What is not an address. `$` alone names the whole document,
-        // which has no position to be written back into; the rest are
-        // paths without an anchor, empty segments, or characters no key
-        // spells.
         for (const bad of ['$', '', 'a.b', 'services.auth', '$.', '$.a.',
             '$..a', '.', '..', '$.a b', '$.a:b', '$.a/b',
             // ... and the same refusals on the RELATIVE arm, which validates
@@ -1256,14 +1067,6 @@ function capture(fn) {
         Assert.strictEqual((0, ReferFuncVal_1.addressPath)((0, PathVal_1.parseAddress)('...z'), ['a', 'dep']), undefined);
     });
 });
-// THE RESIDUAL SHAPES no source reaches: the clone hooks and names of
-// rel(), the graph atoms and the recursion residual, the constraint's
-// hand-off to a rel or atom peer, and the recursion budget's backstop.
-//
-// These were carried into ADR-014's rewrite of this file by accident
-// and are restored unchanged: they pin machinery that the identity
-// mark's removal does not touch, and they happened to live in the same
-// describe block as the identity internals.
 (0, node_test_1.describe)('coverage3-residual-shapes', () => {
     (0, node_test_1.test)('rel-func-shape', () => {
         // The clone hook and name of the rel() function itself: specs
@@ -1283,13 +1086,6 @@ function capture(fn) {
         Assert.strictEqual(out.canon, 'rel()');
     });
     (0, node_test_1.test)('constraint-hands-drive-to-rel-and-atom', () => {
-        // The ConstraintVal side of the hand-off: a constraint DRIVING
-        // with a rel or atom peer defers to the peer, so `rel(t) & re(x)`
-        // reads the same in either order. Inline documents route these
-        // pairs through unite's b-drives first; the INCLUDE flow re-drives
-        // a loaded schema's conjunct with the constraint on the left
-        // (use-cases/12-relations refused without the arm), which a direct
-        // call pins without a fixture file.
         const ctx = new aontu_1.Aontu().ctx({ collect: true });
         ctx.root = new MapVal_1.MapVal({ peg: {} }, ctx);
         const con = new aontu_1.Aontu().unify('c: re("^j")').peg.c;
@@ -1304,12 +1100,6 @@ function capture(fn) {
         Assert.strictEqual(viaRel.isRel, true);
     });
     (0, node_test_1.test)('graph-atom-shape', () => {
-        // The atom arms no document reaches through unite's ladder: the
-        // fast paths skip a DONE value with no peer, so the self-drive's
-        // held-undefined and held-done returns, the clone hook, and the
-        // funcval make hooks are pinned directly, the way rel-func-shape
-        // pins rel's. The Go twin is TestGraphAtomShape in
-        // go/refer_test.go.
         const ctx = new aontu_1.Aontu().ctx({ collect: true });
         ctx.root = new MapVal_1.MapVal({ peg: {} }, ctx);
         // Bare atom: DONE at birth, self-drive answers itself.
@@ -1324,8 +1114,6 @@ function capture(fn) {
         held.dc = 0;
         Assert.strictEqual(held.unify(null, ctx), held);
         Assert.strictEqual(held.done, true);
-        // A held whose own drive collapses to a nil (a pending conjunct
-        // of two scalars): the self-drive answers the nil.
         const broken = new GraphAtomVal_1.GraphAtomVal({
             akind: 'acyclic', held: new ConjunctVal_1.ConjunctVal({
                 peg: [new IntegerVal_1.IntegerVal({ peg: 1 }, ctx), new IntegerVal_1.IntegerVal({ peg: 2 }, ctx)],
@@ -1357,14 +1145,6 @@ function capture(fn) {
         Assert.strictEqual(ifn.make(ctx, { peg: [] }).isVal, true);
     });
     (0, node_test_1.test)('recurse-budget-backstop', () => {
-        // The T-1 backstop (RECURSION.0.md): the depth budget is shared
-        // with the unite nesting guard, so through DATA the nesting guard
-        // always trips first -- a chain deep enough to charge the
-        // residual is a tree too deep to drive. The arm is a backstop,
-        // pinned directly: a residual already charged to the budget
-        // refuses the next expansion as recursion_budget, naming the
-        // target. The Go twin is TestRecurseBudgetBackstop in
-        // go/refer_test.go.
         const ctx = new aontu_1.Aontu().ctx({ collect: true });
         ctx.root = new MapVal_1.MapVal({ peg: {} }, ctx);
         const rec = new RecurseVal_1.RecurseVal({ target: ['n'], xc: 1000 }, ctx);
@@ -1374,11 +1154,6 @@ function capture(fn) {
         Assert.strictEqual(out.details.target, '$.n');
     });
     (0, node_test_1.test)('recurse-residual-shape', () => {
-        // The residual arms unite's ladder never dispatches to (the fast
-        // paths skip a DONE value with no peer) and the hold arms a
-        // document with an assembled definition never revisits, pinned
-        // directly, the way graph-atom-shape pins the atom's. The Go twin
-        // is TestRecurseResidualShape in go/refer_test.go.
         const ctx = new aontu_1.Aontu().ctx({ collect: true });
         ctx.root = new MapVal_1.MapVal({ peg: {} }, ctx);
         const mk = (t) => new RecurseVal_1.RecurseVal({ target: t }, ctx);
@@ -1407,13 +1182,6 @@ function capture(fn) {
         spreadMap.spread.cj = mk(['n']);
         (0, RecurseVal_1.bumpRecurse)(spreadMap, 4);
         Assert.strictEqual(spreadMap.spread.cj.xc, 4);
-        // A RAW REFERENCE IS SEEDED TOO, and this is the arm that makes
-        // the design's second termination bound live at all (use-cases/
-        // BUGS.md §57). A freshly cloned level holds the definition's
-        // references UNRESOLVED, so a walk looking only for residuals
-        // found nothing to stamp and `xc` read 0 at EVERY expansion, in
-        // the healthy form as much as the runaway one. The seed rides on
-        // the reference; RefVal mints its residual from it.
         const ref = new RefVal_1.RefVal({ peg: ['n'], absolute: true }, ctx);
         (0, RecurseVal_1.bumpRecurse)(ref, 7);
         Assert.strictEqual(ref.rxc, 7);
@@ -1427,23 +1195,12 @@ function capture(fn) {
         Assert.strictEqual((0, RecurseVal_1.containsRecurseOf)(mk(['n', 'm']), ['n'], 0), false);
     });
 });
-// G4 phase 2 — applyFlows' unresolved-path guard. A recorded type flow
-// is written only for a path that HAD resolved, and unification never
-// takes a node back out of the tree, so no document reaches the skip.
-// It is pinned by a direct call rather than an ignore marker: node's
-// `coverage ignore` drops LINES from the report and the gate reads
-// BRANCH records, which survive it. (The Go twin in go/unify.go can use
-// its marker, because that gate counts statements.)
 (0, node_test_1.describe)('coverage3-apply-flows', () => {
     (0, node_test_1.test)('apply-flows-skips-a-record-that-stops-resolving', () => {
         const a0 = new aontu_1.Aontu();
         const ctx = a0.ctx({ collect: true });
         const target = new MapVal_1.MapVal({ peg: {} }, ctx);
         const root = new MapVal_1.MapVal({ peg: { a: target } }, ctx);
-        // One record that still resolves, and three that do not: a path
-        // whose key is gone, one that walks THROUGH a scalar, and one whose
-        // first segment names nothing. The live one proves the walk still
-        // applies what it can while the others are skipped.
         ctx.referflows = new Map([
             ['a', new MapVal_1.MapVal({ peg: { k: new IntegerVal_1.IntegerVal({ peg: 1 }, ctx) } }, ctx)],
             ['gone', new MapVal_1.MapVal({ peg: {} }, ctx)],
@@ -1469,12 +1226,6 @@ function capture(fn) {
         Assert.strictEqual((0, unify_1.applyFlows)(ctx, root), root);
     });
 });
-// G4 phase 2 — the refer internals no source reaches. The residual is
-// minted where it is used and answers whole shapes, so its per-arm
-// behaviour is exercised here directly: an address that walks into a
-// scalar, the peers the dispatcher never hands it, and a flow whose
-// TOP-LEVEL meet fails (from source the conflict usually lands on a
-// field, the two maps meeting and one key disagreeing).
 (0, node_test_1.describe)('coverage3-refer', () => {
     (0, node_test_1.test)('find-at-walks-into-non-bags', () => {
         const ctx = new aontu_1.Aontu().ctx({});
@@ -1503,11 +1254,6 @@ function capture(fn) {
         Assert.strictEqual(r.unify(undefined, ctx), r);
     });
     (0, node_test_1.test)('refer-second-path-peer-refines-by-prefix', () => {
-        // The residual's second-path arm is a CROSS-PASS arm: sibling
-        // paths in one conjunct pre-merge at their own (lower) cjo before
-        // the residual folds, so this arm only receives its peer through
-        // late delivery -- a flow into a pending refer, spread timing.
-        // Pinned here at the API, as the dispatcher peers above are.
         const ctx = new aontu_1.Aontu().ctx({ collect: true });
         ctx.root = new MapVal_1.MapVal({ peg: {} }, ctx);
         const r = new ReferFuncVal_1.ReferVal({}, ctx);
@@ -1518,7 +1264,6 @@ function capture(fn) {
         // The prefix rule is symmetric in which side is pending.
         const kept = refined.unify(new PathVal_1.PathVal({ peg: '$.q' }, ctx), ctx);
         Assert.strictEqual(kept.addrsrc, '$.q.r');
-        // Incomparable addresses are the conflict two unequal scalars are.
         const nil = r.unify(new PathVal_1.PathVal({ peg: '$.z' }, ctx), ctx);
         Assert.strictEqual(true, nil.isNil);
     });
@@ -1560,14 +1305,6 @@ function capture(fn) {
         Assert.strictEqual(r.settle(ctx, r).isNil, true);
     });
 });
-// G4 phase 3 — the graph walk's guards, and the CUT that derives a
-// link's source node from where the link sits. The walk visits
-// POSITIONS rather than values (a reference or a spread can put one
-// value object at several positions), so its termination guard is the
-// ANCESTOR chain, which is what a cycle actually is. No document
-// produces one — a self-prefix reference is refused as `path_cycle`
-// long before — so the guard is pinned here, as its Go twin is in
-// go/graph_test.go.
 (0, node_test_1.describe)('coverage3-graph', () => {
     (0, node_test_1.test)('graph-of-survives-a-cycle', () => {
         const ctx = new aontu_1.Aontu().ctx({});
@@ -1638,19 +1375,8 @@ function capture(fn) {
         Assert.deepEqual((0, graph_1.graphOf)(lroot).edges, [{ from: '$', key: '', to: '$.db', at: '$.0' }]);
     });
 });
-// G8 phase 0/1 — the staging rule's residuation, at the one arm no
-// document reaches. `unite` absorbs a nil BEFORE it dispatches (the
-// isNil arms in ts/src/unify.ts), so a staged func is never handed one
-// from a document; the arm is the contract for a caller that does, and
-// the Go port pins its twin the same way (coverage3_test.go,
-// TestFuncArmsDirect).
 (0, node_test_1.describe)('coverage3-staging', () => {
     (0, node_test_1.test)('a-hole-has-nothing-above-it', () => {
-        // `superior` is the lattice step UP, asked of a value by the
-        // generalisation machinery (G3). A hole admits everything, so the
-        // answer is itself — the same answer TOP gives. No document asks
-        // it of a hole, because a hole is filled before anything
-        // generalises it, so the contract is pinned here.
         const place = new PlaceVal_1.PlaceVal({});
         Assert.strictEqual(place.superior(), place);
     });
@@ -1663,26 +1389,12 @@ function capture(fn) {
         Assert.strictEqual(key.unify(nil, ctx), nil);
     });
     (0, node_test_1.test)('nil-absorbs-a-unify', () => {
-        // NilVal.unify answers itself: a nil is absorbing, by definition.
-        // The dispatcher (unite) short-circuits on isNil before dispatching,
-        // so the method is reached only by a direct call — it used to be
-        // reached through DisjunctVal returning a lone trial sentinel as
-        // its result, a hole ADR-004's admission gate closed (a lone failed
-        // member is now the empty refusal) — and the Val contract is
-        // pinned here instead (ADR-002).
         const a0 = new aontu_1.Aontu();
         const ctx = a0.ctx({});
         const nil = new NilVal_1.NilVal({ why: 'test-absorb' }, ctx);
         Assert.strictEqual(nil.unify((0, top_1.top)(), ctx), nil);
     });
     (0, node_test_1.test)('defaulted-scrutinee-multi-pref-min-rank', () => {
-        // The defensive min-rank scan in effectiveScrutinee (ADR-004, the
-        // defaulted-scrutinee rule): rankPrefs leaves a SETTLED disjunct
-        // at most one pref, so a document cannot reach a two-pref
-        // scrutinee — the arm is pinned here (ADR-002), in both member
-        // orders so both sides of the rank comparison run. The effective
-        // value is the innermost peg of the LOWEST rank, matching
-        // generation (`a:**1|*2` generates 2 — test/spec/edge.tsv).
         const rank2 = new PrefVal_1.PrefVal({
             peg: new PrefVal_1.PrefVal({ peg: new IntegerVal_1.IntegerVal({ peg: 1 }) }),
         });
@@ -1692,12 +1404,6 @@ function capture(fn) {
         const d2 = new DisjunctVal_1.DisjunctVal({ peg: [rank1, rank2] });
         Assert.strictEqual((0, MatchFuncVal_1.effectiveScrutinee)(d2).peg, 2);
     });
-    // BagVal.same's two guards that no source spells (ADR-002). The
-    // identity fast path needs the SAME object on both sides, which the
-    // parser never produces twice, and every discriminating comparison
-    // below IS reachable from source (test/spec/disjunct.tsv,
-    // "SAMENESS IS STRICTER THAN CANON") -- they are repeated here only
-    // because the direct call is the clearest statement of the contract.
     (0, node_test_1.test)('bag-same-is-structural', () => {
         const one = new MapVal_1.MapVal({ peg: { a: new IntegerVal_1.IntegerVal({ peg: 1 }) } });
         const two = new MapVal_1.MapVal({ peg: { a: new IntegerVal_1.IntegerVal({ peg: 1 }) } });
@@ -1716,13 +1422,6 @@ function capture(fn) {
         });
         Assert.equal(one.same(wider), false, 'key count');
     });
-    // A SINGLE-MEMBER DISJUNCTION GENERATES THAT MEMBER (ADR-007). unify
-    // returns the sole survivor directly rather than re-wrapping it, so a
-    // document cannot reach gen holding a one-member disjunct -- but the
-    // type allows one, a library caller can build one, and the
-    // alternative to answering its member is refusing a disjunction that
-    // is not ambiguous at all. Twin: TestDisjunctSingleMemberGenerates in
-    // go/coverage3_test.go.
     (0, node_test_1.test)('disjunct-single-member-generates', () => {
         const d = new DisjunctVal_1.DisjunctVal({ peg: [new IntegerVal_1.IntegerVal({ peg: 7 })] });
         Assert.equal(d.gen(CTX()), 7);

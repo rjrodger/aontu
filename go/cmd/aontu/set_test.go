@@ -2,10 +2,6 @@
 
 package main
 
-// The Go twin of the cli set cases in ts/test/cli.test.ts. What the
-// two ports must agree on (the report) is pinned by
-// test/spec/patch.tsv; these cases hold the command line and, above
-// all, WHEN THE FILE IS WRITTEN.
 
 import (
 	"bytes"
@@ -167,12 +163,6 @@ func TestSetUsageErrorsExit2(t *testing.T) {
 	}
 }
 
-// `--in-place` at the COMMAND LINE, closing the loop the status report
-// says `set` could not: the data pins the wrong value, and appending can
-// only contradict it. The report shape is pinned by test/spec/patch.tsv;
-// what this holds is the flag, the `replaced:` line, and the bytes that
-// end up on disk -- comments included. The TS twin is
-// set-in-place-rewrites-the-pinned-literal in ts/test/cli.test.ts.
 func TestSetInPlaceRewritesThePinnedLiteral(t *testing.T) {
 	dir := t.TempDir()
 	entry := filepath.Join(dir, "schema.aon")
@@ -226,10 +216,6 @@ func TestSetInPlaceAppendsAndExplainsWhenItCannotRewrite(t *testing.T) {
 	}
 }
 
-// WHAT THE TEXT RENDERER SAYS ABOUT AN EDIT THAT DID NOT HAPPEN, and
-// WHICH STREAM A SUCCESSFUL RUN WRITES TO. Both were wrong when
-// --in-place landed and both are load-bearing for an operator. The TS
-// twin is set-in-place-reports-unapplied-edits-and-uses-the-right-stream.
 func TestSetInPlaceReportsUnappliedEditsAndUsesTheRightStream(t *testing.T) {
 	dir := t.TempDir()
 	entry := filepath.Join(dir, "e.aon")
@@ -253,10 +239,6 @@ func TestSetInPlaceReportsUnappliedEditsAndUsesTheRightStream(t *testing.T) {
 		t.Fatalf("overlay moved: %q", readAt(t, overlay))
 	}
 
-	// A SUCCESSFUL RUN CARRYING ONLY A WARNING puts its status on
-	// STDOUT. Routing on the finding count sent this whole report to
-	// stderr and left stdout empty, so a shell capture got nothing while
-	// the command exited 0 and wrote the file.
 	writeAt(t, entry, "a: integer\n")
 	writeAt(t, overlay, "a: integer\n")
 	out, errOut, code := setRun("$.a=5",

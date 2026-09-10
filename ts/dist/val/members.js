@@ -13,12 +13,6 @@ function bagMembers(data, ctx) {
     const keys = true === data.isMap ?
         Object.keys(data.peg).sort(keyorder_1.cmpCodePoint) :
         data.peg.map((_v, i) => '' + i);
-    // A member marked while its bag is not was marked in its own right,
-    // and is left out as generation leaves it out. Under a MARKED bag
-    // every child carries the mark (hide() and type() mark to the
-    // leaves), so there the mark says nothing about the member and every
-    // child is one -- the members of a hidden bag are what the bag
-    // holds, exactly as a reference to it lifts them.
     const lifted = true === data.mark.hide || true === data.mark.type;
     const out = [];
     for (const key of keys) {

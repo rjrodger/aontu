@@ -3,56 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.hcanon = hcanon;
 exports.canonHash = canonHash;
-// The HASH FORM (G6 phase 0, docs/capability-review/g6-distribution.md):
-// exactly the unify-level canon with the additions that close its
-// semantic gaps, so that two documents with the same hash form have the
-// same meaning:
-//
-//   - a CLOSED map or list renders wrapped: close({...}), close([...])
-//     (canon drops closedness);
-//   - the type/hide MARKS render as their builtin wrappers: type(x),
-//     hide(x) (canon drops marks).
-//
-// Both additions reuse existing parseable syntax, so the hash form
-// remains valid Aontu source and round-trips:
-// hcanon(unify(parse(hcanon(v)))) == hcanon(v) is a spec-suite property
-// (test/spec/hcanon.tsv). User-facing canon is UNCHANGED — hcanon is a
-// separate rendering.
-//
-// An ALIAS REFERENCE left standing in a spread template renders its
-// EXPANSION through this same walk rather than through the reference's
-// own canon, so a close() or a mark on the aliased value survives into
-// the hash. Without that the wrappers above are absent exactly where
-// the alias filter has already erased the declaration that carried
-// them (BUGS.md §60).
-//
-// The marks PROPAGATE to every descendant at unification (walkMark), so
-// a wrapper is emitted only where a mark STARTS: the walk carries the
-// inherited marks down and a child whose mark the parent already
-// carries renders bare. Without that, hide({a:1}) would render every
-// leaf re-wrapped — still correct, never minimal, and not what the
-// source said.
-//
-// canonHash (G6 phase 1) is the pin built on it:
-//   "aon1-" + base64url( SHA-256( UTF-8( hcanon(v) ) ) )
-// (unpadded base64url, RFC 4648 section 5). The "aon1-" scheme id
-// exists so a future semantically-stronger normal form is an upgrade,
-// not a breakage. This is a CANONICAL-TEXT hash, not a semantic
-// equivalence class: the failure direction is the safe one — a false
-// "changed" forces a needless re-review; a false "unchanged" would need
-// two hash forms with the same bytes and different meanings, which is
-// exactly the gap the close/mark wrappers exist to shut.
 const node_crypto_1 = require("node:crypto");
 const keyorder_1 = require("./keyorder");
-// One node's rendering, carrying the marks the ANCESTORS already
-// wrapped. Bags and junctions recurse structurally (their canon getters
-// render children through plain canon, which would drop a nested
-// close), and so does an expanded alias reference, for the reason its
-// own arm gives. Everything else — scalars, kinds, funcs, constraints,
-// and a reference with nothing to expand — delegates to its own canon,
-// whose text is already in cross-port parity. The non-Val arm mirrors
-// MapVal.canon's raw-peg fallback and is unreachable through an
-// evaluated tree (direct-tested, ADR-002).
 function render(v, inh) {
     if (true !== v?.isVal) {
         return String(v);
@@ -65,12 +17,6 @@ function render(v, inh) {
     };
     let s;
     if (true === v.isMap) {
-        // Alias declarations are dropped here for the same reason
-        // MapVal.canon drops them, and this is the surface where it counts:
-        // `aon1-` pins MEANING, so a document written with aliases and the
-        // same document written longhand must hash to one string. Two
-        // renderers, one rule -- hcanon is not canon and does not inherit
-        // the filter (docs/design/ALIASES.0.md §4).
         const keys = Object.keys(v.peg)
             .filter((k) => !v.aliasKeys.includes(k))
             .sort(keyorder_1.cmpCodePoint);
@@ -103,22 +49,6 @@ function render(v, inh) {
     else if (true === v.isConjunct || true === v.isDisjunct) {
         s = junctionText(v, true === v.isConjunct ? '&' : '|', inner);
     }
-    // AN EXPANDED ALIAS REFERENCE IS RENDERED, NOT DELEGATED (BUGS.md
-    // §60). A reference standing after unification is one inside a
-    // spread template, and `RefVal.canon` answers with the EXPANSION's
-    // plain canon -- which drops exactly what this renderer exists to
-    // keep. The declaration carrying `close()` or a mark is erased by
-    // the alias filter above, so a `close()` lost here is lost from the
-    // hash entirely: `%A = close({n:string})` and `%A = {n:string}`,
-    // used as `box: [&: %A]`, hashed to ONE STRING while refusing and
-    // admitting `{n:"x",z:1}` respectively -- a change of meaning the
-    // pin reported as no change, in the unsafe direction. Recursing
-    // through `inner` is what makes the alias form and its longhand
-    // twin agree again, which is ALIASES.0.md §4's own requirement.
-    //
-    // A reference with NO expansion still spells its name: a plain
-    // `$.A` names a key the hash form still carries in full, and the
-    // knot of a recursive alias inside its own template never gets one.
     else if (true === v.isRef && undefined !== v.expansion) {
         s = render(v.expansion, inner);
     }
@@ -142,14 +72,6 @@ function render(v, inh) {
     }
     return s;
 }
-// The JunctionVal.canon parenthesisation rule, kept: a member that is
-// itself a junction with more than one term keeps its parens so the
-// text reparses with the same structure (`(1|2)&3`, not the
-// differently-parsing `1|2&3`). Post-unification junctions are
-// flattened by norm, so no SOURCE reaches the wrapping arm -- it is
-// pinned by direct tests over constructed Vals in both ports, because
-// a hash form that could render ambiguously would be a pin that
-// silently agrees with a document it should not.
 function junctionText(v, sym, inner) {
     return v.peg.map((m) => true === m?.isJunction && 1 < m.peg.length
         ? '(' + render(m, inner) + ')'
@@ -162,10 +84,6 @@ function junctionText(v, sym, inner) {
 function hcanon(v) {
     return render(v, { type: false, hide: false });
 }
-// The canon-hash pin. Scoped to the module evaluated STANDALONE: its
-// own include closure resolved and unified at its own root, before any
-// consumer context — which is what makes the pin transitive (an edit
-// two includes deep changes the unified root, hence the hash).
 function canonHash(v) {
     return 'aon1-' +
         (0, node_crypto_1.createHash)('sha256').update(hcanon(v), 'utf8').digest('base64url');

@@ -1,15 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE REPL AS AN INSPECTION TOOL (G7 phase 7, the Go side of
-// ts/src/cli.ts): `:load` holds a document, and `:get`, `:keys` and
-// `:why` ask the query and provenance surfaces about it, so the
-// session is a place to INTERROGATE a definition rather than only to
-// evaluate snippets.
-//
-// The command handler is a PURE FUNCTION of (state, line): a read
-// loop is untestable, and every answer this REPL gives has to be as
-// checkable as the CLI's. File reading is injected for the same
-// reason.
 
 package main
 
@@ -33,11 +23,6 @@ type replState struct {
 	// Loaded is false until a `:load` succeeds — an empty document is
 	// still a document.
 	Loaded bool
-	// Trust is the session's include capability. The REPL used to ACCEPT
-	// --trust and drop it: the --jsonl session mode, built to be driven
-	// by a harness, evaluated unconfined however it was invoked
-	// (use-cases/REVIEW.md finding G). The zero value is the staged
-	// default, which is today's behaviour.
 	Trust trustArg
 }
 

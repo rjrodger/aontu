@@ -28,8 +28,6 @@ function scaledOfFloat(f) {
     const sign = (bits >> 63n) & 1n ? -1n : 1n;
     const expBits = Number((bits >> 52n) & 0x7ffn);
     const frac = bits & 0xfffffffffffffn;
-    // Normal: implicit leading bit, exponent bias 1023 plus the 52
-    // fraction bits. Subnormal: no implicit bit, fixed exponent -1074.
     let mant;
     let exp;
     if (0 === expBits) {
@@ -61,7 +59,6 @@ function scaledOfNumeric(v) {
 function pow10(n) {
     return 10n ** BigInt(n);
 }
-// Exact three-way comparison of two scaled decimals.
 function cmpScaled(a, b) {
     const ai = a.inf ?? 0;
     const bi = b.inf ?? 0;
@@ -78,14 +75,9 @@ function cmpScaled(a, b) {
     }
     return au < bu ? -1 : au > bu ? 1 : 0;
 }
-// Exact three-way comparison of two numeric leaf Vals, any leaves.
 function cmpNumeric(a, b) {
     return cmpScaled(scaledOfNumeric(a), scaledOfNumeric(b));
 }
-// Lexical comparison by Unicode CODE POINTS — not UTF-16 code units,
-// which order astral-plane text differently. Go compares strings
-// byte-wise in UTF-8, which IS code-point order, so this is the side
-// that must adapt (a Phase 0 decision, docs/reference-language.md).
 function cmpCodePoints(a, b) {
     let ai = 0;
     let bi = 0;
@@ -102,9 +94,6 @@ function cmpCodePoints(a, b) {
     const br = b.length - bi;
     return ar < br ? -1 : ar > br ? 1 : 0;
 }
-// The tower order integer < float < biginteger < bigdecimal, used when
-// two endpoints at the SAME point meet: the survivor is the
-// tower-lowest spelling (docs/reference-language.md, bounds ruling 2).
 function towerRank(v) {
     return v.isBigDecimal ? 3 : v.isBigInteger ? 2 :
         v.isInteger ? 0 : 1;

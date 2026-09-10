@@ -1,52 +1,5 @@
 /* Copyright (c) 2026 Richard Rodger, MIT License */
 
-// `translate` -- PER-CHARACTER SUBSTITUTION AND DELETION (SPIKE,
-// docs/design/JOSTRACA.0.md), after the `tr` command.
-//
-//   translate(s, from, to)   each character of `from` becomes the one
-//                            at the same position in `to`
-//   translate(s, from)       each character of `from` is deleted
-//
-// WHY IT IS NOT `rep`. `rep(s, pattern, sub)` matches a REGION and
-// substitutes text for it, so a per-character map is N calls over N
-// passes, each seeing the previous one's output -- and that composition
-// is wrong, not merely slow: `rep(rep(x, "a", "b"), "b", "a")` maps
-// every original `a` to `a` again. `translate` reads the source once
-// and consults a table, so `translate(x, "ab", "ba")` SWAPS them, which
-// is the operation `tr` exists for and the one a generator wants when
-// it rewrites a delimiter set or strips a character class.
-//
-// RANGES, as `tr` has them: `a-z` is every code point from `a` to `z`
-// inclusive, in both sets. A `-` first or last in a set is itself,
-// which is the only way to mean a literal one -- the sets take no
-// escape, because an aontu string literal has already processed its
-// own and a second escape layer over the first is a trap rather than a
-// feature. A descending range (`z-a`) is refused rather than read as
-// empty: it is always a mistake, and answering nothing for it hides it.
-//
-// A SHORT `to` PADS WITH ITS LAST CHARACTER, which is `tr`'s rule:
-// `translate(s, "abc", "x")` maps all three to `x`. An EMPTY or absent
-// `to` deletes instead, which is `tr -d`. Those are the same rule read
-// two ways -- there is no last character to pad with -- so the second
-// argument alone is deletion and needs no flag.
-//
-// A CHARACTER NAMED TWICE IN `from` TAKES ITS LAST MAPPING, because the
-// table is built left to right and a later entry overwrites an earlier.
-// `tr` does the same.
-//
-// CODE POINTS, NOT UTF-16 UNITS: one entry is one code point, so an
-// astral character maps as a unit and cannot be half-matched.
-//
-// NOT DONE, and deliberately: `tr`'s `-s` (squeeze repeats), `-c`
-// (complement) and its character classes (`[:alpha:]`). Each is a
-// second vocabulary on top of the sets, and none is needed by anything
-// the spike found. `re()` already spells a class for `rep`.
-//
-// SPIKE SCOPE. TypeScript only, so -- as with `nom` and the component
-// primitives -- deliberately absent from test/spec/signature.tsv,
-// BUILTIN_FUNCS and grammar/, all pinned in cross-port parity. Arity
-// and argument shape are refused here, and every refusal is
-// `invalid-arg`.
 
 import type {
   Val,

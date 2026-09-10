@@ -18,12 +18,6 @@ exports.SPREAD = SPREAD;
 // mutable error array must create their own.
 const EMPTY_ERR = Object.freeze([]);
 exports.EMPTY_ERR = EMPTY_ERR;
-// Process-global, monotonic Val id source. Correctness only requires ids
-// to be unique within a single unify run (fast-path identity checks,
-// `same()`), which holds. It is NOT reset between generate() calls, so in
-// a long-running host (e.g. the LSP) it grows for the process lifetime;
-// that is acceptable — an id is a small number and is never used as a
-// memory key. TODO: switch to the per-run ctx.vc counter (see ctx.ts).
 let ID = 1000;
 class Val {
     get site() {
@@ -32,7 +26,6 @@ class Val {
     set site(s) {
         this._site = s;
     }
-    // TODO: Site needed in ctor
     constructor(spec, ctx) {
         this.dc = 0;
         this.path = [];
@@ -59,12 +52,9 @@ class Val {
         // Val.clone) specify the target path without paying for a full
         // ctx.clone just to carry it.
         this.path = spec?.path ?? ctx?.path ?? [];
-        // TODO: make this work
-        // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
         this.id = ++ID;
         this.mark.type = !!spec.mark?.type;
         this.mark.hide = !!spec.mark?.hide;
-        // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
     }
     ctx() {
         return this._ctx;
@@ -101,26 +91,6 @@ class Val {
         out.site.row = spec?.row ?? this.site.row;
         out.site.col = spec?.col ?? this.site.col;
         out.site.url = spec?.url ?? this.site.url;
-        // THE SPAN TRAVELS WITH THE POSITION. Copying row and col but not
-        // the extent would leave a site that names a place and denies it has
-        // any width — internally inconsistent, and it made the two ports
-        // disagree on every derived value (the shared subsume rows caught
-        // it). Safe because the span is VERIFIABLE: a consumer reads the
-        // document at (row, col, len) and refuses when it does not match
-        // `src`, so a span that has stopped describing its value is
-        // detectable rather than believed. See ts/src/site.ts.
-        //
-        // Read from `this.site`, never from the spec: ValSpec.src is a
-        // DIFFERENT field — ScalarVal's literal spelling, kept so `$.a.0x0`
-        // addresses the key `0x0` — and reading it here would put a path
-        // segment where a source span belongs.
-        //
-        // UNCONDITIONAL, as the Go twin is (clonePath, go/clone.go). A
-        // guard dropping the span when the spec relocates the value was
-        // written first and the coverage gate refused it as dead: nothing
-        // clones to a new row or column. Should a relocating caller ever
-        // appear it must drop both fields — an extent belongs to a place,
-        // and the text at a new one is not this value's to claim.
         out.site.len = this.site.len;
         out.site.src = this.site.src;
         out.mark = Object.assign({}, this.mark, fullspec.mark ?? {});
@@ -135,28 +105,12 @@ class Val {
         if (null != this.deprecation) {
             out.deprecation = this.deprecation;
         }
-        // THE RENDER RIDERS TRAVEL WITH THE CLONE (P7), for the reason the
-        // deprecation record does: a clone of a value read at `$.schema`
-        // was read at `$.schema`, and a clone of an emitted piece is still
-        // that dispatch's. Both are absent unless the run is instrumented,
-        // so this is two undefined reads otherwise.
         if (null != this.origin) {
             out.origin = this.origin;
         }
         if (null != this.emitted) {
             out.emitted = this.emitted;
         }
-        // THE APPLY-ONCE MARK TRAVELS WITH THE CLONE. `_spr` records which
-        // spread template has already been merged into this value, and the
-        // bag loops read it to keep a template from being applied twice
-        // (MapVal.unify, ListVal.unify). A clone that dropped it looked
-        // un-spread, so a REFERENCE resolving to a templated bag had the
-        // template applied a second time -- over the value the first
-        // application had already produced. With `n: key()` that meant
-        // meeting the answered `"x"` as though it were a map and asking
-        // `key()` again, which answered `"n"`: `$.a.b.f.x.n.n`, "n"
-        // against "x" (use-cases/BUGS.md §50). The Go port carries it and
-        // answered correctly; this is the canonical side catching up.
         if (null != this._spr) {
             ;
             out._spr = this._spr;
@@ -165,41 +119,14 @@ class Val {
             ;
             out._sid = this._sid;
         }
-        // PROVENANCE TRAVELS WITH THE CLONE, exactly as the site does, and
-        // for the same reason: a clone of a value the author wrote IS that
-        // written value somewhere else, and it carries the author's site,
-        // so it can be pointed at. Without this a default reaching a
-        // `pack()`-generated child, or a shape carried by a `$ref`, was
-        // invisible to `why` -- which answered "nothing met at this path"
-        // over a value it had just printed (the review's finding E). See
-        // WRITTEN in ts/src/provenance.ts; the mark is only ever set by an
-        // instrumented run, so this is one undefined read otherwise.
         if (true === this[provenance_1.WRITTEN]) {
             out[provenance_1.WRITTEN] = true;
         }
-        // AND SO DOES BEING PART OF SOMETHING. A clone of a disjunction's
-        // member is still that member of that written disjunction, and the
-        // whole statement is what the author needs shown -- otherwise a
-        // default reaching a generated child reports `*"info"` and
-        // `string` as two contributions at two columns, where the author
-        // wrote `*info | string` once. A number, deliberately: a Val
-        // holding another Val as an own property is a cycle through the
-        // tree. See INNER_OF in ts/src/provenance.ts.
         if (null != this[provenance_1.INNER_OF]) {
             out[provenance_1.INNER_OF] = this[provenance_1.INNER_OF];
         }
         return out;
     }
-    // Shallow clone for spread constraints: creates a new Val with the
-    // correct path context but shares non-path-dependent children.
-    // Override in MapVal/ListVal to avoid deep-cloning simple children.
-    //
-    // A FULL INSTANCE (`dup`, ADR-005): a spread constraint is applied
-    // once per destination child, and each application must own its
-    // path-dependent innards — a bare clone shared a call's arguments
-    // and a preference's inner value across destinations, so a spread
-    // like `&: {k: key(0)} & $.schema.C` resolved its one shared key()
-    // at the first child it met (use-cases/BUGS.md §12's id_name form).
     spreadClone(ctx) {
         const out = this.clone(ctx, { dup: true });
         repathInstance(out, out.path);
@@ -239,13 +166,6 @@ class Val {
         this._isPathDependent = dep;
         return dep;
     }
-    // A STAGED CALL STANDING ANYWHERE IN THIS VALUE (the `staged` flag,
-    // G8 phase 0). Such a call has not decided: its arguments are still
-    // being driven AT ITS OWN SITE, so a REFERENCE's copy shares it
-    // rather than owning a set of arguments it would drive at the
-    // referring position instead (RefVal.find, ADR-025). Not cached:
-    // unlike isPathDependent this is a fact about the value's current
-    // state, and the whole point is that it stops being true.
     get holdsStaged() {
         if (true === this.staged) {
             return true;
@@ -266,14 +186,6 @@ class Val {
         const spreadCj = this.spread?.cj;
         return true === spreadCj?.isVal && spreadCj.holdsStaged;
     }
-    // PUT A MINTED VALUE WHERE THIS ONE STANDS: the site travels, and so
-    // does provenance, because the two answer one question. A narrowed
-    // disjunction, a lifted kind, a resolved reference -- each is a
-    // value the engine built from a value the author wrote, standing
-    // where that one stood. Carrying the site and withholding the mark
-    // would let `why` print a value, know the line it came from, and
-    // still answer "nothing met at this path" (the review's finding E).
-    // See WRITTEN and INNER_OF in ts/src/provenance.ts.
     place(v) {
         v.site.row = this.site.row;
         v.site.col = this.site.col;
@@ -288,14 +200,6 @@ class Val {
         }
         return v;
     }
-    // CONTRACT: implementations should treat `this` and `peer` as
-    // immutable and return a new Val. KNOWN EXCEPTION: the MapVal/ListVal
-    // fast-path for a TOP peer returns and refines `this` in place (an
-    // intentional optimization for the fixpoint loop). The practical
-    // consequence is that a parsed/unified tree is SINGLE-USE — do not
-    // re-unify or re-generate the same Val, and do not share it across
-    // threads. The public Aontu.unify/generate entry points re-parse per
-    // call, so this only matters if you hold and reuse a Val yourself.
     unify(_peer, _ctx) { return this; }
     errcanon() {
         return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`;
@@ -318,7 +222,6 @@ class Val {
             DONE === this.dc ? 'D' : 'd' + this.dc,
             ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
         ].filter(n => null != n).join(','));
-        // let insp = this.inspection(inspect)
         let insp = this.inspection(1 + d);
         if (null != insp && '' != insp) {
             s.push('/' + insp);
@@ -346,12 +249,6 @@ class Val {
     }
 }
 exports.Val = Val;
-// Prototype-level defaults for Val's type-discriminator flags.
-// Keeping these on the prototype (instead of per-instance class-field
-// initializers) removes ~35 property writes from every Val construction
-// and eliminates the corresponding hidden-class transitions. Subclasses
-// override only the flags that differ, via their own class-field
-// initializers (e.g. `MapVal.isMap = true`).
 Object.assign(Val.prototype, {
     isVal: true,
     isTop: false,
@@ -391,22 +288,6 @@ Object.assign(Val.prototype, {
     isUpperFunc: false,
     isGenable: false,
 });
-// THE INSTANCE PATH NORMALISATION (ADR-005), the TS mirror of the Go
-// port's setPaths (go/clone.go): assign every value in a freshly
-// instantiated template the path the PARSER would have given it at the
-// instance's destination. A deep instance clone (`dup`) copies values
-// whose stored parse paths are argument-shaped — a func argument has
-// no key of its own, a spread template lives under a '&' segment — and
-// Val.clone's ctx-cut cannot rebase those: it derives the child path
-// from the driving ctx alone and drops the segments in between, which
-// is how a nested list spread inside a close()d template lost its
-// parent key and every finding under it named the wrong path (the
-// 06-k8s use case's env findings). One canonical walk instead:
-// bag children descend by key (numeric for a list element, as the
-// parser records them), a spread constraint sits under '&' with its
-// content at the bag's own path, and junction members, operator
-// operands, function arguments and a preference's value all sit AT
-// their holder's path — exactly the parse-time shape.
 function repathInstance(v, path) {
     if (true !== v?.isVal) {
         return;
@@ -416,9 +297,6 @@ function repathInstance(v, path) {
     if (true === v.isBag) {
         const spread = v.spread?.cj;
         if (null != spread && true === spread.isVal) {
-            // The spread's CONTENT is pathed at the bag (its fields land on
-            // the bag's children); only its ROOT carries the '&' segment —
-            // the same two steps as the Go twin's setPaths.
             repathInstance(spread, path);
             spread.path = [...path, '&'];
         }
@@ -451,7 +329,7 @@ function inspectpeg(peg, d) {
         ('[' + peg.map(n => '\n  ' + indent + (n.inspect?.(d) ?? n)).join(',') +
             '\n' + indent + ']') :
         ('{' +
-            Object.entries(peg).map((n) => '\n  ' + indent + n[0] + ': ' + // n[1].inspect(d)
+            Object.entries(peg).map((n) => '\n  ' + indent + n[0] + ': ' +
                 n[1].inspect(d)).join(',') +
             '\n' + indent + '}'));
 }
@@ -461,16 +339,6 @@ function pretty(s) {
     // .replace(/([^\n]) +/g, '$1')
     );
 }
-// THE STABLE IDENTITY OF A SPREAD TEMPLATE, across clones. Every Val
-// takes a fresh `id` when it is constructed, so the bag loops'
-// apply-once mark -- which records WHICH template has already been
-// merged into a value -- could never match after a clone: a reference
-// resolving to a templated bag clones the bag AND its template, and the
-// fresh template's id matched nothing, so the template was applied a
-// second time over the value the first application had produced
-// (use-cases/BUGS.md §50). The first call fixes the identity to the
-// original's own id; Val.clone carries `_sid`, so every clone of that
-// template answers with it.
 function spreadId(cj) {
     return cj._sid ?? (cj._sid = cj.id);
 }

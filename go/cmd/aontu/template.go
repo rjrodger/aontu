@@ -1,11 +1,5 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
-// THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md; RENDER.0.md P8),
-// the Go side of runTemplate in ts/src/cli.ts: the two transforms and
-// the round trip between them. `render` reads a template directly, by
-// its extension; this verb is for seeing the canonical form, for
-// writing one by hand and sugaring it, and for the check that keeps a
-// committed template and its meaning in agreement.
 
 package main
 
@@ -56,10 +50,6 @@ func runTemplate(argv []string, stdout, stderr io.Writer) int {
 		io.WriteString(stderr, "aontu: template needs one file\n"+templateHelp+"\n")
 		return 2
 	}
-	// THE TWO ARE DIRECTIONS, NOT MODES THAT COMPOSE: --check reads a
-	// template and asks whether the round trip answers it back, and
-	// --resugar reads the canonical form instead. A run cannot be both
-	// at once, because the file is one thing or the other.
 	if resugar && check {
 		io.WriteString(stderr,
 			"aontu: template takes one of --resugar or --check\n")
@@ -80,17 +70,6 @@ func runTemplate(argv []string, stdout, stderr io.Writer) int {
 	text := string(src)
 
 	if check {
-		// THE ROUND TRIP IS THE CHECK (D6): the file held to the
-		// spelling the two transforms answer. What that names is a
-		// marker line the transform would not have written -- one
-		// without its space, or one whose aontu is indented after the
-		// marker rather than before it, since the marker keeps its own
-		// indentation. It does NOT name a changed body line: a
-		// template's whitespace is output, so a trimmed trailing space
-		// is still a valid template and it is `render --check` against
-		// the committed files that catches it. The first line that
-		// differs is the report, since a whole diff of a generator is
-		// the file again.
 		back := aontu.ResugarTemplate(aontu.DesugarTemplate(text, mark), mark)
 		if back == text {
 			return 0
@@ -101,13 +80,6 @@ func runTemplate(argv []string, stdout, stderr io.Writer) int {
 		for n < len(want) && n < len(have) && want[n] == have[n] {
 			n++
 		}
-		// THE TWO ARE THE SAME LENGTH, always: each transform maps one
-		// line to one line and applies the same trailing-newline rule,
-		// so `back` has as many lines as the file. The loop above
-		// therefore stops at a real difference rather than by running
-		// out of either -- an equal prefix all the way to the end IS
-		// the file unchanged, which returned above. So both indexes are
-		// in range here.
 		io.WriteString(stderr,
 			"aontu: "+files[0]+":"+strconv.Itoa(n+1)+
 				" is not what the round trip answers\n"+

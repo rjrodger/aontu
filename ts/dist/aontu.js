@@ -60,21 +60,8 @@ Object.defineProperty(exports, "markerFor", { enumerable: true, get: function ()
 const format_1 = require("./format");
 Object.defineProperty(exports, "format", { enumerable: true, get: function () { return format_1.format; } });
 Object.defineProperty(exports, "unifiedDiff", { enumerable: true, get: function () { return format_1.unifiedDiff; } });
-// VERSION is the Aontu npm package version, and mirrors
-// go/aontu.go's `Version` (which tracks the Go module version
-// separately — the two version series are independent).
-//
-// Kept in step with package.json by the `version` npm lifecycle script,
-// which runs on `npm version` / `npm run repo-bump`. version.test.ts
-// fails if the two ever drift.
 const VERSION = '0.62.0';
 exports.VERSION = VERSION;
-// A module file's VALUE, as far as it goes. COLLECTED, not raised: a
-// module file that does not stand up has no `mod.main` to read, and
-// the default entry name is the answer -- the resolution itself fails
-// later, on the file that is not there, rather than here on a metadata
-// read. That is what a collecting context does, so there is nothing to
-// catch: it answers what it could generate and records the rest.
 function genQuiet(val, aontu) {
     return val.gen(aontu.ctx({ collect: true }));
 }
@@ -84,9 +71,6 @@ class Aontu {
         this.opts.mod = {
             ...(this.opts.mod ?? {}),
             eval: this.opts.mod?.eval ?? ((src, path) => {
-                // One deeper: a module verified from inside a module
-                // verification is one more level of nesting, and the resolver
-                // refuses past its bound (MODULE_MAX_DEPTH in ts/src/mod.ts).
                 const inner = new Aontu({
                     ...this.opts,
                     mod: {
@@ -117,12 +101,6 @@ class Aontu {
         const ac = new ctx_1.AontuContext(cfg);
         return ac;
     }
-    // Parse source into a matching Val AST, not yet unified.
-    //
-    // NOTE: the returned Val is SINGLE-USE — unify()/generate() refine the
-    // tree in place (see Val.unify), so do not unify or generate the same
-    // parsed Val more than once, and do not share it across threads. Call
-    // parse() again for a fresh tree.
     parse(src, opts, ac) {
         let out;
         let errs = [];
@@ -136,12 +114,6 @@ class Aontu {
             errs.push(out);
         }
         else {
-            // A version-control conflict marker is refused BEFORE the parse
-            // (issue #5). None of `<`, `=` or `>` is an aontu operator, so a
-            // marker line is ordinary text and `<<<<<<< HEAD` parsed happily
-            // into the two-string list ["<<<<<<<","HEAD"] -- an unresolved
-            // merge became a plausible document instead of an error, and the
-            // report of it read as a failed `<` operation.
             const marker = findConflictMarker(src);
             if (-1 !== marker.offset) {
                 const nil = (0, err_1.makeNilErr)(ac, 'merge_conflict');
@@ -153,10 +125,6 @@ class Aontu {
         }
         if (0 === errs.length) {
             out = runparse(src, this.lang, ac);
-            // The include MANIFEST (G5, docs/trust.md): the resolved include
-            // closure as `{ path, capability }`, sorted and deduplicated so
-            // it is deterministic — the "file set" of hermeticity clause 1
-            // made observable. Content hashing and pinning stay with G6.
             out.deps = manifestOf(ac.manifest);
             ac.root = out;
         }
@@ -191,10 +159,6 @@ class Aontu {
             // 'internal' NilVal.
             out = uni.res;
             out.deps = pval.deps;
-            // THE DERIVED STRUCTURE (G4 phase 3): the edge set, computed
-            // once from the unified tree. Cheap on a document with no links
-            // — one guarded walk — and the thing impact analysis and the
-            // relation checks are traversals over.
             out.graph = (0, graph_1.graphOf)(out);
             out.err = errs;
             ac.root = out;
@@ -202,19 +166,6 @@ class Aontu {
         handleErrors(errs, out, ac);
         return out;
     }
-    // Generate output structure from source, which must parse and fully unify.
-    //
-    // The result is made of NATIVE values, and D9 puts two beyond what
-    // `JSON.stringify` can write: a `biginteger` (a `0d` literal with no
-    // fraction or exponent) generates as a native `bigint`, and a
-    // `bigdecimal` generates as a `Decimal`. Both are exact at any
-    // magnitude, which is the whole point of the leaves -- and both are
-    // confined to documents that opt in, so a `0d`-free document generates
-    // exactly what it always did.
-    //
-    // Serialise the result with `exactJSON` (exported alongside this
-    // class), NOT with `JSON.stringify`: the latter throws on a bigint and
-    // has no way to write exact digits as a JSON number.
     generate(src, opts, ac) {
         try {
             let out = undefined;
@@ -223,28 +174,10 @@ class Aontu {
             let pval = this.parse(src, undefined, ac);
             if (undefined !== pval && 0 === pval.err.length) {
                 let uval = this.unify(pval, undefined, ac);
-                // console.log('AONTU-GENERATE-UVAL', uval.constructor, uval.mark)
                 if (undefined !== uval && 0 === uval.err.length) {
                     out = uval.isNil ? (ac.adderr(uval), undefined)
                         : 0 < ac.err.length ? undefined
                             : uval.gen(ac);
-                    // The relation verdict (RELATIONS P2): declarations the
-                    // graph atoms registered during unification are decided
-                    // HERE, where no more information can arrive -- the sizing
-                    // atoms' model. A violated declaration is a located
-                    // evaluation error at the offending edge, and the generated
-                    // value is discarded below.
-                    //
-                    // AFTER GENERATION, and only when generation SUCCEEDED. A
-                    // document that cannot be generated has no finished model
-                    // to have a graph verdict about: an unsettled disjunction
-                    // leaves alternatives the graph walk cannot read, so a
-                    // mirror the document writes is absent from the edge set
-                    // and `inverse(n)` reports it missing -- a false finding,
-                    // and one that buried the `disjunct_no_gen` that actually
-                    // stopped the document. The check that a broken document is
-                    // not blamed on its relations (`relations` verb, finding F)
-                    // holds here too.
                     if (!uval.isNil && 0 === ac.err.length) {
                         (0, relation_1.relationErrors)(ac, uval);
                         if (0 < ac.err.length) {
@@ -297,17 +230,6 @@ function handleErrors(errs, out, ac) {
         }
     }
 }
-// Locate the first version-control conflict marker in a source, as a
-// 1-based row and column (offset -1 when there is none).
-//
-// The shape is git's, and it is matched exactly: SEVEN of `<`, `=` or `>`
-// at the very start of a line, then either the end of that line or a
-// space before the branch label. Requiring the run length and the line
-// start is what keeps a document that legitimately writes `a:"<<<<<<<"`,
-// or a row of `=` inside a string, from being refused -- the marker is
-// recognised as the artifact it is, not as a suspicious character.
-//
-// Kept byte-identical to findConflictMarker in go/lang.go.
 function findConflictMarker(src) {
     const miss = { offset: -1, row: -1, col: -1 };
     let offset = 0;
