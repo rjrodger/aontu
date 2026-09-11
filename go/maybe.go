@@ -25,12 +25,9 @@ func (a *AbsentVal) superior() Val { return a }
 func (a *AbsentVal) Gen(ctx *Ctx) (any, error) { return nil, nil }
 
 // The unit of the meet: absence narrows nothing. uniteRaw calls this
-// for EITHER operand, which is what makes `&` commute.
+// for EITHER operand, which is what makes `&` commute, and never with
+// top: the fast paths answer that pair.
 func (a *AbsentVal) Unify(peer Val, ctx *Ctx) Val {
-	//coverage:ignore-block absence is born DONE, and every driver skips a DONE argument rather than meeting it with top
-	if isTop(peer) {
-		return a
-	}
 	return peer
 }
 

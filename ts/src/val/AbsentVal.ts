@@ -14,14 +14,12 @@ import {
   AontuContext,
 } from '../ctx'
 
-import {
-  Val as ValBase
-} from './Val'
+import { FeatureVal } from './FeatureVal'
 
 
 // Top with one difference (ADR-034): absence is GENERABLE, and
 // generates nothing, so a bag drops it at a required key too.
-class AbsentVal extends ValBase {
+class AbsentVal extends FeatureVal {
   isAbsent = true
 
   constructor(
@@ -35,17 +33,13 @@ class AbsentVal extends ValBase {
   }
 
   // The unit of the meet: absence narrows nothing. `unite` calls this
-  // for EITHER operand, which is what makes `&` commute.
+  // for EITHER operand, which is what makes `&` commute, and never
+  // with top: the fast paths above it answer that pair.
   unify(peer: Val, _ctx: AontuContext): Val {
-    return peer.isTop ? this : peer
+    return peer
   }
 
   get canon() { return 'maybe()' }
-
-  /* node:coverage ignore next 4 */
-  superior(): Val {
-    return this
-  }
 
   gen(_ctx?: AontuContext) {
     return undefined
