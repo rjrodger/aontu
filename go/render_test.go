@@ -57,7 +57,7 @@ func TestRenderSourceHasNoFilesystemAccess(t *testing.T) {
 }
 
 func TestRenderProfile(t *testing.T) {
-	profile, findings := New().RenderProfile(`aontu: Profile: lang: "text"`)
+	profile, findings := New().RenderProfile(`aontu: render: Lang: lang: "text"`)
 	if nil != findings {
 		t.Fatalf("findings on a valid profile: %+v", findings)
 	}
@@ -76,8 +76,8 @@ func TestRenderProfile(t *testing.T) {
 		{"a: ]", "syntax", "$"},
 		{"x: 1 & \"a\"", "scalar_kind", "$.x"},
 		{"nil", "literal_nil", "$"},
-		{"aontu: Profile: lang: 1", "constraint", "$.aontu.Profile.lang"},
-		{"x: 1", "mapval_required", "$.aontu.Profile.lang"},
+		{"aontu: render: Lang: lang: 1", "constraint", "$.aontu.render.Lang.lang"},
+		{"x: 1", "mapval_required", "$.aontu.render.Lang.lang"},
 	} {
 		profile, findings := New().RenderProfile(c.src)
 		if nil != profile || 1 > len(findings) {

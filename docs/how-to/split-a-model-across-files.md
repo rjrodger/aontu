@@ -15,7 +15,7 @@ as `base.aon`:
 <!-- test: scenario split-model -->
 <!-- test: file base.aon -->
 ```aontu
-server: { host:string port:*8080 | integer debug:*false | boolean }
+server: { host:string port: *8080|integer debug: *false|boolean }
 ```
 
 the production pins as `override.aon`:

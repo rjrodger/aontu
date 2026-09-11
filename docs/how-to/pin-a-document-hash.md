@@ -14,7 +14,7 @@ and check the claim later. Write a small model as `system.aon`:
 <!-- test: scenario hash -->
 <!-- test: file system.aon -->
 ```aontu
-services: { &: { replicas:*1 | integer tier:*standard | string } }
+services: { &: { replicas: *1|integer tier: *standard|string } }
 services: auth: replicas: 3
 services: billing: tier: premium
 ```
@@ -34,7 +34,7 @@ comments and split entries apart, as `system-reordered.aon` does:
 # same meaning: keys reordered, comments added, one entry split
 services: billing: tier: premium
 services: auth: replicas: 3
-services: { &: { replicas:*1 | integer tier:*standard | string } }
+services: { &: { replicas: *1|integer tier: *standard|string } }
 ```
 
 <!-- test: run -->
@@ -49,7 +49,7 @@ template into its own `defaults.aon`:
 
 <!-- test: file defaults.aon -->
 ```aontu
-services: { &: { replicas:*1 | integer tier:*standard | string } }
+services: { &: { replicas: *1|integer tier: *standard|string } }
 ```
 
 and load it from a two-line `system-split.aon`:
@@ -78,7 +78,7 @@ Change what the document *means* and the string changes. Flip the
 
 <!-- test: file system-changed.aon -->
 ```aontu
-services: { &: { replicas:*2 | integer tier:*standard | string } }
+services: { &: { replicas: *2|integer tier: *standard|string } }
 services: auth: replicas: 3
 services: billing: tier: premium
 ```

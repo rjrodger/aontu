@@ -391,7 +391,7 @@ vocabulary, trimmed from
 spec: hide({
   Step: {
     approver: string & re("^[a-z]+@acme[.]example$")
-    decision: *pending | pending | approved | rejected
+    decision: *pending|pending|approved|rejected
     then?: $.spec.Step
   }
 })
@@ -454,7 +454,7 @@ no finite chain can satisfy it. Try it, as `strict.aon`:
 
 <!-- test: file strict.aon -->
 ```aontu
-strict: hide({ Step:{ approver:string then:$.strict.Step } })
+strict: hide({ Step: { approver:string then:$.strict.Step } })
 
 doc: $.strict.Step & {
   approver: "lead@acme.example"

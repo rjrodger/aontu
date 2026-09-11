@@ -1,16 +1,12 @@
-# aontu:lang/typescript --- THE TYPESCRIPT PROFILE. The data a unit of
-# TypeScript renders under: indentation, the comment forms, the string
-# quote and its escape table, the identifier rules and the type forms.
-# The lowering of a declaration to an exported interface is code
-# (docs/design/RENDER.0.md D5); everything the lowering reads without
-# looking at the shape of a node is here.
-#
-# EXPERIMENTAL until the distribution layer can version it by
-# canon-hash.
+# aontu:render/lang/typescript --- THE TYPESCRIPT PROFILE. Indentation,
+# comment forms, string escapes, identifier case and type forms.
+# Lowering a declaration to an interface is code; what the renderer
+# applies without looking at a node's shape is here. EXPERIMENTAL until
+# the distribution layer can version it by canon-hash.
 
-@"aontu:profile"
+@"aontu:render"
 
-aontu: Profile: {
+aontu: render: Lang: {
   lang: "typescript"
   lowering: "typescript"
   indent: { unit:" " width:2 }

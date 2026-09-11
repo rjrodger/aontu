@@ -22,14 +22,14 @@ describe('render-value', () => {
   // A profile document, the same way: `renderProfile(src)` alone, and
   // the answer carries the vocabulary's defaults.
   test('render-profile-takes-no-options-and-fills-the-defaults', () => {
-    const loaded = renderProfile('aontu: Profile: lang: "text"')
+    const loaded = renderProfile('aontu: render: Lang: lang: "text"')
     Assert.strictEqual(loaded.errors, undefined)
     Assert.strictEqual(loaded.profile.lang, 'text')
     Assert.deepStrictEqual(loaded.profile.indent, { unit: ' ', width: 2 })
     Assert.strictEqual(loaded.profile.lowering, undefined)
-    const refused = renderProfile('aontu: Profile: lang: 1')
+    const refused = renderProfile('aontu: render: Lang: lang: 1')
     Assert.strictEqual(refused.profile, undefined)
-    Assert.strictEqual(refused.errors?.[0].path, '$.aontu.Profile.lang')
+    Assert.strictEqual(refused.errors?.[0].path, '$.aontu.render.Lang.lang')
   })
 
   test('nothing-to-render', () => {

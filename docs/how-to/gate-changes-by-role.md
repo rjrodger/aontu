@@ -56,7 +56,7 @@ default:
 <!-- test: file model.aon -->
 ```aontu
 services: {
-  &: { tier:*standard | string replicas:*1 | integer description?:string }
+  &: { tier: *standard|string replicas: *1|integer description?:string }
   auth: tier: premium
   billing: {}
 }

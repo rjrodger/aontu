@@ -144,7 +144,7 @@ $.customers.ledgerId: constraint [conflict]
 two-leaf disjunction:
 
 ```aon
-ledgerId: integer & min(1) | biginteger & min(1)
+ledgerId: integer & min(1)|biginteger & min(1)
 ```
 
 Every schema between the wire and the warehouse spells the id the

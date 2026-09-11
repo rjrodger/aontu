@@ -43,7 +43,7 @@ plain lists of names. Write the topology as `pipeline.aon`:
 
 jobs: { &: $.spec.Job }
 jobs: extract: feeds: [path($.jobs.transform)]
-jobs: transform: { fedBy:[path($.jobs.extract)] feeds:[path($.jobs.load)] }
+jobs: transform: { fedBy: [path($.jobs.extract)] feeds: [path($.jobs.load)] }
 jobs: load: fedBy: [path($.jobs.transform)]
 ```
 
@@ -71,7 +71,7 @@ loop. Write the change as `cycle.aon`, patching both directions in:
 <!-- test: file cycle.aon -->
 ```aontu
 @"./pipeline.aon"
-jobs: { load:feeds:[path($.jobs.extract)] extract:fedBy:[path($.jobs.load)] }
+jobs: { load:feeds: [path($.jobs.extract)] extract:fedBy: [path($.jobs.load)] }
 ```
 
 Every field still unifies (nothing contradicts locally), but the

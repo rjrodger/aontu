@@ -18,10 +18,10 @@ sites carry each file's name. Write `stack.aon`:
 <!-- test: file stack.aon -->
 ```aontu
 # the org layer: a default for every service
-services: { &: { logLevel:***info | string replicas:***1 | integer } }
+services: { &: { logLevel: ***info|string replicas: ***1|integer } }
 
 # the prod layer: stronger defaults and pins
-services: auth: { logLevel:*warn | string replicas:3 }
+services: auth: { logLevel: *warn|string replicas:3 }
 services: billing: {}
 ```
 
@@ -32,7 +32,7 @@ Ask why `auth` runs three replicas:
 $ aontu why $.services.auth.replicas stack.aon
 $.services.auth.replicas = 3
   1. ***1|integer  stack.aon:2:53  (spread)
-  2. 3  stack.aon:5:52
+  2. 3  stack.aon:5:51
 ```
 
 The role in brackets marks a contribution that arrived indirectly:
@@ -47,8 +47,8 @@ The same question at `logLevel` shows the rank ladder mid-argument:
 ```sh
 $ aontu why $.services.auth.logLevel stack.aon
 $.services.auth.logLevel = *"warn"|***"info"|string
-  1. ***"info"|string  stack.aon:2:27  (spread)
-  2. *"warn"|string  stack.aon:5:28
+  1. ***"info"|string  stack.aon:2:28  (spread)
+  2. *"warn"|string  stack.aon:5:29
 ```
 
 The value at the path is the merged disjunction of both defaults;

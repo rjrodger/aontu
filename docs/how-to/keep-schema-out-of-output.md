@@ -15,7 +15,7 @@ the schema at its own key and reference it where it should apply:
 ```aontu
 _schema: type({ id:integer name:string })
 
-users: { &: $._schema ada:{ id:1 name:ada } bob:{ id:2 name:bob } }
+users: { &: $._schema ada: { id:1 name:ada } bob: { id:2 name:bob } }
 ```
 
 ```json
@@ -31,7 +31,7 @@ string id in `users.aon`:
 ```aontu
 _schema: type({ id:integer name:string })
 
-users: { &: $._schema ada:{ id:1 name:ada } bob:{ id:"two" name:bob } }
+users: { &: $._schema ada: { id:1 name:ada } bob: { id:"two" name:bob } }
 ```
 
 <!-- test: run -->

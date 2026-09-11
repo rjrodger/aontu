@@ -23,8 +23,8 @@ schema object, sealed at the root. Write this as `event.aon`:
 ```aontu
 close({
   id: string & re("^evt_[0-9a-f]{12}$")
-  kind: created | updated | deleted
-  priority: *normal | low | high
+  kind: created|updated|deleted
+  priority: *normal|low|high
   note?: string & length(min(1) & max(500))
 })
 ```
@@ -92,7 +92,7 @@ argschemas: type(close({
   search_docs: close({
     query: string & length(min(1) & max(256))
     limit?: integer & min(1) & max(50)
-    scope?: workspace | org | web
+    scope?: workspace|org|web
   })
 }))
 ```

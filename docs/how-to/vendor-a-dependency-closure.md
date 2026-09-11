@@ -48,7 +48,7 @@ and its entry,
 <!-- test: file aontu_meta/vendor/corp.example/schemas/service@1/service.aon -->
 ```aontu
 name: string
-port: *8080 | integer
+port: *8080|integer
 ```
 
 `tidy` resolves the closure and writes the lockfile; `vendor` copies
@@ -128,7 +128,7 @@ its entry `service/service.aon`, `owner` now required:
 <!-- test: file service/service.aon -->
 ```aontu
 name: string
-port: *8080 | integer
+port: *8080|integer
 owner: string
 ```
 
@@ -144,7 +144,7 @@ and its entry, `service-1.4.1/service.aon`:
 <!-- test: file service-1.4.1/service.aon -->
 ```aontu
 name: string
-port: *8080 | integer
+port: *8080|integer
 ```
 
 Now gate the candidate against what consumers already hold:

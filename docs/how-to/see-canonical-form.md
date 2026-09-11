@@ -13,7 +13,7 @@ admits. The canonical form keeps that. Write `timeout.aon`:
 <!-- test: scenario canon -->
 <!-- test: file timeout.aon -->
 ```aontu
-timeout: *30 | integer
+timeout: *30|integer
 ```
 
 Now evaluate it both ways:

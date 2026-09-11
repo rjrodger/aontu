@@ -187,17 +187,17 @@ what stops a sideways edge from closing a loop is `acyclic()`.
 The whole rule is four disjunctions, from `spec.aon`:
 
 ```aon
-AppDep:     { kind: mod, layer: "app" | "feature" | "core" | "util" }
-FeatureDep: { kind: mod, layer: "feature" | "core" | "util" }
-CoreDep:    { kind: mod, layer: "core" | "util" }
-UtilDep:    { kind: mod, layer: "util" }
+AppDep: { kind:mod layer:"app"|"feature"|"core"|"util" }
+FeatureDep: { kind:mod layer:"feature"|"core"|"util" }
+CoreDep: { kind:mod layer:"core"|"util" }
+UtilDep: { kind:mod layer:"util" }
 ```
 
 and one line per layer joining a module to the shape its dependencies
 must have:
 
 ```aon
-Core: $.spec.Mod & { layer: "core", dependsOn?: rel($.spec.CoreDep) }
+Core: $.spec.Mod & { layer:"core" dependsOn?:rel($.spec.CoreDep) }
 ```
 
 `rel(t)` flows `t` into every target, so a `dependsOn` edge from a
@@ -222,13 +222,11 @@ document that includes the model:
 
 ```aon
 views: {
-  matrix: {
-    kind: matrix
-    relation: dependsOn
-    order: partition
-    closure: true
-    out: "expected/diagram-matrix.txt"
-  }
+  matrix: kind: matrix
+  matrix: relation: dependsOn
+  matrix: order: partition
+  matrix: closure: true
+  matrix: out: "expected/diagram-matrix.txt"
   # seven more, one per figure this case commits
 }
 ```

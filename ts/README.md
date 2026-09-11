@@ -18,7 +18,7 @@ npm install -g aontu
 ```aontu
 # a schema, a default, and data — one notation, one operation
 port: integer
-port: *8080 | integer
+port: *8080|integer
 host: string
 host: "localhost"
 ```

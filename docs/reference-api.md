@@ -341,7 +341,7 @@ heuristic a single-document error uses. Write a closed schema as
 <!-- test: scenario vet -->
 <!-- test: file service.aon -->
 ```aontu
-service: close({ name:string port:*8080 | integer replicas:integer })
+service: close({ name:string port: *8080|integer replicas:integer })
 ```
 
 and a `deploy.json` with one mistyped key and one string where an
@@ -364,7 +364,7 @@ $.service.prot: closed [conflict]
 $.service.replicas: no_scalar_unify [conflict]
   [aontu/no_scalar_unify]: Cannot unify values at path $.service.replicas
   data: deploy.json:2:15 ("3")
-  schema: service.aon:1:60 (integer)
+  schema: service.aon:1:59 (integer)
 $ echo $?
 1
 ```
@@ -441,7 +441,7 @@ Write it as `chain.aon`:
 spec: hide({
   Step: {
     approver: string & re("^[a-z]+@acme[.]example$")
-    decision: *pending | pending | approved | rejected
+    decision: *pending|pending|approved|rejected
     then?: $.spec.Step
   }
 })
@@ -522,7 +522,7 @@ answering from hope. Write a `general.aon`:
 <!-- test: scenario subsume-recursive -->
 <!-- test: file general.aon -->
 ```aontu
-spec: hide({ Step:{ label:string then?:$.spec.Step } })
+spec: hide({ Step: { label:string then?:$.spec.Step } })
 doc: $.spec.Step
 ```
 
@@ -530,7 +530,7 @@ and a `specific.aon` whose step recurses into a DIFFERENT definition:
 
 <!-- test: file specific.aon -->
 ```aontu
-spec: hide({ Step:{ label:"start" then?:$.spec.Other } Other:label:string })
+spec: hide({ Step: { label:"start" then?:$.spec.Other } Other:label:string })
 doc: $.spec.Step
 ```
 
@@ -543,9 +543,14 @@ $.spec.Step.then: sub_unresolved [compat]
   no subsumption rule covers this pair of value formers
   expected: $.spec.Step
   actual:   {"label":string}
-  general: general.aon:1:40 ($.spec.Step)
-  specific: specific.aon:1:62 ({"label":string})
-...
+  general: general.aon:1:41 ($.spec.Step)
+  specific: specific.aon:1:63 ({"label":string})
+$.doc: sub_unresolved [compat]
+  no subsumption rule covers this pair of value formers
+  expected: $.spec.Step
+  actual:   {"label":"start","then"?:{"label":string}}
+  general: general.aon:2:6 ($.spec.Step)
+  specific: specific.aon:1:20 ({"label":"start","then"?:{"label":string}})
 $ echo $?
 3
 ```
@@ -1254,7 +1259,7 @@ tells the reader what it left behind. Write a `contract.aon`:
 <!-- test: file contract.aon -->
 ```aontu
 spec: name: string & re("^[a-z][a-z0-9-]{2,39}$")
-spec: tier: *internal | standard | critical
+spec: tier: *internal|standard|critical
 ```
 
 <!-- test: run -->
@@ -1431,7 +1436,7 @@ aontu: Code: units: [
         k: "frag"
         of: [
           "def hello():"
-          { k:"line" at:1 of:["print(\"" + $.greeting + "\")"] }
+          { k:"line" at:1 of: ["print(\"" + $.greeting + "\")"] }
         ]
       }
     ]
@@ -1581,10 +1586,10 @@ aontu: Code: units: [
         k: "record"
         name: "order"
         fields: [
-          { name:"id" type:{ k:"prim" prim:"string" } }
-          { name:"ledgerId" type:{ k:"prim" prim:"int" } }
-          { name:"status" type:{ k:"ref" name:"status" } }
-          { name:"note" optional:true type:{ k:"prim" prim:"string" } }
+          { name:"id" type: { k:"prim" prim:"string" } }
+          { name:"ledgerId" type: { k:"prim" prim:"int" } }
+          { name:"status" type: { k:"ref" name:"status" } }
+          { name:"note" optional:true type: { k:"prim" prim:"string" } }
         ]
       }
     ]
@@ -1603,10 +1608,10 @@ aontu: Code: units: [
         k: "record"
         name: "order"
         fields: [
-          { name:"id" type:{ k:"prim" prim:"string" } }
-          { name:"ledgerId" type:{ k:"prim" prim:"int" } }
-          { name:"status" type:{ k:"ref" name:"status" } }
-          { name:"note" optional:true type:{ k:"prim" prim:"string" } }
+          { name:"id" type: { k:"prim" prim:"string" } }
+          { name:"ledgerId" type: { k:"prim" prim:"int" } }
+          { name:"status" type: { k:"ref" name:"status" } }
+          { name:"note" optional:true type: { k:"prim" prim:"string" } }
         ]
       }
     ]
@@ -1664,12 +1669,12 @@ renderer does not try to.
   has is `render_unit`.
 - `--profile <file>` supplies a render profile: a document whose root
   is `profile: {lang, indent, …}`, evaluated under the verb's trust and
-  vetted against `aontu:profile`; it applies to the units of its
+  vetted against `aontu:render`; it applies to the units of its
   language, and a unit's own inline `profile` merges over it. The flag
   repeats, one file per language; two files claiming one language is a
   usage error. A unit with no supplied profile renders under the
-  bundled one of its language (`aontu:lang/typescript`,
-  `aontu:lang/go`) or, for any other language, under the bundled text
+  bundled one of its language (`aontu:render/lang/typescript`,
+  `aontu:render/lang/go`) or, for any other language, under the bundled text
   profile (two spaces per depth) when it holds only fragments and
   text escapes; a declaration in a unit whose profile has no lowering
   is `render_profile`.
@@ -1725,7 +1730,7 @@ Write an `app.aon` whose spread template supplies defaults:
 <!-- test: scenario query -->
 <!-- test: file app.aon -->
 ```aontu
-services: { &: { replicas:*1 | integer port:*8080 | integer } }
+services: { &: { replicas: *1|integer port: *8080|integer } }
 services: auth: replicas: 3
 services: billing: {}
 ```
@@ -1803,7 +1808,7 @@ Ask it about the `app.aon` above:
 ```sh
 $ aontu why $.services.auth.replicas app.aon
 $.services.auth.replicas = 3
-  1. *1|integer  app.aon:1:27  (spread)
+  1. *1|integer  app.aon:1:28  (spread)
   2. 3  app.aon:2:27
 ```
 
@@ -2286,11 +2291,11 @@ one:
 
 <!-- test: skip the file it reads is the reader's own language -->
 ```aon
-@"aontu:profile"
+@"aontu:render"
 
-aontu: Profile: lang: "ocaml"
-aontu: Profile: indent: { unit:" " width:2 }
-aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+aontu: Lang: lang: "ocaml"
+aontu: Lang: indent: { unit:" " width:2 }
+aontu: Lang: template: { marker:"(*-" close:"*)" ext: ["ml" "mli"] }
 ```
 
 <!-- test: skip the synopsis is not a transcript -->
@@ -2422,7 +2427,7 @@ To see the pin hold still, write `svc.aon`:
 <!-- test: scenario hash -->
 <!-- test: file svc.aon -->
 ```aontu
-service: { name:"checkout" port:*8080 | integer }
+service: { name:"checkout" port: *8080|integer }
 ```
 
 and `svc-reformat.aon`, the same meaning re-ordered under a comment:
@@ -3450,7 +3455,7 @@ renderValue    // the fold alone, over generate() output:
                // Go: aontu.RenderValue(instance, opts)
 renderProfile  // a profile document -> {profile} or {errors}:
                // evaluated under the caller's include options, vetted
-               // against aontu:profile as a settled value and met with
+               // against aontu:render as a settled value and met with
                // it, so the defaults are filled; what --profile <file>
                // hands to render's profiles
 desugarTemplate // a generator in the target's own syntax -> the
@@ -3538,7 +3543,7 @@ does exactly this for a file argument.)
 | `Generate`     | `Generate(src string) (any, error)` | Parse → unify → native Go value. |
 | `GenerateVars` | `GenerateVars(src string, vars map[string]Val) (any, error)` | `Generate` with variables. |
 | `Render`       | `Render(src string, opts *RenderOptions) RenderReport` | The renderer: evaluate, vet the value at `At` against `aontu:code`, fold `code.units` into bytes: `Units` (path, lang, text), `Lossy` (the three tiers) or `Errors`. `aontu.RenderValue(instance any, opts *RenderOptions) RenderReport` is the fold alone, over `Generate` output. |
-| `RenderProfile` | `RenderProfile(src string) (map[string]any, []VetFinding)` | A profile document, evaluated under this instance's include options, vetted against `aontu:profile` as a settled value and met with it so the defaults are filled: the `profile` map `RenderOptions.Profiles` takes, or the findings that refused it. |
+| `RenderProfile` | `RenderProfile(src string) (map[string]any, []VetFinding)` | A profile document, evaluated under this instance's include options, vetted against `aontu:render` as a settled value and met with it so the defaults are filled: the `profile` map `RenderOptions.Profiles` takes, or the findings that refused it. |
 | `Format`       | `Format(src string) FormatReport` | The source formatter (see [`aontu fmt`](#aontu-fmt)): the agreed form, or the findings that say why there is none. `FormatWith(src string, opts FormatOptions) FormatReport` is the same with the options: `Lint` fills the report's `Findings`, the style findings of `--lint`. `aontu.UnifiedDiff(name, before, after string) string` is the diff `--diff` prints. |
 
 <!-- test: skip Go API sample; the API surface is pinned by the go/ test suite -->

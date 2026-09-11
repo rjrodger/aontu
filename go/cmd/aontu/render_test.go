@@ -251,9 +251,9 @@ func TestRenderExitCodesFollowTheReport(t *testing.T) {
 func TestRenderProfiles(t *testing.T) {
 	dir := renderDir(t, map[string]string{
 		"doc.aon":    renderTwoUnits,
-		"four.aon":   `aontu: Profile: { lang: "text", indent: { unit: " ", width: 4 } }` + "\n",
-		"two.aon":    `aontu: Profile: { lang: "text", indent: { unit: " ", width: 2 } }` + "\n",
-		"bad.aon":    "aontu: Profile: { lang: 1 }\n",
+		"four.aon":   `aontu: render: Lang: { lang: "text", indent: { unit: " ", width: 4 } }` + "\n",
+		"two.aon":    `aontu: render: Lang: { lang: "text", indent: { unit: " ", width: 2 } }` + "\n",
+		"bad.aon":    "aontu: render: Lang: { lang: 1 }\n",
 		"broken.aon": "x: 1 & \"a\"\n",
 		"nil.aon":    "nil\n",
 	})
@@ -268,7 +268,7 @@ func TestRenderProfiles(t *testing.T) {
 	// A profile the vocabulary refuses is reported as the document it
 	// is: 4, with the finding addressed by path.
 	_, errw := renderCode(t, 4, "--profile", filepath.Join(dir, "bad.aon"), file)
-	vetMatch(t, errw, `\$\.aontu\.Profile\.lang`)
+	vetMatch(t, errw, `\$\.aontu\.render\.Lang\.lang`)
 	// ... and so is one that does not stand up, or is nil outright.
 	_, errw = renderCode(t, 4, "--profile", filepath.Join(dir, "broken.aon"), file)
 	vetMatch(t, errw, `scalar_kind`)

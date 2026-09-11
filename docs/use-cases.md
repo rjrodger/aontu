@@ -70,12 +70,12 @@ disagreeing defaults at the same rank are a conflict. The whole
 ladder, trimmed from the case's `probes/rank-ladder.aon`:
 
 ```aontu
-org_team_env: ***info | string
-org_team_env: **debug | string
-org_team_env: *warn | string
+org_team_env: ***info|string
+org_team_env: **debug|string
+org_team_env: *warn|string
 
-pinned: ***info | string
-pinned: **debug | string
+pinned: ***info|string
+pinned: **debug|string
 pinned: error
 ```
 ```json
@@ -224,7 +224,7 @@ OrderPaid: close($.Envelope & {
     order_id: re("^ord-[0-9a-f]{8}$")
     payment_ref: re("^psp-[a-z0-9-]{4,40}$")
     amount_cents: integer & min(1)
-    method: "card" | "sepa" | "paypal" | "invoice"
+    method: "card"|"sepa"|"paypal"|"invoice"
   })
 })
 ```
@@ -386,7 +386,7 @@ infinitely deep type. The vocabulary, one reference deep, from
 
 ```aon
 Step: approver: string & re("^[a-z]+@acme[.]example$")
-Step: decision: *pending | pending | approved | rejected
+Step: decision: *pending|pending|approved|rejected
 Step: then?: $.spec.Step
 ```
 
@@ -545,7 +545,7 @@ is one line of schema and one disjunction, from `spec.aon`:
 
 ```aon
 Core: $.spec.Mod & { layer:"core" dependsOn?:rel($.spec.CoreDep) }
-CoreDep: { kind:mod layer:"core" | "util" }
+CoreDep: { kind:mod layer:"core"|"util" }
 ```
 
 An upward edge then refuses at generation as an ordinary conflict naming
@@ -611,7 +611,7 @@ replicas, feature flags and a tests block. The vocabulary and the
 `dev` role, from `roles.aon`:
 
 ```aon
-Role: type(close({ desc:string allow:[&: string] deny?:[&: string] }))
+Role: type(close({ desc:string allow: [&: string] deny?: [&: string] }))
 
 roles: close({
   &: $.Role

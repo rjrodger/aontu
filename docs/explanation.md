@@ -89,9 +89,9 @@ evaluation. What they are *for* is argued below, in
 References make a single pass insufficient. Consider:
 
 ```aon
-a: { v: $.b.v }
-b: { v: $.c.v }
-c: { v: 99 }
+a: v: $.b.v
+b: v: $.c.v
+c: v: 99
 ```
 
 On the first pass `$.b.v` resolves to *another reference* (`$.c.v`),
@@ -162,8 +162,8 @@ the clone's own self-reference is again a residual. Each meet with data
 consumes one level of data:
 
 ```aontu
-schema: hide({Step: {label: string, then?: $.schema.Step}})
-doc: $.schema.Step & {label: "a", then: {label: "b", then: {label: "c"}}}
+schema: hide({ Step: { label:string then?:$.schema.Step } })
+doc: $.schema.Step & { label:"a" then: { label:"b" then:label:"c" } }
 ```
 
 ```json
@@ -269,8 +269,8 @@ from the [service catalog use
 case](../use-cases/01-service-catalog/):
 
 ```aontu
-catalog: pay: { tier: 1 }
-deploy: pay: $.catalog.pay & { replicas: 3 }
+catalog: pay: tier: 1
+deploy: pay: $.catalog.pay & { replicas:3 }
 ```
 
 ```json

@@ -15,7 +15,7 @@
 # line is pad(at) + text + LF, and an empty text emits no pad; a blank
 # is its terminators alone; a raw block's lines each get the pad unless
 # reindent is false; nothing is trimmed. The unit is fragment-only, so
-# it renders under aontu:lang/text, whose indent is two spaces.
+# it renders under aontu:render/lang/text, whose indent is two spaces.
 render-empty-instance	render	aontu: Code: { units: [] }	{"verdict":"ok","units":[],"lossy":[]}
 render-no-code-key	render	x: 1	{"verdict":"ok","units":[],"lossy":[]}
 render-empty-unit	render	aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [] }]	{"verdict":"ok","units":[{"path":"a.txt","lang":"text","text":""}],"lossy":[]}
@@ -84,7 +84,7 @@ render-unit-unknown	render	aontu: Code: units: [{ path: "a.txt", lang: "text", d
 render-document-does-not-stand-up	render	aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [] }]\nx: 1 & "a"	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"scalar_kind","class":"conflict","severity":"error","path":"$.x","sites":[{"col":8,"file":"","len":3,"role":"data","row":2,"src":"\\"a\\"","value":"\\"a\\""},{"col":4,"file":"","len":1,"role":"data","row":2,"src":"1","value":"1"}]}]}
 render-document-is-nil	render	nil	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"literal_nil","class":"conflict","severity":"error","path":"$","sites":[{"col":1,"file":"","len":3,"role":"data","row":1,"src":"nil","value":"nil"}]}]}
 render-document-does-not-parse	render	a: ]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"syntax","class":"parse","severity":"error","path":"$","sites":[{"col":4,"file":"","len":-1,"role":"data","row":1,"src":"","value":"nil"}]}]}
-render-vet-refuses-the-shape	render	aontu: Code: units: 1	{"errors":[{"class":"conflict","code":"list","path":"$.aontu.Code.units","severity":"error","sites":[{"col":27,"file":"data","len":1,"role":"data","row":1,"src":"1","value":"1"},{"col":44,"file":"aontu:code","len":1,"role":"schema","row":160,"src":"[","value":"[&:%unit]"}]}],"lossy":[],"units":[],"verdict":"error"}
+render-vet-refuses-the-shape	render	aontu: Code: units: 1	{"errors":[{"class":"conflict","code":"list","path":"$.aontu.Code.units","severity":"error","sites":[{"col":27,"file":"data","len":1,"role":"data","row":1,"src":"1","value":"1"},{"col":45,"file":"aontu:code","len":1,"role":"schema","row":140,"src":"[","value":"[&:%unit]"}]}],"lossy":[],"units":[],"verdict":"error"}
 render-anchor-names-nothing	render	aontu: Code: units: []	{"ask":{"at":"$.nope"},"errors":[{"class":"reference","code":"no_path","path":"$","severity":"error","sites":[{"col":1,"file":"","len":5,"role":"data","row":1,"src":"aontu","value":"{\\"aontu\\":{\\"Code\\":{\\"units\\":[]}}}"}]}],"lossy":[],"units":[],"verdict":"error"}
 #
 # THE DECLARATION LOWERING (D5, D6, P5): a unit of a language with a

@@ -581,9 +581,9 @@ and drop out):
 
 ```aon
 a: 2
-a: 1 | 2
+a: 1|2
 b: 2
-b: string | number
+b: string|number
 ```
 
 ```json
@@ -618,10 +618,10 @@ rather than reported, as every other unresolved optional is.
 preferred branch is chosen unless unification forces another.
 
 ```aon
-a: *1 | number
+a: *1|number
 b: *5
-c: *green | string
-d: *1 | number
+c: *green|string
+d: *1|number
 d: 2
 ```
 
@@ -670,7 +670,7 @@ Compatible defaults fold: `a:*1` beside `a:*integer` is `*1`.
 the two ways of writing an enum-with-default agree.
 
 ```aon
-a: ("1.0" | "1.1") & *"1.0"
+a: ("1.0"|"1.1") & *"1.0"
 ```
 
 ```json
@@ -697,11 +697,11 @@ its openness: `*x | top` admits every override. The gate covers scalar
 preferred values: the same boundary as the kind gate above.
 
 ```aon
-a: *8080 | integer
+a: *8080|integer
 a: 9090
-b: *8080 | number
+b: *8080|number
 b: 1.5
-c: *8080 | string
+c: *8080|string
 c: 8080
 ```
 
@@ -806,7 +806,7 @@ per-child overridable default (`&: x: *1|number`). A template that
 names each child uses `key()`:
 
 ```aon
-a: b: { &: { name:key() } c:{} d:{} }
+a: b: { &: { name:key() } c: {} d: {} }
 ```
 
 ```json
@@ -863,8 +863,8 @@ names: [web auth billing]
 
 deploy: close(pack($.names, {
   image: "acme/" + key() + ":1.4.2"
-  replicas: *2 | integer
-  port: *8080 | integer
+  replicas: *2|integer
+  port: *8080|integer
 }))
 
 deploy: billing: replicas: 4 # an override composes as usual
@@ -1048,7 +1048,7 @@ satisfy** `cond` (keys preserved for a map, order for a list) and
 drops the rest silently:
 
 ```aon
-services: { web:{ debug:true port:80 } auth:port:81 }
+services: { web: { debug:true port:80 } auth:port:81 }
 debugged: filter($.services, { debug:true })
 sidecars: pack($.debugged, { image:"acme/debug:1.0" })
 ```
@@ -1191,8 +1191,8 @@ node. The answer is one flat list of pieces:
 services: [{ kind:sqs pin:"srv:a" } { kind:http path:"/a" }]
 
 lines: emit($.services, [
-  { match:kind:sqs body:["listen(" + .pin + ")"] }
-  { match:kind:http body:["serve(" + .path + ")"] }
+  { match:kind:sqs body: ["listen(" + .pin + ")"] }
+  { match:kind:http body: ["serve(" + .path + ")"] }
 ])
 ```
 
@@ -1225,13 +1225,16 @@ to do. A dispatch over a `filter` that selects nothing contributes
 nothing:
 
 ```aon
-services: [{ name:web logs:[] }]
+services: [{ name:web logs: [] }]
 
 lines: emit($.services, {
   match: name: string
   body: [
     "start " + .name
-    emit(filter(.logs, { level:debug }), { match:level:debug body:["debug on"] })
+    emit(filter(.logs, { level:debug }), {
+      match: level: debug
+      body: ["debug on"]
+    })
   ]
 })
 ```
@@ -1254,7 +1257,7 @@ drives: a call's template argument. Write the table as an `emit` whose
 **selection is a hole**, and it is a rule set waiting for its nodes:
 
 ```aon
-%wire = emit(_, { match:pin:string body:["client(" + .pin + ")"] })
+%wire = emit(_, { match:pin:string body: ["client(" + .pin + ")"] })
 
 listen: [pin:"srv:a"]
 client: [pin:"srv:b"]
@@ -1278,7 +1281,7 @@ A named table may name **itself**, which is how a rule set walks a
 nested structure into nested output:
 
 ```aon
-tree: [{ name:a kids:[{ name:b kids:[] }] }]
+tree: [{ name:a kids: [{ name:b kids: [] }] }]
 
 %walk = emit(_, {
   match: name: string
@@ -1399,7 +1402,7 @@ error. `$.schema.Step` written inside `Step` means "a `Step`, by this
 very definition", and the schema applies at every depth of the data:
 
 ```aon
-schema: hide({ Step:{ label:string then?:$.schema.Step } })
+schema: hide({ Step: { label:string then?:$.schema.Step } })
 doc: $.schema.Step & { label:"start" then:label:"finish" }
 ```
 
@@ -1417,7 +1420,7 @@ analysis.** Under an optional key (`then?:`) the chain ends where
 the data ends. A ranked default works the same way:
 
 ```aon
-schema: hide({ Node:{ v:integer next:*null | $.schema.Node } })
+schema: hide({ Node: { v:integer next: *null|$.schema.Node } })
 doc: $.schema.Node & { v:1 next:v:2 }
 ```
 
@@ -1450,8 +1453,8 @@ way, and so does a recursive [alias](#aliases-), which is enough to
 write the JSON value space in one line:
 
 ```aon
-%json = null | boolean | number | string | [&: %json] | { &: %json }
-x: %json & { a:[1 "two" b:true] }
+%json = null|boolean|number|string|[&: %json]|{ &: %json }
+x: %json & { a: [1 "two" b:true] }
 ```
 
 ```json
@@ -1598,7 +1601,7 @@ name.
 ```aon
 %row = { kind:string id:integer }
 
-table: { &: %row a:{ kind:user id:1 } b:{ kind:user id:2 } }
+table: { &: %row a: { kind:user id:1 } b: { kind:user id:2 } }
 ```
 
 ```json
@@ -2774,7 +2777,7 @@ Write the model as `model.aon`:
 <!-- test: scenario reuse -->
 <!-- test: file model.aon -->
 ```aon
-auth: { port:80 region:*"eu" | string }
+auth: { port:80 region: *"eu"|string }
 billing: dep: refer() & path(..auth)
 ```
 
@@ -2840,7 +2843,7 @@ a string) evaluates first, and the result converts by the same grammar,
 which is what makes an address buildable:
 
 ```aon
-names: { web:{} db:{} }
+names: { web: {} db: {} }
 accounts: pack($.names, { for:refer() & path("$.names." + key()) })
 ```
 
@@ -3043,11 +3046,11 @@ scheme is what stops a file on disk from standing in front of it.
 | `aontu:system` | ports, components and services: [below](#the-aontusystem-vocabulary) |
 | `aontu:view` | the schema for one declaration of a [view document](reference-api.md#aontu-view), `$.aontu.View.Figure`, which types every option the verb reads so a typo is refused at evaluation |
 | `aontu:code` | the output vocabulary a transform evaluates to |
-| `aontu:profile` | the data `render` applies to a unit of one language |
-| `aontu:lang/text` | the text profile |
-| `aontu:lang/markdown` | the markdown profile |
-| `aontu:lang/typescript` | the TypeScript profile |
-| `aontu:lang/go` | the Go profile |
+| `aontu:render` | the data `render` applies to a unit of one language |
+| `aontu:render/lang/text` | the text profile |
+| `aontu:render/lang/markdown` | the markdown profile |
+| `aontu:render/lang/typescript` | the TypeScript profile |
+| `aontu:render/lang/go` | the Go profile |
 
 The last six are described [after the system vocabulary](#the-aontu-models).
 
@@ -3067,7 +3070,7 @@ rather than looked for on disk.
 | `@"aontu:system"` | `$.aontu.System.Port`, `.Component`, `.Service`, `.Semver` |
 | `@"aontu:view"` | `$.aontu.View.Figure` |
 | `@"aontu:code"` | `$.aontu.Code.units` |
-| `@"aontu:profile"` | `$.aontu.Profile` |
+| `@"aontu:render"` | `$.aontu.Lang` |
 
 One key is reserved instead of seven, it is named for the language
 rather than for a domain, and `$.aontu` anywhere tells a reader at once
@@ -3091,7 +3094,7 @@ source name is not a path. Write this as `models.aon`:
 @"aontu:code"
 
 aontu: Code: units: [
-  { path:"hello.py" lang:"python" decls:[{ k:"frag" of:["print('hello')"] }] }
+  { path:"hello.py" lang:"python" decls: [{ k:"frag" of: ["print('hello')"] }] }
 ]
 ```
 
@@ -3131,7 +3134,7 @@ the set. Write this as `nope.aon`:
 <!-- test: run -->
 ```sh
 $ aontu nope.aon
-source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/markdown, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view)
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:render, aontu:render/lang/go, aontu:render/lang/markdown, aontu:render/lang/text, aontu:render/lang/typescript, aontu:system, aontu:view)
 $ echo $?
 1
 ```
@@ -3150,14 +3153,14 @@ linear. The root is not `type()`-marked, because `render` reads the
 instance through generation; a document that includes the vocabulary
 and writes no units generates `aontu: {Code: {units: []}}`.
 
-**`aontu:profile`** is the schema of a render profile: the data a unit
+**`aontu:render`** is the schema of a render profile: the data a unit
 of one language is rendered under: its `lang`, an `indent`, and
 optionally the comment forms, the string quote and escape table, the
 identifier rules and the type forms. A profile is data and only data:
 a field belongs in it only if the renderer applies it without looking
 at the shape of any node.
 
-**`aontu:lang/typescript`** and **`aontu:lang/go`** are the two
+**`aontu:render/lang/typescript`** and **`aontu:render/lang/go`** are the two
 bundled profiles with a lowering: the data a unit of that language
 renders under: two spaces or a tab, the comment forms, the string
 escapes by decimal code point, the reserved words, the case style per
@@ -3168,7 +3171,7 @@ exported interface or a struct, an enum, a type alias, a constant, a
 function) and the loss report names what the target's type system does
 not enforce; see [`aontu render`](reference-api.md#aontu-render).
 
-**`aontu:lang/markdown`** is fragment-shaped like the text profile,
+**`aontu:render/lang/markdown`** is fragment-shaped like the text profile,
 and carries what markdown has of its own: the HTML comment form, and
 the template marker its files write, `<!--- … -->`.
 
@@ -3182,10 +3185,10 @@ block comment the engine has never seen:
 
 <!-- test: skip the file it configures is the reader's own language -->
 ```aon
-aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+aontu: Lang: template: { marker:"(*-" close:"*)" ext: ["ml" "mli"] }
 ```
 
-**`aontu:lang/text`** is the bundled profile of every other language:
+**`aontu:render/lang/text`** is the bundled profile of every other language:
 `lang: "text"`, an indent of two spaces, and nothing else, since a fold
 over fragments applies nothing else. Every unit whose declarations are
 fragments and text escapes renders under it whatever its `lang` says,
@@ -3993,7 +3996,7 @@ and `}` alone, which is the ordinary spelling of a constrained map:
 ```aon
 CatalogEntry: $.aontu.System.Service & {
   owner: %Owner
-  tier: 1 | 2 | 3
+  tier: 1|2|3
   dependsOn?: rel($.aontu.System.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
 }
 ```
@@ -4404,8 +4407,8 @@ this as `check.aon`:
 <!-- test: file check.aon -->
 ```aon
 G: abnf("v = 1*d\nd = %x30-39\n")
-tag: *"" | parse($.G)
-ver: (*"" | parse($.G)) & "12"
+tag: *""|parse($.G)
+ver: (*""|parse($.G)) & "12"
 ```
 
 <!-- test: run -->

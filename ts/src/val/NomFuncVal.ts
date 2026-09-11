@@ -37,7 +37,7 @@ const NOM_STYLES = [
 ]
 
 // nom's style name -> the `%case` style `caseName` serves. `upper` and
-// `text` are nom's spellings: `screaming` is what `aontu:profile` calls
+// `text` are nom's spellings: `screaming` is what `aontu:render` calls
 // SCREAMING_SNAKE and that name is pinned cross-port, so the mapping
 // lives here rather than in the shared vocabulary.
 const CASENAME_STYLES: Record<string, string> = {

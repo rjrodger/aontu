@@ -5,7 +5,7 @@
 # that reads the document afterwards. The declaration keys are the view
 # options -- the command-line flags without the dashes.
 #
-# The source is BUNDLED with the engine (ts/src/std.ts, go/std.go): no
+# The source is BUNDLED with the engine (the aontu/ tree, ADR-036): no
 # filesystem, no package resolution, so it is available under every
 # include capability except `none`. The two copies are the same bytes,
 # and vocabulary-canon and vocabulary-hash below pin that in both

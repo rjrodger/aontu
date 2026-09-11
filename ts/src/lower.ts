@@ -96,7 +96,7 @@ export function capitalise(word: string, acronyms: string[]): string {
   return upperASCII(chars[0]) + chars.slice(1).join('')
 }
 
-// THE CASE STYLES of aontu:profile's %case, over the words.
+// THE CASE STYLES of aontu:render's %case, over the words.
 export function caseName(name: string, style: string, acronyms: string[]): string {
   if ('as-is' === style) {
     return name

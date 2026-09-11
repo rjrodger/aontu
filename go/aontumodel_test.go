@@ -10,26 +10,31 @@ import (
 	"testing"
 )
 
-// A module is a directory holding a file named after it: aontu/lang/go
-// holds go.aon and is `aontu:lang/go`.
+// Every .aon is a module, named by its path; a file named after the
+// directory holding it collapses, so aontu/code/code.aon is
+// `aontu:code` and aontu/render/lang/go.aon is `aontu:render/lang/go`.
 func walkModels(t *testing.T, dir, rel string, found []string) []string {
 	entries, err := os.ReadDir(dir)
 	if nil != err {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
 		subrel := entry.Name()
 		if "" != rel {
 			subrel = rel + "/" + entry.Name()
 		}
-		sub := filepath.Join(dir, entry.Name())
-		if _, err := os.Stat(filepath.Join(sub, entry.Name()+".aon")); nil == err {
-			found = append(found, aontuScheme+subrel)
+		if entry.IsDir() {
+			found = walkModels(t, filepath.Join(dir, entry.Name()), subrel, found)
+			continue
 		}
-		found = walkModels(t, sub, subrel, found)
+		if !strings.HasSuffix(entry.Name(), ".aon") {
+			continue
+		}
+		part := strings.Split(strings.TrimSuffix(subrel, ".aon"), "/")
+		if 1 < len(part) && part[len(part)-1] == part[len(part)-2] {
+			part = part[:len(part)-1]
+		}
+		found = append(found, aontuScheme+strings.Join(part, "/"))
 	}
 	return found
 }
@@ -44,9 +49,13 @@ func TestAontuModelsAreTheCanonicalTree(t *testing.T) {
 	norm := func(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
 	for _, name := range aontuModels {
 		rel := strings.Split(strings.TrimPrefix(name, aontuScheme), "/")
-		leaf := append([]string{"..", "aontu"}, rel...)
-		leaf = append(leaf, rel[len(rel)-1]+".aon")
-		shared, err := os.ReadFile(filepath.Join(leaf...))
+		deep := append([]string{"..", "aontu"}, rel...)
+		deep = append(deep, rel[len(rel)-1]+".aon")
+		at := filepath.Join(deep...)
+		if _, err := os.Stat(at); nil != err {
+			at = filepath.Join(append([]string{"..", "aontu"}, rel...)...) + ".aon"
+		}
+		shared, err := os.ReadFile(at)
 		if nil != err {
 			t.Fatal(err)
 		}

@@ -14,7 +14,7 @@ a reference means by `$.a.b`) and prints it alone. Write
 <!-- test: scenario query-a-path -->
 <!-- test: file system.aon -->
 ```aontu
-services: { &: { replicas:*1 | integer tier:*standard | string } }
+services: { &: { replicas: *1|integer tier: *standard|string } }
 services: auth: replicas: 3
 services: billing: tier: premium
 ```

@@ -39,7 +39,7 @@ class CreatePLURAL < ActiveRecord::Migration[8.0]
 #-               # `{pk:false}` -- the predicate needs the key to be there -- which is
 #-               # why this is rule order rather than two filters.
 #-               emit(.field, [
-#-                 { match:pk:true body:[] }
+#-                 { match:pk:true body: [] }
 #-                 {
 #-                   match: { name:string kind:string }
 #-                   replace: {

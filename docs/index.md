@@ -145,7 +145,7 @@ as whole worked systems, each holding a `check.sh` that CI runs.
 
 ```aontu
 # A schema, a default, and data — unified into one result.
-port: *8080 | integer
+port: *8080|integer
 host: string
 host: "localhost"
 ```

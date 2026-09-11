@@ -8,6 +8,14 @@ X-1, X-2, X-3, X-5 and X-6 decided as recommended, X-7 decided
 *against* the recommendation (a spread-only map keeps its braces —
 §3.3 carries the exception), X-4 stands as recommended.
 
+**AMENDED 2026-09-11 — a colon before a value that OPENS keeps its
+space, and `|` is tight within a line.** Two rules that pull in
+opposite directions and for the same reason: a marker should bind to
+what it marks. `direction:*in | out | inout` bound the `*` to the
+colon and let the alternatives drift apart; `direction: *in|out|inout`
+binds the preference to `in` and the disjunction into the one value it
+is. §3.2 carries the colon rule, §3.11 the operator, §7.7 the break.
+
 **AMENDED 2026-09-08 — §3.4's repeat now ends at a record.** The
 descent through nested maps was unbounded and put a four-key prefix in
 front of each of a field's seven one-word facts. A map holding only
@@ -156,6 +164,13 @@ lines. At the level of a statement (§3.3) every pair has its own line,
 so `a: 1 b: 2` on one line becomes two lines. Inside an inline
 container (§3.5) the colon is tight, `{ a:1 b:2 }`, and the space
 between pairs is what separates them.
+
+**A value that OPENS takes the space back**, tight container or not:
+`{ a: *1|2 b: { x:1 y:2 } c: [1 2] d: (1|2) & 3 }`. A preference, a
+brace, a bracket and a parenthesis are each a MARKER, and a marker
+that touches the colon reads as part of it rather than as the head of
+what follows. A call is not one — `h:type({ x:1 })` stays tight —
+because its name already separates the two.
 
 Optional keys keep the marker tight to the key, `port?: integer`. A
 spread is `&: value`. An alias declaration is `%Name = value`.
@@ -493,8 +508,14 @@ the kind, and `0x1f → 31` loses the base the author was thinking in.
 
 ### 3.11 Operators, preferences, calls
 
-- Binary operators are spaced: `a & b`, `a | b`, `a + b`.
-- A preference is tight: `*8080 | 9090`, `**{ x:1 }`.
+- Binary operators are spaced: `a & b`, `a + b`.
+- **`|` is tight within a line**: `*8080|9090`, `in|out|inout`. A
+  disjunction of alternatives is ONE value — a type, usually — and
+  spacing it apart reads as a sequence of them. Where the author broke
+  the line the operator keeps its space (§7.7): there it leads the
+  line and is the bullet of the list the break makes, not an operator
+  between two operands.
+- A preference is tight: `*8080|9090`, `**{ x:1 }`.
 - Calls: `name(arg, arg)`, no space before the parenthesis, none inside
   it, a comma and a space between arguments (§3.6). An empty argument
   list is `name()`.
@@ -827,7 +848,9 @@ departs from the note. Each is pinned by a row of `fmt.tsv`.
   author broke either: a break at a binary operator stays, `gofmt`'s
   own rule. The break is normalised to *before* the operator, which
   then leads its continuation line — `a: 1` / `  | 2` — because a
-  disjunction of alternatives reads as the list it is. The continuation
+  disjunction of alternatives reads as the list it is. That is also
+  why the operator keeps its space there while it is tight within a
+  line (§3.11): leading a line it is a bullet, not an infix. The continuation
   is one level in when the expression follows a key on its line, and
   level with the first operand when the expression has the line to
   itself (an argument of a block call). A comment inside an expression

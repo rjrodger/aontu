@@ -78,9 +78,9 @@ export type RenderOptions = IncludeOptions & {
 
 
 const VOCABULARY = '@"aontu:code"'
-// The bundled profiles, by lang: aontu:lang/<lang>.
+// The bundled profiles, by lang: aontu:render/lang/<lang>.
 const BUNDLED_LANGS = ['go', 'markdown', 'text', 'typescript']
-const PROFILE_VOCABULARY = '@"aontu:profile"'
+const PROFILE_VOCABULARY = '@"aontu:render"'
 
 
 function finding(
@@ -321,14 +321,14 @@ function coverOf(root: any, node: any, reads: Set<string>,
 // whose declarations are fragments and text escapes only.
 const bundled: Record<string, any> = {}
 
-// A bundled profile, evaluated once: the meet of aontu:lang/<lang>
+// A bundled profile, evaluated once: the meet of aontu:render/lang/<lang>
 // with the vocabulary, so its defaults are in it.
 function bundledProfile(lang: string): any {
   if (!BUNDLED_LANGS.includes(lang)) {
     return undefined
   }
   if (undefined === bundled[lang]) {
-    bundled[lang] = new Aontu().generate('@"aontu:lang/' + lang + '"').aontu.Profile
+    bundled[lang] = new Aontu().generate('@"aontu:render/lang/' + lang + '"').aontu.render.Lang
   }
   return bundled[lang]
 }
@@ -426,9 +426,9 @@ export function renderProfile(src: string, options?: RenderOptions):
   // The meet, keyed as render's is: the vocabulary requires `profile`,
   // so a value the vet admitted has one.
   const instance = new Aontu().generate(
-    PROFILE_VOCABULARY + '\naontu: Profile: ' +
-    hcanon(root.peg.aontu.peg.Profile))
-  return { profile: instance.aontu.Profile }
+    PROFILE_VOCABULARY + '\naontu: render: Lang: ' +
+    hcanon(root.peg.aontu.peg.render.peg.Lang))
+  return { profile: instance.aontu.render.Lang }
 }
 
 
@@ -486,7 +486,7 @@ export function renderValue(instance: any, options?: RenderOptions): RenderRepor
     if (undefined === base) {
       errors.push(finding('render_profile', 'parse', upath + '.lang',
         'no profile renders ' + lang + ': a declaration needs a lowering, and ' +
-        'only fragments and text escapes render under aontu:lang/text.'))
+        'only fragments and text escapes render under aontu:render/lang/text.'))
       return
     }
     const profile = null == unit.profile ? base : mergeProfile(base, unit.profile)

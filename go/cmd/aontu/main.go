@@ -279,7 +279,7 @@ Render options:
   --at <path>       Render the value at this path ($.a.b); the root by
                     default
   --profile <file>  A profile document, profile: {lang, ...}, vetted
-                    against aontu:profile; repeatable, one per language
+                    against aontu:render; repeatable, one per language
   --unit <path>     Render only the unit with this path
   --stdout          One unit's bytes and nothing else (with --unit when
                     the instance has several)

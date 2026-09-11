@@ -5,7 +5,7 @@
 # marks, defaults -- so the vocabulary costs the language nothing, and
 # an author who wants a different one writes it the same way.
 #
-# The source is BUNDLED with the engine (ts/src/std.ts, go/std.go): no
+# The source is BUNDLED with the engine (the aontu/ tree, ADR-036): no
 # filesystem, no package resolution, so it is available under every
 # include capability except `none`, and the hermeticity posture is not
 # widened by a source that never leaves the process. The two copies are

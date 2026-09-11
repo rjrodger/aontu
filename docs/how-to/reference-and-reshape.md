@@ -46,7 +46,7 @@ A conflict, not an override. To let a referrer change a field, the
 base has to offer it as a [default](provide-defaults.md):
 
 ```aontu
-base: { region:"us-east" tier:*free | string }
+base: { region:"us-east" tier: *free|string }
 prod: $.base & { tier:paid }
 ```
 

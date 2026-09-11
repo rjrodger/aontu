@@ -117,7 +117,7 @@ func lowerCapitalise(word string, acronyms []string) string {
 	return upperASCII(string(chars[:1])) + string(chars[1:])
 }
 
-// lowerCaseName is THE CASE STYLES of aontu:profile's %case, over the
+// lowerCaseName is THE CASE STYLES of aontu:render's %case, over the
 // words.
 func lowerCaseName(name, style string, acronyms []string) string {
 	if "as-is" == style {

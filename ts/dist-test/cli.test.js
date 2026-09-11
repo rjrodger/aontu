@@ -1708,10 +1708,10 @@ function fmtFiles(...srcs) {
     (0, node_test_1.test)('fmt-takes-its-marker-from-a-profile', async () => {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-fmt-profile-'));
         const profile = Path.join(dir, 'ocaml.aon');
-        Fs.writeFileSync(profile, '@"aontu:profile"\n\n' +
-            'aontu: Profile: lang: "ocaml"\n' +
-            'aontu: Profile: indent: { unit:" " width:2 }\n' +
-            'aontu: Profile: template: ' +
+        Fs.writeFileSync(profile, '@"aontu:render"\n\n' +
+            'aontu: render: Lang: lang: "ocaml"\n' +
+            'aontu: render: Lang: indent: { unit:" " width:2 }\n' +
+            'aontu: render: Lang: template: ' +
             '{ marker:"(*-" close:"*)" ext:["ml" "mli"] }\n');
         const unit = Path.join(dir, 'gen.ml');
         Fs.writeFileSync(unit, '(*- x:[ *)\nlet a = 1\n(*- ] *)\n');
@@ -2034,9 +2034,9 @@ function fmtFiles(...srcs) {
     (0, node_test_1.test)('render-profiles-are-vetted-and-one-per-language', () => {
         const dir = renderDir({
             'doc.aon': TWO_UNITS,
-            'four.aon': 'aontu: Profile: { lang: "text", indent: { unit: " ", width: 4 } }\n',
-            'two.aon': 'aontu: Profile: { lang: "text", indent: { unit: " ", width: 2 } }\n',
-            'bad.aon': 'aontu: Profile: { lang: 1 }\n',
+            'four.aon': 'aontu: render: Lang: { lang: "text", indent: { unit: " ", width: 4 } }\n',
+            'two.aon': 'aontu: render: Lang: { lang: "text", indent: { unit: " ", width: 2 } }\n',
+            'bad.aon': 'aontu: render: Lang: { lang: 1 }\n',
             'broken.aon': 'x: 1 & "a"\n',
             'nil.aon': 'nil\n',
         });
@@ -2047,7 +2047,7 @@ function fmtFiles(...srcs) {
             '--stdout', '--unit', 'a.txt', file]).out, 'x\n    y\n');
         // A profile the vocabulary refuses is reported as the document it
         // is: 4, with the finding addressed by path.
-        Assert.match(renderCode(4, ['--profile', Path.join(dir, 'bad.aon'), file]).err, /\$\.aontu\.Profile\.lang/);
+        Assert.match(renderCode(4, ['--profile', Path.join(dir, 'bad.aon'), file]).err, /\$\.aontu\.render\.Lang\.lang/);
         // ... and so is one that does not stand up, or is nil outright.
         Assert.match(renderCode(4, ['--profile', Path.join(dir, 'broken.aon'), file]).err, /scalar_kind/);
         Assert.match(renderCode(4, ['--profile', Path.join(dir, 'nil.aon'), file]).err, /literal_nil/);
@@ -2146,15 +2146,15 @@ function fmtFiles(...srcs) {
         }).out, CANON);
     });
     (0, node_test_1.test)('template-takes-its-marker-from-a-profile', () => {
-        const OCAML = '@"aontu:profile"\n\n' +
-            'aontu: Profile: lang: "ocaml"\n' +
-            'aontu: Profile: indent: { unit:" " width:2 }\n' +
-            'aontu: Profile: template: ' +
+        const OCAML = '@"aontu:render"\n\n' +
+            'aontu: render: Lang: lang: "ocaml"\n' +
+            'aontu: render: Lang: indent: { unit:" " width:2 }\n' +
+            'aontu: render: Lang: template: ' +
             '{ marker:"(*-" close:"*)" ext:["ml" "mli"] }\n';
         const dir = templateDir({
             'ocaml.aon': OCAML,
             'gen.ml': '(*- of: [ *)\nlet a = 1\n(*- ] *)\n',
-            'plain.aon': '@"aontu:profile"\n\naontu: Profile: lang: "plain"\n',
+            'plain.aon': '@"aontu:render"\n\naontu: render: Lang: lang: "plain"\n',
         });
         const profile = Path.join(dir, 'ocaml.aon');
         const unit = Path.join(dir, 'gen.ml');

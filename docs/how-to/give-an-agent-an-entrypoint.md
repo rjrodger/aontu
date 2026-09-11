@@ -16,7 +16,7 @@ cannot drift from what the document says. Write `system.aon`:
 <!-- test: scenario agent-entrypoint -->
 <!-- test: file system.aon -->
 ```aontu
-services: { &: { replicas:*1 | integer tier:*standard | string } }
+services: { &: { replicas: *1|integer tier: *standard|string } }
 services: auth: replicas: 3
 services: billing: tier: premium
 ```

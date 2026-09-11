@@ -542,13 +542,15 @@ function width(s: string): number {
   return Array.from(s).length
 }
 
-function pairHead(node: Node, tight: boolean): string {
+function pairHead(node: Node, tight: boolean, value?: string): string {
   // An alias declaration is `%name = value` at every width: the `=` is
   // an operator, and operators are spaced (§3.2).
   if (node.alias) {
     return node.key! + ' = '
   }
-  return node.key! + (node.opt ? '?' : '') + (tight ? ':' : ': ')
+  const pad = !tight ||
+    (undefined !== value && '' !== value && OPENS.includes(value[0]))
+  return node.key! + (node.opt ? '?' : '') + (pad ? ': ' : ':')
 }
 
 function inline(node: Node, tight: boolean): string | undefined {
@@ -561,7 +563,7 @@ function inline(node: Node, tight: boolean): string | undefined {
       return node.text!.includes('\n') ? undefined : node.text
     case 'pair': {
       const v = inline(chain(node.value!), tight)
-      return undefined === v ? undefined : pairHead(node, tight) + v
+      return undefined === v ? undefined : pairHead(node, tight, v) + v
     }
     case 'spread': {
       // `{ &: integer }`, padded inside braces too: the marker reads as
@@ -618,12 +620,17 @@ function inlineSeq(items: Node[]): string | undefined {
   return out
 }
 
+// A value that OPENS keeps the space after the colon (§3.2); `|` is
+// tight within a line and spaced where it leads one (§3.11, §7.7).
+const OPENS = '*{[('
+const TIGHT_OP = '|'
+
 function sepOf(node: Node): string {
   return node.sep ? ', ' : ' '
 }
 
-// Binary operators spaced, prefixes tight (§3.11). An operand is
-// never directly after an operand: the reader ends a value there.
+// Binary operators spaced, prefixes and `|` tight (§3.11). An operand
+// is never directly after an operand: the reader ends a value there.
 function inlineExpr(items: Node[]): string | undefined {
   let out = ''
   for (const it of items) {
@@ -631,7 +638,7 @@ function inlineExpr(items: Node[]): string | undefined {
       return undefined
     }
     if ('op' === it.t) {
-      out += ' ' + it.text + ' '
+      out += TIGHT_OP === it.text ? it.text : ' ' + it.text + ' '
       continue
     }
     if ('prefix' === it.t) {
@@ -919,7 +926,7 @@ function emitExpr(w: Writer, items: Node[], indent: number): void {
         w.text(it.text + ' ')
       }
       else {
-        w.text(' ' + it.text + ' ')
+        w.text(TIGHT_OP === it.text ? it.text! : ' ' + it.text + ' ')
       }
       operand = false
       continue

@@ -7,6 +7,71 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `aontu fmt`: a colon before an opener keeps its space, and `|` is tight
+
+Two rules that pull in opposite directions for the same reason — a
+marker should bind to what it marks:
+
+```
+# was                                           # is
+direction:*in | out | inout                     direction: *in|out|inout
+{ a:{ x:1 y:2 } b:[1 2] c:(1|2) & 3 }           { a: { x:1 y:2 } b: [1 2] c: (1|2) & 3 }
+```
+
+A **preference, brace, bracket or parenthesis** after a colon takes the
+space back even inside an inline container, where the colon is
+otherwise tight: a marker touching the colon reads as part of it. A
+call is not a marker, so `h:type({ x:1 })` stays tight.
+
+**`|` is tight within a line.** A disjunction of alternatives is one
+value — a type, usually — and spacing it apart reads as a sequence of
+them. Where the author broke the line the operator keeps its space:
+leading a line it is the bullet of the list the break makes, not an
+infix between two operands.
+
+```
+k: 1
+  | 2
+```
+
+*Both implementations.* Every `.aon` in the repository and every
+documented snippet is reformatted. See
+[FMT.0.md](docs/design/FMT.0.md), amended 2026-09-11.
+
+### The bundled models live under `aontu:render`, and profiles land at `$.aontu.render.Lang`
+
+`aontu:lang/go` was named for a language but landed at
+`$.aontu.Profile`, and the vocabulary that describes it was a separate
+`aontu:profile`. Both now sit under the verb that reads them:
+
+| was | is |
+|---|---|
+| `aontu:profile` | `aontu:render` |
+| `aontu:lang/go` | `aontu:render/lang/go` |
+| `$.aontu.Profile` (schema and instance) | `$.aontu.render.Profile` (schema), `$.aontu.render.Lang` (instance) |
+
+A profile file — bundled or passed as `--profile` — now writes
+`aontu: render: Lang: { … }`. `$.aontu.render.Profile` names the schema
+with `type()`, so naming it neither generates it nor asks a document to
+fill it.
+
+*Both implementations.* A breaking change to a vocabulary still marked
+EXPERIMENTAL.
+
+### The bundled models are held to ADR-032, and read like it
+
+The eight models carried their design notes inline — `aontu:view` ran
+33 comment lines over 26 of schema. `ts/scripts/comment-gate.cjs` now
+reads `aontu/**/*.aon` alongside the `.ts`, `.go` and `.rs` sources, so
+the same rule applies: the models lost about a third of their bytes and
+keep only what is surprising about the code beside it. The prose
+belongs in `docs/`.
+
+`aontu:system`'s two ABNF grammars are backtick strings rather than
+concatenated escapes, which is what the extraction to files made
+possible — the grammar now reads as a grammar. Their values are
+byte-identical, so the canon and hash pins are unmoved.
+
 ### The built-in `aontu:` models are files, not strings in each port
 
 The eight models the `aontu:` scheme serves were written twice — once
