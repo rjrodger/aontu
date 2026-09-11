@@ -43,7 +43,7 @@ The [diagram template](../gen/erd.mmd) starts by importing the model:
 uses `%%` for comments, so it can ignore those instructions when reading
 the template. The other lines are target text with replacement names.
 
-As in the [Ruby templates](rails-code.md), `code.units` defines an output
+As in the [Ruby templates](rails-code.md), `aontu.Code.units` defines an output
 file, and `frag` declarations supply its lines. The first declaration
 writes the comment and the `erDiagram` header.
 

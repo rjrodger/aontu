@@ -110,6 +110,13 @@ load-root-toml	gen	@"__FIXTURES__/conf.toml"\nx:1	{"host":"local","port":8080,"t
 # the value of the key that named it. Nothing merges it at the root,
 # which is why this row is keyed.
 load-ext-json-list	gen	x:@"__FIXTURES__/list.json"	{"x":["a",1,true]}
+# ... and at the ROOT it is refused, because the map that holds the
+# directive cannot be a list. Both ports say `map`; only this row
+# holds them to it.
+load-root-json-list	errc	@"__FIXTURES__/list.json"\nx:1	map
+# ... and the MESSAGE is the same conflict in both ports, not just the
+# same code: the refusal carries the map and the list it met.
+load-root-json-list-msg	err	@"__FIXTURES__/list.json"\nx:1	Cannot unify value: {"x":1} with value: ["a",1,true]
 # THE CONFIG FORMATS, over one payload so the table reads as one thing.
 # ONTOLOGY.0.md P1 needs the two JSON rows above; the rest are here
 # because a model is usually asked to meet configuration somebody else

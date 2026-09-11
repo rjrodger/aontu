@@ -153,7 +153,8 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         || b.isFunc
         || b.isExpect
         || b.isRefer
-        || (b.isOp && hasPlace(b))
+        // An op DRIVES while an operand has not decided (ADR-037).
+        || (b.isOp && (hasPlace(b) || b.holdsStaged))
         // A graph atom DRIVES (RELATIONS P2): its peer is the value
         // it rides beside -- a container, a rel, a scalar -- and none
         // of them know the atom; the atom knows to residuate.

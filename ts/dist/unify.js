@@ -126,7 +126,8 @@ const unite = (ctx, a, b, whence) => {
                 || b.isFunc
                 || b.isExpect
                 || b.isRefer
-                || (b.isOp && (0, PlaceVal_1.hasPlace)(b))
+                // An op DRIVES while an operand has not decided (ADR-037).
+                || (b.isOp && ((0, PlaceVal_1.hasPlace)(b) || b.holdsStaged))
                 // A graph atom DRIVES (RELATIONS P2): its peer is the value
                 // it rides beside -- a container, a rel, a scalar -- and none
                 // of them know the atom; the atom knows to residuate.

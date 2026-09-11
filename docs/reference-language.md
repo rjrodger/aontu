@@ -3124,7 +3124,7 @@ rather than looked for on disk.
 | `@"aontu:code"` | `$.aontu.Code.units` |
 | `@"aontu:render"` | `$.aontu.Lang` |
 
-One key is reserved instead of seven, it is named for the language
+One key is reserved instead of eight, it is named for the language
 rather than for a domain, and `$.aontu` anywhere tells a reader at once
 that the subtree is not the document's own.
 
@@ -3249,8 +3249,8 @@ its own; a unit with a declaration needs a profile whose language has a
 lowering, and one whose language has none is refused
 (`render_profile`).
 
-All five are **experimental** until the vocabulary can be versioned by
-canon-hash.
+Every bundled model is **experimental** until the vocabulary can be
+versioned by canon-hash.
 
 ### The `aontu:system` vocabulary
 

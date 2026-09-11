@@ -32,6 +32,10 @@ const aliasKeysKey = reservedKeyPrefix + "aliaskeys"
 
 const keyRefusalsKey = reservedKeyPrefix + "keyrefusals"
 
+// dataValKey carries a data include whose value is NOT a map, which
+// the root merge cannot fold into the map that holds it.
+const dataValKey = reservedKeyPrefix + "dataval"
+
 // keyRefusal is one such refusal: the key, the code, where to site it
 // (the name, or the offending character of the key), the source text
 // of the site, and the hint's details.
@@ -1657,6 +1661,12 @@ func asValDepth(node any, depth int) Val {
 		// back-edges first (see the expr rule action in makeLang).
 		return asValDepth(expr.Evaluation(nil, nil, snipExprCycles(n), evaluate), depth+1)
 	case map[string]any:
+		dv, carried := n[dataValKey].(Val)
+		if carried {
+			if _, parsed := n[orderKey]; !parsed {
+				return dv
+			}
+		}
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
 			mv.spread = sp.(Val)
@@ -1715,6 +1725,11 @@ func asValDepth(node any, depth int) Val {
 				continue
 			}
 			mv.set(k, asValDepth(v, depth+1))
+		}
+		if carried {
+			// A ROOT include whose value is not a map, merged into the
+			// map that holds the directive: the two cannot meet.
+			return makeNilErr(nil, "map", mv, dv)
 		}
 		return mv
 	case []any:

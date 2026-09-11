@@ -155,7 +155,8 @@ three ways to fail call for three different responses:
 | Exit | Verdict | Meaning |
 |------|---------|---------|
 | 0 | `valid` | the data unifies and is concrete (or `--partial`) |
-| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse. Also a vacuous run under `--strict-coverage`, below |
+| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse |
+| 1 | `valid` | a VACUOUS run under `--strict-coverage`: the unification held and measured nothing, so the verdict stands and only the status says so (below) |
 | 2 |: | usage: a bad option, or a file that cannot be read |
 | 3 | `incomplete` | no contradiction, but the truth is not yet satisfied |
 | 4 | `error` | the run could not be set up from the schema side: an unusable schema, or an `--at` that names nothing: never the data's fault |
