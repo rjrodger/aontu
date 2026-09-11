@@ -124,7 +124,7 @@ func uniteRaw(ctx *Ctx, a, b Val) Val {
 		return drive(a, b)
 	}
 	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) || isRefer(b) ||
-		isGraphAtom(b) || isRecurse(b) || isPlaceheldOp(b) {
+		isGraphAtom(b) || isRecurse(b) || isDrivingOp(b) {
 		return drive(b, a)
 	}
 	return drive(a, b)
@@ -261,9 +261,9 @@ func residuePaths(v Val, max int) []string {
 	return out
 }
 
-// isPlaceheldOp reports whether v is an operator holding a placeholder
-// hole (G8 phase 3, see place.go).
-func isPlaceheldOp(v Val) bool {
+// isDrivingOp: an op DRIVES while it holds a placeholder hole (G8
+// phase 3, see place.go) or an operand that has not decided.
+func isDrivingOp(v Val) bool {
 	_, ok := v.(*PlusOpVal)
-	return ok && hasPlace(v)
+	return ok && (hasPlace(v) || holdsStaged(v))
 }

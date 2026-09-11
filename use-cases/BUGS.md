@@ -3967,9 +3967,13 @@ generated section, and `{k:"frag", of:["head"] + emit(…)}` under
 `aontu:code`'s schema is exactly this refusal. Repro:
 `repros/op-template/staged-op-under-a-key.aon`.
 
-Status: OPEN. The workaround is a second fragment: `decls` takes the
-head and the tail as separate `{k:"frag"}` entries, which renders the
-same bytes.
+Status: FIXED 2026-09-11 — an op now DRIVES the meet while an operand
+has not decided, at a key inside a map as well as in a conjunct, which
+is the rule a staged CALL already had (`unite`'s right-drives list;
+`isDrivingOp` in Go). An op drove only when it held a placeholder.
+Pinned by `edge-plus-op-under-map-template`, `-map-kind` and
+`-map-value`. `{k:"frag", of:["head"] + emit(...)}` under
+`aontu:code`'s schema now stands up.
 
 ## includes-root — a root include and the shape of its value
 
@@ -4009,12 +4013,14 @@ the directive at either end of the map, a key both sides declare met
 rather than replaced, a root include inside a nested map, and a second
 format.
 
-**Still open, narrower.** A root include of a data file whose top
-level is NOT a map — `@"./arr.json"` over `[1,2,3]` — is an
-`[aontu/map]` refusal in TypeScript and is silently ignored in Go. The
-same upstream merge decides it, and the processor cannot tell a root
-directive from a keyed one, so the fix above does not reach it. No
-document in the corpus writes one.
+**The narrower case, also fixed (2026-09-11).** A root include of a
+data file whose top level is NOT a map — `@"./arr.json"` over
+`[1,2,3]` — was an `[aontu/map]` refusal in TypeScript and silently
+ignored in Go. A non-map value now rides back as a node carrying it
+under one reserved key: a keyed include reads the value off it, and a
+root merge carries that key into the map node that holds the
+directive, which cannot be a list and says so. Both ports answer `map`
+at `$`; pinned by `load-root-json-list`.
 
 ## absence-schema — what a schema does with a value that is not there
 
@@ -4022,36 +4028,60 @@ document in the corpus writes one.
 
 `maybe()` drops out of a plain list without leaving a hole, which is
 [ADR-034](../ADR.md#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made)'s
-rule. Put a spread on the same list and it is refused instead:
+rule. Put a spread on the same list and it is refused instead, and the
+refusal differs with the SHAPE of the template:
 
 ```
-x: ["a", maybe($.gone)]             # {"x":["a"]}
+x: ["a", maybe($.gone)]                    # {"x":["a"]}
 x: [&: string]
-x: ["a", maybe($.gone)]             # [aontu/listval_no_gen] at $.x.1
+x: ["a", maybe($.gone)]                    # listval_no_gen at $.x.1
+x: [&: string|number]
+x: ["a", maybe($.gone)]                    # empty at $.x.1
+x: [&: close({k:string})]
+x: [{k:"a"}, maybe($.gone)]                # mapval_required at $.x.1.k
+x: {&: string}
+x: {a:"p", b: maybe($.gone)}               # mapval_no_gen at $.x.b
 ```
 
-Inside `aontu:code` the same shape is `func_arity` at the enclosing
-key, wherever the absence sits: `decls: [… , maybe($.note.sec)]`, and
-`of: maybe($.note.tags)` with no operator anywhere near it. **Both
-ports agree**, so this is a design gap rather than a parity break.
+A key a SCHEMA declares is a different case and is not this defect:
+`x:{a:string, b:string}` against `x:{a:"p", b:maybe($.gone)}` is
+`mapval_no_gen`, exactly as supplying no `b` at all would be — the
+document declines to supply a key the schema requires. **Both ports
+agree throughout**, so this is a design gap rather than a parity break.
 Repro: `repros/absence-schema/absent-under-a-spread.aon`.
 
 **Why it matters.**
 [ADR-037](../ADR.md#adr-037--two-lists-concatenate-under--and-a-sum-of-an-absence-is-absent)
-made a sum of an absence absent so that a heading would vanish with the
-rows it heads. The operator rule holds, and the section vanishes
-wherever no schema constrains the list — but the case it was written
-for is a generated unit's `decls`, which `aontu:code` constrains, so
-the payoff is not reachable there yet. A document that needs it writes
-the head and the tail as separate fragments and keeps the heading.
+made a sum of an absence absent so a heading would vanish with the rows
+it heads, and §92 (fixed) made that spelling reach `aontu:code`. What
+is still out of reach is the OTHER spelling: an optional member written
+as an element of a list the schema constrains — `decls: [{head}, …,
+maybe($.section)]` — which is how a document keeps the head when the
+tail is gone. Writing the head inside the sum instead carries the head
+away with the tail, which is the operator rule working as decided.
 
-**Why.** The spread's template meets every element, and an absence is
-not a member the template admits — it is answered as the unit of `&`,
-which leaves the template standing, and a template is not generable.
-Absence needs to be recognised BEFORE the spread applies, the way the
-bag already recognises it at a required key.
+**Why.** The spread applies to a member that has not decided yet: at
+that moment the element is a pending `maybe(…)` call, not an absence,
+so the template folds into it. When the call answers absence the
+template is already there, and absence is the unit of `&` (ADR-034), so
+the template stands and a template does not generate. Marking the
+spread's per-member clone so the absence ABSORBS it fixes the scalar-
+kind case and no other: a disjunction, a map and a `close()` each reach
+the absence by a different route, and in those the absence never meets
+the marked clone at all. **Verified by instrumenting
+`AbsentVal.unify`** — it is never called for the disjunction case.
 
-Status: OPEN. `docs/reference-language.md` states the containing-map
-half of this ("It cannot make a containing map vanish"); the
-constrained-list half is not yet stated there and should be, with the
-fix.
+**What it needs is a decision, not just a patch.** Absence is the unit
+of `&` by ADR-034. A spread wants it to ABSORB instead, because a
+spread narrows the members that are there and an absent one is not.
+Those two rules meet in every container template, and which one wins
+where is a language question ADR-034 did not settle. Recognising
+absence before the spread applies means deferring the spread until the
+member has decided, which changes when a template is folded.
+
+Status: OPEN, tracked as
+[issue #200](https://github.com/aontu-lang/aontu/issues/200), and
+deliberately not half-fixed: a rule that holds for `[&: string]` and
+not for `[&: string|number]` is worse than one that refuses uniformly. `docs/reference-language.md` states the
+containing-map half ("It cannot make a containing map vanish") and the
+constrained-list half.
