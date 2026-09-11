@@ -8,6 +8,7 @@ const IntegerVal_1 = require("../val/IntegerVal");
 const NumberVal_1 = require("../val/NumberVal");
 const StringVal_1 = require("../val/StringVal");
 const BooleanVal_1 = require("../val/BooleanVal");
+const ListVal_1 = require("../val/ListVal");
 const BigIntegerVal_1 = require("../val/BigIntegerVal");
 const BigDecimalVal_1 = require("../val/BigDecimalVal");
 const Decimal_1 = require("../val/Decimal");
@@ -70,6 +71,18 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     operate(ctx, args) {
         const av = operand(args[0]);
         const bv = operand(args[1]);
+        // ABSENCE PROPAGATES (ADR-034).
+        if (true === av?.isAbsent) {
+            return av;
+        }
+        if (true === bv?.isAbsent) {
+            return bv;
+        }
+        // Lists concatenate (ADR-037).
+        if (true === av?.isList && true === bv?.isList) {
+            const peg = [...av.peg, ...bv.peg].map((v, i) => v.clone(ctx.descend(String(i))));
+            return new ListVal_1.ListVal({ peg }, ctx);
+        }
         const ak = opkind(av);
         const bk = opkind(bv);
         if (undefined === ak || undefined === bk) {

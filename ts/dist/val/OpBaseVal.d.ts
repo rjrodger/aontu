@@ -2,6 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
 import { FeatureVal } from './FeatureVal';
 declare class OpBaseVal extends FeatureVal {
+    cjo: number;
     isOp: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     append(part: any): void;

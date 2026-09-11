@@ -1900,6 +1900,11 @@ function fmtFiles(...srcs) {
         '  { path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x", { k: "line", at: 1, of: ["y"] }] }] }\n' +
         '  { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", of: ["z"] }] }\n' +
         ']\n';
+    // A fragment is lossy only against a language whose declarations
+    // could have been lowered instead, so go says what text does not.
+    const GO_FRAG = 'aontu: Code: units: [\n' +
+        '  { path: "a.go", lang: "go", decls: [{ k: "frag", of: ["x"] }] }\n' +
+        ']\n';
     // The named files below a fresh directory; a name may carry a slash.
     function renderDir(files) {
         const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-render-'));
@@ -1917,11 +1922,14 @@ function fmtFiles(...srcs) {
         // THE SUMMARY: one line per unit -- path, language, size -- since
         // several units have no one text to print; the loss report on the
         // other stream, one line per entry.
-        const dir = renderDir({ 'doc.aon': TWO_UNITS });
+        const dir = renderDir({ 'doc.aon': TWO_UNITS, 'go.aon': GO_FRAG });
         const r = renderCode(0, [Path.join(dir, 'doc.aon')]);
         Assert.equal(r.out, 'a.txt\ttext\t6 bytes\nsub/b.txt\ttext\t2 bytes\n');
-        Assert.match(r.err, /^lossy: a\.txt \$\.aontu\.Code\.units\.0\.decls\.0 tier 2 frag: a fragment says nothing about text syntax\n/);
-        Assert.match(r.err, /lossy: sub\/b\.txt \$\.aontu\.Code\.units\.1\.decls\.0 tier 2 frag: /);
+        Assert.equal(r.err, '');
+        const lossy = renderCode(0, [Path.join(dir, 'go.aon')]);
+        Assert.equal(lossy.out, 'a.go\tgo\t2 bytes\n');
+        Assert.equal(lossy.err, 'lossy: a.go $.aontu.Code.units.0.decls.0 tier 2 frag:' +
+            ' a fragment says nothing about go syntax\n');
         // The verb's own trust flags reach it, and `none` governs the
         // document alone: the renderer's own vocabulary is not an include
         // the document wrote.
@@ -1996,15 +2004,22 @@ function fmtFiles(...srcs) {
         }
     });
     (0, node_test_1.test)('render-format-json-is-the-whole-report', () => {
-        const dir = renderDir({ 'doc.aon': TWO_UNITS, 'bad.aon': 'x: 1 & "a"\n' });
+        const dir = renderDir({
+            'doc.aon': TWO_UNITS, 'go.aon': GO_FRAG, 'bad.aon': 'x: 1 & "a"\n',
+        });
         const r = renderCode(0, ['--format', 'json', Path.join(dir, 'doc.aon')]);
         Assert.equal(r.err, '');
         const report = JSON.parse(r.out);
         Assert.equal(report.aontu.verb, 'render');
-        Assert.equal(report.verdict, 'lossy');
+        Assert.equal(report.verdict, 'ok');
         Assert.equal(report.units.length, 2);
         Assert.equal(report.units[0].text, 'x\n  y\n');
+        Assert.deepEqual(report.lossy, []);
         Assert.equal(report.errors, undefined);
+        // A loss report is in the same answer, not on the other stream.
+        const lossy = renderCode(0, ['--format', 'json', Path.join(dir, 'go.aon')]);
+        Assert.equal(lossy.err, '');
+        Assert.equal(JSON.parse(lossy.out).lossy[0].construct, 'frag');
         // An error report carries its findings, and exits as the text form
         // does.
         const bad = renderCode(4, ['--format', 'json', Path.join(dir, 'bad.aon')]);

@@ -13,6 +13,9 @@ const PlaceVal_1 = require("./PlaceVal");
 class OpBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
+        // An op sorts BEFORE the kinds in a conjunct: only it knows to wait
+        // for a staged operand, and a kind met first refuses it outright.
+        this.cjo = 48000;
         this.isOp = true;
         this.peg = [];
         for (let pI = 0; pI < spec.peg.length; pI++) {

@@ -58,6 +58,7 @@ and the CHANGELOG still resolve. Numbers are never reused.
 | [ADR-034](#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made) | Absence is a value, and `maybe` is where it is made | Accepted |
 | [ADR-035](#adr-035--a-language-is-configured-in-its-profile-and-a-marker-may-name-its-closer) | A language is configured in its profile, and a marker may name its closer | Accepted |
 | [ADR-036](#adr-036--a-bundled-model-is-a-file-in-aontu-not-a-string-in-each-port) | A bundled model is a file in `aontu/`, not a string in each port | Accepted |
+| [ADR-037](#adr-037--two-lists-concatenate-under--and-a-sum-of-an-absence-is-absent) | Two lists concatenate under `+`, and a sum of an absence is absent | Accepted |
 
 ---
 
@@ -3674,3 +3675,97 @@ mirror is the price, and a test is what keeps it honest.
 subfolders. `aontu:lang/go` would then be `aontu/lang-go.aon`, spelling
 a path with a hyphen, and a model would have nowhere to keep anything
 beside its source.
+
+
+---
+
+## ADR-037 — Two lists concatenate under `+`, and a sum of an absence is absent
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Context
+
+A generated section has two halves: the literal scaffolding that heads
+it, and the rows a call produces. `aontu:code` takes them as separate
+fragments, because a fragment's `of` is a list and `emit` answers a
+list, and there was no way to write one list made of both. So a
+document that reads optional input renders the heading of a section
+that is not there: `tags:` with nothing under it, an empty table
+header. [ADR-034](#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made)
+made the ROWS vanish and could not reach their heading, which is a
+sibling with its own literal `of`.
+
+`+` already meant concatenation for text and addition for numbers. On
+two lists it residuated and failed at generation, which
+`edge-plus-lists` pinned as the recorded behaviour rather than as a
+decision.
+
+### Decision
+
+**Two lists concatenate.** `["a"] + ["b"]` is `["a","b"]`, and `[]` is
+the identity. A list mixed with a scalar still residuates, exactly as a
+boolean mixed with a number does: `+` refuses nothing it did not refuse
+before.
+
+**A sum of an absence is absent.** Either operand being absence makes
+the whole `+` absence, which is what is meant to carry a heading away
+with the rows it heads:
+
+```aon
+of: ["tags:"] + emit(sort(maybe($.tags)), %tag)
+```
+
+This is ADR-034's rule for a call, applied to the operator: a sum of
+what is not there is not there. It is ABSORPTION, not the identity that
+absence is under `&` -- `&` narrows and `+` computes, and a computation
+over nothing has no answer. The operator's half of the scaffolding
+problem is all this decides; the absence still has to reach generation,
+and under a SCHEMA it does not yet -- see the consequences.
+
+**An op sorts before the kinds in a conjunct.** Its operands may be
+staged calls, and only the op knows to wait for them; a kind met first
+refuses the unresolved op outright. `cjo` 48000 puts every op above the
+kinds and the concrete values and below the constraint algebra.
+
+### Consequences
+
+- **`AbsentVal.Unify` needs its top arm back in Go, and not in
+  TypeScript.** It was removed from both as unreachable, on evidence:
+  nothing met an absence with top. Go's `+` answering an absence into a
+  slot whose peer is top is that path -- it MEETS an op's result where
+  the canonical port PLACES it -- and without the arm Go loses the
+  absence and renders the key as `top`. TypeScript still never meets
+  the pair, so the arm stays out there: `edge-plus-list-absent` is the
+  guard, since a port that answered top for it would fail to generate.
+  The two ports agree on every observable, and differ on the route.
+- **An op at a key inside a map still refuses.** `{of: ["a"] + emit(…)}`
+  is refused where the map meets a schema, because `ListVal.unify`
+  refuses an op whose operand is a staged call and a map's per-key meet
+  does not go through the conjunct order above. That predates this
+  change -- `{of: string}` against `{of: "a" + join(…)}` fails the same
+  way without it -- so the order fixes the top-level shapes and not
+  this one. Filed as [BUGS.md §92](use-cases/BUGS.md) rather than
+  rushed into this change.
+- **The scaffolding case is not finished.** Absence under a
+  schema-constrained list is refused, not dropped, in both ports, so
+  writing the sum above inside `aontu:code`'s `decls` (or under any
+  `[&: ...]`) is `func_arity` / `listval_no_gen` rather than a section
+  that vanishes. That is ADR-034's territory, not this decision's --
+  the operator rule above holds wherever absence generates at all --
+  and it is filed as [BUGS.md §94](use-cases/BUGS.md). Until it is
+  closed, the heading and its rows vanish together only where no
+  schema constrains the list.
+- **A pinned row changed meaning.** `edge-plus-lists` pinned
+  `mapval_no_gen` for `[1]+[2]`; it now pins the concatenation. The row
+  recorded what `+` did not do, not a decision that it should not.
+
+### Alternatives rejected
+
+**A `cat(...)` builtin.** A second name for what `+` already means on
+text, and one more thing to know.
+
+**`emit` gains `head:`/`foot:`**, emitted once around a non-empty
+selection. Targeted at this shape and it needs no absence rule, but it
+answers only for `emit`: a heading over a `sort` or an `each` would
+still have nowhere to live.

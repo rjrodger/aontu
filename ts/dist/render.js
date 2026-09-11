@@ -369,10 +369,14 @@ function renderValue(instance, options) {
             const dpath = upath + '.decls.' + j;
             if ('frag' === decl.k) {
                 lowered = false;
-                lossy.push({
-                    unit: path, path: dpath, tier: 2, construct: 'frag',
-                    reason: 'a fragment says nothing about ' + lang + ' syntax',
-                });
+                // Lossy only against a language whose DECLARATIONS could have
+                // been lowered instead: a fragment is all the others have.
+                if (null != profile.lowering) {
+                    lossy.push({
+                        unit: path, path: dpath, tier: 2, construct: 'frag',
+                        reason: 'a fragment says nothing about ' + lang + ' syntax',
+                    });
+                }
                 decl.of.forEach((piece, n) => {
                     text += foldPiece(piece, profile, path, dpath + '.of.' + n, lossy, ctx);
                 });

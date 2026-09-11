@@ -3929,3 +3929,129 @@ runs (`use-cases/06-k8s-golden-path`). Pinned by
 `vet-match-hole-scrutinee-does-not-settle`, which also pins the
 finding at the ANCHOR's path (`$.E`) rather than at the lifted root —
 the Go meet stood at `$` and reported findings raised on itself there.
+
+## op-template — an operator whose operand has not decided yet
+
+### 92. A `+` with a staged operand is refused at a key inside a map [major]
+
+```
+x: { k: "a", of: [&: string] }
+x: { k: "a", of: ["p"] + each(["q"], _) }
+```
+
+is `[aontu/list]` at `$.x.of` — "expected a list value" — in both
+ports. The same sum at the TOP level stands up, and so does one whose
+operands are both literals:
+
+```
+x: [&: string]                            # {"x":["p","q"]}
+x: ["p"] + each(["q"], _)
+x: { k: "a", of: [&: string] }            # {"x":{"k":"a","of":["p","q"]}}
+x: { k: "a", of: ["p"] + ["q"] }
+```
+
+**Why.** `ListVal.unify` (and `ScalarKindVal.unify`) refuse an op whose
+operand is a STAGED call: the op has not computed yet, and the kind
+reads it as a value it cannot admit.
+[ADR-037](../ADR.md#adr-037--two-lists-concatenate-under--and-a-sum-of-an-absence-is-absent)
+put every op above the kinds in the conjunct order (`cjo` 48000),
+which is what makes the top-level lines hold. A map's per-key meet
+does not go through that order, so it still reaches the kind first.
+
+**Not caused by ADR-037.** The string spelling fails identically —
+`x: {k:"a", of:string}` against `x: {k:"a", of:"p" + join(["q"],"")}`
+is `[aontu/not-scalar-type]` — and predates list concatenation
+entirely. What ADR-037 changed is how visible the shape is: a written
+head concatenated onto a generated tail is now the way to write a
+generated section, and `{k:"frag", of:["head"] + emit(…)}` under
+`aontu:code`'s schema is exactly this refusal. Repro:
+`repros/op-template/staged-op-under-a-key.aon`.
+
+Status: OPEN. The workaround is a second fragment: `decls` takes the
+head and the tail as separate `{k:"frag"}` entries, which renders the
+same bytes.
+
+## includes-root — a root include and the shape of its value
+
+### 93. A root-level data include contributed nothing in Go [critical]
+
+`@"./d.json"` on its own line, with `d.json` holding `{"j":1}`:
+
+```
+@"./d.json"
+
+x: 1
+```
+
+TypeScript answered `{"j":1,"x":1}`; Go answered `{"x":1}`, with no
+error and no finding. A KEYED include of the same file
+(`y: @"./d.json"`) was correct in both, and so was a root include of an
+`.aon` file — which is why the shared suite, whose data-include rows
+are all keyed, did not catch it. Silent wrong output from a document
+that reads clean in the canonical port.
+
+**Why.** `dataProcessor` handed multisource the aontu `Val` it had
+already built. Upstream merges a root-level directive into its
+grandparent map only when the loaded value is MAP-SHAPED (an
+`*OrderedMap` or a `map[string]any`), and a `*MapVal` is neither, so
+the merge no-oped and the whole include went. A keyed include never
+reaches that merge — the value is the pair's value — which is exactly
+why that half worked. Repro:
+`repros/includes-root/root-data-include-dropped.aon`.
+
+Status: FIXED 2026-09-11 — `dataProcessor` hands the map back as a
+parse NODE the merge can read, carrying the same stamped child `Val`s,
+and `asValDepth` rebuilds the map from it at a keyed include. Pinned
+by six rows in `test/spec/file.tsv` (`load-root-json`,
+`load-root-json-before`, `load-root-json-merges`,
+`load-root-json-constrains`, `load-root-in-a-map`, `load-root-toml`):
+the directive at either end of the map, a key both sides declare met
+rather than replaced, a root include inside a nested map, and a second
+format.
+
+**Still open, narrower.** A root include of a data file whose top
+level is NOT a map — `@"./arr.json"` over `[1,2,3]` — is an
+`[aontu/map]` refusal in TypeScript and is silently ignored in Go. The
+same upstream merge decides it, and the processor cannot tell a root
+directive from a keyed one, so the fix above does not reach it. No
+document in the corpus writes one.
+
+## absence-schema — what a schema does with a value that is not there
+
+### 94. Absence under a schema-constrained list is refused, not dropped [major]
+
+`maybe()` drops out of a plain list without leaving a hole, which is
+[ADR-034](../ADR.md#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made)'s
+rule. Put a spread on the same list and it is refused instead:
+
+```
+x: ["a", maybe($.gone)]             # {"x":["a"]}
+x: [&: string]
+x: ["a", maybe($.gone)]             # [aontu/listval_no_gen] at $.x.1
+```
+
+Inside `aontu:code` the same shape is `func_arity` at the enclosing
+key, wherever the absence sits: `decls: [… , maybe($.note.sec)]`, and
+`of: maybe($.note.tags)` with no operator anywhere near it. **Both
+ports agree**, so this is a design gap rather than a parity break.
+Repro: `repros/absence-schema/absent-under-a-spread.aon`.
+
+**Why it matters.**
+[ADR-037](../ADR.md#adr-037--two-lists-concatenate-under--and-a-sum-of-an-absence-is-absent)
+made a sum of an absence absent so that a heading would vanish with the
+rows it heads. The operator rule holds, and the section vanishes
+wherever no schema constrains the list — but the case it was written
+for is a generated unit's `decls`, which `aontu:code` constrains, so
+the payoff is not reachable there yet. A document that needs it writes
+the head and the tail as separate fragments and keeps the heading.
+
+**Why.** The spread's template meets every element, and an absence is
+not a member the template admits — it is answered as the unit of `&`,
+which leaves the template standing, and a template is not generable.
+Absence needs to be recognised BEFORE the spread applies, the way the
+bag already recognises it at a required key.
+
+Status: OPEN. `docs/reference-language.md` states the containing-map
+half of this ("It cannot make a containing map vanish"); the
+constrained-list half is not yet stated there and should be, with the
+fix.

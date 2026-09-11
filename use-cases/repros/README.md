@@ -112,6 +112,17 @@ Two cautions:
   `-names-deeper-descendant`, and the three boundary rows that keep
   siblings, distinct names and a bare `id()` working.
 
+- `includes-root/` (§93, filed 2026-09-11) is **FIXED** as of
+  2026-09-11: a root-level include of a DATA file merges its keys into
+  the map that holds it in the Go port too, instead of contributing
+  nothing. Pinned by `file.tsv` — the six `load-root-*` rows.
+
+- `op-template/` (§92, filed 2026-09-11) is **OPEN**: a `+` whose
+  operand is a staged call refuses where it meets a kind at a key
+  inside a map, though the same sum at the top level stands up. It
+  predates list concatenation (ADR-037), which only made the shape
+  worth writing.
+
 These are review artifacts. Per ADR-001, the durable home for any
 behaviour contract is a `test/spec/*.tsv` row probed in both ports;
 promoting these repros into rows is follow-up work for maintainers.

@@ -18,6 +18,7 @@ import { IntegerVal } from '../val/IntegerVal'
 import { NumberVal } from '../val/NumberVal'
 import { StringVal } from '../val/StringVal'
 import { BooleanVal } from '../val/BooleanVal'
+import { ListVal } from '../val/ListVal'
 import { BigIntegerVal } from '../val/BigIntegerVal'
 import { BigDecimalVal } from '../val/BigDecimalVal'
 import { Decimal, decimalOverBudget } from '../val/Decimal'
@@ -105,9 +106,25 @@ class PlusOpVal extends OpBaseVal {
   }
 
 
-  operate(ctx: AontuContext, args: Val[]) {
+  operate(ctx: AontuContext, args: Val[]): Val | undefined {
     const av: any = operand(args[0])
     const bv: any = operand(args[1])
+
+    // ABSENCE PROPAGATES (ADR-034).
+    if (true === av?.isAbsent) {
+      return av
+    }
+    if (true === bv?.isAbsent) {
+      return bv
+    }
+
+    // Lists concatenate (ADR-037).
+    if (true === av?.isList && true === bv?.isList) {
+      const peg: Val[] = [...av.peg, ...bv.peg].map(
+        (v: Val, i: number) => v.clone(ctx.descend(String(i))))
+      return new ListVal({ peg }, ctx)
+    }
+
     const ak = opkind(av)
     const bk = opkind(bv)
 
