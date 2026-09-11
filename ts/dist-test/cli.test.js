@@ -1705,6 +1705,28 @@ function fmtFiles(...srcs) {
         Assert.equal(clean.out, 'x: 1\n');
         Assert.equal(Fs.readFileSync(f.files[0], 'utf8'), 'a:{b:1}\n');
     });
+    (0, node_test_1.test)('fmt-takes-its-marker-from-a-profile', async () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-fmt-profile-'));
+        const profile = Path.join(dir, 'ocaml.aon');
+        Fs.writeFileSync(profile, '@"aontu:profile"\n\n' +
+            'aontu: Profile: lang: "ocaml"\n' +
+            'aontu: Profile: indent: { unit:" " width:2 }\n' +
+            'aontu: Profile: template: ' +
+            '{ marker:"(*-" close:"*)" ext:["ml" "mli"] }\n');
+        const unit = Path.join(dir, 'gen.ml');
+        Fs.writeFileSync(unit, '(*- x:[ *)\nlet a = 1\n(*- ] *)\n');
+        // A GENERATOR IN A LANGUAGE THE TABLE DOES NOT KNOW formats when a
+        // profile names its marker, and is refused when nothing does.
+        const r = vetCapture(() => Assert.equal((0, cli_1.runFmt)(['--profile', profile, unit]), 0));
+        Assert.equal(r.out, '(*- x: [ *)\nlet a = 1\n(*- ] *)\n');
+        const bare = vetCapture(() => Assert.equal((0, cli_1.runFmt)([unit]), 2));
+        Assert.match(bare.err, /--profile reads one that declares it/);
+        // Markdown is in the table, so it needs no profile at all.
+        const note = Path.join(dir, 'note.md');
+        Fs.writeFileSync(note, '<!--- x:[ -->\n# T\n<!--- ] -->\n');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)([note]), 0)).out, '<!--- x: [ -->\n# T\n<!--- ] -->\n');
+        Assert.match(vetCapture(() => Assert.equal((0, cli_1.runFmt)(['--profile']), 2)).err, /--profile needs a file/);
+    });
     (0, node_test_1.test)('fmt-list-check-diff', async () => {
         const f = fmtFiles('a:{b:1}\n', 'x: 1\n');
         // --list names the files whose form would change; --check is the
@@ -2120,6 +2142,33 @@ function fmtFiles(...srcs) {
         Assert.equal(vetCapture(() => {
             (0, cli_1.main)(['node', 'aontu', 'template', Path.join(dir, 'gen.ts')]);
         }).out, CANON);
+    });
+    (0, node_test_1.test)('template-takes-its-marker-from-a-profile', () => {
+        const OCAML = '@"aontu:profile"\n\n' +
+            'aontu: Profile: lang: "ocaml"\n' +
+            'aontu: Profile: indent: { unit:" " width:2 }\n' +
+            'aontu: Profile: template: ' +
+            '{ marker:"(*-" close:"*)" ext:["ml" "mli"] }\n';
+        const dir = templateDir({
+            'ocaml.aon': OCAML,
+            'gen.ml': '(*- of: [ *)\nlet a = 1\n(*- ] *)\n',
+            'plain.aon': '@"aontu:profile"\n\naontu: Profile: lang: "plain"\n',
+        });
+        const profile = Path.join(dir, 'ocaml.aon');
+        const unit = Path.join(dir, 'gen.ml');
+        // A CLOSER AFTER A SPACE reaches a block comment the table has
+        // never seen, and the round trip holds.
+        Assert.equal(templateCode(0, ['--profile', profile, unit]).out, 'of: [\n`let a = 1`\n]\n');
+        Assert.equal(templateCode(0, ['--check', '--profile', profile, unit]).out, '');
+        // --marker still wins, and a profile that claims no extension of
+        // this file leaves the table's answer in place.
+        Assert.equal(templateCode(0, ['--marker', '(*- *)', unit]).out, 'of: [\n`let a = 1`\n]\n');
+        Assert.equal(templateCode(0, ['--profile', Path.join(dir, 'plain.aon'), unit]).out, '`(*- of: [ *)`\n`let a = 1`\n`(*- ] *)`\n');
+        // Markdown needs none of it: the extension names the marker.
+        const md = templateDir({ 'note.md': '<!--- of: [ -->\n# T\n<!--- ] -->\n' });
+        Assert.equal(templateCode(0, [Path.join(md, 'note.md')]).out, 'of: [\n`# T`\n]\n');
+        Assert.match(templateCode(2, ['--profile']).err, /--profile needs a file/);
+        Assert.match(templateCode(2, ['--profile', Path.join(dir, 'nope.aon'), unit]).err, /cannot read/);
     });
     (0, node_test_1.test)('template-check-is-the-round-trip', () => {
         const dir = templateDir({ 'gen.ts': GEN });

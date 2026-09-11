@@ -3045,10 +3045,11 @@ scheme is what stops a file on disk from standing in front of it.
 | `aontu:code` | the output vocabulary a transform evaluates to |
 | `aontu:profile` | the data `render` applies to a unit of one language |
 | `aontu:lang/text` | the text profile |
+| `aontu:lang/markdown` | the markdown profile |
 | `aontu:lang/typescript` | the TypeScript profile |
 | `aontu:lang/go` | the Go profile |
 
-The last five are described [after the system vocabulary](#the-aontu-models).
+The last six are described [after the system vocabulary](#the-aontu-models).
 
 ### The `aontu:` models
 
@@ -3130,7 +3131,7 @@ the set. Write this as `nope.aon`:
 <!-- test: run -->
 ```sh
 $ aontu nope.aon
-source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view)
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/markdown, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view)
 $ echo $?
 1
 ```
@@ -3166,6 +3167,23 @@ declaration in a unit of either language lowers to its target (an
 exported interface or a struct, an enum, a type alias, a constant, a
 function) and the loss report names what the target's type system does
 not enforce; see [`aontu render`](reference-api.md#aontu-render).
+
+**`aontu:lang/markdown`** is fragment-shaped like the text profile,
+and carries what markdown has of its own: the HTML comment form, and
+the template marker its files write, `<!--- … -->`.
+
+**A profile is where a language is configured**, not only where it is
+rendered. Its `template` block names the marker a generator written in
+that language carries and the extensions that marker belongs to, so
+`aontu render`, `aontu template` and `aontu fmt` read one file rather
+than repeating a `--marker` flag. A marker carries its own closer after
+a space where the opener does not imply one, which is what reaches a
+block comment the engine has never seen:
+
+<!-- test: skip the file it configures is the reader's own language -->
+```aon
+aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+```
 
 **`aontu:lang/text`** is the bundled profile of every other language:
 `lang: "text"`, an indent of two spaces, and nothing else, since a fold

@@ -87,7 +87,7 @@ const renderVocabulary = `@"aontu:code"`
 const renderProfileVocabulary = `@"aontu:profile"`
 
 // The bundled profiles, by lang: aontu:lang/<lang>.
-var renderBundledLangs = []string{"go", "text", "typescript"}
+var renderBundledLangs = []string{"go", "markdown", "text", "typescript"}
 
 func renderFinding(code, class, path, message string) VetFinding {
 	return VetFinding{

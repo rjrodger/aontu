@@ -22,7 +22,10 @@ import {
 } from './aontu'
 import type { AllowDecision, AllowReport, AllowVerdict } from './allow'
 import type { RenderCoverage, RenderReport } from './render'
-import { desugarTemplate, resugarTemplate, templateOutputs, markerFor } from './template'
+import {
+  desugarTemplate, resugarTemplate, templateOutputs, markerFor,
+  markerFromProfiles,
+} from './template'
 import { outsideRoot } from './mcp'
 import { sarifReport } from './report-sarif'
 import { main as lspMain } from './lsp-server'
@@ -83,7 +86,8 @@ const HELP = `Usage: aontu [options] [file]
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
                     [--stdout | --out <dir> | --check <dir> | --coverage]
                     [--coverage-at <path>] [--strict] <file>
-       aontu template [--resugar] [--check] [--marker <token>] <file>
+       aontu template [--resugar] [--check] [--marker <token>]
+                      [--profile <file>] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -91,7 +95,8 @@ const HELP = `Usage: aontu [options] [file]
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu allow --role <role> [--at <path>] <roles-file> <path>...
        aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
-       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>]
+                 [--profile <file>] <file>...
        aontu help [topic] [--format text|json]
        aontu explain <code> | --list [--format text|json]
        aontu init [dir]
@@ -356,8 +361,8 @@ does not stand up or the instance is not aontu:code.
 A render entry file whose extension is not .aon is a TEMPLATE: a
 generator in the target's own syntax, whose marker lines carry aontu
 and whose other lines are output. It is desugared before it is
-evaluated, and --marker names the marker for a language the table does
-not know.
+evaluated, and a language the table does not know names its marker with
+--marker, or declares it once in a profile file that --profile reads.
 
 Template options:
   --resugar       The file is the canonical aontu; print the template
@@ -365,7 +370,9 @@ Template options:
   --check         Desugar and resugar, and exit 1 if the file is not
                   what the round trip answers
   --marker <t>    The marker, when the extension does not name it
-                  (default //-, and #- --- /*- by extension)
+                  (default //-, and #- --- /*- <!--- by extension)
+  --profile <f>   A profile file, whose template.ext names the
+                  extensions it marks and template.marker the marker
 
 The template verb prints the canonical aontu form of a generator
 written in the target's own syntax: a marked line is aontu source, and
@@ -458,7 +465,9 @@ Fmt options:
                   shapes, on standard error, and print nothing else
   --strict        With --lint, and exit 1 when there is a finding
   --marker <t>    The file is a generator, and this is its marker
-                  (default //-, and #- --- /*- by extension)
+                  (default //-, and #- --- /*- <!--- by extension)
+  --profile <f>   A profile file, whose template.ext names the
+                  extensions it marks and template.marker the marker
 
 The fmt verb prints one document in the agreed form; with no file it
 reads standard input. Several files need one of the options above.
@@ -3081,36 +3090,15 @@ function runRender(argv: string[]): number {
     return 2
   }
 
-  if (!files[0].endsWith('.aon')) {
-    src = desugarTemplate(src, marker ?? markerFor(files[0]))
+  const loadedProfiles = loadProfiles(profileFiles, trust)
+  if ('number' === typeof loadedProfiles) {
+    return loadedProfiles
   }
+  const profiles = loadedProfiles
 
-  const profiles: any[] = []
-  const langs = new Map<string, string>()
-  for (const pf of profileFiles) {
-    let text: string
-    try {
-      text = readFileSync(pf, 'utf8')
-    }
-    catch (err: any) {
-      process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
-      return 2
-    }
-    const loaded = renderProfile(text,
-      { path: resolve(pf), ...verbOpts(trust, entryRootOf(pf)) })
-    if (undefined !== loaded.errors) {
-      process.stderr.write(loaded.errors.map(renderFinding).join('\n') + '\n')
-      return 4
-    }
-    const profile = loaded.profile
-    const prev = langs.get(profile.lang)
-    if (undefined !== prev) {
-      process.stderr.write(
-        `aontu: two profiles claim ${profile.lang}: ${prev} and ${pf}\n`)
-      return 2
-    }
-    langs.set(profile.lang, pf)
-    profiles.push(profile)
+  if (!files[0].endsWith('.aon')) {
+    src = desugarTemplate(src, marker ??
+      markerFromProfiles(profiles, files[0]) ?? markerFor(files[0]))
   }
 
   // A RENDER WITH NO PROFILE PRODUCES NO UNITS, and said so with zero
@@ -3266,10 +3254,17 @@ const TEMPLATE_HELP =
   'aontu template [--resugar] [--check] [--marker <token>] <file> (try --help)'
 
 function runTemplate(argv: string[]): number {
+  const trusted = takeTrust(argv)
+  if (null == trusted) {
+    return 2
+  }
+  argv = trusted.argv
+  const trust = trusted.trust
   const files: string[] = []
   let resugar = false
   let check = false
   let marker: string | undefined = undefined
+  const profileFiles: string[] = []
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -3289,6 +3284,14 @@ function runTemplate(argv: string[]): number {
         process.stderr.write('aontu: --marker needs a token\n')
         return 2
       }
+    }
+    else if ('--profile' === arg) {
+      const pf = argv[++i]
+      if (null == pf) {
+        process.stderr.write('aontu: --profile needs a file\n')
+        return 2
+      }
+      profileFiles.push(pf)
     }
     else if (arg.startsWith('-')) {
       process.stderr.write(
@@ -3319,7 +3322,13 @@ function runTemplate(argv: string[]): number {
     return 2
   }
 
-  const mark = marker ?? markerFor(files[0])
+  const declared = loadProfiles(profileFiles, trust)
+  if ('number' === typeof declared) {
+    return declared
+  }
+
+  const mark = marker ?? markerFromProfiles(declared, files[0]) ??
+    markerFor(files[0])
 
   if (check) {
     const back = resugarTemplate(desugarTemplate(src, mark), mark)
@@ -3342,6 +3351,44 @@ function runTemplate(argv: string[]): number {
   process.stdout.write(resugar ?
     resugarTemplate(src, mark) : desugarTemplate(src, mark))
   return 0
+}
+
+
+// The profiles named by --profile, vetted, or the exit code that says
+// why not. A profile is a language declared as data: `render` matches
+// one to a unit by `lang`, and `template` and `fmt` match one to a file
+// by the extensions its `template.ext` names.
+function loadProfiles(
+  profileFiles: string[], trust: TrustArg
+): any[] | number {
+  const profiles: any[] = []
+  const langs = new Map<string, string>()
+  for (const pf of profileFiles) {
+    let text: string
+    try {
+      text = readFileSync(pf, 'utf8')
+    }
+    catch (err: any) {
+      process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+      return 2
+    }
+    const loaded = renderProfile(text,
+      { path: resolve(pf), ...verbOpts(trust, entryRootOf(pf)) })
+    if (undefined !== loaded.errors) {
+      process.stderr.write(loaded.errors.map(renderFinding).join('\n') + '\n')
+      return 4
+    }
+    const profile = loaded.profile
+    const prev = langs.get(profile.lang)
+    if (undefined !== prev) {
+      process.stderr.write(
+        `aontu: two profiles claim ${profile.lang}: ${prev} and ${pf}\n`)
+      return 2
+    }
+    langs.set(profile.lang, pf)
+    profiles.push(profile)
+  }
+  return profiles
 }
 
 
@@ -4042,14 +4089,22 @@ function runAgentsMd(argv: string[]): number {
 
 
 const FMT_HELP =
-  'aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>... (try --help)'
+  'aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] ' +
+  '[--profile <file>] <file>... (try --help)'
 
 type FmtFlags = {
   write: boolean, list: boolean, check: boolean, diff: boolean, lint: boolean, strict: boolean,
 }
 
 function runFmt(argv: string[]): number | Promise<number> {
+  const trusted = takeTrust(argv)
+  if (null == trusted) {
+    return 2
+  }
+  argv = trusted.argv
+  const trust = trusted.trust
   const files: string[] = []
+  const profileFiles: string[] = []
   let marker: string | undefined = undefined
   const flags: FmtFlags = {
     write: false, list: false, check: false, diff: false, lint: false, strict: false,
@@ -4090,6 +4145,14 @@ function runFmt(argv: string[]): number | Promise<number> {
         return 2
       }
     }
+    else if ('--profile' === arg) {
+      const pf = argv[++i]
+      if (null == pf) {
+        process.stderr.write('aontu: --profile needs a file\n')
+        return 2
+      }
+      profileFiles.push(pf)
+    }
     else if (arg.startsWith('-')) {
       process.stderr.write(`aontu: unknown fmt option ${arg} (try --help)\n`)
       return 2
@@ -4115,6 +4178,11 @@ function runFmt(argv: string[]): number | Promise<number> {
     })
   }
 
+  const declared = loadProfiles(profileFiles, trust)
+  if ('number' === typeof declared) {
+    return declared
+  }
+
   // Several files onto standard output would be one stream nobody can
   // split again (the note's X-6): the verb refuses unless an option
   // says what to do with each.
@@ -4135,13 +4203,14 @@ function runFmt(argv: string[]): number | Promise<number> {
       process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
       return 2
     }
-    const mark = fmtMarker(file, src, marker)
+    const mark = fmtMarker(file, src,
+      marker ?? markerFromProfiles(declared, file))
     if (false === mark) {
       process.stderr.write(
         `aontu: ${file} is not aontu source (.aon, .aontu) and carries no ` +
         `${markerFor(file)} marker line, so there is no aontu in it to ` +
-        'format; --marker names the marker for a language the table does ' +
-        'not know\n')
+        'format; --marker names the marker for a language the table ' +
+        'does not know, and --profile reads one that declares it\n')
       return 2
     }
     worst = Math.max(worst, fmtOne(file, src, flags, mark))

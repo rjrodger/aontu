@@ -7,6 +7,62 @@ which implementation each change affects.
 
 ## Unreleased
 
+### Markdown is a known language, and a profile configures an unknown one
+
+A generator written in the target's own syntax carries a **marker**,
+and the marker was decided by a table keyed on the file's extension,
+with `--marker` for a language the table had never seen. The escape
+hatch did not reach a block comment: the closer was the constant `*/`,
+so `--marker '<!--'` recognised the opener and left the `-->` sitting
+in the aontu source. Every language whose only comment is a block form
+was out of reach, markdown among them.
+
+**A marker may now carry its own closer after a space.** A comment
+opener holds no space, so the space separates the two. The closer is
+implied for `/*` and `<!--` and named otherwise:
+
+```sh
+aontu template --marker '(*- *)' unit.ml
+```
+
+**Markdown is a known language.** `.md` and `.markdown` mark with
+`<!--- … -->` -- the HTML comment plus the dash every marker in the
+table carries -- and `aontu:lang/markdown` joins the bundled profiles,
+which are now four.
+
+```md
+<!--- code: units: [ -->
+# Title
+<!--- ] -->
+```
+
+**A profile is where a language is configured.** `aontu:profile` gains
+a `template` block naming the marker, an optional closer, and the
+extensions the marker belongs to; `aontu template` and `aontu fmt` gain
+the `--profile` that `aontu render` already had. One file declares a
+language once and all three verbs read it, in place of a flag repeated
+at every call site:
+
+```aon
+@"aontu:profile"
+
+aontu: Profile: lang: "ocaml"
+aontu: Profile: indent: { unit:" " width:2 }
+aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+```
+
+`--marker` still wins where it is given. `aontu render` now loads its
+profiles before it desugars, so a declared marker reaches the entry
+file too.
+
+**BREAKING (unreleased): the profile hashes move.** `template?` is a
+new optional key in `%profile`, and a canon hash covers the whole
+document, so the hash of the vocabulary and of all four bundled
+profiles changes. The rows in `test/spec/aontu-profile.tsv` are
+re-pinned from both engines.
+[ADR-035](ADR.md#adr-035--a-language-is-configured-in-its-profile-and-a-marker-may-name-its-closer).
+
+
 ### Optional input: `maybe()`
 
 A path that names nothing is `no_path`, and that is right -- a

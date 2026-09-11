@@ -13,10 +13,14 @@ import (
 	aontu "github.com/aontu-lang/aontu/go"
 )
 
-const templateHelp = "aontu template [--resugar] [--check] [--marker <token>] <file> (try --help)"
+const templateHelp = "aontu template [--resugar] [--check] [--marker <token>] [--profile <file>] <file> (try --help)"
 
 func runTemplate(argv []string, stdout, stderr io.Writer) int {
-	var files []string
+	argv, trust, trustOK := takeTrust(argv, stderr)
+	if !trustOK {
+		return 2
+	}
+	var files, profileFiles []string
 	resugar, check := false, false
 	marker := ""
 
@@ -37,6 +41,13 @@ func runTemplate(argv []string, stdout, stderr io.Writer) int {
 				return 2
 			}
 			marker = argv[i]
+		case "--profile" == arg:
+			i++
+			if len(argv) <= i {
+				io.WriteString(stderr, "aontu: --profile needs a file\n")
+				return 2
+			}
+			profileFiles = append(profileFiles, argv[i])
 		case strings.HasPrefix(arg, "-"):
 			io.WriteString(stderr,
 				"aontu: unknown template option "+arg+" (try --help)\n")
@@ -63,9 +74,14 @@ func runTemplate(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	profiles, code := loadProfiles(profileFiles, trust, stderr)
+	if 0 != code {
+		return code
+	}
+
 	mark := marker
 	if "" == mark {
-		mark = aontu.MarkerFor(files[0])
+		mark = templateMarker(profiles, files[0])
 	}
 	text := string(src)
 

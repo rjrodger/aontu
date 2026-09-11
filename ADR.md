@@ -56,6 +56,7 @@ and the CHANGELOG still resolve. Numbers are never reused.
 | [ADR-032](#adr-032--code-comments-are-sparse-and-terse-intent-lives-in-names-requirements-live-in-documents) | Code comments are sparse and terse: intent lives in names, requirements live in documents | Accepted |
 | [ADR-033](#adr-033--a-grammar-is-a-string-and-parsing-is-a-function) | A grammar is a string, and parsing is a function | Accepted |
 | [ADR-034](#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made) | Absence is a value, and `maybe` is where it is made | Accepted |
+| [ADR-035](#adr-035--a-language-is-configured-in-its-profile-and-a-marker-may-name-its-closer) | A language is configured in its profile, and a marker may name its closer | Accepted |
 
 ---
 
@@ -3495,3 +3496,85 @@ there, not that it holds an empty list.
 **Teach each bag reader about absence.** Twenty sites in two ports with
 a spec row each, and every builtin added later would have to remember.
 One site in the shared machinery covers them all.
+
+---
+
+## ADR-035 — A language is configured in its profile, and a marker may name its closer
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Context
+
+A generator written in the target's own syntax carries a MARKER, and
+the marker was decided by a table keyed on the file's extension, with
+`--marker` as the escape hatch for a language the table had never seen.
+Two things were wrong with that.
+
+The escape hatch did not reach a block comment. `isBlock` tested for
+`/*` and the closer was the constant `*/`, so `--marker '<!--'` was
+accepted, recognised the opener, and left the `-->` sitting in the
+aontu source. Every language whose only comment is a block form was
+unreachable, markdown among them.
+
+And the marker was the one thing about a language that had nowhere to
+live. `aontu:profile` already holds what `aontu render` applies to a
+unit of one language, a `--profile` file already declares a language as
+data, and `aontu render`, `aontu template` and `aontu fmt` all decide a
+marker -- but a marker could only be repeated as a flag.
+
+### Decision
+
+**A marker may carry its own closer after a space.** A comment opener
+holds no space, so the space is free to separate the two: `--marker
+'(*- *)'` is the OCaml block form. The closer is IMPLIED for `/*` and
+`<!--`, the two openers the bundled table uses, and named otherwise. An
+empty closer is the line form, which is every other marker in the
+table.
+
+**Markdown is a known language.** `md` and `markdown` mark with
+`<!--- … -->`, the HTML comment plus the dash every marker in the table
+carries, and `aontu:lang/markdown` joins the bundled profiles: the text
+profile's shape, plus the comment form and the template marker that are
+markdown's own.
+
+**The profile is where a language is configured.** `%profile` gains a
+`template` block naming the `marker`, an optional `close`, and the
+`ext` list the marker belongs to, and `aontu template` and `aontu fmt`
+gain the `--profile` that `aontu render` already had. One file declares
+a language once -- its name, its extensions, its marker, its
+indentation -- and all three verbs read it. `--marker` still wins where
+it is given, being the per-call override.
+
+### Consequences
+
+- **Three verbs, one file.** A project that generates OCaml writes
+  `ocaml.aon` once and passes `--profile ocaml.aon` to whichever verb
+  it is running, instead of repeating a marker flag whose spelling has
+  to match across a Makefile, a CI job and an editor command.
+- **The profile-file loader is shared.** `render` had it; `template`
+  and `fmt` now call the same function, so the duplicate-lang refusal
+  and the vet against `aontu:profile` are one implementation.
+- **The bundled model set grew**, which moves the hash of the profile
+  vocabulary and of every bundled profile: `template?` is a new
+  optional key in `%profile`, and a canon hash covers the whole
+  document. The four hashes in `aontu-profile.tsv` are re-pinned from
+  both engines in the same change.
+- **`render` loads its profiles before it desugars.** It read the
+  marker first and the profiles after, which would have made the entry
+  file the one place a declared marker could not reach.
+
+### Alternatives rejected
+
+**Extend `--marker` and stop there.** A pair form on the flag reaches
+every language, and leaves the marker a thing repeated at every call
+site rather than declared once. The profile already existed and already
+meant "this language, as data".
+
+**A project configuration file.** aontu has no such concept, and adding
+one to carry a single field would be a second place for a language to
+be described.
+
+**Guess the closer from the opener's brackets.** `(*` to `*)` inverts;
+`<!--` to `-->` does not, and `{-` to `-}` is a third rule. A table of
+two, plus an explicit closer, says what is known and asks for the rest.

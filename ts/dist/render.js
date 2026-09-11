@@ -13,7 +13,7 @@ const utility_1 = require("./utility");
 const lower_1 = require("./lower");
 const VOCABULARY = '@"aontu:code"';
 // The bundled profiles, by lang: aontu:lang/<lang>.
-const BUNDLED_LANGS = ['go', 'text', 'typescript'];
+const BUNDLED_LANGS = ['go', 'markdown', 'text', 'typescript'];
 const PROFILE_VOCABULARY = '@"aontu:profile"';
 function finding(code, cls, path, message) {
     return { code, class: cls, severity: 'error', path, message, sites: [] };

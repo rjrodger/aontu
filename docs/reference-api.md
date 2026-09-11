@@ -48,7 +48,8 @@ Usage: aontu [options] [file]
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
                     [--stdout | --out <dir> | --check <dir> | --coverage]
                     [--coverage-at <path>] [--strict] <file>
-       aontu template [--resugar] [--check] [--marker <token>] <file>
+       aontu template [--resugar] [--check] [--marker <token>]
+                      [--profile <file>] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -56,7 +57,8 @@ Usage: aontu [options] [file]
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu allow --role <role> [--at <path>] <roles-file> <path>...
        aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
-       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>]
+                 [--profile <file>] <file>...
        aontu help [topic] [--format text|json]
        aontu explain <code> | --list [--format text|json]
        aontu init [dir]
@@ -2142,7 +2144,8 @@ aontu source, so that layout is never argued about and a diff shows
 only what changed.
 
 ```
-aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>]
+          [--profile <file>] <file>...
 aontu fmt < in.aon > out.aon
 ```
 
@@ -2155,7 +2158,8 @@ aontu fmt < in.aon > out.aon
 | `-d`, `--diff` | print a unified diff for each file whose form would change |
 | `--lint` | report the style findings, key case and repeated shapes, on standard error, and print nothing else |
 | `--strict` | `--lint`, and exit 1 when there is a finding |
-| `--marker <t>` | the file is a generator, and this is its marker (default `//-`, and `#-` `---` `/*-` by extension) |
+| `--marker <t>` | the file is a generator, and this is its marker (default `//-`, and `#-` `---` `/*-` `<!---` by extension) |
+| `--profile <f>` | a profile file, whose `template.ext` names the extensions it marks and `template.marker` the marker |
 
 - **The form.** Two-space indentation. `key: value`, the colon tight
   to the key. No commas between entries (a call's argument list keeps
@@ -2262,14 +2266,37 @@ aontu it means.
 
 <!-- test: skip the synopsis is not a transcript -->
 ```sh
-aontu template [--resugar] [--check] [--marker <token>] <file>
+aontu template [--resugar] [--check] [--marker <token>]
+               [--profile <file>] <file>
 ```
 
 **One rule: a marked line is aontu source, and every other line is a
 line of output.** The marker is the target's comment token plus a
-dash (`//-`, `#-`, `---`, or the block form `/*- … */` where the
-language has no line comment) so the file stays valid in its own
-language, an editor highlights it, and the target's compiler parses it.
+dash (`//-`, `#-`, `---`, or a block form such as `/*- … */` and
+markdown's `<!--- … -->` where the language has no line comment) so the
+file stays valid in its own language, an editor highlights it, and the
+target's compiler parses it.
+
+**A language the table does not know says so once.** `--marker` names
+the marker for one call; a profile names it for every call, because a
+profile is a language declared as data and `aontu render`,
+`aontu template` and `aontu fmt` all read the same file. A marker
+carries its own closer after a space when the opener does not imply
+one:
+
+<!-- test: skip the file it reads is the reader's own language -->
+```aon
+@"aontu:profile"
+
+aontu: Profile: lang: "ocaml"
+aontu: Profile: indent: { unit:" " width:2 }
+aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+```
+
+<!-- test: skip the synopsis is not a transcript -->
+```sh
+aontu template --profile ocaml.aon unit.ml
+```
 Write a `greet.ts`:
 
 <!-- test: scenario template -->
