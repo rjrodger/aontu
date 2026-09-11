@@ -57,6 +57,7 @@ const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
 const PackFuncVal_1 = require("./val/PackFuncVal");
 const CmpFuncVal_1 = require("./val/CmpFuncVal");
+const MaybeFuncVal_1 = require("./val/MaybeFuncVal");
 const NomFuncVal_1 = require("./val/NomFuncVal");
 const TranslateFuncVal_1 = require("./val/TranslateFuncVal");
 const EachFuncVal_1 = require("./val/EachFuncVal");
@@ -477,7 +478,9 @@ help isolate the syntax error.`,
         sum: AggFuncVal_1.SumFuncVal,
         least: AggFuncVal_1.LeastFuncVal,
         greatest: AggFuncVal_1.GreatestFuncVal,
+        maybe: MaybeFuncVal_1.MaybeFuncVal,
         pick: AggFuncVal_1.PickFuncVal,
+        sort: AggFuncVal_1.SortFuncVal,
         join: AggFuncVal_1.JoinFuncVal,
         emit: EmitFuncVal_1.EmitFuncVal,
         esc: StrFuncVal_1.EscFuncVal,

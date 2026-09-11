@@ -352,9 +352,15 @@ const STD_PROFILE = String.raw `# aontu:profile --- THE PROFILE VOCABULARY. A pr
 #   @"aontu:profile"
 #   profile: { lang: "python", indent: { unit: " ", width: 4 } }
 #
-# Three profiles are bundled with the engine -- aontu:lang/typescript,
-# aontu:lang/go and aontu:lang/text -- and a unit is matched to one by
-# its 'lang'. A fragment-only unit needs nothing beyond 'indent'.
+# Four profiles are bundled with the engine -- aontu:lang/typescript,
+# aontu:lang/go, aontu:lang/markdown and aontu:lang/text -- and a unit
+# is matched to one by its 'lang'. A fragment-only unit needs nothing
+# beyond 'indent'.
+#
+# 'template' is the marker a generator written in the target's own
+# syntax carries, so a language is configured once and both 'aontu
+# render' and 'aontu template' read the same file. The closer is
+# implied for the C and HTML comment forms and named otherwise.
 #
 # THE ROOT IS NOT type()-MARKED, for the reason aontu:code's is not:
 # 'aontu render' reads a profile through generate().
@@ -410,10 +416,32 @@ const STD_PROFILE = String.raw `# aontu:profile --- THE PROFILE VOCABULARY. A pr
     union?: %form
     lit?: %form
   })
+  template?: close({
+    marker: string & length(min(1))
+    close?: string & length(min(1))
+    ext?: [&: string & re("^[A-Za-z0-9_+-]+$")]
+  })
   banner?: string
 })
 
 aontu: Profile: %profile
+`;
+// The markdown profile: fragment-shaped like text, and carrying what
+// markdown has of its own.
+const STD_LANG_MARKDOWN = String.raw `# aontu:lang/markdown --- THE MARKDOWN PROFILE. Markdown has no
+# declarations to lower, so this is the text profile plus the two
+# things that are markdown's own: the HTML comment form, and the
+# template marker its files carry.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+
+@"aontu:profile"
+
+aontu: Profile: lang: "markdown"
+aontu: Profile: indent: { unit:" " width:2 }
+aontu: Profile: comment: block: { open:"<!--" close:"-->" }
+aontu: Profile: template: { marker:"<!---" ext:["md" "markdown"] }
 `;
 // The text profile (RENDER.0.md D5): the profile of a fragment-only
 // unit, and the fallback of every language without a lowering.
@@ -666,6 +694,7 @@ exports.STD_SOURCES = {
     'aontu:view': STD_VIEW,
     'aontu:code': STD_CODE,
     'aontu:lang/go': STD_LANG_GO,
+    'aontu:lang/markdown': STD_LANG_MARKDOWN,
     'aontu:lang/text': STD_LANG_TEXT,
     'aontu:lang/typescript': STD_LANG_TYPESCRIPT,
     'aontu:profile': STD_PROFILE,

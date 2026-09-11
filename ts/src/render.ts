@@ -79,7 +79,7 @@ export type RenderOptions = IncludeOptions & {
 
 const VOCABULARY = '@"aontu:code"'
 // The bundled profiles, by lang: aontu:lang/<lang>.
-const BUNDLED_LANGS = ['go', 'text', 'typescript']
+const BUNDLED_LANGS = ['go', 'markdown', 'text', 'typescript']
 const PROFILE_VOCABULARY = '@"aontu:profile"'
 
 

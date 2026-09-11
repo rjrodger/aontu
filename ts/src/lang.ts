@@ -126,6 +126,7 @@ import { ReferFuncVal, RelFuncVal } from './val/ReferFuncVal'
 import { AcyclicFuncVal, InverseFuncVal } from './val/GraphAtomVal'
 import { PackFuncVal } from './val/PackFuncVal'
 import { CMP_FUNCS } from './val/CmpFuncVal'
+import { MaybeFuncVal } from './val/MaybeFuncVal'
 import { NomFuncVal } from './val/NomFuncVal'
 import { TranslateFuncVal } from './val/TranslateFuncVal'
 import { EachFuncVal } from './val/EachFuncVal'
@@ -139,7 +140,8 @@ import {
   AddFuncVal, SubFuncVal, MulFuncVal, DivFuncVal, ModFuncVal, RemFuncVal,
 } from './val/ArithFuncVal'
 import {
-  SumFuncVal, LeastFuncVal, GreatestFuncVal, PickFuncVal, JoinFuncVal,
+  SumFuncVal, LeastFuncVal, GreatestFuncVal, PickFuncVal, SortFuncVal,
+  JoinFuncVal,
 } from './val/AggFuncVal'
 import { PlaceVal } from './val/PlaceVal'
 import { MoveFuncVal } from './val/MoveFuncVal'
@@ -655,7 +657,10 @@ help isolate the syntax error.`,
     least: LeastFuncVal,
     greatest: GreatestFuncVal,
 
+    maybe: MaybeFuncVal,
+
     pick: PickFuncVal,
+    sort: SortFuncVal,
 
     join: JoinFuncVal,
 

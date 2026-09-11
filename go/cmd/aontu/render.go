@@ -137,40 +137,17 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	profiles, code := loadProfiles(profileFiles, trust, stderr)
+	if 0 != code {
+		return code
+	}
+
 	if !strings.HasSuffix(files[0], ".aon") {
 		mark := marker
 		if "" == mark {
-			mark = aontu.MarkerFor(files[0])
+			mark = templateMarker(profiles, files[0])
 		}
 		src = []byte(aontu.DesugarTemplate(string(src), mark))
-	}
-
-	profiles := []map[string]any{}
-	langs := map[string]string{}
-	for _, pf := range profileFiles {
-		text, perr := os.ReadFile(pf)
-		if nil != perr {
-			io.WriteString(stderr,
-				"aontu: cannot read "+pf+": "+perr.Error()+"\n")
-			return 2
-		}
-		profile, findings := aontuForFileTrust(pf, trust).RenderProfile(string(text))
-		if nil != findings {
-			lines := []string{}
-			for _, f := range findings {
-				lines = append(lines, renderFinding(f))
-			}
-			io.WriteString(stderr, strings.Join(lines, "\n")+"\n")
-			return 4
-		}
-		lang, _ := profile["lang"].(string)
-		if prev, dup := langs[lang]; dup {
-			io.WriteString(stderr,
-				"aontu: two profiles claim "+lang+": "+prev+" and "+pf+"\n")
-			return 2
-		}
-		langs[lang] = pf
-		profiles = append(profiles, profile)
 	}
 
 	// A RENDER WITH NO PROFILE PRODUCES NO UNITS, and said so with zero
@@ -365,4 +342,50 @@ func renderReportJSON(report aontu.RenderReport) string {
 		Verdict:  report.Verdict,
 	})
 	return strings.TrimSuffix(buf.String(), "\n")
+}
+
+// loadProfiles is the profiles named by --profile, vetted, or the exit
+// code that says why not. A profile is a language declared as data:
+// render matches one to a unit by lang, and template and fmt match one
+// to a file by the extensions its template.ext names.
+func loadProfiles(
+	profileFiles []string, trust trustArg, stderr io.Writer,
+) ([]map[string]any, int) {
+	profiles := []map[string]any{}
+	langs := map[string]string{}
+	for _, pf := range profileFiles {
+		text, perr := os.ReadFile(pf)
+		if nil != perr {
+			io.WriteString(stderr,
+				"aontu: cannot read "+pf+": "+perr.Error()+"\n")
+			return nil, 2
+		}
+		profile, findings := aontuForFileTrust(pf, trust).RenderProfile(string(text))
+		if nil != findings {
+			lines := []string{}
+			for _, f := range findings {
+				lines = append(lines, renderFinding(f))
+			}
+			io.WriteString(stderr, strings.Join(lines, "\n")+"\n")
+			return nil, 4
+		}
+		lang, _ := profile["lang"].(string)
+		if prev, dup := langs[lang]; dup {
+			io.WriteString(stderr,
+				"aontu: two profiles claim "+lang+": "+prev+" and "+pf+"\n")
+			return nil, 2
+		}
+		langs[lang] = pf
+		profiles = append(profiles, profile)
+	}
+	return profiles, 0
+}
+
+// templateMarker is the marker a supplied profile declares for the
+// file, else the one its extension names.
+func templateMarker(profiles []map[string]any, path string) string {
+	if m := aontu.MarkerFromProfiles(profiles, path); "" != m {
+		return m
+	}
+	return aontu.MarkerFor(path)
 }

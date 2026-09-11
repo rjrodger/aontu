@@ -2,7 +2,6 @@
 
 package main
 
-
 import (
 	"bytes"
 	"os"
@@ -210,4 +209,47 @@ type failingReader struct{}
 
 func (failingReader) Read([]byte) (int, error) {
 	return 0, os.ErrClosed
+}
+
+func TestFmtTakesItsMarkerFromAProfile(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, text string) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	profile := write("ocaml.aon", templateOcamlProfile)
+	unit := write("gen.ml", "(*- x:[ *)\nlet a = 1\n(*- ] *)\n")
+
+	// A GENERATOR IN A LANGUAGE THE TABLE DOES NOT KNOW formats when a
+	// profile names its marker, and is refused when nothing does.
+	out, _, code := fmtRun("", "--profile", profile, unit)
+	if 0 != code || "(*- x: [ *)\nlet a = 1\n(*- ] *)\n" != out {
+		t.Fatalf("profile marker: %d %q", code, out)
+	}
+	_, errw, code := fmtRun("", unit)
+	if 2 != code || !strings.Contains(errw, "--profile reads one that declares it") {
+		t.Fatalf("unmarked: %d %q", code, errw)
+	}
+
+	// Markdown is in the table, so it needs no profile at all.
+	note := write("note.md", "<!--- x:[ -->\n# T\n<!--- ] -->\n")
+	out, _, code = fmtRun("", note)
+	if 0 != code || "<!--- x: [ -->\n# T\n<!--- ] -->\n" != out {
+		t.Fatalf("markdown: %d %q", code, out)
+	}
+
+	_, errw, code = fmtRun("", "--profile")
+	if 2 != code || !strings.Contains(errw, "--profile needs a file") {
+		t.Fatalf("bare --profile: %d %q", code, errw)
+	}
+	_, _, code = fmtRun("", "--profile", filepath.Join(dir, "no.aon"), unit)
+	if 2 != code {
+		t.Fatalf("missing profile: %d", code)
+	}
+	if _, _, code = fmtRun("", "--trust", "nonsense", unit); 2 != code {
+		t.Fatalf("bad trust: %d", code)
+	}
 }

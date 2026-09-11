@@ -33,6 +33,7 @@ declare const EMPTY_ERR: any[];
 declare abstract class Val {
     isVal: boolean;
     isTop: boolean;
+    isAbsent: boolean;
     isNil: boolean;
     isNull: boolean;
     isMap: boolean;

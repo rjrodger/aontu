@@ -8,6 +8,17 @@ document carries the change as its fourth amendment, and the
 [progress register](../capability-review/progress.md) points here for
 the phases it names. Status lives in the register, never here.
 
+**Names here are the names of the day.** This document records what was
+decided when it was written, and it is not rewritten as the language
+moves. Two names have since changed meaning. The list generator it
+calls `form` is named `each` today
+([ADR-027](../../ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound)),
+and the `each` it describes as the bound was retired first
+([ADR-026](../../ADR.md#adr-026--each-is-retired-form-carries-the-bound)), that
+bound now being spelled `each(d, _ & t)`. The
+[progress register](../capability-review/progress.md) carries the current status, and
+`test/spec/signature.tsv` is the call surface.
+
 **Origin:** Richard Rodger, 2026-09-05: *"Prepare a plan for the
 implementation of aontu render (using emit() etc), so that we can
 complete the capability programme."*

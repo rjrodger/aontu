@@ -2,7 +2,6 @@
 
 package aontu
 
-
 import "testing"
 
 func TestMarkerFor(t *testing.T) {
@@ -21,6 +20,8 @@ func TestMarkerFor(t *testing.T) {
 		{"gen", "//-"},
 		{"v1.2/gen", "//-"},
 		{`win\v1.2\gen`, "//-"},
+		{"note.md", "<!---"},
+		{"NOTE.MARKDOWN", "<!---"},
 		// An extension the table does not know: the caller passes its
 		// own marker, and the default is what it gets meanwhile.
 		{"gen.zz", "//-"},
@@ -28,5 +29,48 @@ func TestMarkerFor(t *testing.T) {
 		if got := MarkerFor(tc.path); tc.want != got {
 			t.Fatalf("MarkerFor(%q) = %q, want %q", tc.path, got, tc.want)
 		}
+	}
+}
+
+func TestMarkerFromProfiles(t *testing.T) {
+	ocaml := map[string]any{
+		"lang": "ocaml",
+		"template": map[string]any{
+			"marker": "(*-", "close": "*)",
+			"ext": []any{"ml", "mli"},
+		},
+	}
+	md := map[string]any{
+		"lang":     "markdown",
+		"template": map[string]any{"marker": "<!---", "ext": []any{"md"}},
+	}
+	// No template block, an ext that is not a list, and a list that
+	// misses.
+	plain := map[string]any{"lang": "plain"}
+	odd := map[string]any{
+		"lang":     "odd",
+		"template": map[string]any{"marker": "%-", "ext": "ml"},
+	}
+	other := map[string]any{
+		"lang":     "other",
+		"template": map[string]any{"marker": ";;-", "ext": []any{"zz"}},
+	}
+
+	all := []map[string]any{plain, odd, other, ocaml, md}
+	for _, tc := range []struct{ path, want string }{
+		{"unit.ml", "(*- *)"},
+		{"unit.mli", "(*- *)"},
+		{"note.md", "<!---"},
+		{"gen.ts", ""},
+		{"Makefile", ""},
+	} {
+		if got := MarkerFromProfiles(all, tc.path); tc.want != got {
+			t.Fatalf("MarkerFromProfiles(%q) = %q, want %q",
+				tc.path, got, tc.want)
+		}
+	}
+
+	if got := MarkerFromProfiles(nil, "unit.ml"); "" != got {
+		t.Fatalf("no profiles: %q", got)
 	}
 }

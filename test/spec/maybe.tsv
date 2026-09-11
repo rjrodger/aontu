@@ -1,0 +1,76 @@
+# THE FORGIVING REFERENCE -- maybe, and the absence it answers with.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# A path that names nothing is `no_path`, and that is right: a typo
+# should be loud. But a document that reads OPTIONAL input has no way
+# to say "if it is there" -- the miss refuses the whole call, so
+# `each($.tags, t)` cannot be written against a record that may carry
+# no tags. `maybe(v)` is that way: the value when it resolves, and
+# ABSENCE when the only thing wrong is that it is not there.
+#
+# EVERY EXPECTATION HERE WAS OBTAINED BY RUNNING BOTH ENGINES AND
+# REQUIRING THEM TO AGREE.
+#
+# WHAT THE ROWS PIN:
+#
+#   ABSENCE GENERATES NOTHING, and generation drops it at a REQUIRED
+#   key as readily as at an optional one (maybe-map-drops-key), and
+#   from a list without leaving a hole (maybe-list-leaves-no-hole).
+#   That is the whole difference from top, which is not generable and
+#   so refuses with mapval_no_gen.
+#
+#   ABSENCE PROPAGATES THROUGH A CALL: a call on an absent argument is
+#   no call, in any argument position (maybe-join-separator,
+#   maybe-add-operand) and for every builtin, which is why the rule
+#   lives in the shared function machinery rather than in each verb.
+#
+#   ABSENCE IS THE UNIT OF THE MEET, on EITHER side: `&` dispatches on
+#   its left operand, so maybe-unit-left and maybe-unit-right are two
+#   rows and not one.
+#
+#   ONLY A MISSING REFERENT IS FORGIVEN. A conflict inside the argument
+#   is the document's own bug and is reported where it happened
+#   (maybe-keeps-conflict, maybe-keeps-nested-conflict).
+#
+#   IT WAITS FOR THE MODEL. maybe-forward-reference answers the value,
+#   not absence: a reference that has not resolved YET is not a
+#   reference to nothing, and `maybe` fires only once the model has
+#   settled -- the staging every constructor in the language uses.
+maybe-present	canon	a:1\nb:maybe($.a)	{"a":1,"b":1}
+maybe-missing-canon	canon	b:maybe($.gone)	{"b":maybe()}
+maybe-missing-gen	gens	a:1\nb:maybe($.gone)	{"a":1}
+maybe-literal	canon	b:maybe(1)	{"b":1}
+maybe-deep-miss	canon	a:1\nb:maybe($.a.deep.miss)	{"a":1,"b":maybe()}
+maybe-forward-reference	gens	b:maybe($.x)\nx:1	{"b":1,"x":1}
+maybe-of-maybe	gens	a:1\nb:maybe(maybe($.gone))	{"a":1}
+maybe-list-leaves-no-hole	gens	a:[1,maybe($.gone),2]	{"a":[1,2]}
+maybe-map-drops-key	gens	a:{x:1,y:maybe($.gone)}	{"a":{"x":1}}
+maybe-meet-keeps-peer	errc	a:maybe($.gone) & string	mapval_no_gen
+maybe-each-absent	gens	a:1\nb:each(maybe($.gone), {t:_})	{"a":1}
+maybe-each-present	gens	t:{p:1}\nb:each(maybe($.t), {v:_})	{"b":[{"v":1}],"t":{"p":1}}
+maybe-join-absent	gens	a:1\nb:join(maybe($.gone), "-")	{"a":1}
+maybe-sum-absent	gens	a:1\nb:sum(maybe($.gone))	{"a":1}
+maybe-sort-absent	gens	a:1\nb:sort(maybe($.gone))	{"a":1}
+maybe-pick-absent	gens	a:1\nb:pick(maybe($.gone), n)	{"a":1}
+maybe-pack-absent	gens	a:1\nb:pack(maybe($.gone), {v:_})	{"a":1}
+maybe-filter-absent	gens	a:1\nb:filter(maybe($.gone), integer)	{"a":1}
+maybe-emit-absent	gens	a:1\nb:emit(maybe($.gone), {match:integer body:[x]})	{"a":1}
+maybe-upper-absent	gens	a:1\nb:upper(maybe($.gone))	{"a":1}
+maybe-split-absent	gens	a:1\nb:split(maybe($.gone), "-")	{"a":1}
+maybe-optional-key	gens	a:1\nb?:maybe($.gone)	{"a":1}
+maybe-keeps-conflict	errc	b:maybe(1 & 2)	scalar_value
+maybe-keeps-nested-conflict	errc	a:{x:1}\nb:maybe($.a) & {x:2}	scalar_value
+maybe-under-hide	gens	a:1\nb:hide(maybe($.gone))	{"a":1}
+maybe-in-each-template	gens	d:{p:1}\nb:each($.d, {v:_ n:maybe($.gone)})	{"b":[{"v":1}],"d":{"p":1}}
+maybe-unit-right	gens	a:1 & maybe($.gone)	{"a":1}
+maybe-unit-left	gens	a:maybe($.gone) & 1	{"a":1}
+maybe-join-separator	gens	a:1\nb:join([x,y], maybe($.gone))	{"a":1}
+maybe-add-operand	gens	a:1\nb:add(1, maybe($.gone))	{"a":1}
+maybe-match-subject	gens	a:1\nb:match(maybe($.gone), integer, 1)	{"a":1}
+maybe-meets-top	gens	a:1\nb:top & maybe($.gone)	{"a":1}
+maybe-referenced	canon	x:maybe($.gone)\ny:$.x	{"x":maybe(),"y":maybe()}
+maybe-meets-top-left	canon	x:maybe($.gone)\ny:$.x & top	{"x":maybe(),"y":maybe()}
+maybe-meets-top-right	canon	x:maybe($.gone)\ny:top & $.x	{"x":maybe(),"y":maybe()}
+maybe-meets-absence	canon	b:maybe($.gone) & maybe($.gone)	{"b":maybe()}
+maybe-referenced-meets-value	canon	x:maybe($.gone)\ny:$.x & 1	{"x":maybe(),"y":1}

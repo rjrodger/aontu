@@ -26,7 +26,7 @@ the [Explanation](explanation.md).
 - [Spreads `&:`](#spreads-)
 - [Generating children: `pack` and `each`](#generating-children-pack-and-each)
   - [Making elements: `each`](#each-the-order-preserving-map)
-  - [The `_ & …` idiom](#the-_--idiom-construction-and-bound)
+  - [The `_ & …` idiom](#the-_---idiom-construction-and-bound)
 - [Selecting: `filter` and `match`](#selecting-filter-and-match)
 - [The placeholder `_`](#the-placeholder-_)
 - [Transforming: `emit`](#transforming-emit)
@@ -38,6 +38,8 @@ the [Explanation](explanation.md).
 - [Functions](#functions)
 - [Arithmetic: `add` `sub` `mul` `div` `mod` `rem`](#arithmetic-add-sub-mul-div-mod-rem)
 - [Projecting fields: `pick`](#projecting-fields-pick)
+- [Optional input: `maybe`](#optional-input-maybe)
+- [Ordering: `sort`](#ordering-sort)
 - [Aggregating: `sum` `least` `greatest`](#aggregating-sum-least-greatest)
 - [Folding to a string: `join`](#folding-to-a-string-join)
 - [Text: `esc` `usc` `rep` `split`](#text-esc-usc-rep-split)
@@ -941,7 +943,7 @@ being `tmpl` instantiated at that position with `_` bound to the
 source child. Written plainly it **replaces** rather than meets: the
 element is the template and nothing else, which is what makes it a
 construction. Mentioning the hole keeps the child; that is the
-[`_ & …` idiom](#the-_--idiom-construction-and-bound) below.
+[`_ & …` idiom](#the-_---idiom-construction-and-bound) below.
 
 ```aon
 names: [web auth billing]
@@ -1749,7 +1751,7 @@ is instantiated for a selected value, `trial` supplies a condition,
 and `text` supplies literal text. An unmarked argument supplies a value.
 
 For collection operations, compare [pack and each](#generating-children-pack-and-each),
-[the `_ & …` idiom](#the-_--idiom-construction-and-bound), [filter and
+[the `_ & …` idiom](#the-_---idiom-construction-and-bound), [filter and
 match](#selecting-filter-and-match), [pick](#projecting-fields-pick),
 and [emit](#transforming-emit).
 `pack` and `each` construct collections; `filter` selects members;
@@ -1905,6 +1907,12 @@ Constrain a numeric or string value to be at most the bound. See [bounds](#the-c
 
 Example: `integer & max(10)`
 
+### `maybe(v: any) : any`
+
+The value when it resolves, and **absence** when the only thing wrong is that it is not there. See [Optional input](#optional-input-maybe).
+
+Example: `maybe($.gone)` generates nothing; `maybe($.here)` is `$.here`
+
 ### `min(n: number|string) : constraint`
 
 Constrain a numeric or string value to be at least the bound. See [bounds](#the-constraint-algebra).
@@ -2006,6 +2014,12 @@ Example: `rem(-7, 3)` → `-1`
 Replace every pattern match in a string. See [replacement syntax](#reps-pattern-sub).
 
 Example: `rep("a1b2", "[0-9]", "_")`
+
+### `sort(d: map|list, projector k?: string|integer, dir?: string) : list`
+
+Order a collection's members into a list, by a projected field or by the members themselves. See [Ordering](#ordering-sort).
+
+Example: `sort([3, 1, 2])` → `[1, 2, 3]`
 
 ### `split(s: string, sep: string|constraint) : list`
 
@@ -2319,6 +2333,156 @@ member's information rather than extracting one field from it.
 
 Compose the resulting list with [sum](#aggregating-sum-least-greatest)
 for a total or [join](#folding-to-a-string-join) for a line of text.
+
+## Optional input: `maybe`
+
+A path that names nothing is `no_path`, and that is right: a typo
+should be loud. It leaves a document that reads **optional** input with
+nothing to say, though, because the miss refuses the whole call.
+`maybe(v)` is the value when it resolves, and **absence** when the only
+thing wrong is that it is not there.
+
+**Absence generates nothing**, at a required key as readily as at an
+optional one, and from a list without leaving a hole. That is the whole
+difference from `top`, which is not generable and refuses with
+`mapval_no_gen`.
+
+<!-- test: run -->
+```sh
+$ echo 'a: 1  b: maybe($.gone)  c: [1, maybe($.gone), 2]' | aontu
+{
+  "a": 1,
+  "c": [
+    1,
+    2
+  ]
+}
+```
+
+**A call on an absent argument is no call.** Absence travels through
+every built-in, in any argument position, so a transform written
+against optional input needs no guard around it.
+
+<!-- test: run -->
+```sh
+$ echo 'a: 1  b: each(maybe($.tags), {t:_})  c: join(maybe($.tags), "-")' | aontu -c
+{"a":1,"b":maybe(),"c":maybe()}
+```
+
+**Absence is the unit of `&`**, on either side, so meeting it with a
+constraint leaves the constraint:
+
+<!-- test: run -->
+```sh
+$ echo 'a: 1 & maybe($.gone)  b: maybe($.gone) & 2' | aontu -c
+{"a":1,"b":2}
+```
+
+**Only a missing referent is forgiven.** A conflict inside the argument
+is the document's own bug and is reported where it happened, not
+swallowed:
+
+<!-- test: scenario maybe-keeps-conflict -->
+<!-- test: run -->
+```sh
+$ echo 'b: maybe(1 & 2)' | aontu
+[aontu/scalar_value]: Cannot unify values at path $.b
+...
+$ echo $?
+1
+```
+
+**It waits for the model.** A reference that has not resolved yet is
+not a reference to nothing, so `maybe` fires only once the document has
+settled, the way [`each`](#each-the-order-preserving-map) and
+[`pack`](#generating-children-pack-and-each) do. A forward reference
+therefore answers the value:
+
+<!-- test: run -->
+```sh
+$ echo 'b: maybe($.x)  x: 1' | aontu -c
+{"b":1,"x":1}
+```
+
+**It cannot make a containing map vanish.** Absence travels through a
+call and out of a list element, not out of a map that still has other
+keys: `{k:"frag", of: emit(maybe($.tags), t)}` drops `of` and keeps a
+`{k:"frag"}` behind. Write the whole element as the optional thing, not
+one of its fields.
+
+## Ordering: `sort`
+
+Generation supplies two orders, and neither is the one a report or a
+rendered file wants: a map generates in **sorted-key** order and a list
+in **source** order. `sort(data)` is the third.
+
+**It answers a list, from either container.** A map has no order of its
+own to be put in, which is the reason `Semver` is a list as well.
+
+<!-- test: run -->
+```sh
+$ echo 'a: sort([3, 1, 2])  b: sort({x:"c", y:"a"})' | aontu -c
+{"a":[1,2,3],"b":["a","c"]}
+```
+
+**The second argument projects**, exactly as `pick`'s does: a key name
+for a map member, an index for a list member.
+
+<!-- test: run -->
+```sh
+$ echo 'a: sort([{n:"b"}, {n:"a"}], n)' | aontu -c
+{"a":[{"n":"a"},{"n":"b"}]}
+```
+
+**The third is `asc` or `desc`**, and omitting it is `asc`. The
+projector comes first, so a keyless descending sort writes the empty
+projector, which means the member itself.
+
+<!-- test: run -->
+```sh
+$ echo 'a: sort([{n:1}, {n:3}], n, desc)  b: sort([1, 3, 2], "", desc)' | aontu -c
+{"a":[{"n":3},{"n":1}],"b":[3,2,1]}
+```
+
+**Equal keys keep source order**, in both directions. The source
+position breaks every tie, which makes the order a total one, so the
+two implementations answer the same list whatever their own sort does
+with equals.
+
+<!-- test: run -->
+```sh
+$ echo 'a: sort([{k:1,v:"a"}, {k:1,v:"b"}, {k:0,v:"c"}], k, desc)' | aontu -c
+{"a":[{"k":1,"v":"a"},{"k":1,"v":"b"},{"k":0,"v":"c"}]}
+```
+
+**There are two orders and no third.** Numbers compare through the
+exact comparator, never through binary64, so a bigdecimal and an
+integer in one bag order by their values. Text compares by code point.
+A bag that mixes the two, or that holds a boolean, a null or a
+container, has no order to be put in and is refused (`sort_domain`). A
+member with no key to order by is `sort_key`, for the reason
+[`pick`](#projecting-fields-pick) refuses one: a shorter list is a
+different answer. A direction naming no direction is `sort_dir`.
+
+<!-- test: run -->
+```sh
+$ echo 'a: sort([0d9007199254740993, 9007199254740992])' | aontu -c
+{"a":[9007199254740992,0d9007199254740993]}
+```
+
+**A sort sees the members generation emits**, the rule every bag reader
+follows: a `hide()`- or `type()`-marked child is not one, and neither
+is an optional key that generates nothing.
+
+Composed with [`pick`](#projecting-fields-pick) it turns a bag of
+records into an ordered line of source, and with
+[`join`](#folding-to-a-string-join) into the text of one:
+
+<!-- test: run -->
+```sh
+$ echo 'cols: [{n:"id"}, {n:"age"}]  sql: join(pick(sort($.cols, n), n), ", ")' | aontu -c
+{"cols":[{"n":"id"},{"n":"age"}],"sql":"age, id"}
+```
 
 ## Aggregating: `sum` `least` `greatest`
 
@@ -2876,15 +3040,16 @@ scheme is what stops a file on disk from standing in front of it.
 
 | name | what it is |
 |---|---|
-| `aontu:system` | ports, components and services: [below](#the-aontu-system-vocabulary) |
+| `aontu:system` | ports, components and services: [below](#the-aontusystem-vocabulary) |
 | `aontu:view` | the schema for one declaration of a [view document](reference-api.md#aontu-view), `$.aontu.View.Figure`, which types every option the verb reads so a typo is refused at evaluation |
 | `aontu:code` | the output vocabulary a transform evaluates to |
 | `aontu:profile` | the data `render` applies to a unit of one language |
 | `aontu:lang/text` | the text profile |
+| `aontu:lang/markdown` | the markdown profile |
 | `aontu:lang/typescript` | the TypeScript profile |
 | `aontu:lang/go` | the Go profile |
 
-The last five are described [after the system vocabulary](#the-aontu-models).
+The last six are described [after the system vocabulary](#the-aontu-models).
 
 ### The `aontu:` models
 
@@ -2966,7 +3131,7 @@ the set. Write this as `nope.aon`:
 <!-- test: run -->
 ```sh
 $ aontu nope.aon
-source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view)
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/markdown, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view)
 $ echo $?
 1
 ```
@@ -3002,6 +3167,23 @@ declaration in a unit of either language lowers to its target (an
 exported interface or a struct, an enum, a type alias, a constant, a
 function) and the loss report names what the target's type system does
 not enforce; see [`aontu render`](reference-api.md#aontu-render).
+
+**`aontu:lang/markdown`** is fragment-shaped like the text profile,
+and carries what markdown has of its own: the HTML comment form, and
+the template marker its files write, `<!--- … -->`.
+
+**A profile is where a language is configured**, not only where it is
+rendered. Its `template` block names the marker a generator written in
+that language carries and the extensions that marker belongs to, so
+`aontu render`, `aontu template` and `aontu fmt` read one file rather
+than repeating a `--marker` flag. A marker carries its own closer after
+a space where the opener does not imply one, which is what reaches a
+block comment the engine has never seen:
+
+<!-- test: skip the file it configures is the reader's own language -->
+```aon
+aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+```
 
 **`aontu:lang/text`** is the bundled profile of every other language:
 `lang: "text"`, an indent of two spaces, and nothing else, since a fold

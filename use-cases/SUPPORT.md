@@ -83,7 +83,7 @@ engines.
 The money edge that made the "exact leaves" loss look fatal is answered
 by convention rather than machinery — a decimal string plus a
 conversion mark, in
-[`docs/how-to.md`](../docs/how-to.md#carry-exact-money-over-json) —
+[`docs/how-to/carry-exact-money-over-json.md`](../docs/how-to/carry-exact-money-over-json.md) —
 so an exported schema can carry exact money that a stock validator
 enforces. Import remains open, and remains the migration path for the
 existing OpenAPI/CRD estates.
@@ -101,7 +101,7 @@ evaluate rather than locking `canonHash(nil)`, `aontu mod verify`
 checks the store against the committed lock without rewriting it (the
 verb a CI job runs instead of `tidy`), and the hand-vendoring layout
 is documented in
-[`how-to.md`](../docs/how-to.md#vendor-a-module-by-hand) and
+[`docs/how-to/vendor-by-hand.md`](../docs/how-to/vendor-by-hand.md) and
 [`reference-api.md`](../docs/reference-api.md#aontu-mod). See BUGS.md
 §31–32 and the CHANGELOG.
 

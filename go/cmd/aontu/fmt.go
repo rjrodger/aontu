@@ -12,7 +12,7 @@ import (
 	aontu "github.com/aontu-lang/aontu/go"
 )
 
-const fmtHelp = "aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>... (try --help)"
+const fmtHelp = "aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] [--profile <file>] <file>... (try --help)"
 
 type fmtFlags struct {
 	write, list, check, diff, lint, strict bool
@@ -24,7 +24,11 @@ type fmtFlags struct {
 var fmtWriteFile = os.WriteFile
 
 func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	var files []string
+	argv, trust, trustOK := takeTrust(argv, stderr)
+	if !trustOK {
+		return 2
+	}
+	var files, profileFiles []string
 	marker := ""
 	marked := false
 	flags := fmtFlags{}
@@ -59,6 +63,13 @@ func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			}
 			marker = argv[i]
 			marked = true
+		case "--profile" == arg:
+			i++
+			if i >= len(argv) {
+				io.WriteString(stderr, "aontu: --profile needs a file\n")
+				return 2
+			}
+			profileFiles = append(profileFiles, argv[i])
 		case strings.HasPrefix(arg, "-"):
 			io.WriteString(stderr, "aontu: unknown fmt option "+arg+" (try --help)\n")
 			return 2
@@ -93,6 +104,11 @@ func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	profiles, code := loadProfiles(profileFiles, trust, stderr)
+	if 0 != code {
+		return code
+	}
+
 	worst := 0
 	for _, file := range files {
 		src, err := os.ReadFile(file)
@@ -100,13 +116,20 @@ func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			io.WriteString(stderr, "aontu: cannot read "+file+": "+err.Error()+"\n")
 			return 2
 		}
-		mark, ok := fmtMarker(file, string(src), marker, marked)
+		declared, said := marker, marked
+		if "" == declared {
+			if m := aontu.MarkerFromProfiles(profiles, file); "" != m {
+				declared, said = m, true
+			}
+		}
+		mark, ok := fmtMarker(file, string(src), declared, said)
 		if !ok {
 			io.WriteString(stderr, "aontu: "+file+
 				" is not aontu source (.aon, .aontu) and carries no "+
 				aontu.MarkerFor(file)+" marker line, so there is no aontu in"+
-				" it to format; --marker names the marker for a language the"+
-				" table does not know\n")
+				" it to format; --marker names the marker for a language"+
+				" the table does not know, and --profile reads one that"+
+				" declares it\n")
 			return 2
 		}
 		if code := fmtOne(file, string(src), flags, mark, stdout, stderr); worst < code {

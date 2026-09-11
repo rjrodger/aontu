@@ -6,6 +6,7 @@ exports.desugarTemplate = desugarTemplate;
 exports.resugarTemplate = resugarTemplate;
 exports.templateOutputs = templateOutputs;
 exports.markerFor = markerFor;
+exports.markerFromProfiles = markerFromProfiles;
 const MARKERS = {
     c: '//-',
     cc: '//-',
@@ -20,6 +21,8 @@ const MARKERS = {
     jsx: '//-',
     kt: '//-',
     lua: '---',
+    markdown: '<!---',
+    md: '<!---',
     php: '//-',
     pl: '#-',
     py: '#-',
@@ -39,19 +42,52 @@ const MARKERS = {
 // C-family line comment, which is the one the note is written in.
 const DEFAULT_MARKER = '//-';
 exports.DEFAULT_MARKER = DEFAULT_MARKER;
-const BLOCK_CLOSE = '*/';
+// A marker outside this table names its closer itself.
+const IMPLIED_CLOSE = [
+    ['<!--', '-->'],
+    ['/*', '*/'],
+];
+function extensionOf(path) {
+    const dot = path.lastIndexOf('.');
+    const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+    return dot > slash ? path.slice(dot + 1).toLowerCase() : '';
+}
 // The marker for a file, by its extension, or the C-family default.
 // The extension decides, exactly as it decides what an include is
 // (ADR-012) -- one rule, and no flag to remember for the common case.
 function markerFor(path) {
-    const dot = path.lastIndexOf('.');
-    const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
-    const ext = dot > slash ? path.slice(dot + 1).toLowerCase() : '';
-    return MARKERS[ext] ?? DEFAULT_MARKER;
+    return MARKERS[extensionOf(path)] ?? DEFAULT_MARKER;
 }
-// Is this marker the block form?
-function isBlock(marker) {
-    return marker.startsWith('/*');
+// What reaches a language the table has no entry for by FILENAME
+// rather than by a flag on every call.
+function markerFromProfiles(profiles, path) {
+    const ext = extensionOf(path);
+    if ('' === ext) {
+        return undefined;
+    }
+    for (const profile of profiles) {
+        const tmpl = profile?.template;
+        if (null == tmpl || !Array.isArray(tmpl.ext) || !tmpl.ext.includes(ext)) {
+            continue;
+        }
+        return null == tmpl.close ? tmpl.marker : tmpl.marker + ' ' + tmpl.close;
+    }
+    return undefined;
+}
+function markerForm(marker) {
+    const cut = marker.indexOf(' ');
+    if (-1 < cut) {
+        return {
+            open: marker.slice(0, cut),
+            close: trimLine(marker.slice(cut + 1)),
+        };
+    }
+    for (const [open, close] of IMPLIED_CLOSE) {
+        if (marker.startsWith(open)) {
+            return { open: marker, close };
+        }
+    }
+    return { open: marker, close: '' };
 }
 function indentOf(line) {
     let i = 0;
@@ -72,16 +108,16 @@ function trimEnd(line) {
 function trimLine(line) {
     return trimEnd(line).slice(indentOf(line));
 }
-function readLine(line, marker) {
+function readLine(line, form) {
     const cut = indentOf(line);
     const indent = line.slice(0, cut);
     const rest = line.slice(cut);
-    if (!rest.startsWith(marker)) {
+    if (!rest.startsWith(form.open)) {
         return { marker: false, indent: '', text: line };
     }
-    let body = rest.slice(marker.length);
-    if (isBlock(marker)) {
-        const end = body.lastIndexOf(BLOCK_CLOSE);
+    let body = rest.slice(form.open.length);
+    if ('' !== form.close) {
+        const end = body.lastIndexOf(form.close);
         if (end < 0) {
             return { marker: false, indent: '', text: line };
         }
@@ -128,7 +164,7 @@ function unquoteLine(text) {
     return out;
 }
 function desugarTemplate(src, marker) {
-    const mark = marker ?? DEFAULT_MARKER;
+    const form = markerForm(marker ?? DEFAULT_MARKER);
     const lines = src.split('\n');
     // A trailing newline is the file's, not a line of output: a text
     // file ends with one, and the round trip must not grow an empty
@@ -138,13 +174,14 @@ function desugarTemplate(src, marker) {
         lines.pop();
     }
     const out = lines.map((line) => {
-        const read = readLine(line, mark);
+        const read = readLine(line, form);
         return read.marker ? read.indent + read.text : quoteLine(read.text);
     });
     return out.join('\n') + (tail ? '\n' : '');
 }
 function resugarTemplate(src, marker) {
     const mark = marker ?? DEFAULT_MARKER;
+    const form = markerForm(mark);
     const lines = src.split('\n');
     const tail = 1 < lines.length && '' === lines[lines.length - 1];
     if (tail) {
@@ -159,16 +196,18 @@ function resugarTemplate(src, marker) {
         // is written after it, so the aontu's own shape is on the page.
         // The one space is the marker's, which the reading takes back.
         const text = trimEnd(line);
-        const close = isBlock(mark) ? ' ' + BLOCK_CLOSE : '';
-        return '' === text ? mark + close : mark + ' ' + text + close;
+        const close = '' === form.close ? '' : ' ' + form.close;
+        return '' === text ? form.open + close :
+            form.open + ' ' + text + close;
     });
     return out.join('\n') + (tail ? '\n' : '');
 }
 function templateOutputs(src, marker) {
+    const form = markerForm(marker);
     const lines = src.split('\n');
     if (1 < lines.length && '' === lines[lines.length - 1]) {
         lines.pop();
     }
-    return lines.map((line) => !readLine(line, marker).marker);
-} /* node:coverage ignore next 9 */
+    return lines.map((line) => !readLine(line, form).marker);
+} /* node:coverage ignore next 10 */
 //# sourceMappingURL=template.js.map

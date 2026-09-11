@@ -63,3 +63,12 @@ template-a-trailing-lone-backslash-is-not-a-body-line	template	//- of: [\n//- `a
 template-an-unterminated-string-is-aontu	template	//- of: [\n//- "half\n//- ]\n	{"back":"//- of: [\\n//- \\"half\\n//- ]\\n","out":"of: [\\n\\"half\\n]\\n"}
 template-a-marker-later-in-a-line-is-output	template	const s = "//- not a marker"\n	{"back":"const s = \\"//- not a marker\\"\\n","out":"`const s = \\"//- not a marker\\"`\\n"}
 template-the-marker-token-alone-on-a-line	template	//- of: [\nx //-\n//- ]\n	{"back":"//- of: [\\nx //-\\n//- ]\\n","out":"of: [\\n`x //-`\\n]\\n"}
+
+# THE BLOCK FORM IS NOT ONLY C'S. A marker's closer is implied for the
+# C and HTML comment openers and named otherwise: a comment opener
+# holds no space, so a marker may carry its own closer after one. That
+# is what makes a language the table does not know reachable from
+# `--marker` alone, and what lets a profile declare one as data.
+template-a-markdown-marker	template	<!--- a: 1 -->\n# Title\n	{"ask":{"marker":"<!---"},"back":"<!--- a: 1 -->\\n# Title\\n","out":"a: 1\\n`# Title`\\n"}
+template-markdown-keeps-its-indentation	template	<!--- of: [ -->\n  <!--- emit(.x, { -->\n  line\n  <!--- }) -->\n<!--- ] -->\n	{"ask":{"marker":"<!---"},"back":"<!--- of: [ -->\\n<!---   emit(.x, { -->\\n  line\\n<!---   }) -->\\n<!--- ] -->\\n","out":"of: [\\n  emit(.x, {\\n`  line`\\n  })\\n]\\n"}
+template-a-marker-names-its-closer	template	(*- a: 1 *)\nout\n	{"ask":{"marker":"(*- *)"},"back":"(*- a: 1 *)\\nout\\n","out":"a: 1\\n`out`\\n"}

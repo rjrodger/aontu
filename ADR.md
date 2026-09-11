@@ -55,6 +55,8 @@ and the CHANGELOG still resolve. Numbers are never reused.
 | [ADR-031](#adr-031--a-path-part-that-names-a-type-is-camelcase) | A path part that names a type is CamelCase | Relocated to [#190](https://github.com/aontu-lang/aontu/issues/190) |
 | [ADR-032](#adr-032--code-comments-are-sparse-and-terse-intent-lives-in-names-requirements-live-in-documents) | Code comments are sparse and terse: intent lives in names, requirements live in documents | Accepted |
 | [ADR-033](#adr-033--a-grammar-is-a-string-and-parsing-is-a-function) | A grammar is a string, and parsing is a function | Accepted |
+| [ADR-034](#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made) | Absence is a value, and `maybe` is where it is made | Accepted |
+| [ADR-035](#adr-035--a-language-is-configured-in-its-profile-and-a-marker-may-name-its-closer) | A language is configured in its profile, and a marker may name its closer | Accepted |
 
 ---
 
@@ -349,7 +351,7 @@ Concretely, for `re()`:
 
 See [`docs/reference-language.md`](docs/reference-language.md#re-and-the-portable-pattern-subset)
 for the author-facing subset, and
-[`docs/trust.md`](docs/trust.md#clause-2--termination) for the
+[`docs/trust.md`](docs/trust.md#clause-2-termination) for the
 termination consequence.
 
 ---
@@ -3395,3 +3397,184 @@ itself.
   fact and not a parity break: an alternative shaped `LITERAL [ group ]`
   can fail on re-entry to its rule when the optional's contents put the
   overlapping class in the same lookahead slot.
+
+---
+
+## ADR-034 — Absence is a value, and `maybe` is where it is made
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Context
+
+A path that names nothing is `no_path`, class `reference`, and that is
+right: a misspelled path should be loud, and the code carries a "did
+you mean" contract that names what is actually there.
+
+It leaves a document that reads OPTIONAL input with nothing to say.
+The miss refuses the whole enclosing call, so `each($.tags, t)` cannot
+be written against a record that may carry no tags, and there is no
+falsy value to test for either: aontu has no undefined, and `top` is
+not it, because `top` is not generable and a required key holding one
+is `mapval_no_gen`.
+
+The language already has a notion of "contributes nothing without
+complaint" -- the optional key whose value generates nothing, which
+`BagVal.gen` drops and `bagMembers` skips. What it has never had is a
+VALUE that says it.
+
+### Decision
+
+**`maybe(v) : any`** answers `v` when it resolves, and ABSENCE when the
+only thing wrong is that `v` is not there.
+
+**Absence is a value class**, `AbsentVal`, and it is `top` with one
+difference: it is generable, and it generates nothing. A bag therefore
+drops it at a REQUIRED key as readily as at an optional one, and a list
+drops it without leaving a hole. That single difference is the whole
+mechanism; generation is not changed.
+
+**Only a missing referent is forgiven.** The argument is driven with
+the error list swapped for a throwaway one, and the result is forgiven
+only if it is a nil of class `reference`. A conflict inside the
+argument is the document's own bug and is reported where it happened.
+
+**Absence propagates through a call**, in every argument position and
+for every built-in: a call on an absent argument is not a failed call,
+it is no call. The rule lives in the shared function machinery, ahead
+of the signature gate (which has no word for an argument that is not
+there) and ahead of a builtin's own deferral (absence is settled, so
+waiting on it would wait forever). `maybe` itself is the one exemption,
+being where absence is made.
+
+**Absence is the unit of the meet, on either side.** `&` dispatches on
+its left operand, so the identity is answered in `unite` rather than in
+`AbsentVal.Unify` alone, or `1 & maybe($.gone)` would refuse where
+`maybe($.gone) & 1` does not.
+
+**`maybe` is STAGED.** It fires only once the model has settled, the
+staging `pack`, `each`, `pick` and the aggregates already use. A
+reference that has not resolved YET is not a reference to nothing, and
+without the wait the answer would depend on which consumer looked
+first.
+
+### Consequences
+
+- **A constructor, not a lattice citizen.** Answering absence for a
+  path that a later meet could supply is not monotone, which is why the
+  staging above is load-bearing rather than an optimisation. The
+  language already draws this line: `each` constructs and does not
+  meet, and ADR-026 recorded why that is a different kind of thing from
+  a bound.
+- **It blunts the best error the engine has.** `maybe($.aontu.System.Compnent)`
+  is a typo that now renders as nothing at all. Scoping the forgiveness
+  to class `reference` keeps conflicts loud, and nothing can tell a
+  deliberate absence from a misspelling, because nothing can.
+- **It does not reach out of a containing map.** Absence travels
+  through a call and out of a list element; a map with other keys is
+  still a map with one key fewer. A generated unit written as
+  `{k:"frag", of: emit(maybe($.tags), t)}` therefore keeps a
+  `{k:"frag"}` behind. The element is what must be optional, not one of
+  its fields. Making `&` absorbing would reach further and is refused:
+  it would make the meet non-monotone in the useful direction, and the
+  guard would read backwards, answering the value when it is present.
+- **A template position is not an argument position.** A `maybe` inside
+  `pack`'s or `each`'s template is cloned per destination and forgives
+  there, which is what a template is for. A `maybe` AS the template is
+  not driven at the call and does not propagate.
+
+### Alternatives rejected
+
+**Make `no_path` answer top.** Silences every typo in the language, not
+just the ones an author opted into, and top at a required key still
+refuses at generation, so it would not even close the gap.
+
+**A `default(v, d)` instead.** Needs a value to stand in with, and the
+optional-section case has none: the right answer is that the key is not
+there, not that it holds an empty list.
+
+**Teach each bag reader about absence.** Twenty sites in two ports with
+a spec row each, and every builtin added later would have to remember.
+One site in the shared machinery covers them all.
+
+---
+
+## ADR-035 — A language is configured in its profile, and a marker may name its closer
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Context
+
+A generator written in the target's own syntax carries a MARKER, and
+the marker was decided by a table keyed on the file's extension, with
+`--marker` as the escape hatch for a language the table had never seen.
+Two things were wrong with that.
+
+The escape hatch did not reach a block comment. `isBlock` tested for
+`/*` and the closer was the constant `*/`, so `--marker '<!--'` was
+accepted, recognised the opener, and left the `-->` sitting in the
+aontu source. Every language whose only comment is a block form was
+unreachable, markdown among them.
+
+And the marker was the one thing about a language that had nowhere to
+live. `aontu:profile` already holds what `aontu render` applies to a
+unit of one language, a `--profile` file already declares a language as
+data, and `aontu render`, `aontu template` and `aontu fmt` all decide a
+marker -- but a marker could only be repeated as a flag.
+
+### Decision
+
+**A marker may carry its own closer after a space.** A comment opener
+holds no space, so the space is free to separate the two: `--marker
+'(*- *)'` is the OCaml block form. The closer is IMPLIED for `/*` and
+`<!--`, the two openers the bundled table uses, and named otherwise. An
+empty closer is the line form, which is every other marker in the
+table.
+
+**Markdown is a known language.** `md` and `markdown` mark with
+`<!--- … -->`, the HTML comment plus the dash every marker in the table
+carries, and `aontu:lang/markdown` joins the bundled profiles: the text
+profile's shape, plus the comment form and the template marker that are
+markdown's own.
+
+**The profile is where a language is configured.** `%profile` gains a
+`template` block naming the `marker`, an optional `close`, and the
+`ext` list the marker belongs to, and `aontu template` and `aontu fmt`
+gain the `--profile` that `aontu render` already had. One file declares
+a language once -- its name, its extensions, its marker, its
+indentation -- and all three verbs read it. `--marker` still wins where
+it is given, being the per-call override.
+
+### Consequences
+
+- **Three verbs, one file.** A project that generates OCaml writes
+  `ocaml.aon` once and passes `--profile ocaml.aon` to whichever verb
+  it is running, instead of repeating a marker flag whose spelling has
+  to match across a Makefile, a CI job and an editor command.
+- **The profile-file loader is shared.** `render` had it; `template`
+  and `fmt` now call the same function, so the duplicate-lang refusal
+  and the vet against `aontu:profile` are one implementation.
+- **The bundled model set grew**, which moves the hash of the profile
+  vocabulary and of every bundled profile: `template?` is a new
+  optional key in `%profile`, and a canon hash covers the whole
+  document. The four hashes in `aontu-profile.tsv` are re-pinned from
+  both engines in the same change.
+- **`render` loads its profiles before it desugars.** It read the
+  marker first and the profiles after, which would have made the entry
+  file the one place a declared marker could not reach.
+
+### Alternatives rejected
+
+**Extend `--marker` and stop there.** A pair form on the flag reaches
+every language, and leaves the marker a thing repeated at every call
+site rather than declared once. The profile already existed and already
+meant "this language, as data".
+
+**A project configuration file.** aontu has no such concept, and adding
+one to carry a single field would be a second place for a language to
+be described.
+
+**Guess the closer from the opener's brackets.** `(*` to `*)` inverts;
+`<!--` to `-->` does not, and `{-` to `-}` is a third rule. A table of
+two, plus an explicit closer, says what is known and asks for the rest.

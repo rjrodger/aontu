@@ -352,6 +352,41 @@ const hints: Record<string, string> = {
     '  pick([{a:1},{b:2}], a)   -> nil    # ... the second does not;\n' +
     '  pick([[9],[8]], 0)       -> [9,8]  # A list child takes an index.',
 
+  sort_key:
+    'A child of this bag has no key `{key}` to order by. Ordering\n' +
+    'refuses rather than skipping, for the reason `pick` does: a\n' +
+    'shorter list orders a DIFFERENT set of records than the one the\n' +
+    'author named. Give every child the key, or filter the bag first.\n' +
+    ' \n' +
+    'Examples:\n' +
+    '  sort([{a:2},{a:1}], a)   -> [{a:1},{a:2}]  # Every child has it;\n' +
+    '  sort([{a:1},{b:2}], a)   -> nil            # ... the second does not;\n' +
+    '  sort([[9],[8]], 0)       -> [[8],[9]]      # A list child takes an index.',
+
+  sort_domain:
+    'This bag cannot be ordered: `{member}`. There are two orders and no\n' +
+    'third -- text by code point, numbers by the exact comparator -- so a\n' +
+    'bag that mixes them, or holds a boolean, a null or a container, has\n' +
+    'no order to be put in. Project a field that is all one kind, or\n' +
+    'filter the bag first.\n' +
+    ' \n' +
+    'Examples:\n' +
+    '  sort([3,1,2])            -> [1,2,3]      # All numbers;\n' +
+    '  sort([b,a])              -> ["a","b"]    # ... or all text;\n' +
+    '  sort([1,a])              -> nil          # ... never both.',
+
+  sort_dir:
+    'A sort direction names no direction: `{dir}`. The third argument is\n' +
+    '`asc` or `desc`, and omitting it is `asc`. The second argument is\n' +
+    'the field to order by, so a keyless descending sort writes the\n' +
+    'empty projector: the member itself.\n' +
+    ' \n' +
+    'Examples:\n' +
+    '  sort($.rows, n)          # Ascending by field `n`;\n' +
+    '  sort($.rows, n, desc)    # ... descending;\n' +
+    '  sort($.tags)             # The members themselves, ascending;\n' +
+    '  sort($.tags, "", desc)   # ... descending.',
+
   join_member:
     'A member of this bag is not text and never will be: `{member}`.\n' +
     '`join` folds with `+` seeded with the empty string, and `+` with a\n' +
@@ -677,6 +712,9 @@ const codeClasses: Record<string, string> = {
   exact_float_mix: 'conflict',
   inexact_integer_sum: 'conflict',
   pick_key: 'conflict',
+  sort_key: 'conflict',
+  sort_domain: 'conflict',
+  sort_dir: 'parse',
   aggregate_data: 'conflict',
   aggregate_empty: 'conflict',
   join_member: 'conflict',

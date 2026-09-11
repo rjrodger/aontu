@@ -23,6 +23,7 @@ pref(v: any) : any
 super(t: any) : any
 type(t: any) : any
 hide(v: any) : any
+maybe(v: any) : any
 close(m: any) : any
 open(m: any) : any
 move(v: any) : any
@@ -58,6 +59,7 @@ sum(d: map|list) : number
 least(d: map|list) : number
 greatest(d: map|list) : number
 pick(d: map|list, projector k: string|integer) : any
+sort(d: map|list, projector k?: string|integer, dir?: string) : list
 join(d: map|list, sep?: string) : string
 esc(s: string, variant?: string) : string
 usc(s: string, variant?: string) : string

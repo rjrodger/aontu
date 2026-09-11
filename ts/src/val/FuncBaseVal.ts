@@ -73,6 +73,8 @@ function trialUnify(ctx: AontuContext, a: Val, b: Val): Val | undefined {
 
 class FuncBaseVal extends FeatureVal {
   isFunc = true
+
+  forgives = false
   isGenable = true
 
   staged = false
@@ -223,12 +225,17 @@ class FuncBaseVal extends FeatureVal {
 
         // console.log('FUNCBASE-PEG', this.id, pegdone, this.peg.map((p: any) => p?.canon))
 
-        if (pegdone && !this.deferResolve(ctx, newpeg)) {
+        // ABSENCE PROPAGATES (ADR-034), ahead of deferResolve.
+        const gone = this.forgives ? undefined :
+          newpeg.find((a: Val) => true === (a as any).isAbsent)
+
+        if (pegdone &&
+          (undefined !== gone || !this.deferResolve(ctx, newpeg))) {
           // THE SIGNATURE GATE (docs/design/SIGNATURES.0.md): the
           // driven arguments against the declared signature, before
           // the builtin's own logic sees them. See siggate.ts for
           // what the gate owns and what stays with the builtins.
-          const resolved = sigRefuse(ctx, this, newpeg) ??
+          const resolved = gone ?? sigRefuse(ctx, this, newpeg) ??
             this.resolve(ctx, newpeg)
 
           // The TOP peer is DROPPED as the unit it is.

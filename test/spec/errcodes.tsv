@@ -436,3 +436,15 @@ form_data	errcode	parse	0.58.0
 abnf_grammar	errcode	parse	0.63.0
 parse_arg	errcode	parse	0.63.0
 parse_failed	errcode	conflict	0.63.0
+# `sort` orders a bag. `sort_key` is `pick_key`'s twin: a child with no
+# key to order by is refused rather than dropped, because a shorter
+# list is a different answer. `sort_domain` is the mixed bag -- text
+# orders by code point and numbers by the exact comparator, and there
+# is no third order the language could invent between them, so a
+# boolean, a null, a map and a mixture are all refused here.
+# `sort_dir` is class `parse` for `esc_variant`'s reason: a direction
+# naming no direction is a fault in the call as written, before any
+# member is read.
+sort_key	errcode	conflict	0.63.0
+sort_domain	errcode	conflict	0.63.0
+sort_dir	errcode	parse	0.63.0

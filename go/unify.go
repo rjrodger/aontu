@@ -64,6 +64,17 @@ func unite(ctx *Ctx, a, b Val) Val {
 }
 
 func uniteRaw(ctx *Ctx, a, b Val) Val {
+	// ABSENCE IS THE UNIT OF THE MEET (ADR-034). The dispatch below is
+	// the LEFT operand's, so `&` commutes only if it is answered here.
+	if nil != a && nil != b {
+		if x, ok := a.(*AbsentVal); ok {
+			return x.Unify(b, ctx)
+		}
+		if x, ok := b.(*AbsentVal); ok {
+			return x.Unify(a, ctx)
+		}
+	}
+
 	if a != nil && (b == nil || isTop(b)) && a.Dc() == DONE {
 		return a
 	}

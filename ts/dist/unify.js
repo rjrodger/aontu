@@ -59,6 +59,16 @@ const unite = (ctx, a, b, whence) => {
             }
         }
     }
+    // ABSENCE IS THE UNIT OF THE MEET (ADR-034). The dispatch below is
+    // the LEFT operand's, so `&` commutes only if it is answered here.
+    if (null != a && null != b) {
+        if (true === a.isAbsent) {
+            return a.unify(b, ctx);
+        }
+        if (true === b.isAbsent) {
+            return b.unify(a, ctx);
+        }
+    }
     const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'unite', a, b);
     let out = a;
     let why = 'u';

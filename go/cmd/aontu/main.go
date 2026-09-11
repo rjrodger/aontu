@@ -29,14 +29,16 @@ const helpText = `Usage: aontu [options] [file]
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
                     [--stdout | --out <dir> | --check <dir> | --coverage]
                     [--coverage-at <path>] [--strict] <file>
-       aontu template [--resugar] [--check] [--marker <token>] <file>
+       aontu template [--resugar] [--check] [--marker <token>]
+                      [--profile <file>] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
-       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>]
+                 [--profile <file>] <file>...
        aontu help [topic] [--format text|json]
        aontu explain <code> | --list [--format text|json]
        aontu init [dir]
@@ -301,8 +303,8 @@ does not stand up or the instance is not aontu:code.
 A render entry file whose extension is not .aon is a TEMPLATE: a
 generator in the target's own syntax, whose marker lines carry aontu
 and whose other lines are output. It is desugared before it is
-evaluated, and --marker names the marker for a language the table does
-not know.
+evaluated, and a language the table does not know names its marker with
+--marker, or declares it once in a profile file that --profile reads.
 
 Template options:
   --resugar       The file is the canonical aontu; print the template
@@ -310,7 +312,9 @@ Template options:
   --check         Desugar and resugar, and exit 1 if the file is not
                   what the round trip answers
   --marker <t>    The marker, when the extension does not name it
-                  (default //-, and #- --- /*- by extension)
+                  (default //-, and #- --- /*- <!--- by extension)
+  --profile <f>   A profile file, whose template.ext names the
+                  extensions it marks and template.marker the marker
 
 The template verb prints the canonical aontu form of a generator
 written in the target's own syntax: a marked line is aontu source, and
@@ -381,7 +385,9 @@ Fmt options:
                   shapes, on standard error, and print nothing else
   --strict        With --lint, and exit 1 when there is a finding
   --marker <t>    The file is a generator, and this is its marker
-                  (default //-, and #- --- /*- by extension)
+                  (default //-, and #- --- /*- <!--- by extension)
+  --profile <f>   A profile file, whose template.ext names the
+                  extensions it marks and template.marker the marker
 
 The fmt verb prints one document in the agreed form; with no file it
 reads standard input. Several files need one of the options above.

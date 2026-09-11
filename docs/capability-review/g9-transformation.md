@@ -17,6 +17,17 @@ VERIFIED was run against the built CLIs at 0.53.0 — `node
 ts/bin/aontu.js` and a fresh `go build ./cmd/aontu` — during the
 drafting of this document.*
 
+**Names here are the names of the day.** This document records what was
+decided when it was written, and it is not rewritten as the language
+moves. Two names have since changed meaning. The list generator it
+calls `form` is named `each` today
+([ADR-027](../../ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound)),
+and the `each` it describes as the bound was retired first
+([ADR-026](../../ADR.md#adr-026--each-is-retired-form-carries-the-bound)), that
+bound now being spelled `each(d, _ & t)`. The
+[progress register](progress.md) carries the current status, and
+`test/spec/signature.tsv` is the call surface.
+
 ## Problem
 
 A model that is ground truth for a system, and cannot produce the

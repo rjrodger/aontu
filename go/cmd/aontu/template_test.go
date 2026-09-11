@@ -2,7 +2,6 @@
 
 package main
 
-
 import (
 	"bytes"
 	"os"
@@ -205,5 +204,56 @@ func TestFmtFormatsAGeneratorThroughTheTemplateSurface(t *testing.T) {
 	out, _, code = fmtRun("", filepath.Join(ok, "d.aontu"))
 	if 0 != code || "a: b: 1\n" != out {
 		t.Fatalf("aontu source: code %d out %q", code, out)
+	}
+}
+
+const templateOcamlProfile = `@"aontu:profile"
+
+aontu: Profile: lang: "ocaml"
+aontu: Profile: indent: { unit:" " width:2 }
+aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+`
+
+func TestTemplateTakesItsMarkerFromAProfile(t *testing.T) {
+	dir := templateDir(t, map[string]string{
+		"ocaml.aon": templateOcamlProfile,
+		"gen.ml":    "(*- of: [ *)\nlet a = 1\n(*- ] *)\n",
+		"plain.aon": "@\"aontu:profile\"\n\naontu: Profile: lang: \"plain\"\n",
+		"note.md":   "<!--- of: [ -->\n# T\n<!--- ] -->\n",
+	})
+	profile := filepath.Join(dir, "ocaml.aon")
+	unit := filepath.Join(dir, "gen.ml")
+
+	// A CLOSER AFTER A SPACE reaches a block comment the table has
+	// never seen, and the round trip holds.
+	out, _, code := templateRun("--profile", profile, unit)
+	if 0 != code || "of: [\n`let a = 1`\n]\n" != out {
+		t.Fatalf("profile marker: %d %q", code, out)
+	}
+	if _, _, code = templateRun("--check", "--profile", profile, unit); 0 != code {
+		t.Fatalf("profile round trip: %d", code)
+	}
+
+	// A profile claiming no extension of this file leaves the table's
+	// answer in place, and the extension alone answers for markdown.
+	out, _, _ = templateRun("--profile", filepath.Join(dir, "plain.aon"), unit)
+	if "`(*- of: [ *)`\n`let a = 1`\n`(*- ] *)`\n" != out {
+		t.Fatalf("unclaimed extension: %q", out)
+	}
+	out, _, _ = templateRun(filepath.Join(dir, "note.md"))
+	if "of: [\n`# T`\n]\n" != out {
+		t.Fatalf("markdown: %q", out)
+	}
+
+	_, errw, code := templateRun("--profile")
+	if 2 != code || !strings.Contains(errw, "--profile needs a file") {
+		t.Fatalf("bare --profile: %d %q", code, errw)
+	}
+	_, errw, code = templateRun("--profile", filepath.Join(dir, "no.aon"), unit)
+	if 2 != code || !strings.Contains(errw, "cannot read") {
+		t.Fatalf("missing profile: %d %q", code, errw)
+	}
+	if _, _, code = templateRun("--trust", "nonsense", unit); 2 != code {
+		t.Fatalf("bad trust: %d", code)
 	}
 }

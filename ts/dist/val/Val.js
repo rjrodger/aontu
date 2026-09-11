@@ -252,6 +252,7 @@ exports.Val = Val;
 Object.assign(Val.prototype, {
     isVal: true,
     isTop: false,
+    isAbsent: false,
     isNil: false,
     isNull: false,
     isMap: false,

@@ -7,6 +7,154 @@ which implementation each change affects.
 
 ## Unreleased
 
+### Markdown is a known language, and a profile configures an unknown one
+
+A generator written in the target's own syntax carries a **marker**,
+and the marker was decided by a table keyed on the file's extension,
+with `--marker` for a language the table had never seen. The escape
+hatch did not reach a block comment: the closer was the constant `*/`,
+so `--marker '<!--'` recognised the opener and left the `-->` sitting
+in the aontu source. Every language whose only comment is a block form
+was out of reach, markdown among them.
+
+**A marker may now carry its own closer after a space.** A comment
+opener holds no space, so the space separates the two. The closer is
+implied for `/*` and `<!--` and named otherwise:
+
+```sh
+aontu template --marker '(*- *)' unit.ml
+```
+
+**Markdown is a known language.** `.md` and `.markdown` mark with
+`<!--- … -->` -- the HTML comment plus the dash every marker in the
+table carries -- and `aontu:lang/markdown` joins the bundled profiles,
+which are now four.
+
+```md
+<!--- code: units: [ -->
+# Title
+<!--- ] -->
+```
+
+**A profile is where a language is configured.** `aontu:profile` gains
+a `template` block naming the marker, an optional closer, and the
+extensions the marker belongs to; `aontu template` and `aontu fmt` gain
+the `--profile` that `aontu render` already had. One file declares a
+language once and all three verbs read it, in place of a flag repeated
+at every call site:
+
+```aon
+@"aontu:profile"
+
+aontu: Profile: lang: "ocaml"
+aontu: Profile: indent: { unit:" " width:2 }
+aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+```
+
+`--marker` still wins where it is given. `aontu render` now loads its
+profiles before it desugars, so a declared marker reaches the entry
+file too.
+
+**BREAKING (unreleased): the profile hashes move.** `template?` is a
+new optional key in `%profile`, and a canon hash covers the whole
+document, so the hash of the vocabulary and of all four bundled
+profiles changes. The rows in `test/spec/aontu-profile.tsv` are
+re-pinned from both engines.
+[ADR-035](ADR.md#adr-035--a-language-is-configured-in-its-profile-and-a-marker-may-name-its-closer).
+
+
+### Optional input: `maybe()`
+
+A path that names nothing is `no_path`, and that is right -- a
+misspelled path should be loud. It left a document that reads OPTIONAL
+input with nothing to say, though, because the miss refuses the whole
+enclosing call: `each($.tags, t)` could not be written against a record
+that may carry no tags, and there was no falsy value to test for
+either.
+
+```aon
+a: 1
+b: maybe($.gone)                 # the key is not generated
+c: each(maybe($.tags), {t:_})    # ... nor is this one
+d: each(maybe($.tags), {t:_})    # ... and this is an ordinary each
+                                 #     when $.tags is there
+```
+
+**`maybe(v)` answers `v` when it resolves, and ABSENCE when the only
+thing wrong is that it is not there.** Absence is a value, and it is
+`top` with one difference: it is generable, and it generates nothing.
+A bag therefore drops it at a REQUIRED key as readily as at an optional
+one, and a list drops it without leaving a hole.
+
+**A call on an absent argument is no call**, in every argument position
+and for every built-in, so a transform written against optional input
+needs no guard around it. **Absence is the unit of `&`**, on either
+side. **Only a missing referent is forgiven** -- a conflict inside the
+argument is the document's own bug and is reported where it happened.
+**It waits for the model**, the staging `pack`, `each` and `pick`
+already use, so a forward reference answers the value and not absence.
+
+It does not reach out of a containing map: absence travels through a
+call and out of a list element, and a map with other keys is still a
+map. The element is what must be optional, not one of its fields.
+
+[ADR-034](ADR.md#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made).
+Both ports; `test/spec/maybe.tsv` (37 rows).
+
+### Ordering: `sort()`
+
+Generation supplies two orders and neither is the one a report or a
+rendered file wants: a map generates in sorted-key order, a list in
+source order.
+
+```aon
+a: sort([3, 1, 2])                   # [1,2,3]
+b: sort($.cast, Role)                # by a projected field
+c: sort($.movies, year, desc)        # ... descending
+d: sort($.tags, "", desc)            # the members themselves
+```
+
+`sort(d, k?, dir?)` answers a **list** from a map or a list alike, a
+map having no order of its own to be put in. The second argument
+projects, exactly as `pick`'s does; the third is `asc` or `desc`, and
+omitting it is `asc`, so a keyless descending sort writes the empty
+projector.
+
+**Equal keys keep source order, in both directions.** The source
+position breaks every tie, which makes the order total, so the two
+implementations answer the same list whatever their own sort does with
+equals.
+
+**There are two orders and no third**: numbers through the exact
+comparator and never binary64, text by code point. A bag that mixes
+them, or that holds a boolean, a null or a container, is refused
+(`sort_domain`). A member with no key to order by is `sort_key`, for
+the reason `pick` refuses one. A direction naming no direction is
+`sort_dir`.
+
+Both ports; `test/spec/sort.tsv` (39 rows).
+
+### The documentation gate checks links
+
+`ts/test/docs.test.ts` gained `every-internal-link-resolves`, which
+reads every markdown file the repository tracks -- wider than the
+style-gated set, because working documents carry links too -- and
+resolves each `](path#anchor)` against the target file's own headings
+under GitHub's slug rules. It found seventeen dead links, including two
+in the capability-review register left behind by the `form` to `each`
+rename, and all seventeen are fixed.
+
+A second check, `a-working-document-naming-a-retired-builtin-says-so`,
+requires a design document that still calls the list generator `form`
+to carry a note saying so. `docs/design/TEMPLATE.0.md`,
+`docs/design/RENDER.0.md` and
+`docs/capability-review/g9-transformation.md` now carry it: those
+documents are frozen records and are not rewritten as the language
+moves, and a reader arriving at one has no other way to learn that
+`form` is `each` today and that the `each` they describe was retired
+first.
+
+
 ### Grammars: `abnf()` and `parse()`
 
 `re()` is deliberately small -- the portable pattern subset both
@@ -2615,7 +2763,7 @@ TypeScript handed every non-`.aon` file back as raw TEXT; Go parsed
 everything as Aontu source; `.json` crashed TypeScript with an
 unhandled internal error carrying no code, path or site.
 
-[ADR-012](ADR.md#adr-012) settles it with one table, and the table says
+[ADR-012](ADR.md#adr-012--an-includes-extension-decides-what-the-file-is-aontu-source-config-data-or-refused) settles it with one table, and the table says
 which of two things a file is. `.aon` and `.aontu` are **Aontu source**
 — the language, with everything in it. `.json`, `.jsonld`, `.jsonc`,
 `.json5`, `.jsonic`, `.jsc`, `.toml`, `.yaml`, `.yml` and `.ini` are
@@ -2703,7 +2851,7 @@ correctly.
 
 Both implementations. `a: *x` and `a: *x | super(x)` were two
 mechanisms that agreed on the common case and disagreed in six places.
-[ADR-011](ADR.md#adr-011) makes the long form the structure and the
+[ADR-011](ADR.md#adr-011--the-star-is-sugar-the-disjunction-is-the-structure) makes the long form the structure and the
 short form sugar for it, and the meet now distributes over the
 disjunction the star stands for:
 

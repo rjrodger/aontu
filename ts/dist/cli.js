@@ -70,7 +70,8 @@ const HELP = `Usage: aontu [options] [file]
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
                     [--stdout | --out <dir> | --check <dir> | --coverage]
                     [--coverage-at <path>] [--strict] <file>
-       aontu template [--resugar] [--check] [--marker <token>] <file>
+       aontu template [--resugar] [--check] [--marker <token>]
+                      [--profile <file>] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -78,7 +79,8 @@ const HELP = `Usage: aontu [options] [file]
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu allow --role <role> [--at <path>] <roles-file> <path>...
        aontu agentsmd [--write <AGENTS.md>] [--depth <n>] <file>
-       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
+       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>]
+                 [--profile <file>] <file>...
        aontu help [topic] [--format text|json]
        aontu explain <code> | --list [--format text|json]
        aontu init [dir]
@@ -343,8 +345,8 @@ does not stand up or the instance is not aontu:code.
 A render entry file whose extension is not .aon is a TEMPLATE: a
 generator in the target's own syntax, whose marker lines carry aontu
 and whose other lines are output. It is desugared before it is
-evaluated, and --marker names the marker for a language the table does
-not know.
+evaluated, and a language the table does not know names its marker with
+--marker, or declares it once in a profile file that --profile reads.
 
 Template options:
   --resugar       The file is the canonical aontu; print the template
@@ -352,7 +354,9 @@ Template options:
   --check         Desugar and resugar, and exit 1 if the file is not
                   what the round trip answers
   --marker <t>    The marker, when the extension does not name it
-                  (default //-, and #- --- /*- by extension)
+                  (default //-, and #- --- /*- <!--- by extension)
+  --profile <f>   A profile file, whose template.ext names the
+                  extensions it marks and template.marker the marker
 
 The template verb prints the canonical aontu form of a generator
 written in the target's own syntax: a marked line is aontu source, and
@@ -445,7 +449,9 @@ Fmt options:
                   shapes, on standard error, and print nothing else
   --strict        With --lint, and exit 1 when there is a finding
   --marker <t>    The file is a generator, and this is its marker
-                  (default //-, and #- --- /*- by extension)
+                  (default //-, and #- --- /*- <!--- by extension)
+  --profile <f>   A profile file, whose template.ext names the
+                  extensions it marks and template.marker the marker
 
 The fmt verb prints one document in the agreed form; with no file it
 reads standard input. Several files need one of the options above.
@@ -2651,33 +2657,14 @@ function runRender(argv) {
         process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
         return 2;
     }
-    if (!files[0].endsWith('.aon')) {
-        src = (0, template_1.desugarTemplate)(src, marker ?? (0, template_1.markerFor)(files[0]));
+    const loadedProfiles = loadProfiles(profileFiles, trust);
+    if ('number' === typeof loadedProfiles) {
+        return loadedProfiles;
     }
-    const profiles = [];
-    const langs = new Map();
-    for (const pf of profileFiles) {
-        let text;
-        try {
-            text = (0, node_fs_1.readFileSync)(pf, 'utf8');
-        }
-        catch (err) {
-            process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
-            return 2;
-        }
-        const loaded = (0, aontu_1.renderProfile)(text, { path: (0, node_path_1.resolve)(pf), ...verbOpts(trust, entryRootOf(pf)) });
-        if (undefined !== loaded.errors) {
-            process.stderr.write(loaded.errors.map(renderFinding).join('\n') + '\n');
-            return 4;
-        }
-        const profile = loaded.profile;
-        const prev = langs.get(profile.lang);
-        if (undefined !== prev) {
-            process.stderr.write(`aontu: two profiles claim ${profile.lang}: ${prev} and ${pf}\n`);
-            return 2;
-        }
-        langs.set(profile.lang, pf);
-        profiles.push(profile);
+    const profiles = loadedProfiles;
+    if (!files[0].endsWith('.aon')) {
+        src = (0, template_1.desugarTemplate)(src, marker ??
+            (0, template_1.markerFromProfiles)(profiles, files[0]) ?? (0, template_1.markerFor)(files[0]));
     }
     // A RENDER WITH NO PROFILE PRODUCES NO UNITS, and said so with zero
     // bytes and exit 0. The profile is what maps a model onto a
@@ -2819,10 +2806,17 @@ function renderExit(report, drift) {
 }
 const TEMPLATE_HELP = 'aontu template [--resugar] [--check] [--marker <token>] <file> (try --help)';
 function runTemplate(argv) {
+    const trusted = takeTrust(argv);
+    if (null == trusted) {
+        return 2;
+    }
+    argv = trusted.argv;
+    const trust = trusted.trust;
     const files = [];
     let resugar = false;
     let check = false;
     let marker = undefined;
+    const profileFiles = [];
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         if ('-h' === arg || '--help' === arg) {
@@ -2841,6 +2835,14 @@ function runTemplate(argv) {
                 process.stderr.write('aontu: --marker needs a token\n');
                 return 2;
             }
+        }
+        else if ('--profile' === arg) {
+            const pf = argv[++i];
+            if (null == pf) {
+                process.stderr.write('aontu: --profile needs a file\n');
+                return 2;
+            }
+            profileFiles.push(pf);
         }
         else if (arg.startsWith('-')) {
             process.stderr.write(`aontu: unknown template option ${arg} (try --help)\n`);
@@ -2866,7 +2868,12 @@ function runTemplate(argv) {
         process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
         return 2;
     }
-    const mark = marker ?? (0, template_1.markerFor)(files[0]);
+    const declared = loadProfiles(profileFiles, trust);
+    if ('number' === typeof declared) {
+        return declared;
+    }
+    const mark = marker ?? (0, template_1.markerFromProfiles)(declared, files[0]) ??
+        (0, template_1.markerFor)(files[0]);
     if (check) {
         const back = (0, template_1.resugarTemplate)((0, template_1.desugarTemplate)(src, mark), mark);
         if (back === src) {
@@ -2886,6 +2893,38 @@ function runTemplate(argv) {
     process.stdout.write(resugar ?
         (0, template_1.resugarTemplate)(src, mark) : (0, template_1.desugarTemplate)(src, mark));
     return 0;
+}
+// The profiles named by --profile, vetted, or the exit code that says
+// why not. A profile is a language declared as data: `render` matches
+// one to a unit by `lang`, and `template` and `fmt` match one to a file
+// by the extensions its `template.ext` names.
+function loadProfiles(profileFiles, trust) {
+    const profiles = [];
+    const langs = new Map();
+    for (const pf of profileFiles) {
+        let text;
+        try {
+            text = (0, node_fs_1.readFileSync)(pf, 'utf8');
+        }
+        catch (err) {
+            process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+            return 2;
+        }
+        const loaded = (0, aontu_1.renderProfile)(text, { path: (0, node_path_1.resolve)(pf), ...verbOpts(trust, entryRootOf(pf)) });
+        if (undefined !== loaded.errors) {
+            process.stderr.write(loaded.errors.map(renderFinding).join('\n') + '\n');
+            return 4;
+        }
+        const profile = loaded.profile;
+        const prev = langs.get(profile.lang);
+        if (undefined !== prev) {
+            process.stderr.write(`aontu: two profiles claim ${profile.lang}: ${prev} and ${pf}\n`);
+            return 2;
+        }
+        langs.set(profile.lang, pf);
+        profiles.push(profile);
+    }
+    return profiles;
 }
 const HASH_HELP = 'aontu hash <file> (try --help)';
 function runHash(argv) {
@@ -3501,9 +3540,17 @@ function runAgentsMd(argv) {
     process.stdout.write(`wrote: ${write}\n`);
     return 0;
 }
-const FMT_HELP = 'aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>... (try --help)';
+const FMT_HELP = 'aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] ' +
+    '[--profile <file>] <file>... (try --help)';
 function runFmt(argv) {
+    const trusted = takeTrust(argv);
+    if (null == trusted) {
+        return 2;
+    }
+    argv = trusted.argv;
+    const trust = trusted.trust;
     const files = [];
+    const profileFiles = [];
     let marker = undefined;
     const flags = {
         write: false, list: false, check: false, diff: false, lint: false, strict: false,
@@ -3543,6 +3590,14 @@ function runFmt(argv) {
                 return 2;
             }
         }
+        else if ('--profile' === arg) {
+            const pf = argv[++i];
+            if (null == pf) {
+                process.stderr.write('aontu: --profile needs a file\n');
+                return 2;
+            }
+            profileFiles.push(pf);
+        }
         else if (arg.startsWith('-')) {
             process.stderr.write(`aontu: unknown fmt option ${arg} (try --help)\n`);
             return 2;
@@ -3566,6 +3621,10 @@ function runFmt(argv) {
             process.stdin.on('end', () => resolve(fmtOne('<stdin>', src, flags, marker)));
         });
     }
+    const declared = loadProfiles(profileFiles, trust);
+    if ('number' === typeof declared) {
+        return declared;
+    }
     // Several files onto standard output would be one stream nobody can
     // split again (the note's X-6): the verb refuses unless an option
     // says what to do with each.
@@ -3584,12 +3643,12 @@ function runFmt(argv) {
             process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
             return 2;
         }
-        const mark = fmtMarker(file, src, marker);
+        const mark = fmtMarker(file, src, marker ?? (0, template_1.markerFromProfiles)(declared, file));
         if (false === mark) {
             process.stderr.write(`aontu: ${file} is not aontu source (.aon, .aontu) and carries no ` +
                 `${(0, template_1.markerFor)(file)} marker line, so there is no aontu in it to ` +
-                'format; --marker names the marker for a language the table does ' +
-                'not know\n');
+                'format; --marker names the marker for a language the table ' +
+                'does not know, and --profile reads one that declares it\n');
             return 2;
         }
         worst = Math.max(worst, fmtOne(file, src, flags, mark));

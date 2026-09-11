@@ -38,13 +38,19 @@ drift from the other:
 | Gate | Runs | Checks |
 |---|---|---|
 | `make prose` (Vale) | `.github/workflows/docs.yml` | spelling, Google's conventions, and the banned list, at the levels set in `.vale.ini` |
-| `ts/test/docs.test.ts` | `make test` | the banned list again, the no-em-dash rule, the first-person rules, the exclamation ration, no emoji, no internal-document citations, and that every code snippet executes |
+| `ts/test/docs.test.ts` | `make test` | the banned list again, the no-em-dash rule, the first-person rules, the exclamation ration, no emoji, no internal-document citations, that every code snippet executes, and that every internal markdown link resolves |
 
 The gated set is the reader-facing one: the Diátaxis pages, the how-to
 guides, the three contributor references that ship under `docs/`, the
 published use cases, and `README.md` and `ts/README.md`. Design
 notes, the capability review, the defect ledgers and the repro corpus are
 working documents, and they are out.
+
+**The link check reads more than the gated set.**
+`every-internal-link-resolves` takes every markdown file the repository
+tracks, working documents included, because a renamed heading breaks
+links from wherever they were written. It resolves each `](path#anchor)`
+against the target file's own headings, under GitHub's slug rules.
 
 **A Google rule sitting below error level was tried at error first and
 found wrong for these pages.** `.vale.ini` records what each produced on

@@ -420,9 +420,10 @@ const BUILTIN_FUNCS = [
   'each', 'emit', 'esc',
   'filter', 'greatest',
   'hide', 'inverse', 'join', 'key', 'least', 'length', 'list', 'lower',
-  'map', 'match', 'max', 'min', 'mod', 'move', 'mul', 'must', 'neq', 'open',
+  'map', 'match', 'max', 'maybe', 'min', 'mod', 'move', 'mul', 'must', 'neq',
+  'open',
   'pack', 'parse', 'path', 'pick',
-  'pref', 're', 'refer', 'rel', 'rem', 'rep', 'split', 'sub', 'sum',
+  'pref', 're', 'refer', 'rel', 'rem', 'rep', 'sort', 'split', 'sub', 'sum',
   'super', 'type', 'unique', 'upper', 'usc',
 ]
 
