@@ -1726,6 +1726,8 @@ function fmtFiles(...srcs) {
         Fs.writeFileSync(note, '<!--- x:[ -->\n# T\n<!--- ] -->\n');
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)([note]), 0)).out, '<!--- x: [ -->\n# T\n<!--- ] -->\n');
         Assert.match(vetCapture(() => Assert.equal((0, cli_1.runFmt)(['--profile']), 2)).err, /--profile needs a file/);
+        Assert.match(vetCapture(() => Assert.equal((0, cli_1.runFmt)(['--profile', Path.join(dir, 'no.aon'), unit]), 2)).err, /cannot read/);
+        vetCapture(() => Assert.equal((0, cli_1.runFmt)(['--trust', 'nonsense', unit]), 2));
     });
     (0, node_test_1.test)('fmt-list-check-diff', async () => {
         const f = fmtFiles('a:{b:1}\n', 'x: 1\n');
@@ -2169,6 +2171,7 @@ function fmtFiles(...srcs) {
         Assert.equal(templateCode(0, [Path.join(md, 'note.md')]).out, 'of: [\n`# T`\n]\n');
         Assert.match(templateCode(2, ['--profile']).err, /--profile needs a file/);
         Assert.match(templateCode(2, ['--profile', Path.join(dir, 'nope.aon'), unit]).err, /cannot read/);
+        templateCode(2, ['--trust', 'nonsense', unit]);
     });
     (0, node_test_1.test)('template-check-is-the-round-trip', () => {
         const dir = templateDir({ 'gen.ts': GEN });

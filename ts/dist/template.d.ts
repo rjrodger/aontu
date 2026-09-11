@@ -1,6 +1,6 @@
 declare const DEFAULT_MARKER = "//-";
 declare function markerFor(path: string): string;
-declare function markerFromProfiles(profiles: any[] | undefined, path: string): string | undefined;
+declare function markerFromProfiles(profiles: any[], path: string): string | undefined;
 declare function desugarTemplate(src: string, marker?: string): string;
 declare function resugarTemplate(src: string, marker?: string): string;
 declare function templateOutputs(src: string, marker: string): boolean[];

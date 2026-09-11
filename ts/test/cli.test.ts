@@ -2323,6 +2323,11 @@ describe('cli-fmt', () => {
     Assert.match(
       vetCapture(() => Assert.equal(runFmt(['--profile']), 2)).err,
       /--profile needs a file/)
+    Assert.match(
+      vetCapture(() => Assert.equal(
+        runFmt(['--profile', Path.join(dir, 'no.aon'), unit]), 2)).err,
+      /cannot read/)
+    vetCapture(() => Assert.equal(runFmt(['--trust', 'nonsense', unit]), 2))
   })
 
 
@@ -2851,6 +2856,7 @@ describe('cli-template', () => {
     Assert.match(
       templateCode(2, ['--profile', Path.join(dir, 'nope.aon'), unit]).err,
       /cannot read/)
+    templateCode(2, ['--trust', 'nonsense', unit])
   })
 
 

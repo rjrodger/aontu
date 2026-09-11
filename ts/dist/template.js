@@ -65,7 +65,7 @@ function markerFromProfiles(profiles, path) {
     if ('' === ext) {
         return undefined;
     }
-    for (const profile of profiles ?? []) {
+    for (const profile of profiles) {
         const tmpl = profile?.template;
         if (null == tmpl || !Array.isArray(tmpl.ext) || !tmpl.ext.includes(ext)) {
             continue;

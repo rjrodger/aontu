@@ -62,13 +62,13 @@ function markerFor(path: string): string {
 // What reaches a language the table has no entry for by FILENAME
 // rather than by a flag on every call.
 function markerFromProfiles(
-  profiles: any[] | undefined, path: string
+  profiles: any[], path: string
 ): string | undefined {
   const ext = extensionOf(path)
   if ('' === ext) {
     return undefined
   }
-  for (const profile of profiles ?? []) {
+  for (const profile of profiles) {
     const tmpl = profile?.template
     if (null == tmpl || !Array.isArray(tmpl.ext) || !tmpl.ext.includes(ext)) {
       continue
