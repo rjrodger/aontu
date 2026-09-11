@@ -28,7 +28,7 @@ rec: hide(pack(type($.schema), {
             boolean,
             { k:"prim" prim:"bool" },
             [],
-            { k:"list" of:{ k:"ref" name:"OrderLine" } },
+            { k:"list" n:{ k:"ref" name:"OrderLine" } },
             { k:"prim" prim:"any" }
           )
         }

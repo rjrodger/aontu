@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-const templateGen = "//- of: [\nexport const N = 1\n//- ]\n"
+const templateGen = "//- n: [\nexport const N = 1\n//- ]\n"
 
-const templateCanon = "of: [\n`export const N = 1`\n]\n"
+const templateCanon = "n: [\n`export const N = 1`\n]\n"
 
 func templateRun(args ...string) (string, string, int) {
 	var out, errw bytes.Buffer
@@ -53,15 +53,15 @@ func TestTemplatePrintsTheCanonicalFormAndResugarsIt(t *testing.T) {
 	// The marker comes from the extension, and --marker names one the
 	// table does not know.
 	hash := templateDir(t, map[string]string{
-		"gen.rb": "#- of: [\nputs 1\n#- ]\n"})
+		"gen.rb": "#- n: [\nputs 1\n#- ]\n"})
 	out, _, code = templateRun(filepath.Join(hash, "gen.rb"))
-	if 0 != code || "of: [\n`puts 1`\n]\n" != out {
+	if 0 != code || "n: [\n`puts 1`\n]\n" != out {
 		t.Fatalf("hash marker: code %d out %q", code, out)
 	}
 	odd := templateDir(t, map[string]string{
-		"gen.zz": ";;- of: [\nx\n;;- ]\n"})
+		"gen.zz": ";;- n: [\nx\n;;- ]\n"})
 	out, _, code = templateRun("--marker", ";;-", filepath.Join(odd, "gen.zz"))
-	if 0 != code || "of: [\n`x`\n]\n" != out {
+	if 0 != code || "n: [\n`x`\n]\n" != out {
 		t.Fatalf("--marker: code %d out %q", code, out)
 	}
 
@@ -80,7 +80,7 @@ func TestTemplateCheckIsTheRoundTrip(t *testing.T) {
 	}
 
 	bad := templateDir(t, map[string]string{
-		"gen.ts": "//- of: [\n  //- {\n//- ]\n"})
+		"gen.ts": "//- n: [\n  //- {\n//- ]\n"})
 	_, errw, code = templateRun("--check", filepath.Join(bad, "gen.ts"))
 	if 1 != code ||
 		!strings.Contains(errw, "gen.ts:2 is not what the round trip answers") ||
@@ -122,11 +122,11 @@ func TestRenderReadsATemplateEntryByItsExtension(t *testing.T) {
 	// syntax is an entry rather than a preprocessing step.
 	dir := templateDir(t, map[string]string{
 		"gen.ts": "//- aontu: Code: units: [{ path: \"a.txt\", lang: \"text\", decls: [{\n" +
-			"//- k: \"frag\", of: [\n" +
+			"//- k: \"frag\", n: [\n" +
 			"hello\n" +
 			"//- ]}] }]\n",
 		"gen.zz": ";;- aontu: Code: units: [{ path: \"a.txt\", lang: \"text\", decls: [{\n" +
-			";;- k: \"frag\", of: [\n" +
+			";;- k: \"frag\", n: [\n" +
 			"hello\n" +
 			";;- ]}] }]\n",
 	})
@@ -156,10 +156,10 @@ func TestFmtFormatsAGeneratorThroughTheTemplateSurface(t *testing.T) {
 	// output is held on a line of its own -- `puts 1` here, which the
 	// packing budget would otherwise put inside the list.
 	dir := templateDir(t, map[string]string{
-		"gen.rb": "#- of: [\nputs 1\n#- ]\n"})
+		"gen.rb": "#- n: [\nputs 1\n#- ]\n"})
 	file := filepath.Join(dir, "gen.rb")
 	out, errw, code := fmtRun("", file)
-	if 0 != code || "#- of: [\nputs 1\n#- ]\n" != out || "" != errw {
+	if 0 != code || "#- n: [\nputs 1\n#- ]\n" != out || "" != errw {
 		t.Fatalf("generator: code %d out %q err %q", code, out, errw)
 	}
 
@@ -217,9 +217,9 @@ aontu: render: Lang: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
 func TestTemplateTakesItsMarkerFromAProfile(t *testing.T) {
 	dir := templateDir(t, map[string]string{
 		"ocaml.aon": templateOcamlProfile,
-		"gen.ml":    "(*- of: [ *)\nlet a = 1\n(*- ] *)\n",
+		"gen.ml":    "(*- n: [ *)\nlet a = 1\n(*- ] *)\n",
 		"plain.aon": "@\"aontu:render\"\n\naontu: render: Lang: lang: \"plain\"\n",
-		"note.md":   "<!--- of: [ -->\n# T\n<!--- ] -->\n",
+		"note.md":   "<!--- n: [ -->\n# T\n<!--- ] -->\n",
 	})
 	profile := filepath.Join(dir, "ocaml.aon")
 	unit := filepath.Join(dir, "gen.ml")
@@ -227,7 +227,7 @@ func TestTemplateTakesItsMarkerFromAProfile(t *testing.T) {
 	// A CLOSER AFTER A SPACE reaches a block comment the table has
 	// never seen, and the round trip holds.
 	out, _, code := templateRun("--profile", profile, unit)
-	if 0 != code || "of: [\n`let a = 1`\n]\n" != out {
+	if 0 != code || "n: [\n`let a = 1`\n]\n" != out {
 		t.Fatalf("profile marker: %d %q", code, out)
 	}
 	if _, _, code = templateRun("--check", "--profile", profile, unit); 0 != code {
@@ -237,11 +237,11 @@ func TestTemplateTakesItsMarkerFromAProfile(t *testing.T) {
 	// A profile claiming no extension of this file leaves the table's
 	// answer in place, and the extension alone answers for markdown.
 	out, _, _ = templateRun("--profile", filepath.Join(dir, "plain.aon"), unit)
-	if "`(*- of: [ *)`\n`let a = 1`\n`(*- ] *)`\n" != out {
+	if "`(*- n: [ *)`\n`let a = 1`\n`(*- ] *)`\n" != out {
 		t.Fatalf("unclaimed extension: %q", out)
 	}
 	out, _, _ = templateRun(filepath.Join(dir, "note.md"))
-	if "of: [\n`# T`\n]\n" != out {
+	if "n: [\n`# T`\n]\n" != out {
 		t.Fatalf("markdown: %q", out)
 	}
 

@@ -1435,9 +1435,9 @@ aontu: Code: units: [
     decls: [
       {
         k: "frag"
-        of: [
+        n: [
           "def hello():"
-          { k:"line" at:1 of: ["print(\"" + $.greeting + "\")"] }
+          { k:"line" at:1 n: ["print(\"" + $.greeting + "\")"] }
         ]
       }
     ]
@@ -1669,7 +1669,7 @@ renderer does not try to.
 - `--unit <path>` renders only the unit with that path; a path no unit
   has is `render_unit`.
 - `--profile <file>` supplies a render profile: a document whose root
-  is `profile: {lang, indent, …}`, evaluated under the verb's trust and
+  is `aontu: render: Lang: {lang, indent, …}`, evaluated under the verb's trust and
   vetted against `aontu:render`; it applies to the units of its
   language, and a unit's own inline `profile` merges over it. The flag
   repeats, one file per language; two files claiming one language is a
@@ -2317,7 +2317,7 @@ Write a `greet.ts`:
 //- aontu: Code: units: emit($.svc, {
 //- match: { name: string }
 //- body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
-//- k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
+//- k: "frag", n: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
 export function greet() {
   console.log(`hello, NAME`)
 }
@@ -2345,7 +2345,7 @@ svc: $.who & pack($.who, { name: key() })
 aontu: Code: units: emit($.svc, {
 match: { name: string }
 body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
-k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
+k: "frag", n: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
 `export function greet() {`
 "  console.log(`hello, NAME`)"
 `}`
@@ -3102,7 +3102,7 @@ contract](trust.md)), in both implementations:
 ```ts
 const aontu = new Aontu({
   trust: {
-    // include capability, one of:
+    // include capability, one n:
     //   'none'              — @"…" always denied
     //   { mem: {...} }      — a virtual file set only
     //   { root: '/models' } — real files, realpath-confined below root;

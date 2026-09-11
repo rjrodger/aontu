@@ -13,15 +13,15 @@ import (
 )
 
 const renderTwoUnits = `aontu: Code: units: [
-  { path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x", { k: "line", at: 1, of: ["y"] }] }] }
-  { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", of: ["z"] }] }
+  { path: "a.txt", lang: "text", decls: [{ k: "frag", n: ["x", { k: "line", at: 1, n: ["y"] }] }] }
+  { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", n: ["z"] }] }
 ]
 `
 
 // A fragment is lossy only against a language whose declarations could
 // have been lowered instead, so go says what text does not.
 const renderGoFrag = `aontu: Code: units: [
-  { path: "a.go", lang: "go", decls: [{ k: "frag", of: ["x"] }] }
+  { path: "a.go", lang: "go", decls: [{ k: "frag", n: ["x"] }] }
 ]
 `
 
@@ -344,9 +344,9 @@ func TestRenderCoverage(t *testing.T) {
 	const doc = `services: { a: { pin: "p1" } }
 spare: { x: 1 }
 aontu: Code: units: [
-  { path: "a.txt", lang: "text", decls: [{ k: "frag", of:
+  { path: "a.txt", lang: "text", decls: [{ k: "frag", n:
     emit($.services, { match: { pin: string }, body: [.pin] }) }] }
-  { path: "b.txt", lang: "text", decls: [{ k: "frag", of: ["b"] }] }
+  { path: "b.txt", lang: "text", decls: [{ k: "frag", n: ["b"] }] }
 ]
 `
 	dir := renderDir(t, map[string]string{"doc.aon": doc})

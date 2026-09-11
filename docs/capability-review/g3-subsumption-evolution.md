@@ -266,7 +266,7 @@ structurally.
 
 `subsume(general, specific)` operates on two *evaluated* values (each
 freshly parsed and unified — single-use trees make this mandatory)
-and returns one of:
+and returns one n:
 
 - `subsumes` — every instance admitted by `specific` is admitted by
   `general`, under the selected profile;

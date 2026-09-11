@@ -7,6 +7,28 @@ which implementation each change affects.
 
 ## Unreleased
 
+### BREAKING: `aontu:code`'s `of` key is now `n`
+
+Every compound node in the output vocabulary carried its operand under
+`of` — the element type of a `list`, the value type of a `map`, a
+`union`'s alternatives, a `line`'s inline pieces, a `frag`'s pieces.
+The word read as a preposition rather than a name.
+
+It is now `n`, for the chunks it holds:
+
+```
+{ k:"list" n:%leaf }          { k:"union" n: [&: %leaf] }
+{ k:"map" key:%leaf n:%leaf } { k:"frag" n: [&: %piece] }
+```
+
+`k` (kind) and `c` (check) were not available — both are discriminator
+tags, and a duplicate key in aontu unifies rather than erroring, so
+either would have silently collapsed the operand into its own tag.
+
+*Both implementations.* A transform that writes `aontu:code` must be
+updated; the render report's piece paths move with it
+(`…decls.0.of.0` is `…decls.0.n.0`).
+
 ### `aontu fmt`: a colon before an opener keeps its space, and `|` is tight
 
 Two rules that pull in opposite directions for the same reason — a

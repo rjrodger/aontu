@@ -294,10 +294,10 @@ type emitOrigin struct {
 }
 
 // emitLit is one literal string of a body: element i, and within a map
-// element the `of` index (-1 when it is not one) or the `text` key.
+// element the `n` index (-1 when it is not one) or the `text` key.
 type emitLit struct {
 	i    int
-	of   int
+	n    int
 	text bool
 	s    string
 }
@@ -387,22 +387,22 @@ func emitLiterals(body *ListVal) []emitLit {
 	out := []emitLit{}
 	for i, el := range body.peg {
 		if s, ok := funcText(el); ok {
-			out = append(out, emitLit{i: i, of: -1, s: s})
+			out = append(out, emitLit{i: i, n: -1, s: s})
 			continue
 		}
 		m, ok := el.(*MapVal)
 		if !ok {
 			continue
 		}
-		if of, ok := m.peg["of"].(*ListVal); ok {
+		if of, ok := m.peg["n"].(*ListVal); ok {
 			for j, p := range of.peg {
 				if s, ok := funcText(p); ok {
-					out = append(out, emitLit{i: i, of: j, s: s})
+					out = append(out, emitLit{i: i, n: j, s: s})
 				}
 			}
 		}
 		if s, ok := funcText(m.peg["text"]); ok {
-			out = append(out, emitLit{i: i, of: -1, text: true, s: s})
+			out = append(out, emitLit{i: i, n: -1, text: true, s: s})
 		}
 	}
 	return out
@@ -816,10 +816,10 @@ func emitSubstituted(inst Val, i int, lits []emitLit, pairs []emitPair,
 		}
 		s := newString(emitSubstitute(l.s, pairs))
 		s.path = cp(slot)
-		if 0 <= l.of {
+		if 0 <= l.n {
 			m, _ := inst.(*MapVal)
-			of, _ := m.peg["of"].(*ListVal)
-			of.peg[l.of] = s
+			chunks, _ := m.peg["n"].(*ListVal)
+			chunks.peg[l.n] = s
 		} else if l.text {
 			m, _ := inst.(*MapVal)
 			m.peg["text"] = s

@@ -14,7 +14,7 @@ exports.lowerHeader = lowerHeader;
 exports.lowerDecl = lowerDecl;
 const exactjson_1 = require("./exactjson");
 function ln(at, text) {
-    return { k: 'line', at, of: [text] };
+    return { k: 'line', at, n: [text] };
 }
 const BLANK = { k: 'blank' };
 // --- identifiers -------------------------------------------------------
@@ -207,18 +207,18 @@ function typeExpr(t, ctx, path) {
     }
     if ('list' === k) {
         const f = form(ctx, 'list');
-        return { text: f.open + under(typeExpr(t.of, ctx, path + '.of'), f) + f.close, prec: f.prec };
+        return { text: f.open + under(typeExpr(t.n, ctx, path + '.n'), f) + f.close, prec: f.prec };
     }
     if ('map' === k) {
         const f = form(ctx, 'map');
         const key = under(typeExpr(t.key, ctx, path + '.key'), f);
-        const of = under(typeExpr(t.of, ctx, path + '.of'), f);
+        const of = under(typeExpr(t.n, ctx, path + '.n'), f);
         const sep = 'go' === ctx.family ? ']' : ', ';
         return { text: f.open + key + sep + of + f.close, prec: f.prec };
     }
     if ('opt' === k) {
         const f = form(ctx, 'opt');
-        return { text: f.open + under(typeExpr(t.of, ctx, path + '.of'), f) + f.close, prec: f.prec };
+        return { text: f.open + under(typeExpr(t.n, ctx, path + '.n'), f) + f.close, prec: f.prec };
     }
     if ('union' === k) {
         if ('go' === ctx.family) {
@@ -226,17 +226,17 @@ function typeExpr(t, ctx, path) {
             return { text: prim(ctx, 'any'), prec: 9 };
         }
         const f = form(ctx, 'union');
-        const members = t.of.map((m, i) => under(typeExpr(m, ctx, path + '.of.' + i), f));
+        const members = t.n.map((m, i) => under(typeExpr(m, ctx, path + '.n.' + i), f));
         return { text: f.open + members.join(' | ') + f.close, prec: f.prec };
     }
     // lit
     if ('go' === ctx.family) {
-        const p = litPrim(t.of);
+        const p = litPrim(t.n);
         loss(ctx, path, 'lit', 'go has no literal type: ' + p);
         return { text: prim(ctx, p), prec: 9 };
     }
     const f = form(ctx, 'lit');
-    const lits = t.of.map((v) => literal(v, ctx));
+    const lits = t.n.map((v) => literal(v, ctx));
     return { text: f.open + lits.join(' | ') + f.close, prec: f.prec };
 }
 // --- comments ----------------------------------------------------------
@@ -313,7 +313,7 @@ function derivedImports(unit) {
             }
             return;
         }
-        for (const key of ['type', 'of', 'key', 'returns', 'fields', 'params']) {
+        for (const key of ['type', 'n', 'key', 'returns', 'fields', 'params']) {
             visit(t[key]);
         }
     };
@@ -508,7 +508,7 @@ function lowerDecl(decl, path, ctx) {
             out.push(ln(1, 'panic(' + quote('abstract', ctx.profile) + ')'));
         }
         else {
-            out.push(...nest(decl.body.of));
+            out.push(...nest(decl.body.n));
         }
         out.push('}');
     }
@@ -519,7 +519,7 @@ function lowerDecl(decl, path, ctx) {
         }
         else {
             out.push('export function ' + name + '(' + sig + ')' + ret + ' {');
-            out.push(...nest(decl.body.of));
+            out.push(...nest(decl.body.n));
             out.push('}');
         }
     }

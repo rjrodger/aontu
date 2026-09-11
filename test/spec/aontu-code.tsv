@@ -30,7 +30,7 @@
 #
 # Every expectation was obtained by running BOTH engines and diffing.
 vocabulary-is-served	gens	@"aontu:code"\nx: 1	{"aontu":{"Code":{"units":[]}},"x":1}
-shapes-hash	hash	@"aontu:code"\nshapes: { unit: %unit, decl: %decl, type: %type, check: %check, piece: %piece, field: %field, source: %source }	aon1-fDN8JSxV5BCsOZkBLqdJWSq_caw5ov-QbuWI0QompMc
+shapes-hash	hash	@"aontu:code"\nshapes: { unit: %unit, decl: %decl, type: %type, check: %check, piece: %piece, field: %field, source: %source }	aon1-cZXgVaE-_mR_8bIYGNA8opyFNUtxP20_nsRDB1AOZ9E
 #
 # A UNIT: a path, a language, its declarations; an inline profile
 # override rides on it (RENDER.0.md D4, D5).
@@ -43,12 +43,12 @@ unit-lang-empty-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", la
 # bare string is a line at depth 0. No inline piece holds a line
 # terminator -- the renderer's totality invariant, checked HERE, at the
 # node, before any renderer runs.
-frag-valid	gens	@"aontu:code"\naontu: Code: units: [{ path: "a.py", lang: "python", decls: [{ k: "frag", of: ["class Planet:", { k: "line", at: 1, of: ["name = ", { k: "ref", name: "Name" }] }, { k: "blank" }, { k: "raw", at: 1, text: "def f():\\n    pass", reindent: false }] }] }]	{"aontu":{"Code":{"units":[{"decls":[{"k":"frag","of":["class Planet:",{"at":1,"k":"line","of":["name = ",{"k":"ref","name":"Name"}]},{"k":"blank","n":1},{"at":1,"k":"raw","reindent":false,"text":"def f():\\n    pass"}]}],"lang":"python","path":"a.py"}]}}}
-frag-string-newline-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: ["ok", "bad\\nline"] }] }]	empty
-frag-inline-newline-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "line", of: ["bad\\nline"] }] }] }]	empty
-frag-at-negative-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "line", at: -1, of: ["x"] }] }] }]	empty
-frag-at-over-bound-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "line", at: 65, of: ["x"] }] }] }]	empty
-frag-blank-zero-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "blank", n: 0 }] }] }]	empty
+frag-valid	gens	@"aontu:code"\naontu: Code: units: [{ path: "a.py", lang: "python", decls: [{ k: "frag", n: ["class Planet:", { k: "line", at: 1, n: ["name = ", { k: "ref", name: "Name" }] }, { k: "blank" }, { k: "raw", at: 1, text: "def f():\\n    pass", reindent: false }] }] }]	{"aontu":{"Code":{"units":[{"decls":[{"k":"frag","n":["class Planet:",{"at":1,"k":"line","n":["name = ",{"k":"ref","name":"Name"}]},{"k":"blank","n":1},{"at":1,"k":"raw","reindent":false,"text":"def f():\\n    pass"}]}],"lang":"python","path":"a.py"}]}}}
+frag-string-newline-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", n: ["ok", "bad\\nline"] }] }]	empty
+frag-inline-newline-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", n: [{ k: "line", n: ["bad\\nline"] }] }] }]	empty
+frag-at-negative-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", n: [{ k: "line", at: -1, n: ["x"] }] }] }]	empty
+frag-at-over-bound-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", n: [{ k: "line", at: 65, n: ["x"] }] }] }]	empty
+frag-blank-zero-refused	errc	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "frag", n: [{ k: "blank", n: 0 }] }] }]	empty
 #
 # THE DECLARATIONS, and the spelling rules the design found by probe.
 record-valid	gens	@"aontu:code"\naontu: Code: units: [{ path: "ts/domain.ts", lang: "typescript", decls: [{ k: "record", name: "Customer", fields: [{ name: "id", type: { k: "prim", prim: "string" } }, { name: "email", type: { k: "prim", prim: "string" }, optional: true }] }] }]	{"aontu":{"Code":{"units":[{"decls":[{"fields":[{"name":"id","optional":false,"type":{"k":"prim","prim":"string"}},{"name":"email","optional":true,"type":{"k":"prim","prim":"string"}}],"k":"record","name":"Customer","open":false}],"lang":"typescript","path":"ts/domain.ts"}]}}}
@@ -63,4 +63,4 @@ source-hash-not-a-pin-refused	errc	@"aontu:code"\naontu: Code: { source: { hash:
 # CONTAINER TYPES TAKE LEAVES ONLY. Both engines refuse the nested
 # list at the declaration; the CODES differ (TypeScript `|:trial-nil`,
 # Go `empty` -- use-cases/BUGS.md §80), so the row pins the path.
-container-nested-refused	err	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T", type: { k: "list", of: { k: "list", of: { k: "prim", prim: "int" } } } }] }]	at path $.aontu.Code.units.0.decls.0
+container-nested-refused	err	@"aontu:code"\naontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T", type: { k: "list", n: { k: "list", n: { k: "prim", prim: "int" } } } }] }]	at path $.aontu.Code.units.0.decls.0

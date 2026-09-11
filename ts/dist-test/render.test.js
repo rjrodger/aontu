@@ -72,8 +72,8 @@ const render_1 = require("../dist/render");
                     units: [{
                             path: 'a.txt', lang: 'text',
                             decls: [{
-                                    k: 'frag', of: [
-                                        { k: 'line', of: ['x'] },
+                                    k: 'frag', n: [
+                                        { k: 'line', n: ['x'] },
                                         { k: 'blank' },
                                         { k: 'raw', text: 'y\n' },
                                     ]

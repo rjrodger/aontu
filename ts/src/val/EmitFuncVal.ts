@@ -38,8 +38,8 @@ type Template = {
 
 
 // One literal string of a body: element `i`, and within a map element
-// the `of` index or the `text` key, with the text itself.
-type LitSpot = { i: number, of?: number, text?: boolean, s: string }
+// the `n` index or the `text` key, with the text itself.
+type LitSpot = { i: number, n?: number, text?: boolean, s: string }
 
 
 // What is wrong with a table, with the detail the message carries.
@@ -144,12 +144,12 @@ function literalSpots(elems: Val[]): LitSpot[] {
     if (true !== el?.isMap) {
       return
     }
-    const of: any = el.peg.of
-    if (true === of?.isList) {
-      (of.peg as any[]).forEach((p: any, j: number) => {
+    const chunks: any = el.peg.n
+    if (true === chunks?.isList) {
+      (chunks.peg as any[]).forEach((p: any, j: number) => {
         const ps = textOf(p)
         if (undefined !== ps) {
-          out.push({ i, of: j, s: ps })
+          out.push({ i, n: j, s: ps })
         }
       })
     }
@@ -206,8 +206,8 @@ function substituted(
       continue
     }
     const sv = new StringVal({ peg: substitute(l.s, pairs) }, ctx)
-    if (undefined !== l.of) {
-      (inst as any).peg.of.peg[l.of] = sv
+    if (undefined !== l.n) {
+      (inst as any).peg.n.peg[l.n] = sv
     }
     else if (true === l.text) {
       (inst as any).peg.text = sv

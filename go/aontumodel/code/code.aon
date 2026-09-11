@@ -18,7 +18,7 @@
   | close({ c:"re" p:string })
   | close({ c:"len" min?:integer & min(0) max?:integer & min(0) })
   | close({ c:"unique" key?:%name })
-  | close({ c:"ne" of: [&: string|number|boolean] })
+  | close({ c:"ne" n: [&: string|number|boolean] })
   | close({ c:"must" note:string })
 
 %prim = close({
@@ -30,11 +30,11 @@
 %leaf = %prim|%ref|%text
 
 %type = %leaf
-  | close({ k:"list" of:%leaf })
-  | close({ k:"map" key:%leaf of:%leaf })
-  | close({ k:"opt" of:%leaf })
-  | close({ k:"union" of: [&: %leaf] })
-  | close({ k:"lit" of: [&: string|number|boolean|null] })
+  | close({ k:"list" n:%leaf })
+  | close({ k:"map" key:%leaf n:%leaf })
+  | close({ k:"opt" n:%leaf })
+  | close({ k:"union" n: [&: %leaf] })
+  | close({ k:"lit" n: [&: string|number|boolean|null] })
 
 %field = close({
   name: %name
@@ -60,7 +60,7 @@
 # blank is its terminators alone; a raw is the one piece that may carry
 # terminators, re-indented to its depth unless it says not to.
 %inline = string & re("^[^\n\r]*$")|%ref
-%line = close({ k:"line" at: *0|integer & min(0) & max(64) of: [&: %inline] })
+%line = close({ k:"line" at: *0|integer & min(0) & max(64) n: [&: %inline] })
 %blank = close({ k:"blank" n: *1|integer & min(1) & max(16) })
 
 %raw = close({
@@ -71,7 +71,7 @@
 })
 
 %piece = %line|%blank|%raw|string & re("^[^\n\r]*$")
-%frag = close({ k:"frag" of: [&: %piece] })
+%frag = close({ k:"frag" n: [&: %piece] })
 %body = %frag|close({ k:"abstract" })
 
 %record = close({

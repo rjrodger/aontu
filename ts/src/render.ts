@@ -391,7 +391,7 @@ function foldPiece(
     return line(profile, 0, piece)
   }
   if ('line' === piece.k) {
-    return line(profile, piece.at ?? 0, piece.of.map((p: any) => inline(p, ctx)).join(''))
+    return line(profile, piece.at ?? 0, piece.n.map((p: any) => inline(p, ctx)).join(''))
   }
   if ('blank' === piece.k) {
     return '\n'.repeat(piece.n ?? 1)
@@ -518,8 +518,8 @@ export function renderValue(instance: any, options?: RenderOptions): RenderRepor
             reason: 'a fragment says nothing about ' + lang + ' syntax',
           })
         }
-        decl.of.forEach((piece: any, n: number) => {
-          text += foldPiece(piece, profile, path, dpath + '.of.' + n, lossy, ctx)
+        decl.n.forEach((piece: any, n: number) => {
+          text += foldPiece(piece, profile, path, dpath + '.n.' + n, lossy, ctx)
         })
       }
       else if ('text' === decl.k) {

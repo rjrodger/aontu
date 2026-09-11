@@ -566,7 +566,7 @@ describe('mcp', () => {
   test('render-tool-renders-and-never-writes', () => {
     const r = payload(callTool('render', {
       source: 'aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", ' +
-        'of: ["x", { k: "line", at: 1, of: ["y"] }] }] }]\n',
+        'n: ["x", { k: "line", at: 1, n: ["y"] }] }] }]\n',
     }))
     Assert.equal(r.verdict, 'ok')
     Assert.deepEqual(r.units, [{ path: 'a.txt', lang: 'text', text: 'x\n  y\n' }])
@@ -576,7 +576,7 @@ describe('mcp', () => {
     // A fragment is lossy against a language with a lowering.
     const lossy = payload(callTool('render', {
       source: 'aontu: Code: units: [{ path: "a.go", lang: "go", decls: [{ k: "frag", ' +
-        'of: ["x"] }] }]\n',
+        'n: ["x"] }] }]\n',
     }))
     Assert.equal(lossy.verdict, 'lossy')
     Assert.equal(lossy.lossy[0].tier, 2)
@@ -609,7 +609,7 @@ describe('mcp', () => {
     const root = scratchDir('aontu-mcp-render-root-')
     const out = payload(callTool('render', {
       source: 'aontu: Code: units: [{ path: "canary.txt", lang: "text", ' +
-        'decls: [{ k: "frag", of: ["x"] }] }]\n',
+        'decls: [{ k: "frag", n: ["x"] }] }]\n',
     }, { root }))
     Assert.equal(out.units[0].path, 'canary.txt')
     Assert.equal(Fs.existsSync(Path.join(root, 'canary.txt')), false)

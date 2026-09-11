@@ -164,7 +164,7 @@ emit-replace-esc-unknown	errc	o:emit([{p:x}],{match:{},esc:pascal,replace:{P:.p}
 emit-replace-no-rescan	gens	o:emit([{}],{match:{},replace:{A:"B",B:"c"},body:["A B"]})\n	{"o":["B c"]}
 emit-replace-spliced-untouched	gens	o:emit([{x:1,c:[{y:2}]}],{match:{},replace:{X:.x},body:["X",emit(.c,{match:{},body:["X Y"]}),"X"]})\n	{"o":["1","X Y","1"]}
 emit-replace-nested-has-own	gens	o:emit([{x:1,c:[{y:2}]}],{match:{},replace:{X:.x},body:["X",emit(.c,{match:{},replace:{Y:.y},body:["X Y"]})]})\n	{"o":["1","X 2"]}
-emit-replace-in-piece-map	gens	o:emit([{p:z}],{match:{},replace:{P:.p},body:[{k:line,at:1,of:["x P",.p]},{k:raw,text:"P raw"}]})\n	{"o":[{"at":1,"k":"line","of":["x z","z"]},{"k":"raw","text":"z raw"}]}
+emit-replace-in-piece-map	gens	o:emit([{p:z}],{match:{},replace:{P:.p},body:[{k:line,at:1,n:["x P",.p]},{k:raw,text:"P raw"}]})\n	{"o":[{"at":1,"k":"line","n":["x z","z"]},{"k":"raw","text":"z raw"}]}
 emit-replace-expression-untouched	gens	o:emit([{p:z}],{match:{},replace:{P:.p},body:["P","P"+"P"]})\n	{"o":["z","PP"]}
 # THE TWO STATIC CHECKS, on the template alone and before any node: a
 # key inside another (replace_overlap), a key no literal holds

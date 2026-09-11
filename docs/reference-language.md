@@ -2441,7 +2441,7 @@ $ echo 'b: maybe($.x)  x: 1' | aontu -c
 
 **It cannot make a containing map vanish.** Absence travels through a
 call and out of a list element, not out of a map that still has other
-keys: `{k:"frag", of: emit(maybe($.tags), t)}` drops `of` and keeps a
+keys: `{k:"frag", n: emit(maybe($.tags), t)}` drops `of` and keeps a
 `{k:"frag"}` behind. Write the whole element as the optional thing, not
 one of its fields.
 
@@ -3146,7 +3146,7 @@ source name is not a path. Write this as `models.aon`:
 @"aontu:code"
 
 aontu: Code: units: [
-  { path:"hello.py" lang:"python" decls: [{ k:"frag" of: ["print('hello')"] }] }
+  { path:"hello.py" lang:"python" decls: [{ k:"frag" n: ["print('hello')"] }] }
 ]
 ```
 
@@ -3161,7 +3161,7 @@ $ aontu models.aon
           "decls": [
             {
               "k": "frag",
-              "of": [
+              "n": [
                 "print('hello')"
               ]
             }

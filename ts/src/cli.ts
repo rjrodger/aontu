@@ -336,8 +336,9 @@ up on its own, or a relation, root or path that names nothing.
 Render options:
   --at <path>       Render the value at this path ($.a.b); the root by
                     default
-  --profile <file>  A profile document, profile: {lang, ...}, vetted
-                    against aontu:render; repeatable, one per language
+  --profile <file>  A profile document, aontu: render: Lang: {lang,
+                    ...}, vetted against aontu:render; repeatable,
+                    one per language
   --unit <path>     Render only the unit with this path
   --stdout          One unit's bytes and nothing else (with --unit when
                     the instance has several)

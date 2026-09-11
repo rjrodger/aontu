@@ -42,7 +42,7 @@ A generator is a **rule set**: `emit(select, table)` visits every node
 of a selection in source order, takes the first template whose `match`
 the node unifies with, and instantiates its `body` against that
 node: `.name` is that node's `name`. The body is a list of **pieces**: a
-bare string is a line, `{ k:"line" at:1 of:[…] }` is a line one level
+bare string is a line, `{ k:"line" at:1 n:[…] }` is a line one level
 deeper, and `k:"blank"` is a blank line. A nested `emit` splices its
 pieces into the list, so the result is flat and every piece carries its
 own depth.
@@ -67,7 +67,7 @@ records: [
     {
       k: "line"
       at: 1
-      of: [
+      n: [
         .go + " " + match(.t, "string", "string", "integer", "int64")
         + ` \`json:"` + .n + `"\``
       ]
@@ -86,8 +86,8 @@ aontu: Code: units: [
     lang: "go"
     profile: indent: { unit:"\t" width:1 }
     decls: [
-      { k:"frag" of: ["package acme"] }
-      { k:"frag" of:emit($.records, %record) }
+      { k:"frag" n: ["package acme"] }
+      { k:"frag" n:emit($.records, %record) }
     ]
   }
 ]
@@ -223,7 +223,7 @@ and the generator as `struct.go`:
 //- @"./model.aon"
 //- aontu: Code: units: emit($.records, {
 //- match: { name: string }
-//- body: [{ path: .name + ".go", lang: "go", decls: [{ k: "frag", of: emit([_], {
+//- body: [{ path: .name + ".go", lang: "go", decls: [{ k: "frag", n: emit([_], {
 //- match: { name: string }
 //- replace: { NAME: .name, NOTE: .note }
 //- body: [

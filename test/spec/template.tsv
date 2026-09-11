@@ -35,8 +35,8 @@
 template-marked-line-is-aontu	template	//- a: 1\n	{"back":"//- a: 1\\n","out":"a: 1\\n"}
 template-unmarked-line-is-output	template	hello\n	{"back":"hello\\n","out":"`hello`\\n"}
 template-the-two-interleave	template	//- x: [\none\ntwo\n//- ]\n	{"back":"//- x: [\\none\\ntwo\\n//- ]\\n","out":"x: [\\n`one`\\n`two`\\n]\\n"}
-template-a-generator-in-full	template	//- svc: { a: { n: "one" } }\n//- aontu: Code: units: [{ path: "a.ts", lang: "typescript", decls: [{\n//- k: "frag", of: emit($.svc, { match: { n: string }, body: [\nexport const N = 1\n//- ]}) }] }]\n	{"back":"//- svc: { a: { n: \\"one\\" } }\\n//- aontu: Code: units: [{ path: \\"a.ts\\", lang: \\"typescript\\", decls: [{\\n//- k: \\"frag\\", of: emit($.svc, { match: { n: string }, body: [\\nexport const N = 1\\n//- ]}) }] }]\\n","out":"svc: { a: { n: \\"one\\" } }\\naontu: Code: units: [{ path: \\"a.ts\\", lang: \\"typescript\\", decls: [{\\nk: \\"frag\\", of: emit($.svc, { match: { n: string }, body: [\\n`export const N = 1`\\n]}) }] }]\\n"}
-template-marker-keeps-its-indentation	template	//- of: [\n  //- emit(.x, {\n  line\n  //- })\n//- ]\n	{"back":"//- of: [\\n//-   emit(.x, {\\n  line\\n//-   })\\n//- ]\\n","out":"of: [\\n  emit(.x, {\\n`  line`\\n  })\\n]\\n"}
+template-a-generator-in-full	template	//- svc: { a: { n: "one" } }\n//- aontu: Code: units: [{ path: "a.ts", lang: "typescript", decls: [{\n//- k: "frag", n: emit($.svc, { match: { n: string }, body: [\nexport const N = 1\n//- ]}) }] }]\n	{"back":"//- svc: { a: { n: \\"one\\" } }\\n//- aontu: Code: units: [{ path: \\"a.ts\\", lang: \\"typescript\\", decls: [{\\n//- k: \\"frag\\", n: emit($.svc, { match: { n: string }, body: [\\nexport const N = 1\\n//- ]}) }] }]\\n","out":"svc: { a: { n: \\"one\\" } }\\naontu: Code: units: [{ path: \\"a.ts\\", lang: \\"typescript\\", decls: [{\\nk: \\"frag\\", n: emit($.svc, { match: { n: string }, body: [\\n`export const N = 1`\\n]}) }] }]\\n"}
+template-marker-keeps-its-indentation	template	//- n: [\n  //- emit(.x, {\n  line\n  //- })\n//- ]\n	{"back":"//- n: [\\n//-   emit(.x, {\\n  line\\n//-   })\\n//- ]\\n","out":"n: [\\n  emit(.x, {\\n`  line`\\n  })\\n]\\n"}
 template-marker-is-found-after-whitespace	template	\t//- a: 1\n	{"back":"//- \\ta: 1\\n","out":"\\ta: 1\\n"}
 template-a-hash-marker	template	#- a: 1\nprint("hi")\n	{"ask":{"marker":"#-"},"back":"#- a: 1\\nprint(\\"hi\\")\\n","out":"a: 1\\n`print(\\"hi\\")`\\n"}
 template-a-dash-marker	template	--- a: 1\nSELECT 1;\n	{"ask":{"marker":"---"},"back":"--- a: 1\\nSELECT 1;\\n","out":"a: 1\\n`SELECT 1;`\\n"}
@@ -49,20 +49,20 @@ template-a-line-takes-the-raw-quote	template	const s = "double" + 'single'\n	{"b
 template-a-line-holding-a-backtick-takes-the-other	template	log(`ready ${n}`)\n	{"back":"log(`ready ${n}`)\\n","out":"\\"log(`ready ${n}`)\\"\\n"}
 template-a-backslash-is-escaped-in-either-quote	template	const re = "a\\nb"\nlog(`x`) // a\\t\n	{"back":"const re = \\"a\\\\nb\\"\\nlog(`x`) // a\\\\t\\n","out":"`const re = \\"a\\\\\\\\nb\\"`\\n\\"log(`x`) // a\\\\\\\\t\\"\\n"}
 template-a-line-holding-both-quotes	template	const s = `a` + "b"\n	{"back":"const s = `a` + \\"b\\"\\n","out":"\\"const s = `a` + \\\\\\"b\\\\\\"\\"\\n"}
-template-a-blank-line-is-a-blank-line-of-output	template	//- of: [\n\n//- ]\n	{"back":"//- of: [\\n\\n//- ]\\n","out":"of: [\\n``\\n]\\n"}
-template-trailing-whitespace-survives	template	//- of: [\n  \n//- ]\n	{"back":"//- of: [\\n  \\n//- ]\\n","out":"of: [\\n`  `\\n]\\n"}
+template-a-blank-line-is-a-blank-line-of-output	template	//- n: [\n\n//- ]\n	{"back":"//- n: [\\n\\n//- ]\\n","out":"n: [\\n``\\n]\\n"}
+template-trailing-whitespace-survives	template	//- n: [\n  \n//- ]\n	{"back":"//- n: [\\n  \\n//- ]\\n","out":"n: [\\n`  `\\n]\\n"}
 template-a-line-of-one-tab-survives	template	\t\n	{"back":"\\t\\n","out":"`\\t`\\n"}
 template-a-file-with-no-trailing-newline	template	x	{"back":"x","out":"`x`"}
 template-an-empty-file	template		{"back":"","out":"``"}
 template-the-residual-escape-stays-a-marker-line	template	//- `//- not a marker`\n	{"back":"//- `//- not a marker`\\n","out":"`//- not a marker`\\n"}
 template-an-indented-residual-escape	template	//- `  //- not a marker`\n	{"back":"//- `  //- not a marker`\\n","out":"`  //- not a marker`\\n"}
-template-a-quoted-aontu-value-is-a-body-line	template	//- of: [\n//- "a value"\n//- ]\n	{"back":"//- of: [\\n//- \\"a value\\"\\n//- ]\\n","out":"of: [\\n\\"a value\\"\\n]\\n"}
-template-an-escape-the-quoting-never-writes	template	//- of: [\n//- "a\\tb"\n//- ]\n	{"back":"//- of: [\\n//- \\"a\\\\tb\\"\\n//- ]\\n","out":"of: [\\n\\"a\\\\tb\\"\\n]\\n"}
-template-a-line-that-is-not-a-lone-string	template	//- of: [\n//- "a" + "b"\n//- ]\n	{"back":"//- of: [\\n//- \\"a\\" + \\"b\\"\\n//- ]\\n","out":"of: [\\n\\"a\\" + \\"b\\"\\n]\\n"}
-template-a-trailing-lone-backslash-is-not-a-body-line	template	//- of: [\n//- `a\\`\n//- ]\n	{"back":"//- of: [\\n//- `a\\\\`\\n//- ]\\n","out":"of: [\\n`a\\\\`\\n]\\n"}
-template-an-unterminated-string-is-aontu	template	//- of: [\n//- "half\n//- ]\n	{"back":"//- of: [\\n//- \\"half\\n//- ]\\n","out":"of: [\\n\\"half\\n]\\n"}
+template-a-quoted-aontu-value-is-a-body-line	template	//- n: [\n//- "a value"\n//- ]\n	{"back":"//- n: [\\n//- \\"a value\\"\\n//- ]\\n","out":"n: [\\n\\"a value\\"\\n]\\n"}
+template-an-escape-the-quoting-never-writes	template	//- n: [\n//- "a\\tb"\n//- ]\n	{"back":"//- n: [\\n//- \\"a\\\\tb\\"\\n//- ]\\n","out":"n: [\\n\\"a\\\\tb\\"\\n]\\n"}
+template-a-line-that-is-not-a-lone-string	template	//- n: [\n//- "a" + "b"\n//- ]\n	{"back":"//- n: [\\n//- \\"a\\" + \\"b\\"\\n//- ]\\n","out":"n: [\\n\\"a\\" + \\"b\\"\\n]\\n"}
+template-a-trailing-lone-backslash-is-not-a-body-line	template	//- n: [\n//- `a\\`\n//- ]\n	{"back":"//- n: [\\n//- `a\\\\`\\n//- ]\\n","out":"n: [\\n`a\\\\`\\n]\\n"}
+template-an-unterminated-string-is-aontu	template	//- n: [\n//- "half\n//- ]\n	{"back":"//- n: [\\n//- \\"half\\n//- ]\\n","out":"n: [\\n\\"half\\n]\\n"}
 template-a-marker-later-in-a-line-is-output	template	const s = "//- not a marker"\n	{"back":"const s = \\"//- not a marker\\"\\n","out":"`const s = \\"//- not a marker\\"`\\n"}
-template-the-marker-token-alone-on-a-line	template	//- of: [\nx //-\n//- ]\n	{"back":"//- of: [\\nx //-\\n//- ]\\n","out":"of: [\\n`x //-`\\n]\\n"}
+template-the-marker-token-alone-on-a-line	template	//- n: [\nx //-\n//- ]\n	{"back":"//- n: [\\nx //-\\n//- ]\\n","out":"n: [\\n`x //-`\\n]\\n"}
 
 # THE BLOCK FORM IS NOT ONLY C'S. A marker's closer is implied for the
 # C and HTML comment openers and named otherwise: a comment opener
@@ -70,5 +70,5 @@ template-the-marker-token-alone-on-a-line	template	//- of: [\nx //-\n//- ]\n	{"b
 # is what makes a language the table does not know reachable from
 # `--marker` alone, and what lets a profile declare one as data.
 template-a-markdown-marker	template	<!--- a: 1 -->\n# Title\n	{"ask":{"marker":"<!---"},"back":"<!--- a: 1 -->\\n# Title\\n","out":"a: 1\\n`# Title`\\n"}
-template-markdown-keeps-its-indentation	template	<!--- of: [ -->\n  <!--- emit(.x, { -->\n  line\n  <!--- }) -->\n<!--- ] -->\n	{"ask":{"marker":"<!---"},"back":"<!--- of: [ -->\\n<!---   emit(.x, { -->\\n  line\\n<!---   }) -->\\n<!--- ] -->\\n","out":"of: [\\n  emit(.x, {\\n`  line`\\n  })\\n]\\n"}
+template-markdown-keeps-its-indentation	template	<!--- n: [ -->\n  <!--- emit(.x, { -->\n  line\n  <!--- }) -->\n<!--- ] -->\n	{"ask":{"marker":"<!---"},"back":"<!--- n: [ -->\\n<!---   emit(.x, { -->\\n  line\\n<!---   }) -->\\n<!--- ] -->\\n","out":"n: [\\n  emit(.x, {\\n`  line`\\n  })\\n]\\n"}
 template-a-marker-names-its-closer	template	(*- a: 1 *)\nout\n	{"ask":{"marker":"(*- *)"},"back":"(*- a: 1 *)\\nout\\n","out":"a: 1\\n`out`\\n"}

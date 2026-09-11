@@ -53,7 +53,7 @@ The relationship rule selects entities that declare a parent:
 
 <!-- source: ../gen/erd.mmd -->
 ```mermaid-source
-%%-         of: emit(filter($.entity, { parent:string }), {
+%%-         n: emit(filter($.entity, { parent:string }), {
 %%-           match: parent: string
 %%-           replace: {
 %%-             OWNER: upper(.parent_class)

@@ -47,7 +47,7 @@ function ctx(family, profile) {
     });
     (0, node_test_1.test)('a-literal-set-in-go-takes-the-shared-primitive', () => {
         const go = ctx('go', {});
-        const prim = (of) => (0, lower_1.typeExpr)({ k: 'lit', of }, go, '$').text;
+        const prim = (n) => (0, lower_1.typeExpr)({ k: 'lit', n }, go, '$').text;
         node_assert_1.default.strictEqual(prim([1.5, 2]), 'float');
         node_assert_1.default.strictEqual(prim([1, 2]), 'int');
         node_assert_1.default.strictEqual(prim([true]), 'bool');
@@ -60,9 +60,9 @@ function ctx(family, profile) {
         // primitive is its own name, and a form is open-less and close-less.
         const ts = ctx('typescript', {});
         node_assert_1.default.strictEqual((0, lower_1.typeExpr)({ k: 'prim', prim: 'int' }, ts, '$').text, 'int');
-        node_assert_1.default.strictEqual((0, lower_1.typeExpr)({ k: 'list', of: { k: 'prim', prim: 'int' } }, ts, '$').text, 'int');
-        node_assert_1.default.strictEqual((0, lower_1.typeExpr)({ k: 'map', key: { k: 'prim', prim: 'string' }, of: { k: 'prim', prim: 'int' } }, ts, '$').text, 'string, int');
-        node_assert_1.default.strictEqual((0, lower_1.typeExpr)({ k: 'union', of: [{ k: 'prim', prim: 'a' }, { k: 'prim', prim: 'b' }] }, ts, '$').text, 'a | b');
+        node_assert_1.default.strictEqual((0, lower_1.typeExpr)({ k: 'list', n: { k: 'prim', prim: 'int' } }, ts, '$').text, 'int');
+        node_assert_1.default.strictEqual((0, lower_1.typeExpr)({ k: 'map', key: { k: 'prim', prim: 'string' }, n: { k: 'prim', prim: 'int' } }, ts, '$').text, 'string, int');
+        node_assert_1.default.strictEqual((0, lower_1.typeExpr)({ k: 'union', n: [{ k: 'prim', prim: 'a' }, { k: 'prim', prim: 'b' }] }, ts, '$').text, 'a | b');
     });
     (0, node_test_1.test)('the-paren-rule-puts-a-lower-precedence-inner-in-parens', () => {
         // The vocabulary keeps a container to leaves, so a list of a
@@ -76,7 +76,7 @@ function ctx(family, profile) {
                             decls: [{
                                     k: 'record', name: 'T', open: false, check: [], fields: [{
                                             name: 'a', optional: false,
-                                            type: { k: 'list', of: { k: 'opt', of: { k: 'prim', prim: 'string' } } },
+                                            type: { k: 'list', n: { k: 'opt', n: { k: 'prim', prim: 'string' } } },
                                         }],
                                 }],
                         }],
@@ -94,13 +94,13 @@ function ctx(family, profile) {
                             path: 'a.ts', lang: 'typescript',
                             decls: [{
                                     k: 'func', name: 'f', params: [],
-                                    body: { k: 'frag', of: [piece, { k: 'blank' }, 'done()'] },
+                                    body: { k: 'frag', n: [piece, { k: 'blank' }, 'done()'] },
                                 }],
                         }],
                 } },
         });
-        const bare = (0, render_1.renderValue)(unit({ k: 'line', of: ['go()'] }), { profiles: [profile] });
-        const at0 = (0, render_1.renderValue)(unit({ k: 'line', at: 0, of: ['go()'] }), { profiles: [profile] });
+        const bare = (0, render_1.renderValue)(unit({ k: 'line', n: ['go()'] }), { profiles: [profile] });
+        const at0 = (0, render_1.renderValue)(unit({ k: 'line', at: 0, n: ['go()'] }), { profiles: [profile] });
         node_assert_1.default.strictEqual(bare.verdict, at0.verdict);
         node_assert_1.default.strictEqual(bare.units.length, 1);
         node_assert_1.default.strictEqual(bare.units[0].text, at0.units[0].text);

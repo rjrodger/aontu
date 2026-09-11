@@ -323,7 +323,7 @@ is not at risk from anything below.
 A new docs/trust.md states four normative clauses, each backed by
 spec rows:
 
-1. **Hermeticity.** The output of evaluation is a pure function of:
+1. **Hermeticity.** The output of evaluation is a pure function n:
    the entry source text, the resolved include closure, the
    host-injected `$` bindings, and the evaluator (implementation,
    version, options). Nothing else — no clock, no randomness, no
@@ -353,7 +353,7 @@ spec rows:
 ```ts
 const aontu = new Aontu({
   trust: {
-    // include capability, one of:
+    // include capability, one n:
     //   'none'                — @"…" always denied
     //   { mem: {...} }        — virtual file set only
     //   { root: '/models' }   — real files, realpath-confined

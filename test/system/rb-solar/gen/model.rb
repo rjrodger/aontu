@@ -13,7 +13,7 @@
 #-       decls: [
 #-         {
 #-           k: "frag"
-#-           of: emit([_], {
+#-           n: emit([_], {
 #-             match: class: string
 #-             replace: CLASS: .class
 #-             body: [

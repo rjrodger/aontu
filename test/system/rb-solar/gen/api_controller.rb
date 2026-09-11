@@ -14,7 +14,7 @@
 #-       decls: [
 #-         {
 #-           k: "frag"
-#-           of: emit([_], {
+#-           n: emit([_], {
 #-             match: class: string
 #-             # NO `KLASS` HERE. The token appears in this file, but only in lines
 #-             # a NESTED rule writes, and those carry their own `replace`; a key

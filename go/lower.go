@@ -18,7 +18,7 @@ type lowerCtx struct {
 }
 
 func lowerLine(at int, text string) map[string]any {
-	return map[string]any{"k": "line", "at": int64(at), "of": []any{text}}
+	return map[string]any{"k": "line", "at": int64(at), "n": []any{text}}
 }
 
 func lowerBlank() map[string]any {
@@ -329,12 +329,12 @@ func lowerTypeExpr(t map[string]any, ctx *lowerCtx, path string) lowerExpr {
 		return lowerExpr{lowerStr(t, "text"), 9}
 	case "list":
 		f := lowerForm(ctx, "list")
-		inner := lowerTypeExpr(lowerMap(t, "of"), ctx, path+".of")
+		inner := lowerTypeExpr(lowerMap(t, "n"), ctx, path+".n")
 		return lowerExpr{lowerStr(f, "open") + lowerUnder(inner, f) + lowerStr(f, "close"), renderInt(f, "prec", 9)}
 	case "map":
 		f := lowerForm(ctx, "map")
 		key := lowerUnder(lowerTypeExpr(lowerMap(t, "key"), ctx, path+".key"), f)
-		of := lowerUnder(lowerTypeExpr(lowerMap(t, "of"), ctx, path+".of"), f)
+		of := lowerUnder(lowerTypeExpr(lowerMap(t, "n"), ctx, path+".n"), f)
 		sep := ", "
 		if "go" == ctx.family {
 			sep = "]"
@@ -342,7 +342,7 @@ func lowerTypeExpr(t map[string]any, ctx *lowerCtx, path string) lowerExpr {
 		return lowerExpr{lowerStr(f, "open") + key + sep + of + lowerStr(f, "close"), renderInt(f, "prec", 9)}
 	case "opt":
 		f := lowerForm(ctx, "opt")
-		inner := lowerTypeExpr(lowerMap(t, "of"), ctx, path+".of")
+		inner := lowerTypeExpr(lowerMap(t, "n"), ctx, path+".n")
 		return lowerExpr{lowerStr(f, "open") + lowerUnder(inner, f) + lowerStr(f, "close"), renderInt(f, "prec", 9)}
 	case "union":
 		if "go" == ctx.family {
@@ -350,16 +350,16 @@ func lowerTypeExpr(t map[string]any, ctx *lowerCtx, path string) lowerExpr {
 			return lowerExpr{lowerPrim(ctx, "any"), 9}
 		}
 		f := lowerForm(ctx, "union")
-		of, _ := t["of"].([]any)
+		of, _ := t["n"].([]any)
 		members := make([]string, len(of))
 		for i, m := range of {
 			mm, _ := m.(map[string]any)
-			members[i] = lowerUnder(lowerTypeExpr(mm, ctx, path+".of."+itoa(i)), f)
+			members[i] = lowerUnder(lowerTypeExpr(mm, ctx, path+".n."+itoa(i)), f)
 		}
 		return lowerExpr{lowerStr(f, "open") + strings.Join(members, " | ") + lowerStr(f, "close"), renderInt(f, "prec", 9)}
 	}
 	// lit
-	of, _ := t["of"].([]any)
+	of, _ := t["n"].([]any)
 	if "go" == ctx.family {
 		p := lowerLitPrim(of)
 		lowerLoss(ctx, path, "lit", "go has no literal type: "+p)
@@ -498,7 +498,7 @@ func lowerDerivedImports(unit map[string]any) []lowerImportGroup {
 				groups = append(groups, lowerImportGroup{from, []string{name}})
 				return
 			}
-			for _, key := range []string{"type", "of", "key", "returns", "fields", "params"} {
+			for _, key := range []string{"type", "n", "key", "returns", "fields", "params"} {
 				visit(x[key])
 			}
 		}
@@ -791,7 +791,7 @@ func lowerDecl(decl map[string]any, path string, ctx *lowerCtx) []any {
 	}
 	body := lowerMap(decl, "body")
 	abstract := "abstract" == lowerStr(body, "k")
-	bodyOf, _ := body["of"].([]any)
+	bodyOf, _ := body["n"].([]any)
 	if isGo {
 		head := "func " + name + "(" + sig + ")"
 		if hasReturns {

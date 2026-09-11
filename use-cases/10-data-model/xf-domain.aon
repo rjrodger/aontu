@@ -36,7 +36,7 @@ step: hide(pack(type($.schema), {
             boolean,
             { k:"prim" prim:"bool" },
             [],
-            { k:"list" of:{ k:"prim" prim:"any" } },
+            { k:"list" n:{ k:"prim" prim:"any" } },
             { k:"prim" prim:"any" }
           )
         }

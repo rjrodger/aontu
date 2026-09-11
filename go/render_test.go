@@ -26,8 +26,8 @@ func TestRenderValueSparsePieces(t *testing.T) {
 			"units": []any{map[string]any{
 				"path": "a.txt", "lang": "text",
 				"decls": []any{map[string]any{
-					"k": "frag", "of": []any{
-						map[string]any{"k": "line", "of": []any{"x"}},
+					"k": "frag", "n": []any{
+						map[string]any{"k": "line", "n": []any{"x"}},
 						map[string]any{"k": "blank"},
 						map[string]any{"k": "raw", "text": "y\n"},
 					},

@@ -20,7 +20,7 @@
 #-       decls: [
 #-         {
 #-           k: "frag"
-#-           of: emit([_], {
+#-           n: emit([_], {
 #-             match: table: string
 #-             replace: { PLURAL:.plural TABLE:.table }
 #-             body: [

@@ -28,7 +28,7 @@ aontu: Code: units: emit($.entity, [
         decls: [
           {
             k: "frag"
-            of: emit([_], {
+            n: emit([_], {
               match: class: string
               replace: { TITLE:.plural ITEMHELPER:.ui_item_helper }
               body: [
@@ -87,7 +87,7 @@ aontu: Code: units: emit($.entity, [
         decls: [
           {
             k: "frag"
-            of: emit([_], {
+            n: emit([_], {
               match: class: string
               replace: {
                 TITLE: .plural
@@ -138,7 +138,7 @@ aontu: Code: units: emit($.entity, [
         decls: [
           {
             k: "frag"
-            of: emit([_], {
+            n: emit([_], {
               match: class: string
               replace: { TITLE:.plural ITEMHELPER:.ui_item_helper }
               body: [
@@ -185,7 +185,7 @@ aontu: Code: units: emit($.entity, [
         decls: [
           {
             k: "frag"
-            of: emit([_], {
+            n: emit([_], {
               match: class: string
               replace: {
                 TITLE: .plural

@@ -559,7 +559,7 @@ after re-rooting. Both the failing and the passing case go into
 immediately.
 
 **Container types take only LEAF types.** A recursive `%Type` —
-`list.of: %Type` — is quadratic-to-exponential and, past a threshold,
+`list.n: %Type` — is quadratic-to-exponential and, past a threshold,
 non-terminating. VERIFIED, an eight-arm recursive `%Type` vetted
 against a nested list type:
 
@@ -646,7 +646,7 @@ a raw string that has no escape (ts/src/std.ts:13-14 states the rule).
 | close({ c: "re",     p: string })
 | close({ c: "len",    min?: integer & min(0), max?: integer & min(0) })
 | close({ c: "unique", key?: %Name })
-| close({ c: "ne",     of: [&: string | number | boolean] })
+| close({ c: "ne",     n: [&: string | number | boolean] })
 | close({ c: "must",   note: string })
 
 %Prim = close({ k: "prim",
@@ -655,11 +655,11 @@ a raw string that has no escape (ts/src/std.ts:13-14 states the rule).
 %Leaf = %Prim | %Ref | %Text
 
 %Type = %Leaf
-| close({ k: "list", of: %Leaf })
-| close({ k: "map",  key: %Leaf, of: %Leaf })
-| close({ k: "opt",  of: %Leaf })
-| close({ k: "union", of: [&: %Leaf] })
-| close({ k: "lit",  of: [&: string | number | boolean | null] })
+| close({ k: "list", n: %Leaf })
+| close({ k: "map",  key: %Leaf, n: %Leaf })
+| close({ k: "opt",  n: %Leaf })
+| close({ k: "union", n: [&: %Leaf] })
+| close({ k: "lit",  n: [&: string | number | boolean | null] })
 
 %Field = close({
   name: %Name
@@ -1345,7 +1345,7 @@ step: hide(pack($.schema, { d: {
       biginteger, { k: "prim", prim: "bigint" },
       string,     { k: "prim", prim: "string" },
       boolean,    { k: "prim", prim: "bool" },
-      [],         { k: "list", of: { k: "prim", prim: "any" } },
+      [],         { k: "list", n: { k: "prim", prim: "any" } },
       { k: "prim", prim: "any" })
   }}), f)
 }}))
@@ -1439,7 +1439,7 @@ rec: hide(pack($.schema, { d: {
       biginteger, { k: "prim", prim: "bigint" },
       string,     { k: "prim", prim: "string" },
       boolean,    { k: "prim", prim: "bool" },
-      [],         { k: "list", of: { k: "ref", name: "OrderLine" } },
+      [],         { k: "list", n: { k: "ref", name: "OrderLine" } },
       { k: "prim", prim: "any" })
   }}), f)
 }}))
@@ -2412,12 +2412,12 @@ each carrying its own depth:
 
 ```aon
 %inline = string & re("^[^\n\r]*$") | %ref
-%line =   close({ k: "line",  at: *0 | integer & min(0) & max(64), of: [&: %inline] })
+%line =   close({ k: "line",  at: *0 | integer & min(0) & max(64), n: [&: %inline] })
 %blank =  close({ k: "blank", n: *1 | integer & min(1) & max(16) })
 %raw =    close({ k: "raw",   at: *0 | integer & min(0) & max(64),
                  text: string, reindent: *true | boolean })
 %piece =  %line | %blank | %raw
-%frag =   close({ k: "frag", of: [&: %piece] })
+%frag =   close({ k: "frag", n: [&: %piece] })
 ```
 
 `%decl` gains `%frag`, and `%body` becomes `%frag | {k:"abstract"}`.
