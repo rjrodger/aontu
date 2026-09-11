@@ -54,7 +54,7 @@ import {
   makeJsonicProcessor,
 } from '@tabnas/multisource/processor/jsonic'
 
-import { STD_SOURCES, AONTU_SCHEME, AONTU_MODELS } from './std'
+import { AONTU_SOURCES, AONTU_SCHEME, AONTU_MODELS } from './aontumodel'
 import {
   parseModuleRef, resolveModule, modCacheDir, MODULE_REFUSAL_CODES,
 } from './mod'
@@ -1608,8 +1608,8 @@ function makeModelResolver(options: any) {
     throw err
   }
 
-  // The gate every leg that RESOLVES A NAME passes through. The std and
-  // module legs do not: both state `kind: 'aon'` because what they
+  // The gate every leg that RESOLVES A NAME passes through. The aontu:
+  // and module legs do not: both state `kind: 'aon'` because what they
   // serve is Aontu source by construction, not by its spelling.
   const gateExtension = (path: string, full: string): void => {
     if (undefined === includeFormat(extKindOf(full), options.textExt)) {
@@ -1683,11 +1683,11 @@ function makeModelResolver(options: any) {
     }
 
     if ('string' === typeof path && path.startsWith(AONTU_SCHEME)) {
-      const model = STD_SOURCES[path]
+      const model = AONTU_SOURCES[path]
       if (null == model) {
         modelNotFound(path)
       }
-      record(ctx, path, 'std')
+      record(ctx, path, 'aontu')
       return { found: true, path, full: path, kind: 'aon', src: model, search: [] }
     }
 

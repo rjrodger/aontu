@@ -38,6 +38,9 @@ implementations are checked against the same cases.
 ├── CLAUDE.md            # pointer to AGENTS.md
 ├── Makefile             # fans out to ts/ and go/
 ├── README.md
+├── aontu/               # the built-in aontu: models — one folder per module
+│   ├── code/code.aon    #   aontu:code   (aontu/lang/go/go.aon is aontu:lang/go)
+│   └── …                #   inlined into both ports by `make aontu`
 ├── docs/
 │   ├── design/          # design notes — the why behind settled decisions
 │   ├── lsp.md           # language server reference
@@ -49,12 +52,14 @@ implementations are checked against the same cases.
 ├── ts/                  # canonical TypeScript implementation
 │   ├── package.json     # `bin`: aontu -> bin/aontu.js, aontu-lsp -> bin/aontu-lsp.js
 │   ├── src/             # source incl. cli.ts, lsp.ts, lsp-server.ts (+ src/tsconfig.json -> ../dist)
+│   ├── scripts/         # the generators — aontu.cjs, sigdecl.cjs, helpdoc.cjs
 │   ├── test/            # tests (+ test/tsconfig.json -> ../dist-test)
 │   ├── dist/            # committed compiled JS + .d.ts (incl. cli.js)
 │   └── dist-test/       # committed compiled tests (the run target)
 └── go/                  # Go port
     ├── go.mod           # module github.com/aontu-lang/aontu/go
     ├── *.go             # package aontu (incl. check.go: Check -> []Problem)
+    ├── aontumodel/      # GENERATED mirror of /aontu (//go:embed cannot read up)
     ├── lsp/             # LSP library (Diagnostics + Handler)
     ├── cmd/aontu/       # `aontu` CLI (package main, file/stdin/REPL)
     ├── cmd/aontu-lsp/   # `aontu-lsp` Language Server (stdio)
@@ -154,7 +159,7 @@ order that fails fastest:
 
 ```sh
 make comments   # ADR-032: the code-comment gate, about a second
-make build      # rebuilds ts/dist + ts/dist-test, sigdecl, helpdoc
+make build      # rebuilds ts/dist + ts/dist-test, sigdecl, helpdoc, aontu
 make test       # both suites
 make cov        # the ADR-002 floor, and what CI grades
 make prose      # only if docs/ or a README changed
@@ -207,6 +212,21 @@ generator stages them into `ts/src/helpdoc.ts` and
 `index.tsv`) so the two ports write the same bytes. Edit them where
 they live; the trio has to keep passing its own `check.sh`, which both
 suites run.
+
+**The same arrangement, for the built-in models.** The models the
+`aontu:` scheme serves ([ADR-036](ADR.md#adr-036--a-bundled-model-is-a-file-in-aontu-not-a-string-in-each-port))
+are real files under [`aontu/`](aontu/), ONE SUBFOLDER PER MODULE, and
+a module is a directory holding a file named after it —
+`aontu/lang/go/go.aon` is `aontu:lang/go`, so the path after the scheme
+is the path in the tree. `make aontu` inlines them into
+`ts/src/aontumodel.ts` and, for Go, mirrors the tree into
+`go/aontumodel/` and writes the `//go:embed` table `go/aontumodel.go`; `make build-ts`
+runs it for you. Edit the `.aon` file, never a staged copy: both suites
+(`ts/test/aontumodel.test.ts`, `go/aontumodel_test.go`) assert the
+inlined copy is byte-identical with its file AND that the tree serves
+exactly the models the table lists, so a model added and not
+regenerated fails too. Each one has to stay `aontu fmt`-clean and
+lint-clean, which the format suites check in both ports.
 
 Tab-separated columns: `name <TAB> mode <TAB> src <TAB> expect`
 

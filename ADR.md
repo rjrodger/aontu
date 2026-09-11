@@ -57,6 +57,7 @@ and the CHANGELOG still resolve. Numbers are never reused.
 | [ADR-033](#adr-033--a-grammar-is-a-string-and-parsing-is-a-function) | A grammar is a string, and parsing is a function | Accepted |
 | [ADR-034](#adr-034--absence-is-a-value-and-maybe-is-where-it-is-made) | Absence is a value, and `maybe` is where it is made | Accepted |
 | [ADR-035](#adr-035--a-language-is-configured-in-its-profile-and-a-marker-may-name-its-closer) | A language is configured in its profile, and a marker may name its closer | Accepted |
+| [ADR-036](#adr-036--a-bundled-model-is-a-file-in-aontu-not-a-string-in-each-port) | A bundled model is a file in `aontu/`, not a string in each port | Accepted |
 
 ---
 
@@ -3578,3 +3579,98 @@ be described.
 **Guess the closer from the opener's brackets.** `(*` to `*)` inverts;
 `<!--` to `-->` does not, and `{-` to `-}` is a third rule. A table of
 two, plus an explicit closer, says what is known and asks for the rest.
+
+
+---
+
+## ADR-036 — A bundled model is a file in `aontu/`, not a string in each port
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Context
+
+The eight models the `aontu:` scheme serves — `aontu:system`,
+`aontu:view`, `aontu:code`, `aontu:profile` and the four language
+profiles — were written twice: once as `String.raw` constants in
+`ts/src/std.ts` and once as raw-string constants in `go/std.go`. The
+two copies had to be the same bytes, and nothing but a reviewer's eye
+held them there. Every edit to a vocabulary was two edits in two
+languages, in a form neither the formatter, the linter nor an editor
+could see as aontu source: the models were held to `aontu fmt` by a
+test in each port, which had to read them back out of the constant to
+do it.
+
+That is ADR-001's problem — parity between the ports — solved for
+behaviour by the shared spec in `test/spec/*.tsv`, and left unsolved
+for the one thing the ports literally share: source text.
+
+The name `std` was already retired ([ADR-028](#adr-028--every-language-supplied-schema-is-named-under-aontu))
+as a model name and as a root key, and survived only in the file names
+and the identifiers.
+
+### Decision
+
+**The source of a bundled model is a file.** `aontu/` at the repository
+root holds one SUBFOLDER PER MODULE, and a module is a directory
+holding a file named after it: `aontu/lang/go/go.aon` is
+`aontu:lang/go`. The path after the scheme IS the path in the tree, so
+a name and its file are the same spelling, and a module is free to grow
+a sibling — a README, a fixture — without a second module appearing
+beside it.
+
+**Both ports inline it at build time.** `make aontu` runs
+`ts/scripts/aontu.cjs`, which writes `ts/src/aontumodel.ts` and, for
+Go, mirrors the tree into `go/aontumodel/` and writes the `//go:embed`
+table `go/aontumodel.go`. The Go half must be a committed copy —
+`//go:embed` cannot read above its own package directory — which is
+the arrangement `make helpdoc` and `make sig` already use.
+
+**A copy nothing compares is a second source of truth.** Each port
+asserts both halves of the drift: that every inlined model is identical
+with its file, and that the tree serves exactly the models the table
+lists, so a model ADDED and not regenerated fails too.
+
+**`std` is gone as a name.** `ts/src/std.ts` and `go/std.go` are
+deleted; `STD_SOURCES` is `AONTU_SOURCES` and `stdSources` is
+`aontuSources`. The include manifest records a bundled model under the
+capability `aontu` where it recorded `std`.
+
+### Consequences
+
+- **A vocabulary is edited once, as aontu.** The file is what `aontu
+  fmt`, `--lint`, an editor's syntax highlighting and the LSP already
+  understand, and the fmt-clean tests in both ports now read the same
+  bytes the author edited.
+- **Parity is structural, not clerical.** The ports cannot disagree
+  about a model's text, because neither holds it — they hold a
+  generated copy of one file, and a test in each fails when the copy is
+  stale.
+- **The manifest's capability name changed**, from `std` to `aontu`. It
+  is the label on a dependency record, not an input: a trust profile
+  has never been able to name it, and the `aontu:` leg resolves under
+  every include capability but `none`.
+- **A new model is a new folder**, and `make aontu` is the only other
+  step. Nothing in either port is edited by hand.
+- **A third port would inherit the tree**, rather than transcribing the
+  models a third time.
+
+### Alternatives rejected
+
+**Keep the constants and add a parity test.** A test that two hand-kept
+copies match tells an author they have diverged AFTER they have written
+the edit twice. The cost was the second writing, not the detection.
+
+**Generate one port from the other.** It makes the TypeScript copy the
+source and the Go copy derived, which is true of the implementations
+(the canonical port) but false of the models: neither port authors
+them.
+
+**`//go:embed` the top-level tree directly.** It cannot: the directive
+reads only from its own package directory downward. The committed
+mirror is the price, and a test is what keeps it honest.
+
+**One file per model at the tree root** (`aontu/system.aon`), no
+subfolders. `aontu:lang/go` would then be `aontu/lang-go.aon`, spelling
+a path with a hyphen, and a model would have nowhere to keep anything
+beside its source.
