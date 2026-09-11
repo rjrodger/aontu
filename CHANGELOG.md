@@ -7,6 +7,47 @@ which implementation each change affects.
 
 ## Unreleased
 
+### The Jostraca component primitives are aontu functions
+
+Twelve builtins, in both implementations. Ten build a component node —
+`project`, `folder`, `file`, `content`, `line`, `fragment`, `slot`,
+`inject` and `copyfiles`, plus `listitems` over a bag — and two spell
+text: `nom` and `translate`.
+
+```
+folder("src", [file("index.ts", [line("export {}")])])
+```
+
+The function is lower case, like every other builtin; the node it
+builds carries the component name, which is what a consumer looks up:
+
+```
+{ cmp:"Folder" props: { name:"src" } children: [...] }
+```
+
+A bare string fills the component's one text prop and a map is the
+props verbatim. Each component admits a fixed set of children, so a
+`content` under a `folder` is refused at the call; a nested list of
+children splices flat, which is what `each` over a model produces.
+
+`nom(name, style?, acronyms?)` spells one name in one of nine styles —
+`camel`, `dot`, `kebab`, `pascal`, `path`, `snake`, `text`, `title`,
+`upper` — or, with no style, answers every spelling as a map. An
+acronym list keeps `id` as `ID`. `translate(s, from, to?)` maps
+characters: `a-z` ranges expand, a short `to` pads with its last
+character, and an omitted `to` deletes.
+
+```
+nom("planet_body", pascal)        # "PlanetBody"
+translate("a-b-c", "-", "_")      # "a_b_c"
+```
+
+*Both implementations.* No dependency is taken in either direction: the
+functions build a plan as data, and the hand-off to a tool that writes
+files is a pipeline step. `aontu:code` and the `render` verb are
+unchanged — a component tree is a file layout plus text, and the
+declaration vocabulary is a program.
+
 ### BREAKING: `aontu:code`'s `of` key is now `n`
 
 Every compound node in the output vocabulary carried its operand under

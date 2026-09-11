@@ -9,7 +9,7 @@ const StringVal_1 = require("./StringVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const CMP_DEF = {
     // The output root. Its `folder` is refused an absolute path or a
-    // `..` segment on the jostraca side, where the tree is data.
+    // `..` segment on the Jostraca side, where the tree is data.
     project: {
         cmp: 'Project', text: 'folder', req: false,
         children: ['project', 'folder', 'file', 'copyfiles'],

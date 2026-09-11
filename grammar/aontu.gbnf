@@ -81,11 +81,11 @@ element ::= spread | value
 func ::= name "(" ws ( value ( ws "," ws value )* ws )? ")"
 
 name ::=
-    "abnf" | "above" | "acyclic" | "add" | "below" | "close" | "copy" | "deprecate" | "div"
+    "content" | "file" | "folder" | "fragment" | "inject" | "line" | "nom" | "project" | "slot" | "translate" | "abnf" | "above" | "acyclic" | "add" | "below" | "close" | "copyfiles" | "copy" | "deprecate" | "div"
   | "each" | "emit" | "esc" | "filter" | "greatest"
   | "hide"
   | "inverse" | "join" | "key" | "least"
-  | "length" | "list" | "lower" | "map" | "match" | "maybe" | "max" | "min" | "mod" | "move"
+  | "length" | "listitems" | "list" | "lower" | "map" | "match" | "maybe" | "max" | "min" | "mod" | "move"
   | "mul" | "must"
   | "neq"
   | "open" | "pack" | "parse" | "path" | "pick" | "pref" | "refer" | "rel" | "rem" | "rep" | "re"

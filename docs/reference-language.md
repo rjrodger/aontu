@@ -1827,11 +1827,25 @@ Seal a map/list against extra keys.
 
 Example: see [closed values](#closed-values-close--open)
 
+### `content(spec: string|map) : map`
+
+A Jostraca Content component: a span of target text. A bare string
+fills `src`.
+
+Example: `content("export const N = 1\n")`
+
 ### `copy(v: any) : any`
 
 Deep copy of a value or referenced node; clears `type`/`hide` marks.
 
 Example: `copy({a:1,b:2})`→`{a:1,b:2}`; `copy($.x)`
+
+### `copyfiles(spec: string|map) : map`
+
+A Jostraca CopyFiles component: files copied verbatim from `from`.
+Named `copyfiles` because `copy` already copies a VALUE.
+
+Example: `copyfiles("assets")`
 
 ### `deprecate(v: any, r?: map) : any`
 
@@ -1863,11 +1877,32 @@ Escape a string using a named convention; the default is JSON-style double-quote
 
 Example: `esc("<a>", xml)`
 
+### `file(spec: string|map, children?: list) : map`
+
+A Jostraca File component named by `name`, holding content, lines,
+fragments, injections and copies.
+
+Example: `file("index.ts", [content("export {}\n")])`
+
 ### `filter(d: map|list, trial c: any) : map|list`
 
 The children of `d` that ALREADY satisfy `c`: the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match).
 
 Example: `debugged: filter($.services, {debug:true})`
+
+### `folder(spec: string|map, children?: list) : map`
+
+A Jostraca Folder component named by `name`, holding folders, files
+and copies.
+
+Example: `folder("src", [file("index.ts")])`
+
+### `fragment(spec: string|map, children?: list) : map`
+
+A Jostraca Fragment: a file read from `from` with its `<[SLOT]>`
+markers filled by the slots beneath it.
+
+Example: `fragment("head.ts", [slot("body")])`
 
 ### `greatest(d: map|list) : number`
 
@@ -1880,6 +1915,13 @@ Example: `greatest([2, 7, 4])` → `7`
 Mark `x` as hidden.
 
 Example: `hide(world) & string`→`"world"`
+
+### `inject(spec: string|map, children?: list) : map`
+
+A Jostraca Inject: a body written between markers in a file that
+already exists.
+
+Example: `inject("routes", [line("app.use(r)")])`
 
 ### `inverse(projector k: string) : constraint`
 
@@ -1911,11 +1953,25 @@ Constrain a string length or collection size. See [length semantics](#length-sem
 
 Example: `list() & length(min(1))`
 
+### `line(spec: string|map) : map`
+
+A Jostraca Line: a span of target text with a newline added, which
+is the whole difference from `content`.
+
+Example: `line("import fs from 'fs'")`
+
 ### `list() : list`
 
 The list **kind**: admits any list, defaults to nothing.
 
 Example: `y: list() & [1]`→`[1]`
+
+### `listitems(spec: map, children?: list) : map`
+
+A Jostraca ListItems over the list at `item`. The bag is required
+and must be a list: a missing one would render nothing, silently.
+
+Example: `listitems({item: $.rows}, [line("x")])`
 
 ### `lower(s: string|number, start?: integer|biginteger, len?: integer|biginteger) : string`
 
@@ -1983,6 +2039,14 @@ Exclude the listed numeric or string values. See [constraint atoms](#the-constra
 
 Example: `string & neq("reserved")`
 
+### `nom(name: string, style?: string|list, acronyms?: list) : string|map`
+
+One name in one spelling, or every spelling as a map when no style
+is named: `camel`, `dot`, `kebab`, `pascal`, `path`, `snake`,
+`text`, `title` and `upper`. An acronym list keeps `id` as `ID`.
+
+Example: `nom("planet_body", pascal)` → `"PlanetBody"`
+
 ### `open(m: any) : any`
 
 Reverse a `close`.
@@ -2019,6 +2083,13 @@ Mark `x` as preferred (same as `*x`).
 
 Example: `pref(1)` canon `*1`; `pref(2),x:3`→`3`
 
+### `project(spec?: string|map, children?: list) : map`
+
+The Jostraca Project root; its `folder` is the output directory and
+is the one prop that is not required.
+
+Example: `project("./build", [folder("src")])`
+
 ### `re(text p: string) : constraint`
 
 Constrain a string to match a portable regular expression. See [patterns](#re-and-the-portable-pattern-subset).
@@ -2049,6 +2120,12 @@ Replace every pattern match in a string. See [replacement syntax](#reps-pattern-
 
 Example: `rep("a1b2", "[0-9]", "_")`
 
+### `slot(spec: string|map, children?: list) : map`
+
+A Jostraca Slot: the body that fills a fragment's named marker.
+
+Example: `slot("body", [line("return 1")])`
+
 ### `sort(d: map|list, projector k?: string|integer, dir?: string) : list`
 
 Order a collection's members into a list, by a projected field or by the members themselves. See [Ordering](#ordering-sort).
@@ -2078,6 +2155,14 @@ Example: `sum([2, 3])` → `5`
 The immediate parent type of `x`, structurally: a scalar's kind, a kind's parent, a container of its children's parents.
 
 Example: `super(1)` → `integer`, `super(integer)` → `number`, `super({a:1})` → `{a:integer}`
+
+### `translate(s: string, from: string, to?: string) : string`
+
+Map the characters of `s` from one set to another. A range expands
+(`a-z`), a short `to` pads with its last character, and an omitted
+`to` deletes every character named in `from`.
+
+Example: `translate("a-b-c", "-", "_")` → `"a_b_c"`
 
 ### `type(t: any) : any`
 

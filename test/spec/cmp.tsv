@@ -1,0 +1,73 @@
+# THE JOSTRACA COMPONENT PRIMITIVES, nom and translate
+# (docs/design/JOSTRACA.0.md). The components are aontu functions whose
+# node carries the Jostraca component name; `nom` spells one name in
+# one style, and `translate` maps characters of a string.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# Every expectation was taken from the canonical port and is held to
+# the Go port by this file.
+cmp-content-string	gens	x: content("a")	{"x":{"children":[],"cmp":"Content","props":{"src":"a"}}}
+cmp-line-string	gens	x: line("a")	{"x":{"children":[],"cmp":"Line","props":{"src":"a"}}}
+cmp-folder-string	gens	x: folder("src")	{"x":{"children":[],"cmp":"Folder","props":{"name":"src"}}}
+cmp-copyfiles-string	gens	x: copyfiles("assets")	{"x":{"children":[],"cmp":"CopyFiles","props":{"from":"assets"}}}
+cmp-map-spec	gens	x: file({name: "a.ts", mode: 420})	{"x":{"children":[],"cmp":"File","props":{"mode":420,"name":"a.ts"}}}
+cmp-project-bare	gens	x: project()	{"x":{"children":[],"cmp":"Project","props":{}}}
+cmp-project-folder	gens	x: project("./build")	{"x":{"children":[],"cmp":"Project","props":{"folder":"./build"}}}
+cmp-children	gens	x: folder("s", [file("a.ts") file("b.ts")])	{"x":{"children":[{"children":[],"cmp":"File","props":{"name":"a.ts"}},{"children":[],"cmp":"File","props":{"name":"b.ts"}}],"cmp":"Folder","props":{"name":"s"}}}
+cmp-children-splice	gens	x: folder("s", [[file("a.ts")] file("b.ts")])	{"x":{"children":[{"children":[],"cmp":"File","props":{"name":"a.ts"}},{"children":[],"cmp":"File","props":{"name":"b.ts"}}],"cmp":"Folder","props":{"name":"s"}}}
+cmp-children-empty	gens	x: folder("s", [])	{"x":{"children":[],"cmp":"Folder","props":{"name":"s"}}}
+cmp-listitems	gens	x: listitems({item: ["a" "b"]})	{"x":{"children":[],"cmp":"ListItems","props":{"item":["a","b"]}}}
+nom-pascal	gens	x: nom("planet_body", pascal)	{"x":"PlanetBody"}
+nom-camel	gens	x: nom("planet_body", camel)	{"x":"planetBody"}
+nom-kebab	gens	x: nom("planet_body", kebab)	{"x":"planet-body"}
+nom-snake	gens	x: nom("planetBody", snake)	{"x":"planet_body"}
+nom-upper	gens	x: nom("planet_body", upper)	{"x":"PLANET_BODY"}
+nom-dot	gens	x: nom("planet_body", dot)	{"x":"planet.body"}
+nom-path	gens	x: nom("planet_body", path)	{"x":"planet/body"}
+nom-title	gens	x: nom("planet_body", title)	{"x":"Planet Body"}
+nom-text	gens	x: nom("planet_body", text)	{"x":"Planet body"}
+nom-map	gens	x: nom("planet_body")	{"x":{"camel":"planetBody","dot":"planet.body","kebab":"planet-body","pascal":"PlanetBody","path":"planet/body","snake":"planet_body","text":"Planet body","title":"Planet Body","upper":"PLANET_BODY"}}
+nom-acronyms	gens	x: nom("user_id", pascal, ["ID"])	{"x":"UserID"}
+nom-dots-are-separators	gens	x: nom("a.b/c", kebab)	{"x":"a-b-c"}
+nom-text-keeps-an-acronym	gens	x: nom("user_id", text, ["ID"])	{"x":"User ID"}
+nom-acronyms-without-a-style	gens	x: nom("user_id", ["ID"])	{"x":{"camel":"userID","dot":"user.id","kebab":"user-id","pascal":"UserID","path":"user/id","snake":"user_id","text":"User ID","title":"User ID","upper":"USER_ID"}}
+translate-substitute	gens	x: translate("a-b-c", "-", "_")	{"x":"a_b_c"}
+translate-range	gens	x: translate("abc", "a-c", "x-z")	{"x":"xyz"}
+translate-pads-with-the-last	gens	x: translate("abc", "abc", "z")	{"x":"zzz"}
+translate-deletes-without-to	gens	x: translate("a-b-c", "-")	{"x":"abc"}
+translate-last-mapping-wins	gens	x: translate("a", "aa", "xy")	{"x":"y"}
+translate-leaves-the-unnamed	gens	x: translate("abc", "b", "B")	{"x":"aBc"}
+cmp-child-not-admitted	errc	x: folder("s", [content("a")])	invalid-arg
+cmp-leaf-takes-no-children	errc	x: content("a", [line("b")])	func_arity
+cmp-folder-needs-a-name	errc	x: folder({})	invalid-arg
+cmp-folder-name-not-empty	errc	x: folder("")	invalid-arg
+cmp-listitems-needs-item	errc	x: listitems({})	invalid-arg
+cmp-listitems-item-is-a-list	errc	x: listitems({item: "a"})	invalid-arg
+cmp-spec-kind	errc	x: folder(1)	invalid-arg
+cmp-children-kind	errc	x: folder("s", 1)	invalid-arg
+nom-unknown-style	errc	x: nom("a", pascel)	invalid-arg
+nom-empty-name	errc	x: nom("")	invalid-arg
+translate-backwards-range	errc	x: translate("abc", "c-a", "x")	invalid-arg
+translate-backwards-to-range	errc	x: translate("abc", "a", "z-x")	invalid-arg
+translate-src-kind	errc	x: translate(1, "a", "b")	func_arg
+translate-from-kind	errc	x: translate("a", 1, "b")	func_arg
+translate-to-kind	errc	x: translate("a", "a", 1)	func_arg
+cmp-child-not-a-node	errc	x: folder("s", [1])	invalid-arg
+cmp-child-map-is-not-a-node	errc	x: folder("s", [{a: 1}])	invalid-arg
+cmp-splice-refuses-inside	errc	x: folder("s", [[content("a")]])	invalid-arg
+cmp-project-folder-kind	errc	x: project({folder: 1})	invalid-arg
+cmp-listitems-takes-no-string	errc	x: listitems("a")	invalid-arg
+nom-name-without-words	errc	x: nom("_")	invalid-arg
+nom-acronyms-then-style	errc	x: nom("a", ["ID"], "x")	invalid-arg
+nom-acronyms-must-be-a-list	errc	x: nom("a", pascal, "x")	invalid-arg
+nom-acronym-must-be-text	errc	x: nom("a", pascal, [1])	invalid-arg
+nom-style-must-be-text	errc	x: nom("a", 1)	invalid-arg
+nom-acronym-in-second-place-must-be-text	errc	x: nom("a", [1])	invalid-arg
+nom-name-past-the-gate	errc	y: {a: *}\nx: nom($.y.a)	invalid-arg
+nom-style-past-the-gate	errc	y: {a: *}\nx: nom("a", $.y.a)	invalid-arg
+cmp-spec-past-the-gate	errc	y: {a: *}\nx: folder($.y.a)	invalid-arg
+cmp-children-past-the-gate	errc	y: {a: *}\nx: folder("s", $.y.a)	invalid-arg
+translate-src-past-the-gate	errc	y: {a: *}\nx: translate($.y.a, "a", "b")	invalid-arg
+translate-from-past-the-gate	errc	y: {a: *}\nx: translate("a", $.y.a, "b")	invalid-arg
+translate-to-past-the-gate	errc	y: {a: *}\nx: translate("a", "a", $.y.a)	invalid-arg

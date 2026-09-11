@@ -1,10 +1,16 @@
-# Jostraca component primitives as aontu functions — a spike
+# Jostraca component primitives as aontu functions
 
-**Status:** SPIKE, 2026-09-09. Built, in TypeScript only, and behind
-no flag. Nothing here is a landed capability: there is no Go port, no
-shared-spec row, no signature declaration and no entry in the progress
-register. This note records what was built, what it proved, and what
-it did not.
+**Status:** LANDED 2026-09-11, in both ports. The ten component
+primitives, `nom` and `translate` are aontu functions in TypeScript
+and Go, declared in [`test/spec/signature.tsv`](../../test/spec/signature.tsv)
+and held by [`test/spec/cmp.tsv`](../../test/spec/cmp.tsv); the
+register row is
+[G9 phase 7](../capability-review/progress.md#g9--declarative-transformation),
+and the bridge that row was opened for stays retired. The sections
+below are as the spike left them on 2026-09-09 — built in TypeScript
+only, with no Go port, no shared-spec row and no declaration — and
+record what was built, what it proved, and what it did not. Where they
+argue about a decision, the decision has since been taken.
 
 **Origin:** Richard Rodger, 2026-09-09: *"Jostraca should be used by
 aontu for code generation. The Jostraca component primitives like
@@ -473,7 +479,10 @@ written. The spike settles neither decision: a spike is evidence, and
 the decision is the owner's.
 
 **[ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired)
-retired the Jostraca bridge, and the spike does not reopen it.** G9
+retired the Jostraca bridge, and the spike does not reopen it.**
+(That entry was itself retired on 2026-09-11, when these primitives
+became a production design choice. The bridge is not what came back:
+the paragraph below is still the standing position.) G9
 phase 7 was one `Project`, one `generate()` call and an exact-pinned
 production dependency in both ports, and ADR-023 retired it on two
 grounds: the write story is `render --out` rather than a merge over

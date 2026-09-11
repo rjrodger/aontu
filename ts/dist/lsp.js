@@ -359,16 +359,19 @@ exports.COMPLETION_FUNCTION = COMPLETION_FUNCTION;
 const COMPLETION_KEYWORD = 14;
 exports.COMPLETION_KEYWORD = COMPLETION_KEYWORD;
 const BUILTIN_FUNCS = [
-    'abnf', 'above', 'acyclic', 'add', 'below', 'close', 'copy', 'deprecate',
+    'abnf', 'above', 'acyclic', 'add', 'below', 'close', 'content', 'copy',
+    'copyfiles', 'deprecate',
     'div',
     'each', 'emit', 'esc',
-    'filter', 'greatest',
-    'hide', 'inverse', 'join', 'key', 'least', 'length', 'list', 'lower',
+    'file', 'filter', 'folder', 'fragment', 'greatest',
+    'hide', 'inject', 'inverse', 'join', 'key', 'least', 'length', 'line',
+    'list', 'listitems', 'lower',
     'map', 'match', 'max', 'maybe', 'min', 'mod', 'move', 'mul', 'must', 'neq',
-    'open',
+    'nom', 'open',
     'pack', 'parse', 'path', 'pick',
-    'pref', 're', 'refer', 'rel', 'rem', 'rep', 'sort', 'split', 'sub', 'sum',
-    'super', 'type', 'unique', 'upper', 'usc',
+    'pref', 'project', 're', 'refer', 'rel', 'rem', 'rep', 'slot', 'sort',
+    'split', 'sub', 'sum',
+    'super', 'translate', 'type', 'unique', 'upper', 'usc',
 ];
 exports.BUILTIN_FUNCS = BUILTIN_FUNCS;
 // Scalar-kind and literal keywords.

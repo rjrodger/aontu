@@ -86,12 +86,12 @@ const E = (src) => {
         Assert.equal(E('x: translate("abc", "z-a", "x")'), 'invalid-arg');
         Assert.equal(E('x: translate("abc", "a", "z-a")'), 'invalid-arg');
         // Arity: two or three, never one or four.
-        Assert.equal(E('x: translate("abc")'), 'invalid-arg');
-        Assert.equal(E('x: translate("abc", "a", "b", "c")'), 'invalid-arg');
+        Assert.equal(E('x: translate("abc")'), 'func_arity');
+        Assert.equal(E('x: translate("abc", "a", "b", "c")'), 'func_arity');
         // Every argument is text.
-        Assert.equal(E('x: translate(1, "a", "b")'), 'invalid-arg');
-        Assert.equal(E('x: translate("abc", 1, "b")'), 'invalid-arg');
-        Assert.equal(E('x: translate("abc", "a", 1)'), 'invalid-arg');
+        Assert.equal(E('x: translate(1, "a", "b")'), 'func_arg');
+        Assert.equal(E('x: translate("abc", 1, "b")'), 'func_arg');
+        Assert.equal(E('x: translate("abc", "a", 1)'), 'func_arg');
     });
     (0, node_test_1.test)('forward-reference', () => {
         Assert.equal(G('x: translate($.n, "l", "L")\nn: $.m\nm: "hello"').x, 'heLLo');
