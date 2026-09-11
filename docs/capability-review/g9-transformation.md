@@ -576,7 +576,7 @@ the schema and the data document does not terminate in **either** port
 (both killed at 60 s). At five arms only TypeScript hangs and Go
 answers in under a second — so the same construct is a G5 termination
 failure at one size and an ADR-001 divergence at another. Making
-`list.of`, `map.of`, `map.key` and `opt.of` accept only
+`list.n`, `map.n`, `map.key` and `opt.n` accept only
 `{k:"prim"|"ref"|"text"}` removes the blow-up entirely, and it matches
 what every target language does anyway: you name the intermediate
 type. VERIFIED with the capped vocabulary: the same double-include

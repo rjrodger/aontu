@@ -160,7 +160,7 @@ run svg-gate 0 -- view matrix --relation dependsOn --order partition \
 ok "the dependency-structure matrix draws: twelve modules square"
 
 # 11b. THE ARCHITECTURE LAYERS, the drawing every layered codebase has
-# a hand-made copy n: one band per layer, the band nothing depends on
+# a hand-made copy of: one band per layer, the band nothing depends on
 # at the top, and the rule -- dependencies point DOWN -- read off the
 # bands. The band order is DERIVED from the relation (the layer-level
 # graph in partition order), so it is a function of the model and not

@@ -9,7 +9,7 @@
 # It is why `{k:"frag", n:["head"] + emit(...)}` cannot be written
 # under aontu:code's schema.
 # expected: {"x":{"k":"a","n":["p","q"]}}
-# actual:   [aontu/list] at $.x.n
+# actual:   [aontu/list] at $.x.of
 # FIXED 2026-09-11: an op drives the meet while an operand has not
 # decided. Pinned by edge.tsv edge-plus-op-under-map-*.
 x: { k: "a", n: [&: string] }

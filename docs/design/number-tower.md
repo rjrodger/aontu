@@ -627,7 +627,7 @@ pinned with baseline rows first):
 R2/R3/R4/R5 rules (each *extends* to the new leaves), and the
 absence of `inf`/`nan` literals — an overflowing literal stays an
 error, and the exact leaves cannot overflow, only exhaust their
-budget. A document is untouched iff it avoids all n: `0d`-prefixed
+budget. A document is untouched iff it avoids all of: `0d`-prefixed
 or newly reserved bare words (implication 1), lossy integer literals
 (implication 3), and integer sums that silently rounded (D6). Every
 value that is exact today means exactly what it meant; what changes

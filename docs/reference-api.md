@@ -1669,7 +1669,7 @@ renderer does not try to.
 - `--unit <path>` renders only the unit with that path; a path no unit
   has is `render_unit`.
 - `--profile <file>` supplies a render profile: a document whose root
-  is `aontu: render: Lang: {lang, indent, …}`, evaluated under the verb's trust and
+  is `profile: {lang, indent, …}`, evaluated under the verb's trust and
   vetted against `aontu:render`; it applies to the units of its
   language, and a unit's own inline `profile` merges over it. The flag
   repeats, one file per language; two files claiming one language is a
@@ -3102,7 +3102,7 @@ contract](trust.md)), in both implementations:
 ```ts
 const aontu = new Aontu({
   trust: {
-    // include capability, one n:
+    // include capability, one of:
     //   'none'              — @"…" always denied
     //   { mem: {...} }      — a virtual file set only
     //   { root: '/models' } — real files, realpath-confined below root;

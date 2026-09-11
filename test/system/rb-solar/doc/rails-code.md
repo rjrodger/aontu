@@ -56,7 +56,7 @@ checks it against the bundled `aontu:code` vocabulary. Ordinary aontu
 models do not need it; it is the contract for code generation.
 
 Each unit supplies a file `path`, a target `lang`, and a list of `decls`.
-A declaration with `k: "frag"` supplies target-text fragments in `of`.
+A declaration with `k: "frag"` supplies target-text fragments in `n`.
 This example writes that text explicitly; the language name does not
 make aontu invent a Rails implementation.
 

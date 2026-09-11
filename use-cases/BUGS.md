@@ -3939,7 +3939,7 @@ x: { k: "a", n: [&: string] }
 x: { k: "a", n: ["p"] + each(["q"], _) }
 ```
 
-is `[aontu/list]` at `$.x.of` — "expected a list value" — in both
+is `[aontu/list]` at `$.x.n` — "expected a list value" — in both
 ports. The same sum at the TOP level stands up, and so does one whose
 operands are both literals:
 

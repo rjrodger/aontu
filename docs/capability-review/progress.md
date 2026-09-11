@@ -545,7 +545,7 @@ a self-typed rel($.T) inside T waits on RECURSION.0.md P1 (the prefix
 test refuses it today), recorded in the note's phase table.
 
 **ALIASES (P1) LANDED 2026-08-28**, in both ports, and they are the
-general form the sized-integer question was a special case n: `%port = …`
+general form the sized-integer question was a special case of: `%port = …`
 declares a file-local name and `%port` uses it, with no path to spell
 and no `type()` block to hang it on.
 

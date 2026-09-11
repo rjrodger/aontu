@@ -10,7 +10,7 @@
 #
 # THE LINES COME FROM AN INNER DISPATCH, as they do in every generator
 # here, and for a reason worth stating too: `replace` reaches the lines
-# a rule wrote, and a unit map's `decls[].of` is two levels below the
+# a rule wrote, and a unit map's `decls[].n` is two levels below the
 # rule's body -- not a literal spot, so nothing in it would be
 # substituted and every key would be `replace_unused`. The outer rule
 # shapes the units; the inner one writes their lines.

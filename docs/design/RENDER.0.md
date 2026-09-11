@@ -976,7 +976,7 @@ touches M0.
 
 27. **`replace` applies at the literal spots the template wrote** (P6):
     a string element of the body, and the strings written directly in
-    a map element's `of` list or `text`. A string an expression
+    a map element's `n` list or `text`. A string an expression
     computes, or a nested dispatch splices in, is not one, so D3's
     second rule (a substituted value is never re-scanned) and third (a
     spliced result is finished) follow from where the substitution

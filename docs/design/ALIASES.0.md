@@ -586,7 +586,7 @@ x: 1
 ```
 
 There is one root map, so there is no second scope for a name to leak
-out n: the declaration is a declaration *of this document*, which is
+out of: the declaration is a declaration *of this document*, which is
 exactly what it says it is. Two documents unified are one document, and
 a name declared in either is declared in the result — the same additive
 rule optional keys and spreads already follow. `vet` is where two

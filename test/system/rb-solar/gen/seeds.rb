@@ -30,7 +30,7 @@ Planet.delete_all
 #-
 #-       # A SECOND FRAGMENT, not a call in the first one's list: a dispatch
 #-       # splices its pieces into the BODY that holds it, and a fragment's
-#-       # `of` is a list of pieces rather than a body, so an `emit` beside
+#-       # `n` is a list of pieces rather than a body, so an `emit` beside
 #-       # literals there arrives as one nested list and the vocabulary
 #-       # refuses it. One fragment per thing that produces lines.
 #-       {
