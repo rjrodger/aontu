@@ -35,6 +35,10 @@ import { hasPlace, fillPlace } from './PlaceVal'
 
 
 class OpBaseVal extends FeatureVal {
+  // An op sorts BEFORE the kinds in a conjunct: only it knows to wait
+  // for a staged operand, and a kind met first refuses it outright.
+  cjo = 48000
+
   isOp = true
 
   constructor(

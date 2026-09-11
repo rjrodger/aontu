@@ -1680,7 +1680,11 @@ renderer does not try to.
   is `render_profile`.
 - `--strict` refuses the opaque escapes (a `text` declaration, a `raw`
   piece) which the renderer copies verbatim and cannot check (tier 3 in
-  the report); every fragment is tier 2 and passes.
+  the report); a fragment is tier 2 and passes. A fragment is noted
+  only under a language whose profile declares a `lowering`, where a
+  declaration could have been written instead; under text, markdown
+  and every other profile a fragment is the only thing to write, and
+  the render is `ok`.
 - `--format json` prints the whole report (`verdict`, `units` with
   their text, `lossy`, and `errors` when refused) under the usual
   `aontu: {version, verb}` envelope. It is the shape the MCP tool

@@ -245,8 +245,26 @@ func dataProcessor(format string) multisource.Processor {
 		}
 		val := dataToVal(out)
 		stampResolved(val, res.Full)
-		res.Val = val
+		res.Val = dataNode(val)
 	}
+}
+
+// dataNode hands a data include's map back as a parse NODE: a
+// ROOT-level directive merges what is map-shaped, and a Val is not.
+func dataNode(val Val) any {
+	mv, ok := val.(*MapVal)
+	if !ok {
+		return val
+	}
+	node := map[string]any{
+		orderKey: append([]string{}, mv.keys...),
+		posKey:   mv.sp,
+		srcKey:   mv.srctext(),
+	}
+	for _, k := range mv.keys {
+		node[k] = mv.peg[k]
+	}
+	return node
 }
 
 // extensionKind marks a Resolution whose extension is not on that list.

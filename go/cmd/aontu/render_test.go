@@ -18,6 +18,13 @@ const renderTwoUnits = `aontu: Code: units: [
 ]
 `
 
+// A fragment is lossy only against a language whose declarations could
+// have been lowered instead, so go says what text does not.
+const renderGoFrag = `aontu: Code: units: [
+  { path: "a.go", lang: "go", decls: [{ k: "frag", of: ["x"] }] }
+]
+`
+
 func renderRun(args ...string) (string, string, int) {
 	var out, errw bytes.Buffer
 	code := run(append([]string{"render"}, args...),
@@ -53,13 +60,25 @@ func renderCode(t *testing.T, want int, args ...string) (string, string) {
 }
 
 func TestRenderSummary(t *testing.T) {
-	dir := renderDir(t, map[string]string{"doc.aon": renderTwoUnits})
+	dir := renderDir(t, map[string]string{
+		"doc.aon": renderTwoUnits,
+		"go.aon":  renderGoFrag,
+	})
 	out, errw := renderCode(t, 0, filepath.Join(dir, "doc.aon"))
 	if "a.txt\ttext\t6 bytes\nsub/b.txt\ttext\t2 bytes\n" != out {
 		t.Fatalf("summary: %q", out)
 	}
-	vetMatch(t, errw, `^lossy: a\.txt \$\.aontu\.Code\.units\.0\.decls\.0 tier 2 frag: a fragment says nothing about text syntax\n`)
-	vetMatch(t, errw, `lossy: sub/b\.txt \$\.aontu\.Code\.units\.1\.decls\.0 tier 2 frag: `)
+	if "" != errw {
+		t.Fatalf("text is not lossy: %q", errw)
+	}
+	out, errw = renderCode(t, 0, filepath.Join(dir, "go.aon"))
+	if "a.go\tgo\t2 bytes\n" != out {
+		t.Fatalf("summary: %q", out)
+	}
+	if "lossy: a.go $.aontu.Code.units.0.decls.0 tier 2 frag:"+
+		" a fragment says nothing about go syntax\n" != errw {
+		t.Fatalf("loss report: %q", errw)
+	}
 
 	// The verb's own trust flags reach it, and `none` governs the
 	// document alone: the renderer's own vocabulary is not an include
@@ -180,6 +199,7 @@ func TestRenderOutIsConfined(t *testing.T) {
 func TestRenderFormatJSON(t *testing.T) {
 	dir := renderDir(t, map[string]string{
 		"doc.aon": renderTwoUnits,
+		"go.aon":  renderGoFrag,
 		"bad.aon": "x: 1 & \"a\"\n",
 	})
 	out, errw := renderCode(t, 0, "--format", "json", filepath.Join(dir, "doc.aon"))
@@ -194,8 +214,11 @@ func TestRenderFormatJSON(t *testing.T) {
 	if "render" != producer["verb"] {
 		t.Fatalf("verb: %v", producer)
 	}
-	if "lossy" != report["verdict"] {
+	if "ok" != report["verdict"] {
 		t.Fatalf("verdict: %v", report["verdict"])
+	}
+	if lossy, _ := report["lossy"].([]any); 0 != len(lossy) {
+		t.Fatalf("text is not lossy: %v", lossy)
 	}
 	units, _ := report["units"].([]any)
 	if 2 != len(units) {
@@ -206,7 +229,20 @@ func TestRenderFormatJSON(t *testing.T) {
 		t.Fatalf("text: %q", first["text"])
 	}
 	if _, has := report["errors"]; has {
-		t.Fatalf("errors on a lossy report: %v", report["errors"])
+		t.Fatalf("errors on a clean report: %v", report["errors"])
+	}
+	// A loss report is in the same answer, not on the other stream.
+	out, errw = renderCode(t, 0, "--format", "json", filepath.Join(dir, "go.aon"))
+	if "" != errw {
+		t.Fatalf("stderr: %q", errw)
+	}
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatalf("stdout is not JSON: %v\n%s", err, out)
+	}
+	lossy, _ := report["lossy"].([]any)
+	entry, _ := lossy[0].(map[string]any)
+	if "frag" != entry["construct"] {
+		t.Fatalf("loss entry: %v", entry)
 	}
 	// An error report carries its findings, and exits as the text form
 	// does.

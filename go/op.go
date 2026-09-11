@@ -21,6 +21,8 @@ func newPlusOp(a, b Val) *PlusOpVal {
 
 func (o *PlusOpVal) superior() Val { return top() }
 
+func (o *PlusOpVal) cjo() int { return 48000 }
+
 func (o *PlusOpVal) Canon() string {
 	return o.peg[0].Canon() + "+" + o.peg[1].Canon()
 }
@@ -101,6 +103,24 @@ func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 	// value's kind too.
 	av := unpref(args[0])
 	bv := unpref(args[1])
+
+	if isAbsent(av) {
+		return av
+	}
+	if isAbsent(bv) {
+		return bv
+	}
+
+	// ADR-034 and ADR-037.
+	if al, aok := av.(*ListVal); aok {
+		if bl, bok := bv.(*ListVal); bok {
+			peg := make([]Val, 0, len(al.peg)+len(bl.peg))
+			for _, v := range append(append([]Val{}, al.peg...), bl.peg...) {
+				peg = append(peg, clonePath(v, cp(append(o.vpath(), itoa(len(peg))))))
+			}
+			return newList(peg)
+		}
+	}
 
 	if isExactScalar(av) || isExactScalar(bv) {
 		return exactPlus(ctx, o, av, bv)

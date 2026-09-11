@@ -71,6 +71,77 @@ belongs in `docs/`.
 concatenated escapes, which is what the extraction to files made
 possible — the grammar now reads as a grammar. Their values are
 byte-identical, so the canon and hash pins are unmoved.
+### Go: a root-level data include no longer vanishes
+
+`@"./conf.json"` on its own line contributed **nothing** in the Go
+port -- no keys, no error -- while TypeScript merged the file's keys
+into the map that held it. A keyed include (`x: @"./conf.json"`) and a
+root `.aon` include were both correct in both ports, and the shared
+suite's data-include rows were all keyed, so nothing caught it.
+
+The Go data processor handed the include machinery a finished aontu
+value, and a root-level directive merges into its holding map only
+when what it loaded is map-shaped. It now hands back a parse node
+carrying the same values, which merges; a keyed include rebuilds the
+map from that node and is unchanged. Pinned by seven new rows in
+`test/spec/file.tsv`, every expectation from both engines.
+[BUGS.md §93](use-cases/BUGS.md) records the case and the narrower one
+still open (a root include of a data file that is not a map).
+
+### Two lists concatenate under `+`
+
+A generated section has two halves: the literal scaffolding that heads
+it, and the rows a call produces. `aontu:code` takes them as separate
+fragments -- a fragment's `of` is a list and `emit` answers a list --
+and there was no way to write one list made of both. `+` on two lists
+residuated and failed at generation.
+
+**`["a"] + ["b"]` is now `["a","b"]`,** with `[]` the identity, so a
+written head and a computed tail go in one place:
+
+```aon
+of: ["tags:"] + emit(sort($.tags), %tag)
+```
+
+A list mixed with a scalar still residuates, exactly as a boolean
+mixed with a number does.
+
+**A sum of an absence is absent.** Either operand being `maybe()`
+makes the whole `+` absence, so a heading can vanish with the rows it
+heads. This is absorption, not the identity that absence is under
+`&`: `&` narrows and `+` computes, and a computation over nothing has
+no answer. It reaches as far as absence itself does -- a list a
+schema constrains still refuses an absent member in both ports, so
+the vanishing section is not yet reachable inside `aontu:code`'s own
+`decls` ([BUGS.md §94](use-cases/BUGS.md)).
+
+**An op now sorts before the kinds in a conjunct** (`cjo` 48000). Its
+operands may be staged calls and only the op knows to wait for them,
+so `list() & (["x"] + each(["y"], _))` stands up where a kind met
+first refused the unresolved op outright.
+
+**BREAKING (unreleased): a pinned row changed meaning.**
+`edge-plus-lists` pinned `mapval_no_gen` for `[1]+[2]`; it now pins
+the concatenation. The row recorded what `+` did not do, not a
+decision that it should not.
+
+Two defects found while landing this are filed rather than fixed
+here: a `+` whose operand is a staged call is refused where it meets
+a kind at a key inside a map ([BUGS.md §92](use-cases/BUGS.md),
+which predates this change), and the absent-member refusal above
+([§94](use-cases/BUGS.md)).
+[ADR-037](ADR.md#adr-037--two-lists-concatenate-under--and-a-sum-of-an-absence-is-absent).
+
+### A fragment is lossy only against a language with a lowering
+
+`aontu render` noted every `frag` declaration as tier 2 lossy, so
+rendering markdown or plain text printed `a fragment says nothing
+about markdown syntax` once per fragment -- for languages where a
+fragment is the only thing to write. **The note is now raised only
+where the profile declares a `lowering`** (`typescript` and `go`),
+which is where a declaration could have been lowered instead. Text,
+markdown, and every other configured language render `ok`. Forty rows
+in `test/spec/render.tsv` are re-pinned from both engines.
 
 ### The built-in `aontu:` models are files, not strings in each port
 

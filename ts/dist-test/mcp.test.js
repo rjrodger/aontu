@@ -459,10 +459,17 @@ function hostileModule(dir) {
             source: 'aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", ' +
                 'of: ["x", { k: "line", at: 1, of: ["y"] }] }] }]\n',
         }));
-        Assert.equal(r.verdict, 'lossy');
+        Assert.equal(r.verdict, 'ok');
         Assert.deepEqual(r.units, [{ path: 'a.txt', lang: 'text', text: 'x\n  y\n' }]);
-        Assert.equal(r.lossy[0].tier, 2);
+        Assert.deepEqual(r.lossy, []);
         Assert.equal(r.errors, undefined);
+        // A fragment is lossy against a language with a lowering.
+        const lossy = payload((0, mcp_1.callTool)('render', {
+            source: 'aontu: Code: units: [{ path: "a.go", lang: "go", decls: [{ k: "frag", ' +
+                'of: ["x"] }] }]\n',
+        }));
+        Assert.equal(lossy.verdict, 'lossy');
+        Assert.equal(lossy.lossy[0].tier, 2);
         // `at` and `unit` are the verb's own flags, and `strict` refuses
         // the opaque escapes as an error report.
         const at = payload((0, mcp_1.callTool)('render', {
