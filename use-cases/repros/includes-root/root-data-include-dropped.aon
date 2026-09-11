@@ -7,7 +7,8 @@
 #   aontu --trust root:. root-data-include-dropped.aon
 # expected: {"j":1,"x":1}
 # actual:   {"x":1}          (Go, before the fix)
-# FIXED 2026-09-11: test/spec/file.tsv load-root-*.
+# FIXED 2026-09-11: test/spec/file.tsv load-root-*. A data file whose
+# value is not a map is now refused at the root in both ports too.
 @"./d.json"
 
 x: 1

@@ -249,12 +249,12 @@ func dataProcessor(format string) multisource.Processor {
 	}
 }
 
-// dataNode hands a data include's map back as a parse NODE: a
+// dataNode hands a data include's value back as a parse NODE: a
 // ROOT-level directive merges what is map-shaped, and a Val is not.
 func dataNode(val Val) any {
 	mv, ok := val.(*MapVal)
 	if !ok {
-		return val
+		return map[string]any{dataValKey: val}
 	}
 	node := map[string]any{
 		orderKey: append([]string{}, mv.keys...),

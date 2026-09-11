@@ -115,13 +115,15 @@ Two cautions:
 - `includes-root/` (§93, filed 2026-09-11) is **FIXED** as of
   2026-09-11: a root-level include of a DATA file merges its keys into
   the map that holds it in the Go port too, instead of contributing
-  nothing. Pinned by `file.tsv` — the six `load-root-*` rows.
+  nothing, and one whose value is not a map is refused in both ports
+  rather than ignored in one. Pinned by `file.tsv` — the `load-root-*`
+  rows.
 
-- `op-template/` (§92, filed 2026-09-11) is **OPEN**: a `+` whose
-  operand is a staged call refuses where it meets a kind at a key
-  inside a map, though the same sum at the top level stands up. It
-  predates list concatenation (ADR-037), which only made the shape
-  worth writing.
+- `op-template/` (§92, filed 2026-09-11) is **FIXED** as of
+  2026-09-11: an op DRIVES the meet while an operand has not decided,
+  at a key inside a map as well as in a conjunct, which is the rule a
+  staged call already had. Pinned by `edge.tsv` —
+  `edge-plus-op-under-map-template`, `-map-kind` and `-map-value`.
 
 These are review artifacts. Per ADR-001, the durable home for any
 behaviour contract is a `test/spec/*.tsv` row probed in both ports;

@@ -3746,7 +3746,10 @@ kinds and the concrete values and below the constraint algebra.
   change -- `{of: string}` against `{of: "a" + join(…)}` fails the same
   way without it -- so the order fixes the top-level shapes and not
   this one. Filed as [BUGS.md §92](use-cases/BUGS.md) rather than
-  rushed into this change.
+  rushed into this change. **Closed 2026-09-11**, by the rule this
+  decision states rather than by the mechanism it used: an op DRIVES
+  the meet while an operand has not decided, wherever it is met, which
+  is what a staged CALL already did.
 - **The scaffolding case is not finished.** Absence under a
   schema-constrained list is refused, not dropped, in both ports, so
   writing the sum above inside `aontu:code`'s `decls` (or under any

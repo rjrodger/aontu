@@ -10,5 +10,7 @@
 # under aontu:code's schema.
 # expected: {"x":{"k":"a","of":["p","q"]}}
 # actual:   [aontu/list] at $.x.of
+# FIXED 2026-09-11: an op drives the meet while an operand has not
+# decided. Pinned by edge.tsv edge-plus-op-under-map-*.
 x: { k: "a", of: [&: string] }
 x: { k: "a", of: ["p"] + each(["q"], _) }

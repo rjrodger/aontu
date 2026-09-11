@@ -7,6 +7,32 @@ which implementation each change affects.
 
 ## Unreleased
 
+### An operator drives the meet while an operand has not decided
+
+`{k:"frag", of:["head"] + emit(...)}` written under `aontu:code`'s
+schema was refused as `[aontu/list]`, though the same sum at the top
+level stood up and one whose operands were both literals stood up
+anywhere. The string spelling failed the same way and long predated
+list concatenation.
+
+**An op now DRIVES the meet wherever it is met**, which is the rule a
+staged CALL already had: only the op knows to wait for an operand that
+has not computed, and the kind it meets would refuse it outright. It
+drove only when it held a placeholder. A map's per-key meet goes
+through the same route now, so a written head concatenated onto a
+generated tail can be written where it is wanted. Three rows in
+`test/spec/edge.tsv`; [BUGS.md §92](use-cases/BUGS.md).
+
+### A root include of a data file that is not a map is refused
+
+`@"./arr.json"` over `[1,2,3]`, on its own line, was an `[aontu/map]`
+refusal in TypeScript and was silently ignored in Go. A non-map value
+now rides back as a node carrying it under one reserved key: a keyed
+include reads the value off it, and a root merge carries that key into
+the map node holding the directive, which cannot be a list and says
+so. Both ports answer `map` at `$`. One row in `test/spec/file.tsv`;
+[BUGS.md §93](use-cases/BUGS.md).
+
 ### Go: a root-level data include no longer vanishes
 
 `@"./conf.json"` on its own line contributed **nothing** in the Go
