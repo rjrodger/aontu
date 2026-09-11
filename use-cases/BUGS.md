@@ -4079,8 +4079,9 @@ where is a language question ADR-034 did not settle. Recognising
 absence before the spread applies means deferring the spread until the
 member has decided, which changes when a template is folded.
 
-Status: OPEN, and deliberately not half-fixed: a rule that holds for
-`[&: string]` and not for `[&: string|number]` is worse than one that
-refuses uniformly. `docs/reference-language.md` states the
+Status: OPEN, tracked as
+[issue #200](https://github.com/aontu-lang/aontu/issues/200), and
+deliberately not half-fixed: a rule that holds for `[&: string]` and
+not for `[&: string|number]` is worse than one that refuses uniformly. `docs/reference-language.md` states the
 containing-map half ("It cannot make a containing map vanish") and the
 constrained-list half.

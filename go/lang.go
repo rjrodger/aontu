@@ -1661,11 +1661,11 @@ func asValDepth(node any, depth int) Val {
 		// back-edges first (see the expr rule action in makeLang).
 		return asValDepth(expr.Evaluation(nil, nil, snipExprCycles(n), evaluate), depth+1)
 	case map[string]any:
-		if dv, ok := n[dataValKey].(Val); ok {
+		dv, carried := n[dataValKey].(Val)
+		if carried {
 			if _, parsed := n[orderKey]; !parsed {
 				return dv
 			}
-			return newNil("map")
 		}
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
@@ -1725,6 +1725,11 @@ func asValDepth(node any, depth int) Val {
 				continue
 			}
 			mv.set(k, asValDepth(v, depth+1))
+		}
+		if carried {
+			// A ROOT include whose value is not a map, merged into the
+			// map that holds the directive: the two cannot meet.
+			return makeNilErr(nil, "map", mv, dv)
 		}
 		return mv
 	case []any:
