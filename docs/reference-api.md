@@ -2293,9 +2293,9 @@ one:
 ```aon
 @"aontu:render"
 
-aontu: Lang: lang: "ocaml"
-aontu: Lang: indent: { unit:" " width:2 }
-aontu: Lang: template: { marker:"(*-" close:"*)" ext: ["ml" "mli"] }
+aontu: render: Lang: lang: "ocaml"
+aontu: render: Lang: indent: { unit:" " width:2 }
+aontu: render: Lang: template: { marker:"(*-" close:"*)" ext: ["ml" "mli"] }
 ```
 
 <!-- test: skip the synopsis is not a transcript -->

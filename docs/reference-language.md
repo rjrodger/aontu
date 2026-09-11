@@ -3185,7 +3185,7 @@ block comment the engine has never seen:
 
 <!-- test: skip the file it configures is the reader's own language -->
 ```aon
-aontu: Lang: template: { marker:"(*-" close:"*)" ext: ["ml" "mli"] }
+aontu: render: Lang: template: { marker:"(*-" close:"*)" ext: ["ml" "mli"] }
 ```
 
 **`aontu:render/lang/text`** is the bundled profile of every other language:
