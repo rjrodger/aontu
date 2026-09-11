@@ -330,7 +330,9 @@ func TestBundledModelsAreFormatted(t *testing.T) {
 		t.Fatalf("aontuModels: %v", names)
 	}
 	for _, name := range names {
-		src := aontuSources[name]
+		// `aontu fmt` normalises line endings, so a model embedded from a
+		// CRLF checkout could never round-trip its own formatting.
+		src := strings.ReplaceAll(aontuSources[name], "\r\n", "\n")
 		rep := a.FormatWith(src, FormatOptions{Lint: true})
 		if "formatted" != rep.Verdict {
 			t.Fatalf("%s: verdict %s (%v)", name, rep.Verdict, rep.Errors)
