@@ -851,4 +851,100 @@ function stylePaths() {
     const listed = Array.from(section.matchAll(/^### `([a-z]+)\(/gm), (m) => m[1]);
     Assert.deepStrictEqual(listed, names, 'the alphabetical Functions index must list each declared built-in exactly once');
 });
+// GitHub's heading slug: lower-cased, punctuation dropped except `-`
+// and `_`, spaces to hyphens, a repeat suffixed by its occurrence
+// count. Runs of spaces make runs of hyphens.
+function slug(heading) {
+    return heading.toLowerCase()
+        .replace(/`/g, '')
+        .replace(/[^a-z0-9 _-]/g, '')
+        .replace(/ /g, '-');
+}
+function headingAnchors(md) {
+    const seen = new Map();
+    const out = new Set();
+    for (const line of fenceless(md).split('\n')) {
+        const m = line.match(/^#{1,6}\s+(.*?)\s*$/);
+        if (null == m) {
+            continue;
+        }
+        const base = slug(m[1]);
+        const n = seen.get(base) ?? 0;
+        seen.set(base, n + 1);
+        out.add(0 === n ? base : base + '-' + n);
+    }
+    return out;
+}
+// Wider than the style-gated set: working documents carry links too.
+function markdownFiles() {
+    return (0, node_child_process_1.execFileSync)('git', ['ls-files', '*.md'], { cwd: REPO, encoding: 'utf8' })
+        .split('\n')
+        .filter((f) => '' !== f);
+}
+(0, node_test_1.test)('every-internal-link-resolves', () => {
+    const cache = new Map();
+    const anchorsOf = (abs) => {
+        if (!cache.has(abs)) {
+            cache.set(abs, Fs.existsSync(abs) ?
+                headingAnchors(Fs.readFileSync(abs, 'utf8')) : null);
+        }
+        return cache.get(abs);
+    };
+    const dead = [];
+    for (const file of markdownFiles()) {
+        const abs = Path.join(REPO, file);
+        // Code spans go too: a link shown as an example is not a link.
+        const md = fenceless(Fs.readFileSync(abs, 'utf8'))
+            .replace(/`[^`\n]*`/g, '');
+        for (const m of md.matchAll(/\]\(([^)\s]+)\)/g)) {
+            const href = m[1];
+            if (/^[a-z][a-z0-9+.-]*:/.test(href) || href.startsWith('//')) {
+                continue;
+            }
+            const hash = href.indexOf('#');
+            if (-1 === hash) {
+                continue;
+            }
+            const frag = decodeURIComponent(href.slice(hash + 1));
+            if ('' === frag) {
+                continue;
+            }
+            const rel = href.slice(0, hash);
+            const target = '' === rel ? abs : Path.resolve(Path.dirname(abs), rel);
+            const found = anchorsOf(target);
+            if (null === found) {
+                dead.push(file + ' -> ' + href + ' (no such file)');
+            }
+            else if (!found.has(frag)) {
+                dead.push(file + ' -> ' + href);
+            }
+        }
+    }
+    Assert.deepEqual(dead, [], 'links whose target heading does not exist:\n' + dead.join('\n'));
+});
+// `progress.md` records the retirements, so it names both spellings.
+const RETIRED_BUILTINS = ['form'];
+const FROZEN_NOTE = '**Names here are the names of the day.**';
+const FROZEN_DIRS = ['docs/design/', 'docs/capability-review/'];
+const FROZEN_EXEMPT = ['docs/capability-review/progress.md'];
+(0, node_test_1.test)('a-working-document-naming-a-retired-builtin-says-so', () => {
+    const bare = [];
+    for (const file of markdownFiles()) {
+        if (!FROZEN_DIRS.some((d) => file.startsWith(d)) ||
+            FROZEN_EXEMPT.includes(file)) {
+            continue;
+        }
+        const md = Fs.readFileSync(Path.join(REPO, file), 'utf8');
+        if (md.includes(FROZEN_NOTE)) {
+            continue;
+        }
+        const named = RETIRED_BUILTINS
+            .filter((n) => new RegExp('\\b' + n + '\\(').test(md));
+        if (0 < named.length) {
+            bare.push(file + ' names ' + named.join(', '));
+        }
+    }
+    Assert.deepEqual(bare, [], 'working documents naming a retired built-in without the note:\n' +
+        bare.join('\n'));
+});
 //# sourceMappingURL=docs.test.js.map

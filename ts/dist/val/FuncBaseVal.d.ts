@@ -4,6 +4,7 @@ import { FeatureVal } from '../val/FeatureVal';
 declare function trialUnify(ctx: AontuContext, a: Val, b: Val): Val | undefined;
 declare class FuncBaseVal extends FeatureVal {
     isFunc: boolean;
+    forgives: boolean;
     isGenable: boolean;
     staged: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);

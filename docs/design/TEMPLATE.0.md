@@ -10,6 +10,17 @@ and, for output claims, against
 `ab7f333`. This note is design; status lives in the
 [progress register](../capability-review/progress.md).*
 
+**Names here are the names of the day.** This document records what was
+decided when it was written, and it is not rewritten as the language
+moves. Two names have since changed meaning. The list generator it
+calls `form` is named `each` today
+([ADR-027](../../ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound)),
+and the `each` it describes as the bound was retired first
+([ADR-026](../../ADR.md#adr-026--each-is-retired-form-carries-the-bound)), that
+bound now being spelled `each(d, _ & t)`. The
+[progress register](../capability-review/progress.md) carries the current status, and
+`test/spec/signature.tsv` is the call surface.
+
 ## D1. One rule
 
 A generator is a file in the TARGET's syntax. **A marked line is aontu

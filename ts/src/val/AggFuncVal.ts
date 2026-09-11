@@ -17,6 +17,7 @@ import { StringVal } from './StringVal'
 import { FuncBaseVal } from './FuncBaseVal'
 import { arith } from './arith'
 import { cmpNumeric } from './numcmp'
+import { cmpCodePoint } from '../keyorder'
 import { memberVals } from './members'
 import { plusText } from './PlusOpVal'
 
@@ -207,6 +208,156 @@ class PickFuncVal extends FuncBaseVal {
 }
 
 
+// `pick`'s rule, plus: the empty string is the member itself, which is
+// how a keyless descending sort is spelled.
+function projectorName(key: any): [string, boolean] {
+  if (null == key || null == key.peg) {
+    return ['', true]
+  }
+  if ('string' === typeof key.peg) {
+    return [key.peg, true]
+  }
+  if ('number' === typeof key.peg && key.isInteger) {
+    return [String(key.peg), true]
+  }
+  return ['', false]
+}
+
+
+function fieldOf(child: any, name: string): Val | undefined {
+  return true === child?.isMap ? child.peg[name] :
+    true === child?.isList ? child.peg[Number(name)] :
+      undefined
+}
+
+
+const SORT_DIRECTIONS: Record<string, number> = { asc: 1, desc: -1 }
+
+
+function directionOf(v: any): number | undefined {
+  if (null == v || null == v.peg) {
+    return 1
+  }
+  return 'string' === typeof v.peg ? SORT_DIRECTIONS[v.peg] : undefined
+}
+
+
+// Text by code point, numbers by the exact comparator, nothing else.
+function sortDomain(u: any): 'text' | 'number' | undefined {
+  if (true !== u?.isVal || true !== u.isScalar || true === u.isNull) {
+    return undefined
+  }
+  if ('string' === typeof u.peg) {
+    return 'text'
+  }
+  return 'boolean' === typeof u.peg ? undefined : 'number'
+}
+
+
+type SortRow = { idx: number, val: Val, key: any }
+
+
+class SortFuncVal extends FuncBaseVal {
+  isSortFunc = true
+
+  // The bag must settle before it is ordered, exactly as it must
+  // before it is projected.
+  staged = true
+
+  constructor(
+    spec: ValSpec,
+    ctx?: AontuContext
+  ) {
+    super(spec, ctx)
+  }
+
+
+  funcname() {
+    return 'sort'
+  }
+
+
+  // The base drives no argument: the DATA is driven by hand below, and
+  // the projector is a bare word the parser has already made a string.
+  prepare(_ctx: AontuContext, _args: Val[]) {
+    return null
+  }
+
+
+  unify(peer: Val, ctx: AontuContext): Val {
+    const ready = this.driveStagedArgs(ctx, 1)
+
+    if (!ready || !ctx.settle) {
+      return this.residuate(peer, ctx)
+    }
+
+    return super.unify(peer, ctx)
+  }
+
+
+  resolve(ctx: AontuContext, args: Val[]) {
+    const children = bagChildren(args?.[0], ctx)
+
+    if (undefined === children) {
+      return this.place(makeNilErr(ctx, 'aggregate_data', this, undefined,
+        'sort'))
+    }
+
+    const [name, nameok] = projectorName(args?.[1])
+
+    if (!nameok) {
+      return this.place(makeNilErr(ctx, 'invalid-arg', this, undefined,
+        'sort'))
+    }
+
+    const dir = directionOf(args?.[2])
+
+    if (undefined === dir) {
+      return this.place(makeNilErr(ctx, 'sort_dir', this, undefined, 'sort',
+        { dir: (args[2] as any).canon }))
+    }
+
+    const rows: SortRow[] = []
+    let domain: 'text' | 'number' | undefined = undefined
+
+    for (const child of children) {
+      const at: any = '' === name ? child : fieldOf(child, name)
+
+      if (null == at) {
+        return this.place(makeNilErr(ctx, 'sort_key', this, undefined, 'sort',
+          { key: name }))
+      }
+
+      const u = unpref(at)
+      const found = sortDomain(u)
+
+      if (undefined === found ||
+        (undefined !== domain && found !== domain)) {
+        return this.place(makeNilErr(ctx, 'sort_domain', this, undefined,
+          'sort', { member: u.canon }))
+      }
+
+      domain = found
+      rows.push({ idx: rows.length, val: child, key: u })
+    }
+
+    // The source index breaks every tie, so the order is TOTAL and
+    // neither port's sort algorithm can reorder equals.
+    rows.sort((a, b) => {
+      const c = 'text' === domain ?
+        cmpCodePoint(a.key.peg as string, b.key.peg as string) :
+        cmpNumeric(a.key, b.key)
+      return 0 === c ? a.idx - b.idx : dir * c
+    })
+
+    const peg: Val[] = rows.map(
+      (r, i) => r.val.clone(ctx.descend(String(i))))
+
+    return this.place(new ListVal({ peg }, ctx))
+  }
+}
+
+
 type MemberVerdict = 'text' | 'never' | 'notyet'
 
 
@@ -334,13 +485,14 @@ class GreatestFuncVal extends AggFuncVal {
   constructor(spec: ValSpec, ctx?: AontuContext) {
     super(spec, ctx, 'greatest')
   }
-} /* node:coverage ignore next 10 */
+} /* node:coverage ignore next 11 */
 
 
 export {
   AggFuncVal,
   JoinFuncVal,
   PickFuncVal,
+  SortFuncVal,
   SumFuncVal,
   LeastFuncVal,
   GreatestFuncVal,

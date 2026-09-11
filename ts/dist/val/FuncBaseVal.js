@@ -49,6 +49,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFunc = true;
+        this.forgives = false;
         this.isGenable = true;
         this.staged = false;
     }
@@ -155,12 +156,16 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     }
                 }
                 // console.log('FUNCBASE-PEG', this.id, pegdone, this.peg.map((p: any) => p?.canon))
-                if (pegdone && !this.deferResolve(ctx, newpeg)) {
+                // ABSENCE PROPAGATES (ADR-034), ahead of deferResolve.
+                const gone = this.forgives ? undefined :
+                    newpeg.find((a) => true === a.isAbsent);
+                if (pegdone &&
+                    (undefined !== gone || !this.deferResolve(ctx, newpeg))) {
                     // THE SIGNATURE GATE (docs/design/SIGNATURES.0.md): the
                     // driven arguments against the declared signature, before
                     // the builtin's own logic sees them. See siggate.ts for
                     // what the gate owns and what stays with the builtins.
-                    const resolved = (0, siggate_1.sigRefuse)(ctx, this, newpeg) ??
+                    const resolved = gone ?? (0, siggate_1.sigRefuse)(ctx, this, newpeg) ??
                         this.resolve(ctx, newpeg);
                     // The TOP peer is DROPPED as the unit it is.
                     out = resolved.done && peer.isTop ? resolved :

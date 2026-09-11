@@ -1,0 +1,75 @@
+# ORDERING -- sort over a finite, settled bag.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# Generation supplies two orders and neither is the one a report or a
+# rendered file wants: a map generates in key order, a list in source
+# order. `sort` is the third, and it answers a LIST from either, for
+# the reason `Semver` is a list -- a map has no order of its own to be
+# put in.
+#
+# EVERY EXPECTATION HERE WAS OBTAINED BY RUNNING BOTH ENGINES AND
+# REQUIRING THEM TO AGREE. `canon` rather than `gen`, because half of
+# what these promise is the KIND of the ordered members and a gen row
+# cannot see one (sort-exact-compare, sort-pref-member).
+#
+# WHAT THE ROWS PIN:
+#
+#   THE ORDER IS TOTAL, so the two ports agree whatever their sort
+#   algorithm does with equals. The source index breaks every tie:
+#   sort-stable-asc and sort-stable-desc hold two members with the
+#   same key and require source order in BOTH directions, which a
+#   `sort.Slice` in Go would otherwise be free to reverse.
+#
+#   THE COMPARATOR IS EXACT AND PER-DOMAIN. Numbers compare through
+#   cmpNumeric and never binary64 (sort-exact-compare orders two values
+#   whose float images are equal; sort-mixed-number-kinds interleaves a
+#   bigdecimal with integers). Text compares by CODE POINT
+#   (sort-code-point-order puts U+FF00 below U+10000, where a UTF-16
+#   comparison would reverse them -- the `pick` divergence G9 found,
+#   pinned here so it cannot return).
+#
+#   A BAG WITH NO ORDER IS REFUSED, not guessed at: mixed domains, and
+#   booleans, nulls and containers, which have no order here at all.
+#
+#   THE MEMBERS ARE GENERATION'S. A hidden child and an unfilled
+#   optional are not members, the rule every bag reader follows.
+sort-numbers	canon	x:sort([3,1,2])	{"x":[1,2,3]}
+sort-text	canon	x:sort([c,a,b])	{"x":["a","b","c"]}
+sort-map-members	canon	x:sort({b:2,c:3,a:1})	{"x":[1,2,3]}
+sort-empty	canon	x:sort([])	{"x":[]}
+sort-single	canon	x:sort([7])	{"x":[7]}
+sort-desc	canon	x:sort([1,3,2], "", desc)	{"x":[3,2,1]}
+sort-asc-explicit	canon	x:sort([3,1,2], "", asc)	{"x":[1,2,3]}
+sort-projector-map	canon	x:sort([{n:b},{n:a},{n:c}], n)	{"x":[{"n":"a"},{"n":"b"},{"n":"c"}]}
+sort-projector-desc	canon	x:sort([{n:1},{n:3},{n:2}], n, desc)	{"x":[{"n":3},{"n":2},{"n":1}]}
+sort-projector-index	canon	x:sort([[9,a],[8,b]], 0)	{"x":[[8,"b"],[9,"a"]]}
+sort-stable-asc	canon	x:sort([{k:1,v:a},{k:1,v:b},{k:0,v:c}], k)	{"x":[{"k":0,"v":"c"},{"k":1,"v":"a"},{"k":1,"v":"b"}]}
+sort-stable-desc	canon	x:sort([{k:1,v:a},{k:1,v:b},{k:0,v:c}], k, desc)	{"x":[{"k":1,"v":"a"},{"k":1,"v":"b"},{"k":0,"v":"c"}]}
+sort-exact-compare	canon	x:sort([0d9007199254740993,9007199254740992])	{"x":[9007199254740992,0d9007199254740993]}
+sort-mixed-number-kinds	canon	x:sort([0d1.5,2,1])	{"x":[1,0d1.5,2]}
+sort-pref-member	canon	x:sort([pref(5),9,1])	{"x":[1,*5,9]}
+sort-code-point-order	canon	x:sort(["\\uff00","\\ud800\\udc00"])	{"x":["＀","𐀀"]}
+sort-skips-hidden	canon	m:{a:3,b:hide(1),c:2}\nx:sort($.m)	{"m":{"a":3,"b":1,"c":2},"x":[2,3]}
+sort-skips-unfilled-optional	canon	m:{a:3,b?:integer,c:2}\nx:sort($.m)	{"m":{"a":3,"b"?:integer,"c":2},"x":[2,3]}
+sort-forward-reference	canon	y:sort($.x)\nx:[2,1]	{"x":[2,1],"y":[1,2]}
+sort-over-each	canon	x:sort(each({p:3,q:1},_))	{"x":[1,3]}
+sort-then-pick	canon	x:pick(sort([{n:b},{n:a}], n), n)	{"x":["a","b"]}
+sort-then-join	canon	x:join(sort([c,a,b]), "-")	{"x":"a-b-c"}
+sort-of-sort	canon	x:sort(sort([3,1,2]), "", desc)	{"x":[3,2,1]}
+sort-gen	gens	x:sort([{n:2},{n:1}], n)	{"x":[{"n":1},{"n":2}]}
+sort-key-missing	errc	x:sort([{a:1},{b:2}], a)	sort_key
+sort-key-index-out-of-range	errc	x:sort([[9],[]], 0)	sort_key
+sort-domain-mixed	errc	x:sort([1,a])	sort_domain
+sort-domain-boolean	errc	x:sort([true,false])	sort_domain
+sort-domain-null	errc	x:sort([null,null])	sort_domain
+sort-domain-container	errc	x:sort([[1],[2]])	sort_domain
+sort-domain-projected	errc	x:sort([{n:1},{n:a}], n)	sort_domain
+sort-dir-unknown	errc	x:sort([1,2], "", up)	sort_dir
+sort-data-scalar	errc	x:sort(1)	aggregate_data
+sort-projector-boolean	errc	x:sort([{n:1}], true)	invalid-arg
+sort-projector-container	errc	x:sort([{n:1}], [1])	invalid-arg
+sort-projector-pref	errc	x:sort([{n:2},{n:1}], pref(n))	invalid-arg
+sort-dir-not-text	errc	x:sort([1,2], "", 3)	func_arg
+sort-dir-pref-word	errc	x:sort([1,2], "", pref(up))	sort_dir
+sort-dir-pref-number	errc	x:sort([1,2], "", pref(3))	sort_dir

@@ -1522,7 +1522,7 @@ coverage: 1 path(s) read, 1 no output consumed, 1 declaration(s) no rule produce
 dead; `$.notes` is read by nothing, so it is. The one declaration is a
 fragment the document wrote by hand rather than a rule set produced, so
 it is a hole: a document whose output comes wholly from
-[`emit`](reference-language.md#dispatching-emit) reports none.
+[`emit`](reference-language.md#transforming-emit) reports none.
 
 **`--coverage-at <path>` measures a narrower model.** Coverage is taken
 over the whole document by default. A document that keeps its model
@@ -3095,7 +3095,7 @@ Go) hermeticity's "file set" as data (capability is `mem`, `file` or
 hash`](#aontu-hash) and the module tooling, [`aontu mod`](#aontu-mod).
 
 **The bundled vocabularies.** `@"aontu:system"` ([the system
-vocabulary](reference-language.md#the-stdsystem-vocabulary)) and
+vocabulary](reference-language.md#the-aontusystem-vocabulary)) and
 `@"aontu:view"` (the schema for a [view document's](#aontu-view)
 declarations) are served from the engine rather than from disk, so they
 need neither the filesystem nor package resolution and resolve under

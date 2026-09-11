@@ -17,6 +17,8 @@ var funcSet = map[string]bool{
 	"pref": true, "super": true, "type": true, "hide": true,
 	"move": true, "path": true, "close": true, "open": true,
 	"map": true, "list": true,
+	// ADR-034.
+	"maybe": true,
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
 	"re": true, "length": true, "unique": true, "must": true,
 	"deprecate": true,
@@ -46,6 +48,8 @@ var funcSet = map[string]bool{
 	// RECORDS. Not a clever each template -- each MEETS each child, and
 	// a meet cannot select.
 	"pick": true,
+	// Ordering, which generation cannot supply.
+	"sort": true,
 	// G9 phase 2: the fold to a STRING. sum folds with add; this folds
 	// with `+`, so it inherits the one number-to-text rule and the
 	// language does not grow a second.
@@ -59,12 +63,14 @@ var stagedFuncs = map[string]bool{
 	"match": true,
 	"emit": true,
 	"sum": true, "least": true, "greatest": true, "pick": true,
+	"sort": true,
 	// A fold over a bag still being merged into folds the wrong bag.
 	"join": true,
 }
 
 var foldFuncs = map[string]bool{
 	"sum": true, "least": true, "greatest": true, "pick": true, "join": true,
+	"sort": true,
 }
 
 
@@ -245,6 +251,11 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		return constrainParse(ctx, f, base, peer)
 	}
 
+	// ADR-034: not resolved YET is not resolved to nothing.
+	if "maybe" == f.name && !ctx.settle {
+		return residuate(f, base, peer)
+	}
+
 	if stagedFuncs[f.name] {
 		driven := stagedDrive(ctx, f, base)
 		fillable := !isTop(peer) && hasPlace(f) && "match" != f.name
@@ -310,7 +321,8 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	newpeg := make([]Val, 0, len(f.peg))
 	newtype := f.mtype
 	newhide := f.mhide
-	if f.name == "move" || f.name == "copy" || generatorFuncs[f.name] {
+	if f.name == "move" || f.name == "copy" || f.name == "maybe" ||
+		generatorFuncs[f.name] {
 		newpeg = f.peg
 	} else {
 		for i, arg := range f.peg {
@@ -344,12 +356,26 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		}
 	}
 
-	if "join" == f.name && joinPending(ctx, newpeg) {
+	// ABSENCE PROPAGATES (ADR-034), ahead of join's deferral.
+	var absent Val
+	if "maybe" != f.name {
+		for _, a := range newpeg {
+			if isAbsent(a) {
+				absent = a
+				break
+			}
+		}
+	}
+
+	if "join" == f.name && nil == absent && joinPending(ctx, newpeg) {
 		pegdone = false
 	}
 
 	if pegdone {
-		result := sigRefuse(ctx, f, newpeg)
+		result := absent
+		if nil == result {
+			result = sigRefuse(ctx, f, newpeg)
+		}
 		if nil == result {
 			result = f.resolve(ctx, base, newpeg)
 		}
@@ -506,6 +532,17 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 			return makeNilErr(ctx, "invalid-arg", f, nil)
 		}
 		return project(ctx, f, base, args[0], args[1])
+	case "maybe":
+		if len(args) < 1 { //coverage:ignore arity {1,1} is refused at parse
+			return makeNilErr(ctx, "invalid-arg", f, nil)
+		}
+		return forgive(ctx, f, base, args[0])
+	case "sort":
+		if len(args) < 1 { //coverage:ignore arity {1,3} is refused at parse
+			// UNREACHABLE, and kept for the reason the guards above are.
+			return makeNilErr(ctx, "invalid-arg", f, nil)
+		}
+		return order(ctx, f, base, args[0], argAt(args, 1), argAt(args, 2))
 	case "abnf":
 		if len(args) < 1 { //coverage:ignore arity is refused at parse
 			return makeNilErr(ctx, "invalid-arg", f, nil)

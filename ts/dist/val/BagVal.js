@@ -185,6 +185,7 @@ function bagGenable(child) {
         return true;
     }
     return true === child.isScalar
+        || true === child.isAbsent
         || true === child.isMap
         || true === child.isList
         || true === child.isPref

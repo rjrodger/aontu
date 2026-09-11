@@ -2217,7 +2217,7 @@ a: id(x) & { b: id(x) }
 | Go | `runtime: goroutine stack exceeds 1000000000-byte limit` / `fatal error: stack overflow`, exit 2 — Go stack overflow is **not recoverable**, so an embedding server cannot catch it |
 
 Identity merge means every node carrying a name unifies with every
-other node carrying it ([`docs/reference-language.md`](../docs/reference-language.md#identity-idname)),
+other node carrying it ([`docs/reference-language.md`](../docs/reference-language.md#linking-the-tree-is-the-namespace)),
 so naming a node and its own descendant the same entity asks for a
 value that contains itself, and `a.peg.b === a`. What is missing is
 the refusal, not the detection: the merge has both sites in hand.

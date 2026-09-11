@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GreatestFuncVal = exports.LeastFuncVal = exports.SumFuncVal = exports.PickFuncVal = exports.JoinFuncVal = exports.AggFuncVal = void 0;
+exports.GreatestFuncVal = exports.LeastFuncVal = exports.SumFuncVal = exports.SortFuncVal = exports.PickFuncVal = exports.JoinFuncVal = exports.AggFuncVal = void 0;
 const err_1 = require("../err");
 const IntegerVal_1 = require("./IntegerVal");
 const ListVal_1 = require("./ListVal");
@@ -9,6 +9,7 @@ const StringVal_1 = require("./StringVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const arith_1 = require("./arith");
 const numcmp_1 = require("./numcmp");
+const keyorder_1 = require("../keyorder");
 const members_1 = require("./members");
 const PlusOpVal_1 = require("./PlusOpVal");
 function bagChildren(data, ctx) {
@@ -140,6 +141,107 @@ class PickFuncVal extends FuncBaseVal_1.FuncBaseVal {
     }
 }
 exports.PickFuncVal = PickFuncVal;
+// `pick`'s rule, plus: the empty string is the member itself, which is
+// how a keyless descending sort is spelled.
+function projectorName(key) {
+    if (null == key || null == key.peg) {
+        return ['', true];
+    }
+    if ('string' === typeof key.peg) {
+        return [key.peg, true];
+    }
+    if ('number' === typeof key.peg && key.isInteger) {
+        return [String(key.peg), true];
+    }
+    return ['', false];
+}
+function fieldOf(child, name) {
+    return true === child?.isMap ? child.peg[name] :
+        true === child?.isList ? child.peg[Number(name)] :
+            undefined;
+}
+const SORT_DIRECTIONS = { asc: 1, desc: -1 };
+function directionOf(v) {
+    if (null == v || null == v.peg) {
+        return 1;
+    }
+    return 'string' === typeof v.peg ? SORT_DIRECTIONS[v.peg] : undefined;
+}
+// Text by code point, numbers by the exact comparator, nothing else.
+function sortDomain(u) {
+    if (true !== u?.isVal || true !== u.isScalar || true === u.isNull) {
+        return undefined;
+    }
+    if ('string' === typeof u.peg) {
+        return 'text';
+    }
+    return 'boolean' === typeof u.peg ? undefined : 'number';
+}
+class SortFuncVal extends FuncBaseVal_1.FuncBaseVal {
+    constructor(spec, ctx) {
+        super(spec, ctx);
+        this.isSortFunc = true;
+        // The bag must settle before it is ordered, exactly as it must
+        // before it is projected.
+        this.staged = true;
+    }
+    funcname() {
+        return 'sort';
+    }
+    // The base drives no argument: the DATA is driven by hand below, and
+    // the projector is a bare word the parser has already made a string.
+    prepare(_ctx, _args) {
+        return null;
+    }
+    unify(peer, ctx) {
+        const ready = this.driveStagedArgs(ctx, 1);
+        if (!ready || !ctx.settle) {
+            return this.residuate(peer, ctx);
+        }
+        return super.unify(peer, ctx);
+    }
+    resolve(ctx, args) {
+        const children = bagChildren(args?.[0], ctx);
+        if (undefined === children) {
+            return this.place((0, err_1.makeNilErr)(ctx, 'aggregate_data', this, undefined, 'sort'));
+        }
+        const [name, nameok] = projectorName(args?.[1]);
+        if (!nameok) {
+            return this.place((0, err_1.makeNilErr)(ctx, 'invalid-arg', this, undefined, 'sort'));
+        }
+        const dir = directionOf(args?.[2]);
+        if (undefined === dir) {
+            return this.place((0, err_1.makeNilErr)(ctx, 'sort_dir', this, undefined, 'sort', { dir: args[2].canon }));
+        }
+        const rows = [];
+        let domain = undefined;
+        for (const child of children) {
+            const at = '' === name ? child : fieldOf(child, name);
+            if (null == at) {
+                return this.place((0, err_1.makeNilErr)(ctx, 'sort_key', this, undefined, 'sort', { key: name }));
+            }
+            const u = unpref(at);
+            const found = sortDomain(u);
+            if (undefined === found ||
+                (undefined !== domain && found !== domain)) {
+                return this.place((0, err_1.makeNilErr)(ctx, 'sort_domain', this, undefined, 'sort', { member: u.canon }));
+            }
+            domain = found;
+            rows.push({ idx: rows.length, val: child, key: u });
+        }
+        // The source index breaks every tie, so the order is TOTAL and
+        // neither port's sort algorithm can reorder equals.
+        rows.sort((a, b) => {
+            const c = 'text' === domain ?
+                (0, keyorder_1.cmpCodePoint)(a.key.peg, b.key.peg) :
+                (0, numcmp_1.cmpNumeric)(a.key, b.key);
+            return 0 === c ? a.idx - b.idx : dir * c;
+        });
+        const peg = rows.map((r, i) => r.val.clone(ctx.descend(String(i))));
+        return this.place(new ListVal_1.ListVal({ peg }, ctx));
+    }
+}
+exports.SortFuncVal = SortFuncVal;
 function memberVerdict(v) {
     const u = unpref(v);
     if (undefined !== (0, PlusOpVal_1.plusText)(u)) {
@@ -234,6 +336,6 @@ class GreatestFuncVal extends AggFuncVal {
     constructor(spec, ctx) {
         super(spec, ctx, 'greatest');
     }
-} /* node:coverage ignore next 10 */
+} /* node:coverage ignore next 11 */
 exports.GreatestFuncVal = GreatestFuncVal;
 //# sourceMappingURL=AggFuncVal.js.map

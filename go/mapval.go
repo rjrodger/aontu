@@ -361,7 +361,7 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 func genable(v Val) bool {
 	switch v.(type) {
 	case *ScalarVal, *MapVal, *ListVal, *PrefVal, *RefVal,
-		*DisjunctVal, *NilVal:
+		*DisjunctVal, *NilVal, *AbsentVal:
 		return true
 	}
 	if _, _, ok := sizingResidue(v); ok {
