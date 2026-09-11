@@ -39,7 +39,7 @@ const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
 const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
-const std_1 = require("../dist/std");
+const aontumodel_1 = require("../dist/aontumodel");
 // The repository root, found from wherever the compiled test runs.
 function repoRoot() {
     let dir = __dirname;
@@ -225,15 +225,15 @@ function aonFiles(dir, out = []) {
 });
 (0, node_test_1.describe)('format-bundled-models', () => {
     (0, node_test_1.test)('aontu-models-are-fmt-clean-and-lint-clean', () => {
-        for (const name of std_1.AONTU_MODELS) {
-            const src = std_1.STD_SOURCES[name];
+        for (const name of aontumodel_1.AONTU_MODELS) {
+            const src = aontumodel_1.AONTU_SOURCES[name];
             const report = (0, aontu_1.format)(src, { lint: true });
             Assert.equal(report.verdict, 'formatted', name);
             Assert.equal(report.text, src, name + ' is not in the form aontu fmt writes');
             Assert.equal(report.changed, false, name);
             Assert.deepEqual(report.findings, [], name + ' has lint findings');
         }
-        Assert.deepEqual(std_1.AONTU_MODELS, ['aontu:code', 'aontu:lang/go',
+        Assert.deepEqual(aontumodel_1.AONTU_MODELS, ['aontu:code', 'aontu:lang/go',
             'aontu:lang/markdown', 'aontu:lang/text', 'aontu:lang/typescript',
             'aontu:profile', 'aontu:system', 'aontu:view']);
     });

@@ -1,7 +1,7 @@
 .PHONY: all build test clean build-ts build-go test-ts test-go clean-ts clean-go \
         install install-ts install-go \
         publish publish-go check-go-major tags-go reset cov cov-ts cov-go sig \
-        helpdoc prose comments hooks
+        helpdoc aontu prose comments hooks
 
 all: build test
 
@@ -107,9 +107,19 @@ cov-go:
 	cd go && rm -rf covdata bin coverage-unit.out coverage-main.out
 
 # TypeScript (canonical implementation, package lives in ts/)
-build-ts: sig helpdoc
+build-ts: sig helpdoc aontu
 	cd ts && npm run build
 	node ts/scripts/figures.cjs
+
+# Regenerate the build-time-inlined copies of the BUILT-IN aontu:
+# MODELS -- the models the `aontu:` scheme serves -- from the canonical
+# tree in aontu/, one subfolder per module, into ts/src/aontumodel.ts
+# and go/aontumodel/ + go/aontumodel.go. The Go half must be a committed
+# copy: //go:embed cannot read above its own package directory. Both
+# suites assert byte identity with the tree, so a stale copy fails
+# rather than ships.
+aontu:
+	node ts/scripts/aontu.cjs
 
 # Regenerate the build-time-inlined copies of the signature
 # declaration (ts/src/sigdecl.ts, go/sigdecl.txt) from the shared

@@ -7,7 +7,7 @@ import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
 import { format, unifiedDiff } from '../dist/aontu'
-import { STD_SOURCES, AONTU_MODELS } from '../dist/std'
+import { AONTU_SOURCES, AONTU_MODELS } from '../dist/aontumodel'
 
 
 // The repository root, found from wherever the compiled test runs.
@@ -234,7 +234,7 @@ describe('format', () => {
 describe('format-bundled-models', () => {
   test('aontu-models-are-fmt-clean-and-lint-clean', () => {
     for (const name of AONTU_MODELS) {
-      const src = STD_SOURCES[name]
+      const src = AONTU_SOURCES[name]
       const report: any = format(src, { lint: true })
       Assert.equal(report.verdict, 'formatted', name)
       Assert.equal(report.text, src, name + ' is not in the form aontu fmt writes')

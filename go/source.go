@@ -33,17 +33,17 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 	}
 
 	if strings.HasPrefix(spec.Path, aontuScheme) {
-		if src, ok := stdSources[spec.Path]; ok {
+		if src, ok := aontuSources[spec.Path]; ok {
 			res.Full = spec.Path
 			res.Kind = "aon"
 			res.Src = toValidSource(src)
 			res.Found = true
-			recordDep(sink, spec.Path, "std")
+			recordDep(sink, spec.Path, "aontu")
 			recordText(sink, spec.Path, res.Src)
 			return res
 		}
 		recordNotFoundMsg(ctx, "source not found: "+spec.Path+
-			" (the language-supplied models are "+strings.Join(aontuModels(), ", ")+")")
+			" (the language-supplied models are "+strings.Join(aontuModels, ", ")+")")
 		res.Kind = notFoundKind
 		res.Found = true
 		return res

@@ -1,0 +1,14 @@
+# aontu:lang/markdown --- THE MARKDOWN PROFILE. Markdown has no
+# declarations to lower, so this is the text profile plus the two
+# things that are markdown's own: the HTML comment form, and the
+# template marker its files carry.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+
+@"aontu:profile"
+
+aontu: Profile: lang: "markdown"
+aontu: Profile: indent: { unit:" " width:2 }
+aontu: Profile: comment: block: { open:"<!--" close:"-->" }
+aontu: Profile: template: { marker:"<!---" ext:["md" "markdown"] }

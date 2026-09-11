@@ -322,7 +322,7 @@ func TestEveryCorpusDocumentFormatsToAFixedPoint(t *testing.T) {
 
 func TestBundledModelsAreFormatted(t *testing.T) {
 	a := New()
-	names := aontuModels()
+	names := aontuModels
 	if 8 != len(names) || "aontu:code" != names[0] || "aontu:lang/go" != names[1] ||
 		"aontu:lang/markdown" != names[2] || "aontu:lang/text" != names[3] ||
 		"aontu:lang/typescript" != names[4] || "aontu:profile" != names[5] ||
@@ -330,7 +330,9 @@ func TestBundledModelsAreFormatted(t *testing.T) {
 		t.Fatalf("aontuModels: %v", names)
 	}
 	for _, name := range names {
-		src := stdSources[name]
+		// `aontu fmt` normalises line endings, so a model embedded from a
+		// CRLF checkout could never round-trip its own formatting.
+		src := strings.ReplaceAll(aontuSources[name], "\r\n", "\n")
 		rep := a.FormatWith(src, FormatOptions{Lint: true})
 		if "formatted" != rep.Verdict {
 			t.Fatalf("%s: verdict %s (%v)", name, rep.Verdict, rep.Errors)

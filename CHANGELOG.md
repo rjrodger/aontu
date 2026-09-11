@@ -7,6 +7,43 @@ which implementation each change affects.
 
 ## Unreleased
 
+### The built-in `aontu:` models are files, not strings in each port
+
+The eight models the `aontu:` scheme serves were written twice — once
+as `String.raw` constants in `ts/src/std.ts`, once as raw strings in
+`go/std.go` — and nothing but a reviewer's eye held the two copies to
+the same bytes. Editing a vocabulary meant the same edit in two
+languages, in a form no formatter, linter or editor could see as aontu
+source.
+
+**Each model is now a file under `aontu/`, one subfolder per module.**
+A module is a directory holding a file named after it, so the path
+after the scheme is the path in the tree:
+
+```
+aontu/system/system.aon       # aontu:system
+aontu/lang/go/go.aon          # aontu:lang/go
+```
+
+`make aontu` inlines the tree into both ports at build time
+(`ts/src/aontumodel.ts`; `go/aontumodel/` plus the `//go:embed` table
+`go/aontumodel.go`, because `//go:embed` cannot read above its own
+package directory), and `make build-ts` runs it. Each port asserts its
+inlined copy is byte-identical with the tree **and** that the tree
+serves exactly the models the table lists, so neither a changed model
+nor an added one can ship stale. See
+[ADR-036](ADR.md#adr-036--a-bundled-model-is-a-file-in-aontu-not-a-string-in-each-port).
+
+Nothing changes for a document: the same eight names resolve to the
+same bytes, from the engine's own table and nowhere else.
+
+*Both implementations.* One user-visible change: an include manifest
+records a bundled model under the capability **`aontu`** where it
+recorded `std` — a label on a dependency record, never an input, and
+the `aontu:` leg still resolves under every include capability but
+`none`. `ts/src/std.ts` and `go/std.go` are gone, with `STD_SOURCES`
+now `AONTU_SOURCES` and `stdSources` now `aontuSources`.
+
 ### Markdown is a known language, and a profile configures an unknown one
 
 A generator written in the target's own syntax carries a **marker**,

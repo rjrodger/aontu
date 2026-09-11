@@ -15,6 +15,8 @@ const SOURCE_EXTS = ['.ts', '.go', '.rs']
 const GENERATED = new Set([
   'ts/src/sigdecl.ts',
   'ts/src/helpdoc.ts',
+  'ts/src/aontumodel.ts',
+  'go/aontumodel.go',
 ])
 
 // Worked-example corpora: fixtures, and the generated ones are compared

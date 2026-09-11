@@ -18,7 +18,7 @@ const file_1 = require("@tabnas/multisource/resolver/file");
 const pkg_1 = require("@tabnas/multisource/resolver/pkg");
 const mem_1 = require("@tabnas/multisource/resolver/mem");
 const jsonic_2 = require("@tabnas/multisource/processor/jsonic");
-const std_1 = require("./std");
+const aontumodel_1 = require("./aontumodel");
 const mod_1 = require("./mod");
 const expr_1 = require("@tabnas/expr");
 const path_1 = require("@tabnas/path");
@@ -1259,12 +1259,12 @@ function makeModelResolver(options) {
     // set: a typo in an `aontu:` name must not go looking on disk.
     const modelNotFound = (path) => {
         const err = new Error('source not found: ' + path +
-            ' (the language-supplied models are ' + std_1.AONTU_MODELS.join(', ') + ')');
+            ' (the language-supplied models are ' + aontumodel_1.AONTU_MODELS.join(', ') + ')');
         err.code = 'multisource_not_found';
         throw err;
     };
-    // The gate every leg that RESOLVES A NAME passes through. The std and
-    // module legs do not: both state `kind: 'aon'` because what they
+    // The gate every leg that RESOLVES A NAME passes through. The aontu:
+    // and module legs do not: both state `kind: 'aon'` because what they
     // serve is Aontu source by construction, not by its spelling.
     const gateExtension = (path, full) => {
         if (undefined === includeFormat(extKindOf(full), options.textExt)) {
@@ -1321,12 +1321,12 @@ function makeModelResolver(options) {
         if ('none' === capability) {
             deny(path);
         }
-        if ('string' === typeof path && path.startsWith(std_1.AONTU_SCHEME)) {
-            const model = std_1.STD_SOURCES[path];
+        if ('string' === typeof path && path.startsWith(aontumodel_1.AONTU_SCHEME)) {
+            const model = aontumodel_1.AONTU_SOURCES[path];
             if (null == model) {
                 modelNotFound(path);
             }
-            record(ctx, path, 'std');
+            record(ctx, path, 'aontu');
             return { found: true, path, full: path, kind: 'aon', src: model, search: [] };
         }
         let search = [];
