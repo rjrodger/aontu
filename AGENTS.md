@@ -38,8 +38,9 @@ implementations are checked against the same cases.
 ├── CLAUDE.md            # pointer to AGENTS.md
 ├── Makefile             # fans out to ts/ and go/
 ├── README.md
-├── aontu/               # the built-in aontu: models — one folder per module
-│   ├── code/code.aon    #   aontu:code   (aontu/lang/go/go.aon is aontu:lang/go)
+├── aontu/               # the built-in aontu: models, named by their path
+│   ├── code/code.aon    #   aontu:code — a file named after its folder collapses
+│   ├── render/lang/     #   go.aon is aontu:render/lang/go
 │   └── …                #   inlined into both ports by `make aontu`
 ├── docs/
 │   ├── design/          # design notes — the why behind settled decisions
@@ -215,10 +216,12 @@ suites run.
 
 **The same arrangement, for the built-in models.** The models the
 `aontu:` scheme serves ([ADR-036](ADR.md#adr-036--a-bundled-model-is-a-file-in-aontu-not-a-string-in-each-port))
-are real files under [`aontu/`](aontu/), ONE SUBFOLDER PER MODULE, and
-a module is a directory holding a file named after it —
-`aontu/lang/go/go.aon` is `aontu:lang/go`, so the path after the scheme
-is the path in the tree. `make aontu` inlines them into
+are real files under [`aontu/`](aontu/), each named by its path after
+the scheme — `aontu/render/lang/go.aon` is `aontu:render/lang/go`. A
+file named after the directory holding it collapses, so
+`aontu/code/code.aon` is `aontu:code` and a module that wants a folder
+of its own can have one without spelling its name twice.
+`make aontu` inlines them into
 `ts/src/aontumodel.ts` and, for Go, mirrors the tree into
 `go/aontumodel/` and writes the `//go:embed` table `go/aontumodel.go`; `make build-ts`
 runs it for you. Edit the `.aon` file, never a staged copy: both suites

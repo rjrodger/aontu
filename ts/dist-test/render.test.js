@@ -53,14 +53,14 @@ const render_1 = require("../dist/render");
     // A profile document, the same way: `renderProfile(src)` alone, and
     // the answer carries the vocabulary's defaults.
     (0, node_test_1.test)('render-profile-takes-no-options-and-fills-the-defaults', () => {
-        const loaded = (0, render_1.renderProfile)('aontu: Profile: lang: "text"');
+        const loaded = (0, render_1.renderProfile)('aontu: render: Lang: lang: "text"');
         node_assert_1.default.strictEqual(loaded.errors, undefined);
         node_assert_1.default.strictEqual(loaded.profile.lang, 'text');
         node_assert_1.default.deepStrictEqual(loaded.profile.indent, { unit: ' ', width: 2 });
         node_assert_1.default.strictEqual(loaded.profile.lowering, undefined);
-        const refused = (0, render_1.renderProfile)('aontu: Profile: lang: 1');
+        const refused = (0, render_1.renderProfile)('aontu: render: Lang: lang: 1');
         node_assert_1.default.strictEqual(refused.profile, undefined);
-        node_assert_1.default.strictEqual(refused.errors?.[0].path, '$.aontu.Profile.lang');
+        node_assert_1.default.strictEqual(refused.errors?.[0].path, '$.aontu.render.Lang.lang');
     });
     (0, node_test_1.test)('nothing-to-render', () => {
         node_assert_1.default.deepStrictEqual((0, render_1.renderValue)({}), { verdict: 'ok', units: [], lossy: [] });

@@ -179,7 +179,7 @@ func TestFormatKeepsTheSpellingTheEngineRefuses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if taken := New().Format(string(raw)); !strings.Contains(taken.Text, "a: b: { c:d:e:$.a.b.f f:{ &: { n:key() } x:{} } }\n") {
+	if taken := New().Format(string(raw)); !strings.Contains(taken.Text, "a: b: { c:d:e:$.a.b.f f: { &: { n:key() } x: {} } }\n") {
 		t.Fatalf("repro: %q", taken.Text)
 	}
 }
@@ -323,10 +323,15 @@ func TestEveryCorpusDocumentFormatsToAFixedPoint(t *testing.T) {
 func TestBundledModelsAreFormatted(t *testing.T) {
 	a := New()
 	names := aontuModels
-	if 8 != len(names) || "aontu:code" != names[0] || "aontu:lang/go" != names[1] ||
-		"aontu:lang/markdown" != names[2] || "aontu:lang/text" != names[3] ||
-		"aontu:lang/typescript" != names[4] || "aontu:profile" != names[5] ||
-		"aontu:system" != names[6] || "aontu:view" != names[7] {
+	if 8 != len(names) ||
+		"aontu:code" != names[0] ||
+		"aontu:render" != names[1] ||
+		"aontu:render/lang/go" != names[2] ||
+		"aontu:render/lang/markdown" != names[3] ||
+		"aontu:render/lang/text" != names[4] ||
+		"aontu:render/lang/typescript" != names[5] ||
+		"aontu:system" != names[6] ||
+		"aontu:view" != names[7] {
 		t.Fatalf("aontuModels: %v", names)
 	}
 	for _, name := range names {

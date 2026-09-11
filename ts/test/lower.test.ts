@@ -84,7 +84,7 @@ describe('lower', () => {
     // The vocabulary keeps a container to leaves, so a list of a
     // nullable reaches the fold only through renderValue -- where the
     // TypeScript forms say (string | null)[] and not string | null[].
-    const profile = new Aontu().generate('@"aontu:lang/typescript"').aontu.profile
+    const profile = new Aontu().generate('@"aontu:render/lang/typescript"').aontu.profile
     const report = renderValue({
       aontu: { Code: {
         units: [{
@@ -104,7 +104,7 @@ describe('lower', () => {
   })
 
   test('a-body-piece-without-a-depth-nests-as-depth-zero-does', () => {
-    const profile = new Aontu().generate('@"aontu:lang/typescript"').aontu.profile
+    const profile = new Aontu().generate('@"aontu:render/lang/typescript"').aontu.profile
     const unit = (piece: any) => ({
       aontu: { Code: {
         units: [{

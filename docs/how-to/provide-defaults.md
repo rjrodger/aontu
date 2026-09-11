@@ -12,7 +12,7 @@ disjunction holds the ground between: write the default beside the
 type an override must satisfy:
 
 ```aontu
-timeout: *30 | integer # 30 unless overridden
+timeout: *30|integer # 30 unless overridden
 ```
 
 ```json
@@ -24,7 +24,7 @@ document generates `30`. A later `timeout: 60` (in the same file or
 merged from another) takes its place:
 
 ```aontu
-timeout: *30 | integer
+timeout: *30|integer
 timeout: 60
 ```
 
@@ -39,7 +39,7 @@ refused. Write both lines as `timeout.aon`:
 <!-- test: scenario provide-defaults -->
 <!-- test: file timeout.aon -->
 ```aontu
-timeout: *30 | integer
+timeout: *30|integer
 timeout: 1.5
 ```
 
@@ -59,7 +59,7 @@ The branch is doing the admitting, which means it is also the dial:
 override:
 
 ```aontu
-timeout: *30 | number
+timeout: *30|number
 timeout: 1.5
 ```
 
@@ -70,7 +70,7 @@ timeout: 1.5
 A bound goes inside the branch the same way:
 
 ```aontu
-replicas: *2 | (integer & min(1) & max(24))
+replicas: *2|(integer & min(1) & max(24))
 replicas: 12
 ```
 
@@ -84,7 +84,7 @@ policy at all. Check it with `replicas.aon`:
 
 <!-- test: file replicas.aon -->
 ```aontu
-replicas: *2 | (integer & min(1) & max(24))
+replicas: *2|(integer & min(1) & max(24))
 replicas: 40
 ```
 

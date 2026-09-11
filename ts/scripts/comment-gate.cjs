@@ -11,6 +11,11 @@ const REPO = Path.join(__dirname, '..', '..')
 // written in .cjs, .mjs or .js is not source in this sense.
 const SOURCE_EXTS = ['.ts', '.go', '.rs']
 
+// The bundled models are source too (ADR-036): aontu/ is where the
+// language's own vocabularies are written, and they are held to the
+// same rule. Every other .aon in the tree is a fixture or a document.
+const AON_TREE = 'aontu/'
+
 // Written by a generator, checked byte-for-byte by its own suite.
 const GENERATED = new Set([
   'ts/src/sigdecl.ts',
@@ -78,6 +83,12 @@ const CODE_SHAPED_RE =
 const WORD_RE = /[A-Za-z_$][\w$]*/g
 
 
+function gated(rel, name) {
+  return SOURCE_EXTS.some((e) => name.endsWith(e)) ||
+    (rel.startsWith(AON_TREE) && name.endsWith('.aon'))
+}
+
+
 function walk(dir, out) {
   const abs = '' === dir ? REPO : Path.join(REPO, dir)
   for (const entry of Fs.readdirSync(abs, { withFileTypes: true })) {
@@ -85,7 +96,7 @@ function walk(dir, out) {
     if (entry.isDirectory()) {
       if (!SKIP_DIRS.has(entry.name) && !FIXTURE_TREES.has(rel)) walk(rel, out)
     }
-    else if (SOURCE_EXTS.some((e) => entry.name.endsWith(e)) && !GENERATED.has(rel)) {
+    else if (gated(rel, entry.name) && !GENERATED.has(rel)) {
       out.push(rel)
     }
   }
@@ -118,14 +129,21 @@ function lex(text, lang) {
 
     if (c === '\n') { line++; i++; continue }
 
-    if (c === '/' && c2 === '/') {
+    if (c === '#' && lang === 'aon') {
       const start = i
       while (i < n && text[i] !== '\n') i++
       comments.push({ kind: 'line', start: line, end: line, from: start, to: i, text: text.slice(start, i) })
       continue
     }
 
-    if (c === '/' && c2 === '*') {
+    if (c === '/' && c2 === '/' && lang !== 'aon') {
+      const start = i
+      while (i < n && text[i] !== '\n') i++
+      comments.push({ kind: 'line', start: line, end: line, from: start, to: i, text: text.slice(start, i) })
+      continue
+    }
+
+    if (c === '/' && c2 === '*' && lang !== 'aon') {
       const start = i
       const startLine = line
       i += 2
@@ -140,7 +158,7 @@ function lex(text, lang) {
 
     if (c === '"' || c === "'" || c === '`') {
       const quote = c
-      const raw = lang === 'go' && c === '`'
+      const raw = ('go' === lang || 'aon' === lang) && c === '`'
       codeLine.add(line)
       i++
       while (i < n) {
@@ -285,7 +303,8 @@ function checkFile(file, opts = {}) {
 
 function checkText(file, text, opts = {}) {
   const lines = text.split('\n')
-  const scan = lex(text, file.endsWith('.go') ? 'go' : 'ts')
+  const scan = lex(text,
+    file.endsWith('.go') ? 'go' : file.endsWith('.aon') ? 'aon' : 'ts')
   const all = blocks(scan, lines)
   const kept = all.filter((b) => !exempt(b))
 

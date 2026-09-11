@@ -84,9 +84,9 @@ type RenderOptions struct {
 }
 
 const renderVocabulary = `@"aontu:code"`
-const renderProfileVocabulary = `@"aontu:profile"`
+const renderProfileVocabulary = `@"aontu:render"`
 
-// The bundled profiles, by lang: aontu:lang/<lang>.
+// The bundled profiles, by lang: aontu:render/lang/<lang>.
 var renderBundledLangs = []string{"go", "markdown", "text", "typescript"}
 
 func renderFinding(code, class, path, message string) VetFinding {
@@ -408,8 +408,9 @@ func (a *Aontu) RenderProfile(src string) (map[string]any, []VetFinding) {
 	// so a value the vet admitted has one.
 	m, _ := root.(*MapVal)
 	nsv, _ := m.peg["aontu"].(*MapVal)
+	rsv, _ := nsv.peg["render"].(*MapVal)
 	instance, gerr := New().Generate(
-		renderProfileVocabulary + "\naontu: Profile: " + Hcanon(nsv.peg["Profile"]))
+		renderProfileVocabulary + "\naontu: render: Lang: " + Hcanon(rsv.peg["Lang"]))
 	if nil != gerr { //coverage:ignore vet passed, so the meet generates
 		// A vetted profile document generates; this arm is the Go
 		// signature's, not a reachable outcome.
@@ -418,12 +419,13 @@ func (a *Aontu) RenderProfile(src string) (map[string]any, []VetFinding) {
 	}
 	inst, _ := instance.(map[string]any)
 	ins, _ := inst["aontu"].(map[string]any)
-	profile, _ := ins["Profile"].(map[string]any)
+	rns, _ := ins["render"].(map[string]any)
+	profile, _ := rns["Lang"].(map[string]any)
 	return profile, nil
 }
 
 // The bundled profiles, each evaluated once: the meet of
-// aontu:lang/<lang> with the vocabulary, so its defaults are in it.
+// aontu:render/lang/<lang> with the vocabulary, so its defaults are in it.
 var renderBundled = map[string]map[string]any{}
 
 func bundledProfile(lang string) map[string]any {
@@ -437,10 +439,11 @@ func bundledProfile(lang string) map[string]any {
 		return nil
 	}
 	if nil == renderBundled[lang] {
-		gen, _ := New().Generate(`@"aontu:lang/` + lang + `"`)
+		gen, _ := New().Generate(`@"aontu:render/lang/` + lang + `"`)
 		m, _ := gen.(map[string]any)
 		ns, _ := m["aontu"].(map[string]any)
-		renderBundled[lang], _ = ns["Profile"].(map[string]any)
+		rns, _ := ns["render"].(map[string]any)
+		renderBundled[lang], _ = rns["Lang"].(map[string]any)
 	}
 	return renderBundled[lang]
 }
@@ -641,7 +644,7 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 		if nil == base {
 			errs = append(errs, renderFinding("render_profile", "parse", upath+".lang",
 				"no profile renders "+lang+": a declaration needs a lowering, and "+
-					"only fragments and text escapes render under aontu:lang/text."))
+					"only fragments and text escapes render under aontu:render/lang/text."))
 			continue
 		}
 		profile := base

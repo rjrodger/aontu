@@ -282,7 +282,7 @@ Mark a value as a **default** with `*`. A default is used only when
 nothing more specific is supplied:
 
 ```aontu
-port: *8080 | integer
+port: *8080|integer
 ```
 
 →
@@ -296,7 +296,7 @@ any `integer`), and the `*` says which branch to take when nothing
 forces the choice. Unify a concrete value on top and it wins:
 
 ```aontu
-port: *8080 | integer
+port: *8080|integer
 port: 9090
 ```
 
@@ -309,7 +309,7 @@ port: 9090
 Now try a float:
 
 ```aontu
-port: *8080 | integer
+port: *8080|integer
 port: 1.5
 ```
 
@@ -328,7 +328,7 @@ this strict is argued in the
 When any number should be able to win, say so in the branch:
 
 ```aontu
-port: *8080 | number
+port: *8080|number
 port: 1.5
 ```
 
@@ -382,7 +382,7 @@ A `&:` entry inside a map is a **template** unified into every sibling
 key. Declare a shape once and it applies everywhere:
 
 ```aontu
-servers: { &: { region:*"us-east" | string active:*true | boolean } }
+servers: { &: { region: *"us-east"|string active: *true|boolean } }
 servers: web: region: "eu-west"
 servers: db: {}
 ```
@@ -485,14 +485,14 @@ defaults and data at once: save it as `config.aon`:
 # --- schema + defaults (could live in its own file) ---
 service: close({
   name: string
-  host: *localhost | string
-  port: *8080 | integer
-  rate: *0d0.01 | bigdecimal
+  host: *localhost|string
+  port: *8080|integer
+  rate: *0d0.01|bigdecimal
   tags: [&: string]
 })
 
 # --- environment data merged on top ---
-service: { name:api port:9090 rate:0d0.025 tags:[public http] }
+service: { name:api port:9090 rate:0d0.025 tags: [public http] }
 ```
 
 Run it:
@@ -587,9 +587,9 @@ schema half becomes `service.aon`:
 ```aontu
 service: close({
   name: string
-  host: *localhost | string
-  port: *8080 | integer
-  rate: *0d0.01 | bigdecimal
+  host: *localhost|string
+  port: *8080|integer
+  rate: *0d0.01|bigdecimal
   tags: [&: string]
 })
 ```
@@ -598,7 +598,7 @@ and the data half becomes `prod.aon`:
 
 <!-- test: file prod.aon -->
 ```aontu
-service: { name:api port:9090 rate:0d0.025 tags:[public http] }
+service: { name:api port:9090 rate:0d0.025 tags: [public http] }
 ```
 
 `vet` asks whether a data document holds against a schema document:
@@ -614,7 +614,7 @@ else:
 
 <!-- test: file staging.aon -->
 ```aontu
-service: { name:search port:8100 tags:[internal 3] }
+service: { name:search port:8100 tags: [internal 3] }
 ```
 
 Vet it:
@@ -626,7 +626,7 @@ verdict: invalid
 
 $.service.tags.1: no_scalar_unify [conflict]
   [aontu/no_scalar_unify]: Cannot unify values at path $.service.tags.1
-  data: staging.aon:1:49 (3)
+  data: staging.aon:1:50 (3)
   schema: service.aon:6:13 (string)
 $ echo $?
 1
@@ -646,7 +646,7 @@ so:
 
 <!-- test: file staging.aon -->
 ```aontu
-service: { name:search port:8100 tags:[internal tier3] }
+service: { name:search port:8100 tags: [internal tier3] }
 ```
 
 <!-- test: run -->
@@ -693,7 +693,7 @@ calling an unfinished document valid. Delete the `name` line from `staging.aon`:
 
 <!-- test: file staging.aon -->
 ```aontu
-service: { port:8100 tags:[internal tier3] }
+service: { port:8100 tags: [internal tier3] }
 ```
 
 <!-- test: run -->

@@ -68,7 +68,7 @@ function ctx(family, profile) {
         // The vocabulary keeps a container to leaves, so a list of a
         // nullable reaches the fold only through renderValue -- where the
         // TypeScript forms say (string | null)[] and not string | null[].
-        const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').aontu.profile;
+        const profile = new aontu_1.Aontu().generate('@"aontu:render/lang/typescript"').aontu.profile;
         const report = (0, render_1.renderValue)({
             aontu: { Code: {
                     units: [{
@@ -87,7 +87,7 @@ function ctx(family, profile) {
         node_assert_1.default.strictEqual(report.units[0].text, 'export interface T {\n  a: (string | null)[];\n}\n');
     });
     (0, node_test_1.test)('a-body-piece-without-a-depth-nests-as-depth-zero-does', () => {
-        const profile = new aontu_1.Aontu().generate('@"aontu:lang/typescript"').aontu.profile;
+        const profile = new aontu_1.Aontu().generate('@"aontu:render/lang/typescript"').aontu.profile;
         const unit = (piece) => ({
             aontu: { Code: {
                     units: [{

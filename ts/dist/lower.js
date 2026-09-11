@@ -79,7 +79,7 @@ function capitalise(word, acronyms) {
     const chars = Array.from(low);
     return upperASCII(chars[0]) + chars.slice(1).join('');
 }
-// THE CASE STYLES of aontu:profile's %case, over the words.
+// THE CASE STYLES of aontu:render's %case, over the words.
 function caseName(name, style, acronyms) {
     if ('as-is' === style) {
         return name;

@@ -78,7 +78,7 @@ and its entry file,
 <!-- test: file aontu_meta/vendor/corp.example/schemas/service@1/service.aon -->
 ```aontu
 name: string
-port: *8080 | integer
+port: *8080|integer
 ```
 
 Now `tidy`, from the project root. It resolves the closure against
@@ -109,7 +109,7 @@ rather than silently used. Flip the vendored default in
 <!-- test: file aontu_meta/vendor/corp.example/schemas/service@1/service.aon -->
 ```aontu
 name: string
-port: *9090 | integer
+port: *9090|integer
 ```
 
 <!-- test: run -->
@@ -234,7 +234,7 @@ it:
 ```aontu
 @"corp.example/schemas/common@1"
 name: string
-port: *8080 | integer
+port: *8080|integer
 ```
 
 With `common@1` not yet vendored, `tidy` refuses the whole closure:

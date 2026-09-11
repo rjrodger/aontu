@@ -207,18 +207,18 @@ func TestFmtFormatsAGeneratorThroughTheTemplateSurface(t *testing.T) {
 	}
 }
 
-const templateOcamlProfile = `@"aontu:profile"
+const templateOcamlProfile = `@"aontu:render"
 
-aontu: Profile: lang: "ocaml"
-aontu: Profile: indent: { unit:" " width:2 }
-aontu: Profile: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
+aontu: render: Lang: lang: "ocaml"
+aontu: render: Lang: indent: { unit:" " width:2 }
+aontu: render: Lang: template: { marker:"(*-" close:"*)" ext:["ml" "mli"] }
 `
 
 func TestTemplateTakesItsMarkerFromAProfile(t *testing.T) {
 	dir := templateDir(t, map[string]string{
 		"ocaml.aon": templateOcamlProfile,
 		"gen.ml":    "(*- of: [ *)\nlet a = 1\n(*- ] *)\n",
-		"plain.aon": "@\"aontu:profile\"\n\naontu: Profile: lang: \"plain\"\n",
+		"plain.aon": "@\"aontu:render\"\n\naontu: render: Lang: lang: \"plain\"\n",
 		"note.md":   "<!--- of: [ -->\n# T\n<!--- ] -->\n",
 	})
 	profile := filepath.Join(dir, "ocaml.aon")

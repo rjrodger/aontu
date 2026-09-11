@@ -592,7 +592,16 @@ func fmtWidth(s string) int {
 	return utf8.RuneCountInString(s)
 }
 
-func fmtPairHead(node *fmtNode, tight bool) string {
+// A value that OPENS -- a preference, a container, a parenthesis --
+// keeps the space after the colon even where the colon is tight, or
+// the marker binds to the colon rather than to what it marks (§3.2).
+const fmtOpens = "*{[("
+
+// Tight within a line, spaced where it leads a continuation line: the
+// break makes a list and the operator is its bullet (§3.11, §7.7).
+const fmtTightOp = "|"
+
+func fmtPairHead(node *fmtNode, tight bool, value string) string {
 	head := node.key
 	// An alias declaration is `%name = value` at every width: the `=` is
 	// an operator, and operators are spaced (§3.2).
@@ -602,7 +611,7 @@ func fmtPairHead(node *fmtNode, tight bool) string {
 	if node.opt {
 		head += "?"
 	}
-	if tight {
+	if tight && ("" == value || !strings.ContainsRune(fmtOpens, rune(value[0]))) {
 		return head + ":"
 	}
 	return head + ": "
@@ -627,7 +636,7 @@ func fmtInline(node *fmtNode, tight bool) (string, bool) {
 		if !ok {
 			return "", false
 		}
-		return fmtPairHead(node, tight) + v, true
+		return fmtPairHead(node, tight, v) + v, true
 	case "spread":
 		// `{ &: integer }`, padded inside braces too: the marker reads
 		// as a marker and not as a key.
@@ -712,7 +721,11 @@ func fmtInlineExpr(items []*fmtNode) (string, bool) {
 			return "", false
 		}
 		if "op" == it.t {
-			out += " " + it.text + " "
+			if fmtTightOp == it.text {
+				out += it.text
+			} else {
+				out += " " + it.text + " "
+			}
 			continue
 		}
 		if "prefix" == it.t {
@@ -852,7 +865,7 @@ func fmtEmitValue(w *fmtWriter, node *fmtNode, indent int) {
 	}
 	switch node.t {
 	case "pair":
-		w.text(fmtPairHead(node, false))
+		w.text(fmtPairHead(node, false, ""))
 		v := fmtChain(node.value)
 		fmtEmitValue(w, v, indent)
 		if "" != v.trail {
@@ -1019,7 +1032,11 @@ func fmtEmitExpr(w *fmtWriter, items []*fmtNode, indent int) {
 				}
 				w.text(it.text + " ")
 			} else {
-				w.text(" " + it.text + " ")
+				if fmtTightOp == it.text {
+					w.text(it.text)
+				} else {
+					w.text(" " + it.text + " ")
+				}
 			}
 			operand = false
 			continue
@@ -1253,7 +1270,7 @@ func fmtRepeatLines(entries []*fmtNode, prefix string, indent int) ([]fmtLine, b
 			out = append(out, fmtLine{t: "text", text: prefix + "{ &: " + s + " }" + trail})
 			continue
 		}
-		head := prefix + fmtPairHead(e, false)
+		head := prefix + fmtPairHead(e, false, "")
 		if s, ok := fmtInline(fmtChain(e.value), false); ok && fmtFits(indent, head+s) {
 			out = append(out, fmtLine{t: "text", text: head + s + trail})
 			continue
@@ -1294,7 +1311,7 @@ func fmtEmitStatement(w *fmtWriter, p *fmtNode, indent int, stmt *fmtStmt, prefi
 	mark := w.mark()
 	rewritten := nil != p.orig
 	entries, plain := fmtPlainEntries(p.value)
-	head := prefix + fmtPairHead(p, false)
+	head := prefix + fmtPairHead(p, false, "")
 	s, one := "", false
 	if plain {
 		s, one = fmtInline(p.value, false)

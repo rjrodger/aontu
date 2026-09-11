@@ -58,7 +58,7 @@ records: [
     name: "Customer"
     fields: [{ n:"id" t:"string" go:"ID" } { n:"email" t:"string" go:"Email" }]
   }
-  { name:"Order" fields:[{ n:"total" t:"integer" go:"Total" }] }
+  { name:"Order" fields: [{ n:"total" t:"integer" go:"Total" }] }
 ]
 
 %field = emit(_, {
@@ -86,7 +86,7 @@ aontu: Code: units: [
     lang: "go"
     profile: indent: { unit:"\t" width:1 }
     decls: [
-      { k:"frag" of:["package acme"] }
+      { k:"frag" of: ["package acme"] }
       { k:"frag" of:emit($.records, %record) }
     ]
   }
@@ -289,8 +289,8 @@ Write this as `records.aon`:
 <!-- test: file records.aon -->
 ```aontu
 records: [
-  { name:"Customer" fields:[{ n:"id" t:"string" } { n:"email" t:"string" }] }
-  { name:"Order" fields:[{ n:"total" t:"integer" }] }
+  { name:"Customer" fields: [{ n:"id" t:"string" } { n:"email" t:"string" }] }
+  { name:"Order" fields: [{ n:"total" t:"integer" }] }
 ]
 
 %field = emit(_, {

@@ -20,7 +20,7 @@ Point it at the earlier version. Here is a released `profile-v1.aon`:
 profile: close({
   id: string & re("^C[0-9]{7}$")
   email: string
-  tier: "standard" | "premium" | "enterprise"
+  tier: "standard"|"premium"|"enterprise"
 })
 ```
 
@@ -31,7 +31,7 @@ and a proposed `profile-v2.aon` that adds one optional key:
 profile: close({
   id: string & re("^C[0-9]{7}$")
   email: string
-  tier: "standard" | "premium" | "enterprise"
+  tier: "standard"|"premium"|"enterprise"
   locale?: string
 })
 ```
@@ -53,7 +53,7 @@ as `require-owner.aon`:
 profile: close({
   id: string & re("^C[0-9]{7}$")
   email: string
-  tier: "standard" | "premium" | "enterprise"
+  tier: "standard"|"premium"|"enterprise"
   locale?: string
   owner: string
 })

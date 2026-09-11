@@ -11,7 +11,7 @@ how drift starts. Write it once as a `&:` spread entry: it is
 unified into every other key of the map:
 
 ```aontu
-endpoints: { &: { method:*GET | string auth:*true | boolean } }
+endpoints: { &: { method: *GET|string auth: *true|boolean } }
 endpoints: list: {}
 endpoints: create: method: POST
 ```

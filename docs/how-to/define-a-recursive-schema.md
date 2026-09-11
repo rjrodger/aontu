@@ -15,7 +15,7 @@ schema applies at every depth of the data:
 spec: hide({
   Step: {
     approver: string & re("^[a-z]+@acme[.]example$")
-    decision: *pending | pending | approved | rejected
+    decision: *pending|pending|approved|rejected
     then?: $.spec.Step
   }
 })
@@ -58,7 +58,7 @@ drops where the data stops. A ranked default guards the same way,
 ending the structure with an explicit value instead of an absence:
 
 ```aontu
-schema: hide({ Node:{ v:integer next:*null | $.schema.Node } })
+schema: hide({ Node: { v:integer next: *null|$.schema.Node } })
 doc: $.schema.Node & { v:1 next:v:2 }
 ```
 
@@ -79,7 +79,7 @@ comment thread types its replies:
 
 ```aontu
 spec: hide({
-  Comment: { author:string text:string replies?:[&: $.spec.Comment] }
+  Comment: { author:string text:string replies?: [&: $.spec.Comment] }
 })
 
 thread: $.spec.Comment & {
@@ -87,7 +87,7 @@ thread: $.spec.Comment & {
   text: "ship it"
   replies: [
     { author:"bo" text:"+1" }
-    { author:"cy" text:"hold on" replies:[{ author:"alix" text:"?" }] }
+    { author:"cy" text:"hold on" replies: [{ author:"alix" text:"?" }] }
   ]
 }
 ```
@@ -120,7 +120,7 @@ evaluates, but no finite document can satisfy it. Write this as
 <!-- test: scenario recursion-unguarded -->
 <!-- test: file chain.aon -->
 ```aontu
-spec: hide({ Step:{ approver:string then:$.spec.Step } })
+spec: hide({ Step: { approver:string then:$.spec.Step } })
 
 doc: $.spec.Step & {
   approver: "lead@acme.example"
@@ -158,7 +158,7 @@ recursion renders symbolically. Put the vocabulary alone in
 spec: hide({
   Step: {
     approver: string & re("^[a-z]+@acme[.]example$")
-    decision: *pending | pending | approved | rejected
+    decision: *pending|pending|approved|rejected
     then?: $.spec.Step
   }
 })

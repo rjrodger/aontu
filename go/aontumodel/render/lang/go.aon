@@ -1,21 +1,18 @@
-# aontu:lang/go --- THE GO PROFILE. The data a unit of Go renders
-# under: a tab of indentation, the comment forms, the string quote and
-# its escape table, the identifier rules -- pascal by role, and the
-# acronym set that spells ID and URL -- and the type forms. The lowering
-# of a declaration to a struct type is code (docs/design/RENDER.0.md D5);
-# everything the lowering reads without looking at the shape of a node
-# is here.
-#
-# EXPERIMENTAL until the distribution layer can version it by
-# canon-hash.
+# aontu:render/lang/go --- THE GO PROFILE. Indentation, comment forms, string
+# escapes, identifier case and type forms. Lowering a declaration to a
+# struct is code; what the renderer applies without looking at a node's
+# shape is here. EXPERIMENTAL until the distribution layer can version
+# it by canon-hash.
 
-@"aontu:profile"
+@"aontu:render"
 
-aontu: Profile: {
+aontu: render: Lang: {
   lang: "go"
   lowering: "go"
   indent: { unit:"\t" width:1 }
-  comment: { line:prefix:"// " block:{ open:"/*" close:"*/" } doc:prefix:"// " }
+  comment: line: prefix: "// "
+  comment: block: { open:"/*" close:"*/" }
+  comment: doc: prefix: "// "
   str: quote: "\""
   str: escape: {
     "7": "\\a"

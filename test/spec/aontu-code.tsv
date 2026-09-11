@@ -7,7 +7,7 @@
 #
 # Columns: name<TAB>mode<TAB>src<TAB>expect
 #
-# The source is BUNDLED with the engine (ts/src/std.ts, go/std.go) and
+# The source is BUNDLED with the engine (the aontu/ tree, ADR-036) and
 # served under the aontu: scheme (aontu-scheme.tsv). The two copies are
 # the same bytes: `shapes-hash` below hashes a document that references
 # every alias, so the bodies are pinned in both engines and cannot

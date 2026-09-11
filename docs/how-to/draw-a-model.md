@@ -18,13 +18,13 @@ Here is a `system.aon` with three services and a dependency relation:
 ```aontu
 spec: hide({
   Service: {
-    tier: "edge" | "core"
+    tier: "edge"|"core"
     dependsOn?: rel($.spec.Service) & acyclic() & [&: refer($.spec.Service)]
   }
 })
 
-web: $.spec.Service & { tier:"edge" dependsOn:[path($.api)] }
-api: $.spec.Service & { tier:"core" dependsOn:[path($.store)] }
+web: $.spec.Service & { tier:"edge" dependsOn: [path($.api)] }
+api: $.spec.Service & { tier:"core" dependsOn: [path($.store)] }
 store: $.spec.Service & { tier:"core" }
 ```
 

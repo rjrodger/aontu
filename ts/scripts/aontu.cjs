@@ -12,29 +12,34 @@ const path = require('path')
 const root = path.join(__dirname, '..', '..')
 const tree = path.join(root, 'aontu')
 
-// A MODULE IS A DIRECTORY HOLDING A FILE NAMED AFTER IT: aontu/lang/go
-// holds go.aon and is `aontu:lang/go`. The rule leaves a module free to
-// grow siblings -- a README, a fixture -- without a second one
-// appearing beside it.
+// EVERY .aon UNDER aontu/ IS A MODULE, named by its path without the
+// extension -- aontu/render/lang/go.aon is `aontu:render/lang/go`.
+// A file named after the directory holding it collapses, so
+// aontu/code/code.aon is `aontu:code` and not `aontu:code/code`: a
+// module that wants a folder of its own can have one without spelling
+// its name twice.
 function modules(dir, rel) {
   const found = []
   for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort(
     (a, b) => a.name < b.name ? -1 : 1)) {
-    if (!entry.isDirectory()) { continue }
-    const sub = path.join(dir, entry.name)
+    const at = path.join(dir, entry.name)
     const subrel = rel ? rel + '/' + entry.name : entry.name
-    const leaf = path.join(sub, entry.name + '.aon')
-    if (fs.existsSync(leaf)) {
-      found.push({
-        name: 'aontu:' + subrel,
-        file: path.relative(root, leaf).replaceAll(path.sep, '/'),
-        embed: 'aontumodel/' + path.relative(tree, leaf)
-          .replaceAll(path.sep, '/'),
-        text: fs.readFileSync(leaf, 'utf8')
-          .replaceAll('\r\n', '\n').replaceAll('\r', '\n'),
-      })
+    if (entry.isDirectory()) {
+      found.push(...modules(at, subrel))
+      continue
     }
-    found.push(...modules(sub, subrel))
+    if (!entry.name.endsWith('.aon')) { continue }
+    const part = subrel.slice(0, -'.aon'.length).split('/')
+    if (1 < part.length && part[part.length - 1] === part[part.length - 2]) {
+      part.pop()
+    }
+    found.push({
+      name: 'aontu:' + part.join('/'),
+      file: path.relative(root, at).replaceAll(path.sep, '/'),
+      embed: 'aontumodel/' + subrel,
+      text: fs.readFileSync(at, 'utf8')
+        .replaceAll('\r\n', '\n').replaceAll('\r', '\n'),
+    })
   }
   return found
 }
@@ -78,7 +83,7 @@ for (const m of found) {
   fs.writeFileSync(at, m.text)
 }
 
-// aontu:lang/go -> aontuLangGo
+// aontu:render/lang/go -> aontuLangGo
 function ident(name) {
   return 'aontu' + name.slice('aontu:'.length).split('/')
     .map((seg) => seg[0].toUpperCase() + seg.slice(1)).join('')

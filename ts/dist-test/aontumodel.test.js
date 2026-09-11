@@ -41,24 +41,31 @@ const Path = __importStar(require("node:path"));
 const aontumodel_1 = require("../dist/aontumodel");
 const REPO = Path.join(__dirname, '..', '..');
 const TREE = Path.join(REPO, 'aontu');
-// A module is a directory holding a file named after it: aontu/lang/go
-// holds go.aon and is `aontu:lang/go`.
+// Every .aon is a module, named by its path; a file named after the
+// directory holding it collapses, so aontu/code/code.aon is
+// `aontu:code` and aontu/render/lang/go.aon is `aontu:render/lang/go`.
 function walk(dir, rel, found) {
     for (const entry of Fs.readdirSync(dir, { withFileTypes: true })) {
-        if (!entry.isDirectory()) {
+        const subrel = rel ? rel + '/' + entry.name : entry.name;
+        if (entry.isDirectory()) {
+            walk(Path.join(dir, entry.name), subrel, found);
             continue;
         }
-        const subrel = rel ? rel + '/' + entry.name : entry.name;
-        if (Fs.existsSync(Path.join(dir, entry.name, entry.name + '.aon'))) {
-            found.push(aontumodel_1.AONTU_SCHEME + subrel);
+        if (!entry.name.endsWith('.aon')) {
+            continue;
         }
-        walk(Path.join(dir, entry.name), subrel, found);
+        const part = subrel.slice(0, -'.aon'.length).split('/');
+        if (1 < part.length && part[part.length - 1] === part[part.length - 2]) {
+            part.pop();
+        }
+        found.push(aontumodel_1.AONTU_SCHEME + part.join('/'));
     }
     return found;
 }
 function leafOf(name) {
     const rel = name.slice(aontumodel_1.AONTU_SCHEME.length).split('/');
-    return Path.join(TREE, ...rel, rel[rel.length - 1] + '.aon');
+    const deep = Path.join(TREE, ...rel, rel[rel.length - 1] + '.aon');
+    return Fs.existsSync(deep) ? deep : Path.join(TREE, ...rel) + '.aon';
 }
 (0, node_test_1.describe)('aontumodel', () => {
     // A generated copy that nothing compares is a second source of truth

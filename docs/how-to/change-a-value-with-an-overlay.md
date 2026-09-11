@@ -13,7 +13,7 @@ writing it and preserves the entry file. Write `system.aon`:
 <!-- test: scenario change-overlay -->
 <!-- test: file system.aon -->
 ```aontu
-services: { &: { replicas:*1 | integer tier:*standard | string } }
+services: { &: { replicas: *1|integer tier: *standard|string } }
 services: auth: replicas: 3
 services: billing: tier: premium
 ```

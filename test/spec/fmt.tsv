@@ -42,7 +42,7 @@ fmt-spread-only-braces	fmt	a: &: integer\n	a: { &: integer }\n
 fmt-spread-only-braces-kept	fmt	a: { &: integer }\n	a: { &: integer }\n
 fmt-spread-with-pair	fmt	a: { &: integer, b: 1 }\n	a: { &: integer b:1 }\n
 fmt-inline-map	fmt	a: {b: 1, c: 2}\n	a: { b:1 c:2 }\n
-fmt-inline-map-nested	fmt	a: {b: {c: 1, d: 2} e: [1, 2]}\n	a: { b:{ c:1 d:2 } e:[1 2] }\n
+fmt-inline-map-nested	fmt	a: {b: {c: 1, d: 2} e: [1, 2]}\n	a: { b: { c:1 d:2 } e: [1 2] }\n
 fmt-inline-list	fmt	a: [1, 2, 3,]\n	a: [1 2 3]\n
 fmt-pair-elements	fmt	x: [{a:1} {b:2}]\n	x: [a:1 b:2]\n
 fmt-pair-elements-kept	fmt	x: [a:1 b:2]\n	x: [a:1 b:2]\n
@@ -84,9 +84,12 @@ fmt-blank-lines-trimmed	fmt	\n\na: 1\n\n	a: 1\n
 fmt-blank-lines-in-block	fmt	a: {\n\n  b: 1\n\n\n  c: 2\n\n}\n	a: b: 1\n\na: c: 2\n
 fmt-blank-line-in-list	fmt	a: [1\n\n2]\n	a: [\n  1\n\n  2\n]\n
 fmt-blank-after-comment	fmt	# c\n\na: 1\n	# c\n\na: 1\n
-fmt-operators-spaced	fmt	a:1&2|3+4\n	a: 1 & 2 | 3 + 4\n
-fmt-prefix-tight	fmt	a: * 8080 | 9090\nb: **{ x:1 }\nc: - 1\n	a: *8080 | 9090\nb: **{ x:1 }\nc: -1\n
-fmt-parens-kept	fmt	a: (1 | 2) & 3\nb: ((1))\nc: (1, 2)\n	a: (1 | 2) & 3\nb: ((1))\nc: (1, 2)\n
+fmt-operators-spaced	fmt	a:1&2|3+4\n	a: 1 & 2|3 + 4\n
+fmt-colon-opens-take-the-space	fmt	a: { b:{ c:1 d:2 } e:[1 2] f:*1 | 2 g:(1 | 2) & 3 h:type({ x:1 }) }\n	a: { b: { c:1 d:2 } e: [1 2] f: *1|2 g: (1|2) & 3 h:type({ x:1 }) }\n
+fmt-disjunct-tight-in-a-line	fmt	Port: type({ direction:*in | out | inout protocol?:string })\n	Port: type({ direction: *in|out|inout protocol?:string })\n
+fmt-disjunct-spaced-when-it-leads-a-line	fmt	k: 1\n  | 2\n	k: 1\n  | 2\n
+fmt-prefix-tight	fmt	a: * 8080 | 9090\nb: **{ x:1 }\nc: - 1\n	a: *8080|9090\nb: **{ x:1 }\nc: -1\n
+fmt-parens-kept	fmt	a: (1 | 2) & 3\nb: ((1))\nc: (1, 2)\n	a: (1|2) & 3\nb: ((1))\nc: (1, 2)\n
 fmt-call-separators-kept	fmt	a: match(.t "string" "x")\nb: f(a,b)\nc: f(a ,b)\n	a: match(.t "string" "x")\nb: f(a, b)\nc: f(a, b)\n
 fmt-call-lambda-kept	fmt	a: must((v) => 0 <= v, "not negative")\n	a: must((v) => 0 <= v, "not negative")\n
 fmt-call-no-space	fmt	a: type (1)\nb: f ()\n	a: type(1)\nb: f()\n
@@ -108,7 +111,7 @@ fmt-expr-break-blank-line	fmt	a: 1\n\n  | 2\n	a: 1\n  | 2\n
 fmt-expr-breaks-chain	fmt	out: `a` + .b +\n     match(.t, "string", `TEXT`) +\n     `,`\n	out: `a` + .b\n  + match(.t, "string", `TEXT`)\n  + `,`\n
 fmt-expr-dangling-operator	fmt	a: 1 &\n	a: 1\n  &\n
 fmt-expr-break-in-block	fmt	q: {\n  index: filter($.a, {})\n    & filter($.b, {})\n}\n	q: index: filter($.a, {})\n  & filter($.b, {})\n
-fmt-expr-operand-block	fmt	CatalogEntry: $.aontu.System.Service & {\n  owner: %Owner\n  tier: 1 | 2 | 3\n}\n	CatalogEntry: $.aontu.System.Service & { owner:%Owner tier:1 | 2 | 3 }\n
+fmt-expr-operand-block	fmt	CatalogEntry: $.aontu.System.Service & {\n  owner: %Owner\n  tier: 1 | 2 | 3\n}\n	CatalogEntry: $.aontu.System.Service & { owner:%Owner tier:1|2|3 }\n
 fmt-expr-operand-block-wide	fmt	a: {xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1} & {xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 2}\n	a: { xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:1 } & {\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 2\n}\n
 fmt-map-block-wide	fmt	server: {\n  host: "0.0.0.0", port: 8080,\n  tls: { enabled: true,\n         cert: "/etc/tls/cert.pem" },\n  more: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n}\n	server: {\n  host: "0.0.0.0"\n  port: 8080\n  tls: { enabled:true cert:"/etc/tls/cert.pem" }\n  more: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n}\n
 fmt-list-block-wide	fmt	fields: [\n  { n:"id" t:"string" req:true go:"ID" sql:"id" }\n  { n:"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" t:"string" req:false go:"Email" sql:"email" }\n]\n	fields: [\n  { n:"id" t:"string" req:true go:"ID" sql:"id" }\n  {\n    n: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n    t: "string"\n    req: false\n    go: "Email"\n    sql: "email"\n  }\n]\n
@@ -138,11 +141,11 @@ fmt-call-empty-argument	fmt	a: min(1,,2)\n	a: min(1, nil, 2)\n
 fmt-comment-chain-merge	fmt	a: [\n  {\n    b: 1 # inner\n  } # outer\n]\n	a: [\n  b: 1 # inner # outer\n]\n
 fmt-comment-chain-takes-map-trail	fmt	a: [\n  { b: 1 } # outer\n]\n	a: [\n  b: 1 # outer\n]\n
 fmt-prefix-block	fmt	a: *{ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 2 }\n	a: *{\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 2\n}\n
-fmt-parens-wide	fmt	a: (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)\n	a: (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)\n
+fmt-parens-wide	fmt	a: (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)\n	a: (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)\n
 fmt-parens-hug	fmt	a: ({ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 2 })\n	a: ({\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 2\n})\n
 fmt-merge-adjacent	fmt	s: a: 1\ns: b: 2\n	s: { a:1 b:2 }\n
 fmt-merge-chain-and-map	fmt	s: a: 1\ns: { b: 2, c: 3 }\n	s: { a:1 b:2 c:3 }\n
-fmt-merge-deep	fmt	a: b: c: 1\na: b: d: 2\na: e: 3\n	a: { b:{ c:1 d:2 } e:3 }\n
+fmt-merge-deep	fmt	a: b: c: 1\na: b: d: 2\na: e: 3\n	a: { b: { c:1 d:2 } e:3 }\n
 fmt-merge-not-adjacent	fmt	s: a: 1\nt: 1\ns: b: 2\n	s: a: 1\nt: 1\ns: b: 2\n
 fmt-merge-not-scalars	fmt	s: 1\ns: 2\nt: 1\nt: a: 1\n	s: 1\ns: 2\nt: 1\nt: a: 1\n
 fmt-merge-not-optional-mismatch	fmt	s: a: 1\ns?: b: 2\n	s: a: 1\ns?: b: 2\n
