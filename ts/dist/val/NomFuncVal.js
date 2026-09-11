@@ -95,9 +95,7 @@ class NomFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'nom';
     }
     resolve(ctx, args) {
-        if (args.length < 1 || 3 < args.length) {
-            return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, undefined, 'arity');
-        }
+        // Arity is checked at parse (funcArity); see the translate twin.
         const name = textOf(args[0]);
         if (undefined === name || '' === name) {
             return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[0], 'name');

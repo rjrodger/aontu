@@ -87,10 +87,7 @@ class CmpFuncVal extends FuncBaseVal_1.FuncBaseVal {
     }
     resolve(ctx, args) {
         const def = CMP_DEF[this.cmp];
-        const leaf = 0 === def.children.length;
-        if (args.length < (def.req ? 1 : 0) || args.length > (leaf ? 1 : 2)) {
-            return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, undefined, 'arity');
-        }
+        // Arity is checked at parse (funcArity); args[0] can be undefined.
         const spec = args[0];
         let props;
         if (undefined === spec) {

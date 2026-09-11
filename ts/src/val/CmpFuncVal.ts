@@ -131,12 +131,8 @@ class CmpFuncVal extends FuncBaseVal {
 
   resolve(ctx: AontuContext, args: Val[]): Val {
     const def: CmpDef = CMP_DEF[this.cmp]
-    const leaf = 0 === def.children.length
 
-    if (args.length < (def.req ? 1 : 0) || args.length > (leaf ? 1 : 2)) {
-      return makeNilErr(ctx, 'invalid-arg', this, undefined, 'arity')
-    }
-
+    // Arity is checked at parse (funcArity); args[0] can be undefined.
     const spec: any = args[0]
     let props: Val
     if (undefined === spec) {

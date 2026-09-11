@@ -71,10 +71,7 @@ class TranslateFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]): Val {
-    if (args.length < 2 || 3 < args.length) {
-      return makeNilErr(ctx, 'invalid-arg', this, undefined, 'arity')
-    }
-
+    // Arity is checked at parse (funcArity), so a body guard is dead.
     const src = textOf(args[0])
     if (undefined === src) {
       return makeNilErr(ctx, 'invalid-arg', this, args[0], 'src')
