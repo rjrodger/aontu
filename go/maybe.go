@@ -24,10 +24,13 @@ func (a *AbsentVal) superior() Val { return a }
 
 func (a *AbsentVal) Gen(ctx *Ctx) (any, error) { return nil, nil }
 
-// The unit of the meet: absence narrows nothing. uniteRaw calls this
-// for EITHER operand, which is what makes `&` commute, and never with
-// top: the fast paths answer that pair.
+// The unit of the meet, called for EITHER operand so `&` commutes. Top
+// is the one peer it does not yield to: `+` answers an absence into a
+// slot whose peer is top.
 func (a *AbsentVal) Unify(peer Val, ctx *Ctx) Val {
+	if isTop(peer) {
+		return a
+	}
 	return peer
 }
 

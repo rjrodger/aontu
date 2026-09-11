@@ -1735,6 +1735,37 @@ biginteger at `e` does not. The plain family is unchanged and still
 coerces with JavaScript rules, which drop a trailing `.0`:
 `x:a+1.0` → `"a1"`, not `"a1.0"`.
 
+**Two lists concatenate.** A `+` whose operands are both lists answers
+one list: the left's elements, then the right's, each cloned into its
+new index. An empty operand contributes nothing. This is how a
+document assembles a list from a written head and a computed tail:
+
+```aon
+a: [1] + [2]
+b: [] + [2]
+c: ["x"] + each(["y"], _)
+```
+
+```json
+{"a":[1,2],"b":[2],"c":["x","y"]}
+```
+
+A list with a scalar is not a sum and is refused, in either order.
+
+**A sum of an absence is absent.** `maybe()` travels through `+` the
+way it travels through a call, on either side and whatever the other
+operand is, so an optional tail needs no guard:
+
+<!-- test: run -->
+```sh
+$ echo 'a: 1  b: [1] + maybe($.gone)  c: "x" + maybe($.gone)' | aontu
+{
+  "a": 1
+}
+```
+
+See [Optional input: `maybe`](#optional-input-maybe).
+
 Unary `-` negates a numeric operand exactly. It binds tighter than
 `+`, `&` and `|` (`-1 & integer` is `(-1) & integer`) and, like `+`,
 never narrows the kind and never yields `-0`.
@@ -2360,8 +2391,9 @@ $ echo 'a: 1  b: maybe($.gone)  c: [1, maybe($.gone), 2]' | aontu
 ```
 
 **A call on an absent argument is no call.** Absence travels through
-every built-in, in any argument position, so a transform written
-against optional input needs no guard around it.
+every built-in, in any argument position, and through
+[`+`](#the--operator-and-grouping), so a transform written against
+optional input needs no guard around it.
 
 <!-- test: run -->
 ```sh
@@ -2409,6 +2441,26 @@ call and out of a list element, not out of a map that still has other
 keys: `{k:"frag", of: emit(maybe($.tags), t)}` drops `of` and keeps a
 `{k:"frag"}` behind. Write the whole element as the optional thing, not
 one of its fields.
+
+**A constrained list refuses it.** Absence leaves a plain list without
+a hole, but a list carrying a spread meets every element against the
+spread's template, and absence is not a member that template admits:
+
+<!-- test: scenario maybe-under-a-spread -->
+<!-- test: run -->
+```sh
+$ echo 'x: ["a", maybe($.gone)]' | aontu -c
+{"x":["a",maybe()]}
+$ echo 'x: [&: string]  x: ["a", maybe($.gone)]' | aontu
+[aontu/listval_no_gen]: Cannot resolve value at path $.x.1
+...
+$ echo $?
+1
+```
+
+So an optional member of a list a schema constrains is written as an
+optional KEY of the map that holds it, or the spread is dropped from
+the list.
 
 ## Ordering: `sort`
 

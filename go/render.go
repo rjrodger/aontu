@@ -673,10 +673,12 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 			switch k {
 			case "frag":
 				lowered = false
-				lossy = append(lossy, RenderLoss{
-					Unit: path, Path: dpath, Tier: 2, Construct: "frag",
-					Reason: "a fragment says nothing about " + lang + " syntax",
-				})
+				if _, has := profile["lowering"]; has {
+					lossy = append(lossy, RenderLoss{
+						Unit: path, Path: dpath, Tier: 2, Construct: "frag",
+						Reason: "a fragment says nothing about " + lang + " syntax",
+					})
+				}
 				of, _ := decl["of"].([]any)
 				for n, piece := range of {
 					text.WriteString(renderPiece(piece, profile, path,

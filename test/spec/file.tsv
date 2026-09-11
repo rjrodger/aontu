@@ -93,6 +93,23 @@ load-alias-top-conjunct	gen	@"__FIXTURES__/alias_top.aon" c1:$.C&{a:5}	{"c1":{"a
 # grammar, not because two hand-written readers were kept in step.
 load-ext-json	gen	x:@"__FIXTURES__/vocab.json"	{"x":{"a":1,"b":{"c":2}}}
 load-ext-jsonld	gen	x:@"__FIXTURES__/vocab.jsonld"	{"x":{"@context":{"name":"http://schema.org/name"},"name":"aontu"}}
+# A ROOT-LEVEL data include merges into the map that holds it, the way
+# a root `.aon` include always has: its keys become that map's keys,
+# wherever the directive sits among them, and a key both sides declare
+# is met rather than replaced. Unpinned, the Go port dropped the whole
+# include here (a keyed one worked, which is why only keyed rows
+# existed) -- the loaded value reached the merge as a Val, and the
+# merge takes a map.
+load-root-json	gen	@"__FIXTURES__/vocab.json"\nx:1	{"a":1,"b":{"c":2},"x":1}
+load-root-json-before	gen	x:1\n@"__FIXTURES__/vocab.json"	{"a":1,"b":{"c":2},"x":1}
+load-root-json-merges	gen	@"__FIXTURES__/vocab.json"\nb:{d:3}	{"a":1,"b":{"c":2,"d":3}}
+load-root-json-constrains	gen	@"__FIXTURES__/vocab.json"\na:integer	{"a":1,"b":{"c":2}}
+load-root-in-a-map	gen	m:{@"__FIXTURES__/vocab.json"\nd:3}	{"m":{"a":1,"b":{"c":2},"d":3}}
+load-root-toml	gen	@"__FIXTURES__/conf.toml"\nx:1	{"host":"local","port":8080,"tags":["a","b"],"x":1}
+# A data file whose top level is a LIST is a list, not a map, so it is
+# the value of the key that named it. Nothing merges it at the root,
+# which is why this row is keyed.
+load-ext-json-list	gen	x:@"__FIXTURES__/list.json"	{"x":["a",1,true]}
 # THE CONFIG FORMATS, over one payload so the table reads as one thing.
 # ONTOLOGY.0.md P1 needs the two JSON rows above; the rest are here
 # because a model is usually asked to meet configuration somebody else

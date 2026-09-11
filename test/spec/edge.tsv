@@ -53,7 +53,20 @@ edge-path-func	gens	p:path(q.r) q:{r:7}	{"p":".q.r","q":{"r":7}}
 edge-plus-strings	gens	a:"x"+"y"	{"a":"xy"}
 edge-plus-float-int	gens	a:1.5+2	{"a":3.5}
 edge-plus-map	errc	a:{x:1}+2	mapval_no_gen
-edge-plus-lists	errc	a:[1]+[2]	mapval_no_gen
+# TWO LISTS CONCATENATE (ADR-037), and an absent operand makes the
+# whole sum absent, which is what carries a heading away with the
+# rows it heads. A list mixed with a scalar still residuates, as a
+# boolean mixed with a number does: `+` refuses nothing it did not
+# refuse before. An op sorts before the kinds in a conjunct, so an
+# operand that is a staged call is waited for rather than refused.
+edge-plus-lists	gens	a:[1]+[2]	{"a":[1,2]}
+edge-plus-lists-empty	gens	a:[]+[2]	{"a":[2]}
+edge-plus-list-scalar	errc	a:[1]+2	mapval_no_gen
+edge-plus-list-absent	gens	b:1\na:[1]+maybe($.gone)	{"b":1}
+edge-plus-absent-string	gens	b:1\na:"x"+maybe($.gone)	{"b":1}
+edge-plus-absent-left	gens	b:1\na:maybe($.gone)+[1]	{"b":1}
+edge-plus-list-generated	canon	a:["x"]+each(["y"],_)	{"a":["x","y"]}
+edge-plus-list-under-kind	canon	a:list()&(["x"]+each(["y"],_))	{"a":["x","y"]}
 edge-neg-string	errc	a:-"s"	negative
 edge-neg-bool	errc	a:-true	negative
 edge-neg-big-vs-int	errc	a:-0d1&0	scalar_kind

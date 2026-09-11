@@ -32,9 +32,10 @@ class AbsentVal extends FeatureVal {
     this.mark.hide = false
   }
 
-  // The unit of the meet: absence narrows nothing. `unite` calls this
-  // for EITHER operand, which is what makes `&` commute, and never
-  // with top: the fast paths above it answer that pair.
+  // The unit of the meet, called for EITHER operand so `&` commutes.
+  // Nothing here meets an absence with TOP, so there is no top arm;
+  // Go has one because it MEETS an op's result where this port places
+  // it. edge-plus-list-absent guards the day that changes.
   unify(peer: Val, _ctx: AontuContext): Val {
     return peer
   }
