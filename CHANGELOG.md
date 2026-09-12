@@ -7,6 +7,59 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `aontu render` accepts a component tree
+
+Where `--at` names a `project`, `folder` or `file` node rather than an
+`aontu:code` instance, the verb lowers the tree to units, so `--out`,
+`--check`, `--coverage` and the provenance trace serve it unchanged:
+
+```
+out: folder("src", [file("hello.py", [line("def hello():")])])
+```
+
+```
+$ aontu render --at out --stdout tree.aon
+def hello():
+```
+
+A named container is a path segment, a `file` is one unit, and its
+`line` and `content` children are its text. A file's language is `text`
+unless a `lang` prop names another, because a component tree carries
+text and never declarations.
+
+The five components that read or edit a file on disk (`fragment`,
+`slot`, `inject`, `copyfiles`, `listitems`) have no rendering and answer
+the new code `render_cmp`. They are the gap `render --out` does not
+cover, and a merge over hand-edited files is a different lifecycle.
+
+*Both implementations.*
+
+### A component's text span may be empty, and a bare string is `content`
+
+Two fixes found by writing a real generator with the components.
+
+`line("")` was refused, so the natural spelling of a blank line failed
+while the declaration vocabulary has `%blank` for exactly that. A prop
+that holds a SPAN of target text (`content`, `line`) now admits an
+empty one; a prop that holds a NAME still never does.
+
+```
+line("")                      # a blank line
+folder("")                    # still refused
+```
+
+And wherever `content` is admitted, a bare string stands for it:
+
+```
+file("a.ts", ["export {}\n"])
+```
+
+That is what a template body line desugars to, so a generator written
+in the target's own syntax now reaches the component road as well as
+the declaration one.
+
+*Both implementations.*
+
 ### The Jostraca component primitives are aontu functions
 
 Twelve builtins, in both implementations. Ten build a component node —

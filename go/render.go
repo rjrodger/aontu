@@ -101,6 +101,159 @@ func renderErrorReport(errs []VetFinding) RenderReport {
 		Lossy: []RenderLoss{}, Errors: errs}
 }
 
+
+// THE COMPONENT TREE AS UNITS. A Project/Folder/File tree lowers to the
+// unit list the fold already writes, so `--out`, `--check`, the trace
+// and the coverage report serve it without knowing it was one. Mirrors
+// cmpWalk in ts/src/render.ts.
+
+func cmpJostraca(v Val) (string, bool) {
+	fname, ok := nodeCmp(v)
+	if !ok {
+		return "", false
+	}
+	return cmpDefs[fname].cmp, true
+}
+
+
+func cmpValProp(v Val, key string) (string, bool) {
+	m, ok := v.(*MapVal)
+	if !ok { //coverage:ignore every caller has a node, which is a map
+		return "", false
+	}
+	props, ok := m.peg["props"].(*MapVal)
+	if !ok { //coverage:ignore a node's props is a map by construction
+		return "", false
+	}
+	return stringPeg(props.peg[key])
+}
+
+
+func cmpValKids(v Val) []Val {
+	m, ok := v.(*MapVal)
+	if !ok { //coverage:ignore every caller has a node, which is a map
+		return nil
+	}
+	l, ok := m.peg["children"].(*ListVal)
+	if !ok { //coverage:ignore a node's children is a list by construction
+		return nil
+	}
+	return l.peg
+}
+
+
+func cmpRefused(cmp string, ok bool, at string) VetFinding {
+	what := "a value that is no component node"
+	if ok {
+		what = cmp
+	}
+	return renderFinding("render_cmp", "conflict", at, what+
+		" has no rendering: `render` writes the text a generator produces,"+
+		" and this neither produces text nor holds something that does")
+}
+
+
+// A file's body: a Line carries its terminator and a Content does not,
+// which is the whole difference between them.
+func cmpBody(file Val, at string, errs *[]VetFinding) string {
+	var b strings.Builder
+	for i, kid := range cmpValKids(file) {
+		cmp, ok := cmpJostraca(kid)
+		if !ok || ("Line" != cmp && "Content" != cmp) {
+			*errs = append(*errs, cmpRefused(cmp, ok, at+".children."+itoa(i)))
+			continue
+		}
+		src, _ := cmpValProp(kid, "src")
+		b.WriteString(src)
+		if "Line" == cmp {
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
+}
+
+
+// The body as pieces: one line each, at depth zero, because the text a
+// component carries already holds its own indentation.
+func cmpPieces(body string) *ListVal {
+	lines := strings.Split(body, "\n")
+	if 0 < len(lines) && "" == lines[len(lines)-1] {
+		lines = lines[:len(lines)-1]
+	}
+	out := []Val{}
+	for _, l := range lines {
+		piece := newMap()
+		piece.set("k", newString("line"))
+		piece.set("n", newList([]Val{newString(l)}))
+		out = append(out, piece)
+	}
+	return newList(out)
+}
+
+
+func cmpWalk(node Val, dir []string, at string, units *[]Val,
+	errs *[]VetFinding) {
+	cmp, _ := cmpJostraca(node)
+	if "File" == cmp {
+		name, _ := cmpValProp(node, "name")
+		// Text is what a component tree carries, and text is the profile
+		// that renders it; a lowering needs declarations, which it has
+		// none of. A `lang` prop names another.
+		lang, has := cmpValProp(node, "lang")
+		if !has {
+			lang = "text"
+		}
+		decl := newMap()
+		decl.set("k", newString("frag"))
+		decl.set("n", cmpPieces(cmpBody(node, at, errs)))
+		unit := newMap()
+		unit.set("path", newString(strings.Join(append(append([]string{},
+			dir...), name), "/")))
+		unit.set("lang", newString(lang))
+		unit.set("decls", newList([]Val{decl}))
+		*units = append(*units, unit)
+		return
+	}
+
+	// A named container is a path segment. `project()` writes no name,
+	// and `--out` is where the tree lands.
+	key := "name"
+	if "Project" == cmp {
+		key = "folder"
+	}
+	under := dir
+	if seg, has := cmpValProp(node, key); has {
+		under = append(append([]string{}, dir...), seg)
+	}
+	for i, kid := range cmpValKids(node) {
+		kat := at + ".children." + itoa(i)
+		kcmp, ok := cmpJostraca(kid)
+		if !ok || ("Project" != kcmp && "Folder" != kcmp && "File" != kcmp) {
+			*errs = append(*errs, cmpRefused(kcmp, ok, kat))
+			continue
+		}
+		cmpWalk(kid, under, kat, units, errs)
+	}
+}
+
+
+// cmpCode answers the `aontu: Code:` value a component tree lowers to,
+// or nil where the node is no component node.
+func cmpCode(node Val) (*MapVal, []VetFinding) {
+	if _, ok := cmpJostraca(node); !ok {
+		return nil, nil
+	}
+	units := []Val{}
+	errs := []VetFinding{}
+	cmpWalk(node, nil, "$", &units, &errs)
+	if 0 < len(errs) {
+		return nil, errs
+	}
+	code := newMap()
+	code.set("units", newList(units))
+	return code, nil
+}
+
 func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 	options := RenderOptions{}
 	if nil != opts {
@@ -136,7 +289,19 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 		}
 	}
 
+	lowered, cmpErrs := cmpCode(node)
+	if 0 < len(cmpErrs) {
+		return renderErrorReport(cmpErrs)
+	}
+
 	value := Hcanon(node)
+	if nil != lowered {
+		wrap := newMap()
+		ns := newMap()
+		ns.set("Code", lowered)
+		wrap.set("aontu", ns)
+		value = Hcanon(wrap)
+	}
 	report := Vet(renderVocabulary, value, nil)
 	if "valid" != report.Verdict {
 		return renderErrorReport(report.Findings)
@@ -146,11 +311,15 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 	// instance's (a value the vet admitted is a map), and a document
 	// with no code at all is the vocabulary's own empty instance.
 	meetSrc := renderVocabulary
-	m, _ := node.(*MapVal)
-	if ns, has := m.peg["aontu"]; has {
-		if nm, ok := ns.(*MapVal); ok {
-			if c, has := nm.peg["Code"]; has {
-				meetSrc += "\naontu: Code: " + Hcanon(c)
+	if nil != lowered {
+		meetSrc += "\naontu: Code: " + Hcanon(lowered)
+	} else {
+		m, _ := node.(*MapVal)
+		if ns, has := m.peg["aontu"]; has {
+			if nm, ok := ns.(*MapVal); ok {
+				if c, has := nm.peg["Code"]; has {
+					meetSrc += "\naontu: Code: " + Hcanon(c)
+				}
 			}
 		}
 	}

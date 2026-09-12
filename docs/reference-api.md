@@ -1551,6 +1551,35 @@ evaluates it. See [`aontu template`](#aontu-template) for the surface
 itself; here it is only the entry spelling, decided by the extension
 exactly as an include's extension decides what the include is.
 
+**A component tree renders too.** Where `--at` names a
+[`project`](reference-language.md#projectspec-stringmap-children-list--map),
+`folder` or `file` node rather than an `aontu:code` instance, the verb
+lowers the tree to units and everything above serves it unchanged: each
+named container is a path segment, a `file` is one unit, and its `line`
+and `content` children are its text. Write a `tree.aon`:
+
+<!-- test: scenario render-cmp -->
+<!-- test: file tree.aon -->
+```aontu
+out: folder("src", [
+  file("hello.py", [line("def hello():") line("    print(\"hello, world\")")])
+])
+```
+
+<!-- test: run -->
+```sh
+$ aontu render --at out --stdout tree.aon
+def hello():
+    print("hello, world")
+```
+
+A file's language is `text` unless a `lang` prop names another, because
+a component tree carries text and never declarations. The components
+that read or edit a file on disk (`fragment`, `slot`, `inject`,
+`copyfiles` and `listitems`) have no rendering, and reaching one is
+`render_cmp`: `render` writes what a generator produces, and a merge
+over hand-edited files is a different lifecycle.
+
 **`--format json` carries the trace**, one entry per emitted piece: the
 piece's path in the instance, the unit it landed in, the model node the
 rule matched, and the rule that matched it. A rule's address is its

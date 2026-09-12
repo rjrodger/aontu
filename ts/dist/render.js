@@ -11,6 +11,10 @@ const err_1 = require("./err");
 const keyorder_1 = require("./keyorder");
 const utility_1 = require("./utility");
 const lower_1 = require("./lower");
+const CmpFuncVal_1 = require("./val/CmpFuncVal");
+const MapVal_1 = require("./val/MapVal");
+const ListVal_1 = require("./val/ListVal");
+const StringVal_1 = require("./val/StringVal");
 const VOCABULARY = '@"aontu:code"';
 // The bundled profiles, by lang: aontu:render/lang/<lang>.
 const BUNDLED_LANGS = ['go', 'markdown', 'text', 'typescript'];
@@ -20,6 +24,120 @@ function finding(code, cls, path, message) {
 }
 function errorReport(errors) {
     return { verdict: 'error', units: [], lossy: [], errors };
+}
+// ---------------------------------------------------------------------
+// THE COMPONENT TREE AS UNITS. A Project/Folder/File tree lowers to the
+// unit list the fold already writes, so `--out`, `--check`, the trace
+// and the coverage report serve it. Both ports build the lowered value
+// as VALS, so one canon writer spells it and a vet site matches.
+const CMP_NAMES = new Set(Object.keys(CmpFuncVal_1.CMP_DEF).map((f) => CmpFuncVal_1.CMP_DEF[f].cmp));
+const CMP_CONTAINER = new Set(['Project', 'Folder', 'File']);
+function cmpOf(v) {
+    if (true !== v?.isMap) {
+        return undefined;
+    }
+    const c = v.peg?.cmp;
+    const name = (true === c?.isScalar && 'string' === typeof c.peg) ?
+        c.peg : undefined;
+    return (undefined !== name && CMP_NAMES.has(name)) ? name : undefined;
+}
+function cmpProp(v, key) {
+    const p = v.peg?.props?.peg?.[key];
+    return (true === p?.isScalar && 'string' === typeof p.peg) ? p.peg : undefined;
+}
+function cmpKids(v) {
+    const k = v.peg?.children;
+    return true === k?.isList ? k.peg : [];
+}
+function cmpRefused(cmp, at) {
+    return finding('render_cmp', 'conflict', at, (undefined === cmp ? 'a value that is no component node' : cmp) +
+        ' has no rendering: `render` writes the text a generator produces,' +
+        ' and this neither produces text nor holds something that does');
+}
+// A file's body: a Line carries its terminator and a Content does not,
+// which is the whole difference between them.
+function cmpBody(file, at, errors) {
+    let body = '';
+    const kids = cmpKids(file);
+    for (let i = 0; i < kids.length; i++) {
+        const cmp = cmpOf(kids[i]);
+        if ('Line' !== cmp && 'Content' !== cmp) {
+            errors.push(cmpRefused(cmp, at + '.children.' + i));
+            continue;
+        }
+        body += (cmpProp(kids[i], 'src') ?? '') + ('Line' === cmp ? '\n' : '');
+    }
+    return body;
+}
+// The body as pieces: one line each, at depth zero, because the text a
+// component carries already holds its own indentation.
+function cmpPieces(body, ctx) {
+    const lines = body.split('\n');
+    if ('' === lines[lines.length - 1]) {
+        lines.pop();
+    }
+    return new ListVal_1.ListVal({
+        peg: lines.map((l) => new MapVal_1.MapVal({
+            peg: {
+                k: new StringVal_1.StringVal({ peg: 'line' }, ctx),
+                n: new ListVal_1.ListVal({ peg: [new StringVal_1.StringVal({ peg: l }, ctx)] }, ctx),
+            }
+        }, ctx))
+    }, ctx);
+}
+function cmpWalk(node, dir, at, units, errors, ctx) {
+    const cmp = cmpOf(node);
+    if ('File' === cmp) {
+        const decl = new MapVal_1.MapVal({
+            peg: {
+                k: new StringVal_1.StringVal({ peg: 'frag' }, ctx),
+                n: cmpPieces(cmpBody(node, at, errors), ctx),
+            }
+        }, ctx);
+        units.push(new MapVal_1.MapVal({
+            peg: {
+                path: new StringVal_1.StringVal({
+                    peg: dir.concat(cmpProp(node, 'name') ?? '').join('/')
+                }, ctx),
+                // Text is what a component tree carries, and text is the profile
+                // that renders it; a lowering needs declarations, which it has
+                // none of. A `lang` prop names another.
+                lang: new StringVal_1.StringVal({ peg: cmpProp(node, 'lang') ?? 'text' }, ctx),
+                decls: new ListVal_1.ListVal({ peg: [decl] }, ctx),
+            }
+        }, ctx));
+        return;
+    }
+    // A named container is a path segment. `project()` writes no name,
+    // and `--out` is where the tree lands.
+    const seg = 'Project' === cmp ?
+        cmpProp(node, 'folder') : cmpProp(node, 'name');
+    const under = undefined === seg ? dir : dir.concat(seg);
+    const kids = cmpKids(node);
+    for (let i = 0; i < kids.length; i++) {
+        const kat = at + '.children.' + i;
+        const kcmp = cmpOf(kids[i]);
+        if (undefined === kcmp || !CMP_CONTAINER.has(kcmp)) {
+            errors.push(cmpRefused(kcmp, kat));
+            continue;
+        }
+        cmpWalk(kids[i], under, kat, units, errors, ctx);
+    }
+}
+function cmpCode(node, ctx) {
+    if (undefined === cmpOf(node)) {
+        return { errors: [] };
+    }
+    const errors = [];
+    const units = [];
+    cmpWalk(node, [], '$', units, errors, ctx);
+    if (0 < errors.length) {
+        return { errors };
+    }
+    return {
+        code: new MapVal_1.MapVal({ peg: { units: new ListVal_1.ListVal({ peg: units }, ctx) } }, ctx),
+        errors: [],
+    };
 }
 function render(src, options) {
     const opts = options ?? {};
@@ -46,13 +164,24 @@ function render(src, options) {
         }
         node = found;
     }
-    const value = (0, hcanon_1.hcanon)(node);
+    const { code: lowered, errors: cmpErrors } = cmpCode(node, actx);
+    if (0 < cmpErrors.length) {
+        return errorReport(cmpErrors);
+    }
+    const value = undefined === lowered ? (0, hcanon_1.hcanon)(node) : (0, hcanon_1.hcanon)(new MapVal_1.MapVal({
+        peg: {
+            aontu: new MapVal_1.MapVal({ peg: { Code: lowered } }, actx)
+        }
+    }, actx));
     const report = (0, vet_1.vet)(VOCABULARY, value);
     if ('valid' !== report.verdict) {
         return errorReport(report.findings);
     }
     const codeVal = node.peg.aontu?.peg?.Code;
-    const instance = new aontu_1.Aontu().generate(VOCABULARY + (undefined === codeVal ? '' : '\naontu: Code: ' + (0, hcanon_1.hcanon)(codeVal)));
+    const codeSrc = undefined !== lowered ?
+        '\naontu: Code: ' + (0, hcanon_1.hcanon)(lowered) :
+        (undefined === codeVal ? '' : '\naontu: Code: ' + (0, hcanon_1.hcanon)(codeVal));
+    const instance = new aontu_1.Aontu().generate(VOCABULARY + codeSrc);
     const folded = renderValue(instance, opts);
     if (rec && 'error' !== folded.verdict) {
         const marks = emitted(node);

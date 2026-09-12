@@ -10,6 +10,10 @@ import { cmpCodePoint } from './keyorder'
 import { includeOpts } from './utility'
 import type { IncludeOptions } from './utility'
 import { lowerDecl, lowerHeader, ident } from './lower'
+import { CMP_DEF } from './val/CmpFuncVal'
+import { MapVal } from './val/MapVal'
+import { ListVal } from './val/ListVal'
+import { StringVal } from './val/StringVal'
 import type { LowerCtx } from './lower'
 
 
@@ -95,6 +99,142 @@ function errorReport(errors: VetFinding[]): RenderReport {
 }
 
 
+// ---------------------------------------------------------------------
+// THE COMPONENT TREE AS UNITS. A Project/Folder/File tree lowers to the
+// unit list the fold already writes, so `--out`, `--check`, the trace
+// and the coverage report serve it. Both ports build the lowered value
+// as VALS, so one canon writer spells it and a vet site matches.
+const CMP_NAMES = new Set(Object.keys(CMP_DEF).map((f) => CMP_DEF[f].cmp))
+const CMP_CONTAINER = new Set(['Project', 'Folder', 'File'])
+
+
+function cmpOf(v: any): string | undefined {
+  if (true !== v?.isMap) {
+    return undefined
+  }
+  const c: any = v.peg?.cmp
+  const name = (true === c?.isScalar && 'string' === typeof c.peg) ?
+    c.peg : undefined
+  return (undefined !== name && CMP_NAMES.has(name)) ? name : undefined
+}
+
+
+function cmpProp(v: any, key: string): string | undefined {
+  const p: any = v.peg?.props?.peg?.[key]
+  return (true === p?.isScalar && 'string' === typeof p.peg) ? p.peg : undefined
+}
+
+
+function cmpKids(v: any): any[] {
+  const k: any = v.peg?.children
+  return true === k?.isList ? k.peg : []
+}
+
+
+function cmpRefused(cmp: string | undefined, at: string): VetFinding {
+  return finding('render_cmp', 'conflict', at,
+    (undefined === cmp ? 'a value that is no component node' : cmp) +
+    ' has no rendering: `render` writes the text a generator produces,' +
+    ' and this neither produces text nor holds something that does')
+}
+
+
+// A file's body: a Line carries its terminator and a Content does not,
+// which is the whole difference between them.
+function cmpBody(file: any, at: string, errors: VetFinding[]): string {
+  let body = ''
+  const kids = cmpKids(file)
+  for (let i = 0; i < kids.length; i++) {
+    const cmp = cmpOf(kids[i])
+    if ('Line' !== cmp && 'Content' !== cmp) {
+      errors.push(cmpRefused(cmp, at + '.children.' + i))
+      continue
+    }
+    body += (cmpProp(kids[i], 'src') ?? '') + ('Line' === cmp ? '\n' : '')
+  }
+  return body
+}
+
+
+// The body as pieces: one line each, at depth zero, because the text a
+// component carries already holds its own indentation.
+function cmpPieces(body: string, ctx: any): ListVal {
+  const lines = body.split('\n')
+  if ('' === lines[lines.length - 1]) {
+    lines.pop()
+  }
+  return new ListVal({
+    peg: lines.map((l) => new MapVal({
+      peg: {
+        k: new StringVal({ peg: 'line' }, ctx),
+        n: new ListVal({ peg: [new StringVal({ peg: l }, ctx)] }, ctx),
+      }
+    }, ctx))
+  }, ctx)
+}
+
+
+function cmpWalk(node: any, dir: string[], at: string, units: any[],
+  errors: VetFinding[], ctx: any): void {
+  const cmp = cmpOf(node)
+  if ('File' === cmp) {
+    const decl = new MapVal({
+      peg: {
+        k: new StringVal({ peg: 'frag' }, ctx),
+        n: cmpPieces(cmpBody(node, at, errors), ctx),
+      }
+    }, ctx)
+    units.push(new MapVal({
+      peg: {
+        path: new StringVal({
+          peg: dir.concat(cmpProp(node, 'name') ?? '').join('/')
+        }, ctx),
+        // Text is what a component tree carries, and text is the profile
+        // that renders it; a lowering needs declarations, which it has
+        // none of. A `lang` prop names another.
+        lang: new StringVal({ peg: cmpProp(node, 'lang') ?? 'text' }, ctx),
+        decls: new ListVal({ peg: [decl] }, ctx),
+      }
+    }, ctx))
+    return
+  }
+
+  // A named container is a path segment. `project()` writes no name,
+  // and `--out` is where the tree lands.
+  const seg = 'Project' === cmp ?
+    cmpProp(node, 'folder') : cmpProp(node, 'name')
+  const under = undefined === seg ? dir : dir.concat(seg)
+  const kids = cmpKids(node)
+  for (let i = 0; i < kids.length; i++) {
+    const kat = at + '.children.' + i
+    const kcmp = cmpOf(kids[i])
+    if (undefined === kcmp || !CMP_CONTAINER.has(kcmp)) {
+      errors.push(cmpRefused(kcmp, kat))
+      continue
+    }
+    cmpWalk(kids[i], under, kat, units, errors, ctx)
+  }
+}
+
+
+function cmpCode(node: any, ctx: any):
+  { code?: MapVal, errors: VetFinding[] } {
+  if (undefined === cmpOf(node)) {
+    return { errors: [] }
+  }
+  const errors: VetFinding[] = []
+  const units: any[] = []
+  cmpWalk(node, [], '$', units, errors, ctx)
+  if (0 < errors.length) {
+    return { errors }
+  }
+  return {
+    code: new MapVal({ peg: { units: new ListVal({ peg: units }, ctx) } }, ctx),
+    errors: [],
+  }
+}
+
+
 export function render(src: string, options?: RenderOptions): RenderReport {
   const opts = options ?? {}
   const aontu = new Aontu(includeOpts(opts))
@@ -124,15 +264,26 @@ export function render(src: string, options?: RenderOptions): RenderReport {
     node = found
   }
 
-  const value = hcanon(node)
+  const { code: lowered, errors: cmpErrors } = cmpCode(node, actx)
+  if (0 < cmpErrors.length) {
+    return errorReport(cmpErrors)
+  }
+
+  const value = undefined === lowered ? hcanon(node) : hcanon(new MapVal({
+    peg: {
+      aontu: new MapVal({ peg: { Code: lowered } }, actx)
+    }
+  }, actx))
   const report = vet(VOCABULARY, value)
   if ('valid' !== report.verdict) {
     return errorReport(report.findings)
   }
 
   const codeVal: any = node.peg.aontu?.peg?.Code
-  const instance = new Aontu().generate(
-    VOCABULARY + (undefined === codeVal ? '' : '\naontu: Code: ' + hcanon(codeVal)))
+  const codeSrc = undefined !== lowered ?
+    '\naontu: Code: ' + hcanon(lowered) :
+    (undefined === codeVal ? '' : '\naontu: Code: ' + hcanon(codeVal))
+  const instance = new Aontu().generate(VOCABULARY + codeSrc)
   const folded = renderValue(instance, opts)
 
   if (rec && 'error' !== folded.verdict) {

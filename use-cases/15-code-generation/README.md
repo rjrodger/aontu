@@ -21,6 +21,13 @@ file.
 | [`gen-go.aon`](gen-go.aon) | `name`, `fields.n`, `fields.t`, `fields.go` | `types.go`, Go structs with JSON tags | [`expected/types.go`](expected/types.go) |
 | [`gen-ts.aon`](gen-ts.aon) | `name`, `fields.n`, `fields.t`, `fields.req` | `types.ts`, TypeScript interfaces | [`expected/types.ts`](expected/types.ts) |
 | [`gen-sql.aon`](gen-sql.aon) | `sql`, `fields.sql`, `fields.t`, `fields.req` | `schema.sql`, `CREATE TABLE` statements | [`expected/schema.sql`](expected/schema.sql) |
+| [`gen-ts-cmp.aon`](gen-ts-cmp.aon) | the same as `gen-ts.aon` | `types.ts` again, written as a COMPONENT TREE | [`expected/types.ts`](expected/types.ts) |
+
+`gen-ts-cmp.aon` is the fourth row's point: the same unit written as
+`file(...)` holding `line(...)` children rather than as an `aontu:code`
+instance. `render --at out` lowers the tree, and `check.sh` holds both
+spellings to the one golden, in both ports. It is the measure of what
+each road costs for one job.
 
 The Go generator never reads `sql`; the SQL generator never reads
 `go`; the TypeScript generator reads neither and keeps the wire name

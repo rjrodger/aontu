@@ -184,11 +184,26 @@ if command -v go >/dev/null 2>&1; then
     diff -u "$WORK/$u.ts.txt" "$WORK/$u.go.txt" \
       || fail "$u: the two ports render different bytes (ADR-001)"
   done
-  ok "both ports render byte-identical output for all three units"
+  "$GOBIN" render --trust root --at out --stdout "$DIR/gen-ts-cmp.aon" \
+    2>/dev/null > "$WORK/cmp.go.txt" \
+    || fail "the Go port did not render the component tree"
+  render --at out --stdout "$DIR/gen-ts-cmp.aon" 2>/dev/null > "$WORK/cmp.ts.txt"
+  diff -u "$WORK/cmp.ts.txt" "$WORK/cmp.go.txt" \
+    || fail "the component tree renders differently in the two ports (ADR-001)"
+  ok "both ports render byte-identical output for all three units, and for the component tree"
 else
   skip "both ports render byte-identical output (no go toolchain)"
 fi
 
+
+# THE OTHER ROAD. The same unit, written as a COMPONENT TREE rather
+# than as an aontu:code instance: `render --at out` lowers the tree,
+# and the bytes must be the ones the declaration spelling produces.
+render --at out --stdout "$DIR/gen-ts-cmp.aon" 2>/dev/null > "$WORK/cmp.ts" \
+  || fail "the component tree did not render"
+diff -u "$DIR/expected/types.ts" "$WORK/cmp.ts" \
+  || fail "the component tree renders different bytes from the aontu:code unit"
+ok "a component tree renders the same bytes as the declaration spelling"
 
 # THE MODEL TREE. The shape of this document, drawn by the one kind
 # that reads no report: `view doc` walks the anchor, exactly as
