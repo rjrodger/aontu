@@ -127,8 +127,13 @@ the bumped versions:
 
 | | at 0.4.7 / 0.9.0 / 0.1.10 | at 0.4.12 / 0.9.6 / 0.1.15 |
 |---|---|---|
-| `npm test` (TypeScript) | green | green — 6107 tests, 133 suites, 0 fail |
-| `go test ./...` | green | green |
+| `(cd ts && npm test)` | green | green |
+| `(cd go && go test ./...)` | green | green |
+
+No row count is quoted here on purpose: a suite-size figure belongs in
+the register and nowhere else (AGENTS.md, "The capability-review
+progress register"). What this table pins is the verdict, which does
+not go stale when an unrelated test is added.
 
 So the reason for the exact pin has expired. The pin itself should
 stay exact — the argument that a fresh install must not cross a
@@ -186,11 +191,17 @@ Three questions, and the first settles the other two.
 
 **D1. What does `parse(g, v)` answer for an annotated grammar?**
 
-- **(a) Refuse it.** `abnf(g)` rejects a grammar carrying an
-  annotation, with a new code. The tree contract holds, `kids` is
-  always present, one line of documentation covers it. It also throws
-  away the whole capability, and a grammar that is valid ABNF and
-  compiles upstream would be refused here for carrying a comment.
+- **(a) Refuse it.** The two-argument `parse(g, v)` rejects a grammar
+  carrying an annotation, with a new code. The tree contract holds,
+  `kids` is always present, one line of documentation covers it. It
+  also throws away the whole capability, and a grammar that is valid
+  ABNF and compiles upstream would be refused here for carrying a
+  comment. **The refusal cannot sit in `abnf(g)`.** That is where a
+  grammar is DECLARED, so refusing there takes the one-argument
+  constraint form with it — the form §6.1 measures as unaffected — and
+  it would not even be complete: `parse` compiles an inline grammar
+  itself (the `parse-grammar-inline` row), so the two-argument call is
+  the only place that sees every grammar it applies.
 - **(b) Answer the built value.** `astVal` becomes a general host-value
   converter: object → `MapVal`, array → `ListVal`, string → `StringVal`,
   and a node bearing `rule`/`src`/`kids` keeps today's shape. Small —
@@ -292,8 +303,11 @@ node.kids.map(() => 0)     // TypeError: Cannot read properties of undefined
 
 ```sh
 # §6, the Go half: the same document, exit 0 and an empty tree.
-printf 'G: abnf("ver = maj \\".\\" min \\".\\" pat   ; @object maj min pat\\nmaj = 1*DIGIT\\nmin = 1*DIGIT\\npat = 1*DIGIT\\n")\nv: parse($.G, "1.2.30")\n' > ann.aon
-go run ./cmd/aontu ann.aon      # "v": { "kids": [], "rule": "", "src": "" }
+# The module lives in go/, so the whole thing runs from there; bump
+# go.mod to abnf 0.4.12 first, or 0.4.7 answers the tree as it should.
+printf 'G: abnf("ver = maj \\".\\" min \\".\\" pat   ; @object maj min pat\\nmaj = 1*DIGIT\\nmin = 1*DIGIT\\npat = 1*DIGIT\\n")\nv: parse($.G, "1.2.30")\n' > /tmp/ann.aon
+(cd go && go run ./cmd/aontu /tmp/ann.aon)
+# "v": { "kids": [], "rule": "", "src": "" }
 ```
 
 ## 10. What to do
