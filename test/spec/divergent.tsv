@@ -505,7 +505,15 @@
 #   The third is the sharpest: Go does not answer a damaged map, it
 #   answers the wrong KIND of value.
 #
-#   Not simply fixed because it originates in the pinned
+#   FIX IDENTIFIED 2026-09-12, upstream: tabnas/parser#169. Go's
+#   `@push$` re-published the grown slice header to `r.Parent`
+#   UNCONDITIONALLY, so the enclosing @object$'s map -- or the enclosing
+#   list -- was overwritten by the list being grown. The write-back is
+#   now guarded by ownership. This entry is removed, and the three
+#   shapes earn real rows, when a released @tabnas/parser carrying it
+#   reaches the pins here.
+#
+#   Not simply fixed FROM HERE because it originates in the pinned
 #   @tabnas/abnf (0.4.12, both ports) and its @tabnas/parser value
 #   builders. It is the next step out from the Go slice-versus-reference
 #   problem that package's own design note records: `Rule.nodeOwner`

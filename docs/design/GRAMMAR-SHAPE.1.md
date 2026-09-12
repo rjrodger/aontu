@@ -378,9 +378,13 @@ An `@object` nests correctly either way; it is specifically the array.
 The third row is the sharpest: Go answers the wrong KIND of value, not a
 damaged map.
 
-Filed as [tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63) and
-recorded in `test/spec/divergent.tsv` with both engines' outputs, per
-that file's own rules — it originates in a pinned `@tabnas` dependency
+Filed as [tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63),
+**fixed upstream the same day in
+[tabnas/parser#169](https://github.com/tabnas/parser/pull/169)** -- Go's
+`@push$` re-published a grown slice header to `r.Parent` unconditionally,
+overwriting whatever the parent held -- and recorded in
+`test/spec/divergent.tsv` with both engines' outputs, per that file's own
+rules — it originates in a pinned `@tabnas` dependency
 and nothing here can reach it, since by the time a value arrives the
 member is already gone. No row pins it; the reference names it as the
 one shape to avoid.
