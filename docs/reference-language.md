@@ -4744,7 +4744,7 @@ Five things to know before writing one:
 **A nested `; @array` is the one shape to avoid today**: an `@array`
 rule used as a member of an `@object` or an element of another `@array`.
 The two engines disagree about it, the fault is upstream
-([tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63)), and
+([tabnas/abnf issue 63](https://github.com/tabnas/abnf/issues/63)), and
 [`test/spec/divergent.tsv`](../test/spec/divergent.tsv) carries the
 three shapes and both answers. An `@object` nests correctly either way.
 
