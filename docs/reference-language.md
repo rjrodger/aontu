@@ -4743,12 +4743,9 @@ Five things to know before writing one:
   leading member whose own rule builds a value are all refused where the
   grammar is declared rather than built into a differently-shaped value.
 
-**A nested `; @array` is the one shape to avoid today**: an `@array`
-rule used as a member of an `@object` or an element of another `@array`.
-The two engines disagree about it, the fault is upstream
-([tabnas/abnf issue 63](https://github.com/tabnas/abnf/issues/63)), and
-[`test/spec/divergent.tsv`](../test/spec/divergent.tsv) carries the
-three shapes and both answers. An `@object` nests correctly either way.
+**Either builder nests inside the other.** An `@array` is a member of
+an `@object`, an element of another `@array`, or an object's only
+member, and answers the same value in both engines.
 
 ### Shaping an unannotated tree
 

@@ -5,7 +5,7 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/aontu-lang/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
-## Unreleased
+## Go 0.1.21 — 2026-09-12 · TypeScript 0.63.0
 
 ### A component's text span may be empty, and a bare string is `content`
 
@@ -62,15 +62,20 @@ rule. Every leaf is still the **text** the rule matched: the annotation
 chooses the container, there is no scalar form, and `"30"` stays a
 string.
 
-Requires `@tabnas/abnf` 0.4.12, `@tabnas/parser` 0.9.6 and
+Requires `@tabnas/abnf` 0.4.13, `@tabnas/parser` 0.9.7 and
 `@tabnas/bnf` 0.1.15, pinned exactly and identically in both ports.
 
-**Known limit:** a nested `; @array` — an `@array` rule used as a member
-of an `@object`, or as an element of another `@array` — is not in
-TypeScript/Go parity. The fault is upstream
-([tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63)); the three
-shapes and both engines' answers are in `test/spec/divergent.tsv`. An
-`@object` nests correctly either way.
+Either builder nests inside the other: an `@array` as a member of an
+`@object`, as an element of another `@array`, or as an object's only
+member. Those three shapes were out of TypeScript/Go parity when this
+work started — Go dropped the member, added a spurious leading element,
+or answered a list where a map was asked for — which the parity probe
+caught before any row was written down. The fault was upstream, in
+`@tabnas/parser`'s Go `@push$` re-publishing a grown slice header to its
+parent unconditionally; filed as
+[tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63), fixed in
+[tabnas/parser#169](https://github.com/tabnas/parser/pull/169), and the
+reason for the pins above. All three carry rows now.
 
 ### The Jostraca component primitives are aontu functions
 
