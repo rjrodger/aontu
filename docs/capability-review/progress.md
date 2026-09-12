@@ -1705,9 +1705,17 @@ its name unless the production starts with a terminal -- which is
 identical in both engines and therefore the compiler's property, not a
 parity break. Reaching the engine's own value builders (`@object$`,
 `@array$`, `@push$`, `@setval$`, `@value$`) would answer that and the
-text-only leaves together, and no ABNF front-end path reaches them in
-either port; the upstream request is
-[GRAMMAR-SHAPE.0.md](../design/GRAMMAR-SHAPE.0.md). The
+text-only leaves together, and no ABNF front-end path reaches them at
+the versions pinned here; the upstream request is
+[GRAMMAR-SHAPE.0.md](../design/GRAMMAR-SHAPE.0.md). **2026-09-12: that
+request is ANSWERED upstream and aontu has not taken it up.**
+`@tabnas/abnf` 0.4.11 carries it as a value annotation in an RFC 5234
+comment (`; @object maj min pat`, `; @array`), 0.4.12 completes it for
+repetitions, and both need `parser` ≥ 0.9.6 against the 0.9.0 pinned
+here. Nothing has landed: the pins are unmoved, and moving them
+requires `astVal` to stop assuming a tree in both ports — reviewed,
+measured, and costed in
+[GRAMMAR-SHAPE.1.md](../design/GRAMMAR-SHAPE.1.md). The
 parse is BOUNDED at 100 000 steps through the host engine's
 cancellation hook, for the reason `re()` carries the ReDoS guard: a
 grammar is strictly more expressive than the pattern subset that guard
