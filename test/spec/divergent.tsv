@@ -475,3 +475,54 @@
 #   containers the meet does not mint and which both ports agree on byte
 #   for byte.
 
+#
+# ---------------------------------------------------------------------
+#
+# OPEN -- an `; @array` NESTED inside another value builder is dropped,
+#   duplicated, or replaces its parent, in Go.
+#   issue: tabnas/abnf#63, filed 2026-09-12 while taking the value
+#   annotations up (ADR-033, GRAMMAR-SHAPE.1.md). The flat shapes and
+#   every `@object` nesting agree in both ports and carry real rows in
+#   abnf.tsv; only a nested `@array` diverges.
+#
+#   Divergent input: three grammars, each with one input. Probed against
+#   the RAW engines -- no aontu -- so the fault is upstream and not in
+#   this repository's converter.
+#
+#   `top = "@" a b   ; @object a b` with `b` an `; @array`, on `@ab[1,2]`
+#   TypeScript: {"a":"ab","b":["1","2"]}
+#   Go:         {"a":"ab"}                  -- the member is DROPPED
+#
+#   `top = "<" b *( ";" b ) ">"   ; @array` with `b` an `; @array`,
+#   on `<[1,2];[3]>`
+#   TypeScript: [["1","2"],["3"]]
+#   Go:         ["1",["1","2"],["3"]]       -- a SPURIOUS leading element
+#
+#   `top = "@" b   ; @object b` with `b` an `; @array`, on `@[1,2]`
+#   TypeScript: {"b":["1","2"]}
+#   Go:         ["1"]                       -- a LIST where a map was asked
+#
+#   The third is the sharpest: Go does not answer a damaged map, it
+#   answers the wrong KIND of value.
+#
+#   FIX IDENTIFIED 2026-09-12, upstream: tabnas/parser#169. Go's
+#   `@push$` re-published the grown slice header to `r.Parent`
+#   UNCONDITIONALLY, so the enclosing @object$'s map -- or the enclosing
+#   list -- was overwritten by the list being grown. The write-back is
+#   now guarded by ownership. This entry is removed, and the three
+#   shapes earn real rows, when a released @tabnas/parser carrying it
+#   reaches the pins here.
+#
+#   Not simply fixed FROM HERE because it originates in the pinned
+#   @tabnas/abnf (0.4.12, both ports) and its @tabnas/parser value
+#   builders. It is the next step out from the Go slice-versus-reference
+#   problem that package's own design note records: `Rule.nodeOwner`
+#   makes a list grow correctly at any depth WITHIN one annotated rule,
+#   and these three are a finished list that must be handed to the
+#   ENCLOSING builder's container instead. Nothing in this repository
+#   can reach that hand-off -- by the time a value arrives here the
+#   member is already gone.
+#
+#   No aontu row pins any of the three. What IS pinned is everything
+#   that agrees: `parse-object-*`, `parse-array-*` and the refusals in
+#   abnf.tsv.
