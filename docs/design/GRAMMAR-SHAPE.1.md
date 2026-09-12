@@ -1,8 +1,10 @@
 # GRAMMAR-SHAPE.1 — the request came back answered, and aontu cannot take it
 
-**Status:** a REVIEW of what `@tabnas/abnf` shipped against
-[GRAMMAR-SHAPE.0.md](GRAMMAR-SHAPE.0.md), written from aontu's side.
-Nothing here is a change to aontu yet; §7 is the decision it needs.
+**Status:** **LANDED 2026-09-12.** A review of what `@tabnas/abnf`
+shipped against [GRAMMAR-SHAPE.0.md](GRAMMAR-SHAPE.0.md), and then the
+change it asked for: §7's D1(b) is implemented in both ports, the pins
+are moved, and §10's list is done bar the scalar ask. §11 records what
+shipped and the one thing the landing probe found.
 
 **Date:** 2026-09-12
 **Reviewed:** `@tabnas/abnf` 0.4.12, `@tabnas/parser` 0.9.6,
@@ -225,7 +227,7 @@ prose rather than incidental:
   output shape is not something a `.aon` file can choose"* — is now
   false. It needs an amendment, not a rewrite: the decision it records
   (a grammar is a string, parsing is a function) is unaffected.
-- [`docs/reference-language.md`](../reference-language.md#shaping-the-tree)'s
+- [`docs/reference-language.md`](../reference-language.md#shaping-an-unannotated-tree)'s
   closing sentence — *"the grammar compiler cannot yet express them as
   data"* — is false in the same way, and the "Shaping the tree" section
   around it now describes the SECOND-best way to get structure out of a
@@ -329,3 +331,82 @@ In order, and the first two are one change:
 5. **Leave §4 alone.** Native scalars are a second upstream request,
    and a smaller one now that the notation exists to carry it: the gap
    is a word, not a mechanism.
+
+## 11. What landed
+
+All of §10 bar item 5, in one change.
+
+**The pins moved** to `abnf` 0.4.12, `parser` 0.9.6 and `bnf` 0.1.15,
+exactly and identically in both ports, and ADR-033 records that the
+0.9.1 regression which forced 0.9.0 is gone.
+
+**`astVal` became a value converter**, per D1(b), and it is smaller than
+the design expected. A tree node is just the map `{rule, src, kids}`, so
+it needs no case of its own: string, list and map are the whole
+function, and the tree falls out of the map arm unchanged. Keys are
+sorted in both ports, because Go ranges a map in no order.
+
+**One thing the design did not foresee.** The Go host answers a built
+map as its own `*tabnas.OrderedMap` while a tree node is a plain map, so
+`go/grammar.go` flattens at the seam (`plain`) and `astVal` stays the
+twin of the TypeScript rather than growing a host type. That is ADR-003
+applied literally: aontu defines the meaning and rewrites the input.
+
+**The signature is `map|list|constraint`**, and the reference gained
+["A grammar can say what it builds"](../reference-language.md#a-grammar-can-say-what-it-builds)
+with two executed examples. "Shaping the tree" is now "Shaping an
+unannotated tree", which is what it always described.
+
+**Sixteen rows** in `test/spec/abnf.tsv`, every expectation from the
+parity probe and green in both ports.
+
+### 11.1 The probe found a divergence, and it is upstream
+
+Two candidate rows were REJECTED by the probe, which is what it is for.
+A **nested `; @array`** — an `@array` rule used as a member of an
+`@object`, or as an element of another `@array` — answers differently in
+the two engines. Measured against the RAW engines, with no aontu in the
+picture:
+
+| shape | TypeScript | Go |
+|---|---|---|
+| `@array` in `@object` | `{"a":"ab","b":["1","2"]}` | `{"a":"ab"}` |
+| `@array` in `@array` | `[["1","2"],["3"]]` | `["1",["1","2"],["3"]]` |
+| `@array` as an object's only member | `{"b":["1","2"]}` | `["1"]` |
+
+An `@object` nests correctly either way; it is specifically the array.
+The third row is the sharpest: Go answers the wrong KIND of value, not a
+damaged map.
+
+Filed as [tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63) and
+recorded in `test/spec/divergent.tsv` with both engines' outputs, per
+that file's own rules — it originates in a pinned `@tabnas` dependency
+and nothing here can reach it, since by the time a value arrives the
+member is already gone. No row pins it; the reference names it as the
+one shape to avoid.
+
+It is the next step out from the Go slice-versus-reference problem
+`array-repetition.md` §6 records: `nodeOwner` makes a list grow at any
+depth WITHIN one annotated rule, and this is a finished list that has to
+be handed to an ENCLOSING builder's container.
+
+### 11.2 What is still wanted
+
+1. **The scalar annotation** — §4, unchanged, and it matters more than
+   §4 said. `@value$` is reachable from `@tabnas/bnf` and named by no
+   ABNF grammar, so `"30"` is a string. What makes that a hole rather
+   than an inconvenience is that **aontu has no conversion either**:
+   there is no `int()`, no `num()`, no coercion anywhere in the sixty-odd
+   builtins, and `add($.t.min, 1)` on a parsed leaf is refused
+   `func_arg` by the signature gate. So a grammar that has just proved a
+   token is a number cannot hand aontu a number, and neither can the
+   document afterwards. The upstream annotation is not the convenient
+   route, it is the only one. It is also the smaller of the two changes
+   it could be answered by, now that the notation exists to carry it —
+   the alternative is a new aontu builtin that parses text the grammar
+   already parsed.
+2. **Nested arrays**, per §11.1.
+3. **A diagnostic for an unknown annotation word.** `; @objekt a b`
+   compiles silently and answers the tree, in both runtimes. aontu
+   cannot detect it — a grammar with a misspelled annotation is a
+   perfectly good grammar — so this too is upstream.

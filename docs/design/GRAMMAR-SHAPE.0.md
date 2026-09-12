@@ -185,7 +185,8 @@ tn.parse('1.2.30').kids.map((k) => k.rule)   // ['DIGIT','min','pat']
 aontu ships the tree and shapes it in the language: `pick` projects one
 field of every child, `filter` selects children by rule, `join` folds a
 one-element selection back to a scalar. That is documented under
-["Shaping the tree"](../reference-language.md#shaping-the-tree) and
+["Shaping an unannotated tree"](../reference-language.md#shaping-an-unannotated-tree)
+and
 pinned by the `shape-*` rows in `test/spec/abnf.tsv`, including a row
 for the leading fold so the limit is recorded rather than worked around
 silently. It reads acceptably and it costs a walk per field, and it
