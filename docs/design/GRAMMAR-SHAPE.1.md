@@ -357,42 +357,45 @@ applied literally: aontu defines the meaning and rewrites the input.
 with two executed examples. "Shaping the tree" is now "Shaping an
 unannotated tree", which is what it always described.
 
-**Sixteen rows** in `test/spec/abnf.tsv`, every expectation from the
+**Nineteen rows** in `test/spec/abnf.tsv`, every expectation from the
 parity probe and green in both ports.
 
-### 11.1 The probe found a divergence, and it is upstream
+### 11.1 The probe found a divergence, and it was upstream
 
 Two candidate rows were REJECTED by the probe, which is what it is for.
 A **nested `; @array`** — an `@array` rule used as a member of an
-`@object`, or as an element of another `@array` — answers differently in
-the two engines. Measured against the RAW engines, with no aontu in the
-picture:
+`@object`, or as an element of another `@array` — answered differently
+in the two engines. Measured against the RAW engines, with no aontu in
+the picture:
 
-| shape | TypeScript | Go |
+| shape | TypeScript | Go, before the fix |
 |---|---|---|
 | `@array` in `@object` | `{"a":"ab","b":["1","2"]}` | `{"a":"ab"}` |
 | `@array` in `@array` | `[["1","2"],["3"]]` | `["1",["1","2"],["3"]]` |
 | `@array` as an object's only member | `{"b":["1","2"]}` | `["1"]` |
 
-An `@object` nests correctly either way; it is specifically the array.
-The third row is the sharpest: Go answers the wrong KIND of value, not a
-damaged map.
+An `@object` nested correctly either way; it was specifically the array.
+The third row was the sharpest: Go answered the wrong KIND of value, not
+a damaged map.
 
-Filed as [tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63),
-**fixed upstream the same day in
-[tabnas/parser#169](https://github.com/tabnas/parser/pull/169)** -- Go's
-`@push$` re-published a grown slice header to `r.Parent` unconditionally,
-overwriting whatever the parent held -- and recorded in
-`test/spec/divergent.tsv` with both engines' outputs, per that file's own
-rules — it originates in a pinned `@tabnas` dependency
-and nothing here can reach it, since by the time a value arrives the
-member is already gone. No row pins it; the reference names it as the
-one shape to avoid.
+Filed as [tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63) and
+fixed the same day in
+[tabnas/parser#169](https://github.com/tabnas/parser/pull/169). Go's
+`@push$` re-published the grown slice header to `r.Parent`
+unconditionally, overwriting whatever the parent held — the enclosing
+`@object$`'s map, or the enclosing list. The write-back is now guarded
+by ownership, so only a parent building into the same container receives
+it. Released as `@tabnas/parser` 0.9.7 and `@tabnas/abnf` 0.4.13, which
+is what the pins here require.
 
-It is the next step out from the Go slice-versus-reference problem
+It was the next step out from the Go slice-versus-reference problem
 `array-repetition.md` §6 records: `nodeOwner` makes a list grow at any
-depth WITHIN one annotated rule, and this is a finished list that has to
-be handed to an ENCLOSING builder's container.
+depth WITHIN one annotated rule, and this was a finished list that had
+to be handed to an ENCLOSING builder's container.
+
+The three shapes now carry real rows in `test/spec/abnf.tsv`, and the
+ledger entry is gone — which is what that file asks for when a
+divergence closes. They go red against the older pins.
 
 ### 11.2 What is still wanted
 
@@ -409,8 +412,7 @@ be handed to an ENCLOSING builder's container.
    it could be answered by, now that the notation exists to carry it —
    the alternative is a new aontu builtin that parses text the grammar
    already parsed.
-2. **Nested arrays**, per §11.1.
-3. **A diagnostic for an unknown annotation word.** `; @objekt a b`
+2. **A diagnostic for an unknown annotation word.** `; @objekt a b`
    compiles silently and answers the tree, in both runtimes. aontu
    cannot detect it — a grammar with a misspelled annotation is a
    perfectly good grammar — so this too is upstream.
