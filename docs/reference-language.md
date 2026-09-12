@@ -1830,8 +1830,9 @@ Example: see [closed values](#closed-values-close--open)
 
 ### `content(spec: string|map) : map`
 
-A Jostraca Content component: a span of target text. A bare string
-fills `src`.
+A Jostraca Content component: a span of target text, added with no
+newline of its own. A bare string fills `src`, and an empty span is a
+value rather than a mistake.
 
 Example: `content("export const N = 1\n")`
 
@@ -1881,9 +1882,10 @@ Example: `esc("<a>", xml)`
 ### `file(spec: string|map, children?: list) : map`
 
 A Jostraca File component named by `name`, holding content, lines,
-fragments, injections and copies.
+fragments, injections and copies. Wherever `content` is admitted a
+bare string stands for it, which is what a template body line becomes.
 
-Example: `file("index.ts", [content("export {}\n")])`
+Example: `file("index.ts", ["export {}\n"])`
 
 ### `filter(d: map|list, trial c: any) : map|list`
 
@@ -1957,9 +1959,9 @@ Example: `list() & length(min(1))`
 ### `line(spec: string|map) : map`
 
 A Jostraca Line: a span of target text with a newline added, which
-is the whole difference from `content`.
+is the whole difference from `content`. An empty span is a blank line.
 
-Example: `line("import fs from 'fs'")`
+Example: `line("import fs from 'fs'")`; `line("")` is a blank line
 
 ### `list() : list`
 

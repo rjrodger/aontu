@@ -7,6 +7,31 @@ which implementation each change affects.
 
 ## Go 0.1.21 — 2026-09-12 · TypeScript 0.63.0
 
+### A component's text span may be empty, and a bare string is `content`
+
+Two fixes found by writing a real generator with the components.
+
+`line("")` was refused, so the natural spelling of a blank line failed
+while the declaration vocabulary has `%blank` for exactly that. A prop
+that holds a SPAN of target text (`content`, `line`) now admits an
+empty one; a prop that holds a NAME still never does.
+
+```
+line("")                      # a blank line
+folder("")                    # still refused
+```
+
+And wherever `content` is admitted, a bare string stands for it:
+
+```
+file("a.ts", ["export {}\n"])
+```
+
+That is what a template body line desugars to, so a generator written
+in the target's own syntax now reaches the component road as well as
+the declaration one.
+
+*Both implementations.*
 ### A grammar can say what it builds
 
 Both implementations. `parse(g, v)` used to answer the tabnas parse tree
