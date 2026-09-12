@@ -1,0 +1,25 @@
+# 95: the hash form of an instantiated list element type loses a
+# conjunct in TypeScript, and gains a duplicate in both TypeScript
+# releases. The element type is declared `refer() & path()` once; put
+# the spread that carries it behind ANY other constraint atom
+# (`unique(n)` here; `length(min(1))` and `unique(name)` do it too) and
+# the three engines render three different forms for the SAME document.
+#
+# run: node ../../../ts/bin/aontu.js hash --form conjunct-behind-a-spread.aon
+# run: aontu-go hash --form conjunct-behind-a-spread.aon
+#
+# expected: all engines render the element type as `refer()&path()`,
+#           which is what the declaration says, and agree on the hash.
+# actual:   at `ops.acquire.steps.0.refuse`'s element type --
+#             TS 0.59.0  refer()&refer()&path()   aon1-dtZWsnl-SHqBQ_CveUYeoLYP8G6Sd72uMBytLz7lL1U
+#             TS 0.62.0  refer()&refer()          aon1-FRBRFZbF35RmklvUBPFYTuCXPdwLXFgcK4VV1dAYiE4
+#             Go 0.1.20  refer()&path()           aon1-TudW0mv_f7DbNicW0HaXqHLrH3vRSwmPcJOW6YCj2AY
+#           Go renders the declaration; both TypeScript releases double
+#           the `refer()`, and 0.60.0 additionally drops the `path()`.
+# Remove the `unique(n) &` and all three agree.
+T: type({
+  Step: close({ n: integer  refuse?: [&: refer() & path()] })
+  Op: close({ steps: unique(n) & [&: $.T.Step] })
+})
+errors: { e: 1 }
+ops: { acquire: $.T.Op & { steps: [{ n: 1  refuse: [path($.errors.e)] }] } }

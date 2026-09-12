@@ -2479,6 +2479,61 @@ Repro:
 [`repros/hash/alias-spread-hash-blind.aon`](repros/hash/alias-spread-hash-blind.aon)
 with its `-2` and `-longhand` companions.
 
+### 95. An element type behind a spread renders three ways across the two ports [critical]
+
+Found 2026-09-12, auditing the module system. **An ADR-001 divergence
+on the pin itself**, and the first one the parity ledger has carried on
+the hash form.
+
+Declare a list element type once, as `refer() & path()`, inside a
+`type()`-marked `close()`. Put the spread that carries it behind any
+other constraint atom — `unique(n)` below; `length(min(1))` and
+`unique(name)` do it too — and the same six-line document renders three
+different forms, at the instantiated element's own element type:
+
+```
+TS 0.59.0   "refuse"?:[&:refer()&refer()&path(), …]
+TS 0.62.0   "refuse"?:[&:refer()&refer(), …]
+Go 0.1.20   "refuse"?:[&:refer()&path(), …]
+```
+
+**Go renders the declaration. Both TypeScript releases double the
+`refer()`, and 0.60.0 additionally drops the `path()`.** Three hashes
+follow: `aon1-dtZWsnl…`, `aon1-FRBRFZbF…`, `aon1-TudW0mv…`. Remove the
+`unique(n) &` and all three agree. In-tree TypeScript at HEAD answers
+as 0.62.0 does.
+
+**What it is not.** It is not a lost constraint. Acceptance is
+unaffected: both ports refuse a non-address and a dangling address at
+this element with the same codes (`refer_address`, `refer_unresolved`),
+and on the largest document that carries the shape — the 62-check
+specification in
+[`aontu-lang/system`](https://github.com/aontu-lang/system) — every one
+of the 39 vector verdicts holds under the newest TypeScript, with the
+pin as the single failing check. Nor has TypeScript's form stopped
+discriminating `path()`: strike the conjunct from that specification's
+schema and TypeScript's hash moves too. The defect is in where the
+conjunct is placed in the rendered form, not in whether it is carried.
+
+**Why it matters.** The canon-hash is the module system's second pin,
+and ADR-019 makes checking it mandatory rather than optional. A
+lockfile written by one port therefore fails the other's `mod verify`
+over an untouched store, for exactly the shape a schema of ordered,
+refusal-naming steps has. Neither CI matrix sees it: `hcanon.tsv`
+carries 53 rows and none of them mentions `path(`, and the parity
+ledger contributes no executable rows by design.
+
+**Which form is right.** ADR-001 makes TypeScript canonical *where
+neither is obviously broken*, which does not reach here: a conjunct
+written once and rendered twice is broken on its face, and both
+TypeScript releases do it. The fix is to make TypeScript render what
+the declaration says, as Go does, and to pin both the duplicate and
+the dropped conjunct with shared `hcanon` rows before either port
+moves.
+
+Status: OPEN. Repro:
+[`repros/hash/conjunct-behind-a-spread.aon`](repros/hash/conjunct-behind-a-spread.aon).
+
 ## trials — the flag one port sets and the other does not
 
 ### 61. Go's `trialUnify` never sets `ctx.trial`, so `match` and `filter` answer differently in the two ports [FIXED 2026-08-30]
