@@ -159,7 +159,6 @@ const hints = {
     render_lang: 'A text escape carries verbatim syntax of ONE language, and it must be\nthe unit\'s: a text of another language in this unit would be written\nas if it were this one. Move it to a unit of its own language.',
     render_profile: 'Only fragments and text escapes render without a lowering, under the\ntext profile. A record, enum, alias, const or func needs a profile\nwhose language has one (typescript, go): set the unit\'s lang, or\nwrite the declaration as a fragment.',
     render_strict: 'Under strict, an opaque escape -- a text declaration or a raw piece,\nwhich the renderer cannot check -- is refused. Write it as lines, or\nrender without strict and read the loss report.',
-    render_cmp: 'A component tree reached `render` holding a component it cannot\nserve. `render` writes the text a generator produces: Project, Folder,\nFile, Line and Content lower to units, and the components that read or\nedit a file on disk do not.',
     render_unit: 'The unit asked for is not in the instance. The report names the\npath; the units are listed by `--format json`.',
     view_profile_unknown: 'The figure kind does not render into the profile asked for: there is no\ntext form of a node-link drawing and no Mermaid form of a matrix. The\nnote lists the profiles the kind declares; the first is its default.',
     format_check: 'The formatted text is not the same document, so nothing was written.\nThis is a formatter defect: please report it, with the source.',
@@ -462,7 +461,6 @@ const codeClasses = {
     render_lang: 'conflict',
     render_profile: 'parse',
     render_strict: 'conflict',
-    render_cmp: 'conflict',
     render_unit: 'reference',
     // The formatter's self-check (docs/design/FMT.0.md): a report-layer
     // code, class internal -- the formatter, not the document, is wrong.

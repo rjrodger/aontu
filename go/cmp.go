@@ -104,7 +104,6 @@ func cmpAdmits(def cmpDef, fname string) bool {
 	return false
 }
 
-
 func cmpNode(cmp string, props *MapVal, children *ListVal) *MapVal {
 	node := newMap()
 	node.set("cmp", newString(cmp))
@@ -114,13 +113,11 @@ func cmpNode(cmp string, props *MapVal, children *ListVal) *MapVal {
 	return node
 }
 
-
 func contentNode(src string) *MapVal {
 	props := newMap()
 	props.set("src", newString(src))
 	return cmpNode(cmpDefs["content"].cmp, props, newList([]Val{}))
 }
-
 
 // cmpFlatten splices nested lists and refuses a child the component
 // does not admit, answering the offending value. A bare string is

@@ -448,4 +448,3 @@ parse_failed	errcode	conflict	0.63.0
 sort_key	errcode	conflict	0.63.0
 sort_domain	errcode	conflict	0.63.0
 sort_dir	errcode	parse	0.63.0
-render_cmp	errcode	conflict	0.63.0

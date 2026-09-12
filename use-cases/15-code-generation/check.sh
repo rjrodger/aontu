@@ -184,26 +184,44 @@ if command -v go >/dev/null 2>&1; then
     diff -u "$WORK/$u.ts.txt" "$WORK/$u.go.txt" \
       || fail "$u: the two ports render different bytes (ADR-001)"
   done
-  "$GOBIN" render --trust root --at out --stdout "$DIR/gen-ts-cmp.aon" \
-    2>/dev/null > "$WORK/cmp.go.txt" \
-    || fail "the Go port did not render the component tree"
-  render --at out --stdout "$DIR/gen-ts-cmp.aon" 2>/dev/null > "$WORK/cmp.ts.txt"
-  diff -u "$WORK/cmp.ts.txt" "$WORK/cmp.go.txt" \
-    || fail "the component tree renders differently in the two ports (ADR-001)"
-  ok "both ports render byte-identical output for all three units, and for the component tree"
+  ok "both ports render byte-identical output for all three units"
 else
   skip "both ports render byte-identical output (no go toolchain)"
 fi
 
 
-# THE OTHER ROAD. The same unit, written as a COMPONENT TREE rather
-# than as an aontu:code instance: `render --at out` lowers the tree,
-# and the bytes must be the ones the declaration spelling produces.
-render --at out --stdout "$DIR/gen-ts-cmp.aon" 2>/dev/null > "$WORK/cmp.ts" \
-  || fail "the component tree did not render"
-diff -u "$DIR/expected/types.ts" "$WORK/cmp.ts" \
-  || fail "the component tree renders different bytes from the aontu:code unit"
-ok "a component tree renders the same bytes as the declaration spelling"
+# THE OTHER ROAD. The same unit written as a COMPONENT TREE. A tree is
+# not rendered: it is the shape a component engine consumes, so what is
+# held here is the two things that make it a generation artefact --
+# the bytes it carries, and that both ports build it identically.
+$AONTU "$DIR/gen-ts-cmp.aon" 2>/dev/null > "$WORK/tree.json" \
+  || fail "the component tree did not evaluate"
+node -e '
+  const tree = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).out
+  const out = []
+  const walk = (n) => {
+    if ("Line" === n.cmp) { out.push(n.props.src + "\n") }
+    else if ("Content" === n.cmp) { out.push(n.props.src) }
+    n.children.forEach(walk)
+  }
+  walk(tree)
+  process.stdout.write(out.join(""))
+' "$WORK/tree.json" > "$WORK/tree.ts" \
+  || fail "the component tree could not be walked"
+diff -u "$DIR/expected/types.ts" "$WORK/tree.ts" \
+  || fail "the component tree carries different bytes from the aontu:code unit"
+ok "a component tree carries the same bytes as the declaration spelling"
+
+if command -v go >/dev/null 2>&1; then
+  "$WORK/aontu-go" "$DIR/gen-ts-cmp.aon" 2>/dev/null > "$WORK/tree.go.json" \
+    || fail "the Go port did not evaluate the component tree"
+  diff -u "$WORK/tree.json" "$WORK/tree.go.json" \
+    || fail "the two ports build different component trees (ADR-001)"
+  ok "both ports build the component tree byte-identically"
+else
+  skip "both ports build the component tree (no go toolchain)"
+fi
+
 
 # THE MODEL TREE. The shape of this document, drawn by the one kind
 # that reads no report: `view doc` walks the anchor, exactly as

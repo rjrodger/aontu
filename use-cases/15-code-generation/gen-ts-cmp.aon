@@ -1,10 +1,11 @@
 # gen-ts-cmp.aon --- gen-ts.aon's output, written as a COMPONENT TREE
 # rather than as an aontu:code instance.
 #
-# The same model, the same bytes, the other road: `render --at out`
-# lowers the tree to units, so a folder is a path segment and a file's
-# `line` children are its text. The two files together are the measure
-# the register cites -- what each spelling costs for one job.
+# The tree IS the deliverable: it is the shape a component engine
+# consumes, so this document ends at `aontu gen-ts-cmp.aon` and the
+# hand-off is a pipe. check.sh holds the bytes it carries to the same
+# golden the aontu:code spelling renders, and holds both ports to the
+# same tree. The two files together are what each spelling costs.
 @"./model.aon"
 
 %ts_field = emit(_, {
