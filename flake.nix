@@ -26,7 +26,7 @@
           src = ./.;
           modRoot = "go";
           subPackages = [ "cmd/aontu" "cmd/aontu-lsp" ];
-          vendorHash = "sha256-Z7wUbXGcP8lDv1lh9JB60mn0qsVQwLTKkTkeW3J4vtc=";
+          vendorHash = "sha256-cOG/iwHodkLC8uYXCgSXpXKINX2oMtP76apzkmSYLdU=";
           CGO_ENABLED = 0;
           ldflags = [ "-s" "-w" ];
           # The suite runs in CI (make test) and takes a minute; the
