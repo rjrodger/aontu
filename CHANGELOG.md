@@ -32,6 +32,45 @@ in the target's own syntax now reaches the component road as well as
 the declaration one.
 
 *Both implementations.*
+### A grammar can say what it builds
+
+Both implementations. `parse(g, v)` used to answer the tabnas parse tree
+and nothing else. A **value annotation** — a trailing RFC 5234 comment
+on a production — now says what that rule builds instead:
+
+```
+ver = maj "." min "." pat   ; @object maj min pat
+list = "[" item *( "," item ) "]"   ; @array
+```
+
+`; @object` names one member per part that produces a value; `; @array`
+names nothing and takes every such part as an element, in order. Parts
+nest, so an annotated rule used as a member is assigned whole. The
+declared signature is now `parse(g: string, v?: string) :
+map|list|constraint`.
+
+It is opt-in and it is not in the language: a comment carries no meaning
+of its own in RFC 5234, so deleting every annotation leaves the same
+inputs parsing and gives the tree back. The unannotated `shape-*` rows
+are unchanged, which is what pins that.
+
+Two limits move with it. A production's leading element still folds into
+the parent, but naming a member keeps it — so a grammar no longer needs
+a leading terminal to make its first field addressable — and where the
+fold would erase an annotated value the compile is refused, naming the
+rule. Every leaf is still the **text** the rule matched: the annotation
+chooses the container, there is no scalar form, and `"30"` stays a
+string.
+
+Requires `@tabnas/abnf` 0.4.12, `@tabnas/parser` 0.9.6 and
+`@tabnas/bnf` 0.1.15, pinned exactly and identically in both ports.
+
+**Known limit:** a nested `; @array` — an `@array` rule used as a member
+of an `@object`, or as an element of another `@array` — is not in
+TypeScript/Go parity. The fault is upstream
+([tabnas/abnf#63](https://github.com/tabnas/abnf/issues/63)); the three
+shapes and both engines' answers are in `test/spec/divergent.tsv`. An
+`@object` nests correctly either way.
 
 ### The Jostraca component primitives are aontu functions
 
