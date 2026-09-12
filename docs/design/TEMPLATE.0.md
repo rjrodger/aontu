@@ -57,7 +57,7 @@ which is what `aontu fmt` (FMT.0.md §3.14) produces:
 #-   {
 #-     path: "config/routes.rb"
 #-     decls: [
-#-       { k: "frag", of: [
+#-       { k: "frag", n: [
 Rails.application.routes.draw do
 #-       ]}
 ```

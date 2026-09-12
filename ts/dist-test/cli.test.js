@@ -1897,13 +1897,13 @@ function fmtFiles(...srcs) {
 // --- the render verb --------------------------------------------------
 (0, node_test_1.describe)('cli-render', () => {
     const TWO_UNITS = 'aontu: Code: units: [\n' +
-        '  { path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x", { k: "line", at: 1, of: ["y"] }] }] }\n' +
-        '  { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", of: ["z"] }] }\n' +
+        '  { path: "a.txt", lang: "text", decls: [{ k: "frag", n: ["x", { k: "line", at: 1, n: ["y"] }] }] }\n' +
+        '  { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", n: ["z"] }] }\n' +
         ']\n';
     // A fragment is lossy only against a language whose declarations
     // could have been lowered instead, so go says what text does not.
     const GO_FRAG = 'aontu: Code: units: [\n' +
-        '  { path: "a.go", lang: "go", decls: [{ k: "frag", of: ["x"] }] }\n' +
+        '  { path: "a.go", lang: "go", decls: [{ k: "frag", n: ["x"] }] }\n' +
         ']\n';
     // The named files below a fresh directory; a name may carry a slash.
     function renderDir(files) {
@@ -2093,9 +2093,9 @@ function fmtFiles(...srcs) {
         const doc = 'services: { a: { pin: "p1" } }\n' +
             'spare: { x: 1 }\n' +
             'aontu: Code: units: [\n' +
-            '  { path: "a.txt", lang: "text", decls: [{ k: "frag", of:\n' +
+            '  { path: "a.txt", lang: "text", decls: [{ k: "frag", n:\n' +
             '    emit($.services, { match: { pin: string }, body: [.pin] }) }] }\n' +
-            '  { path: "b.txt", lang: "text", decls: [{ k: "frag", of: ["b"] }] }\n' +
+            '  { path: "b.txt", lang: "text", decls: [{ k: "frag", n: ["b"] }] }\n' +
             ']\n';
         const dir = renderDir({ 'doc.aon': doc });
         const file = Path.join(dir, 'doc.aon');
@@ -2115,7 +2115,7 @@ function fmtFiles(...srcs) {
         const report = JSON.parse(renderCode(0, ['--coverage', '--format', 'json', file]).out);
         Assert.deepEqual(report.trace, [{
                 node: '$.services.a',
-                piece: '$.aontu.Code.units.0.decls.0.of.0',
+                piece: '$.aontu.Code.units.0.decls.0.n.0',
                 rule: '#0',
                 unit: 'a.txt',
             }]);
@@ -2125,10 +2125,10 @@ function fmtFiles(...srcs) {
 });
 // --- the template surface -------------------------------------------
 (0, node_test_1.describe)('cli-template', () => {
-    const GEN = '//- of: [\n' +
+    const GEN = '//- n: [\n' +
         'export const N = 1\n' +
         '//- ]\n';
-    const CANON = 'of: [\n' +
+    const CANON = 'n: [\n' +
         '`export const N = 1`\n' +
         ']\n';
     function templateDir(files) {
@@ -2149,10 +2149,10 @@ function fmtFiles(...srcs) {
         Assert.equal(templateCode(0, ['--resugar', Path.join(dir, 'canon.aon')]).out, GEN);
         // The marker comes from the extension, and --marker names one the
         // table does not know.
-        const hash = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' });
-        Assert.equal(templateCode(0, [Path.join(hash, 'gen.rb')]).out, 'of: [\n`puts 1`\n]\n');
-        const odd = templateDir({ 'gen.zz': ';;- of: [\nx\n;;- ]\n' });
-        Assert.equal(templateCode(0, ['--marker', ';;-', Path.join(odd, 'gen.zz')]).out, 'of: [\n`x`\n]\n');
+        const hash = templateDir({ 'gen.rb': '#- n: [\nputs 1\n#- ]\n' });
+        Assert.equal(templateCode(0, [Path.join(hash, 'gen.rb')]).out, 'n: [\n`puts 1`\n]\n');
+        const odd = templateDir({ 'gen.zz': ';;- n: [\nx\n;;- ]\n' });
+        Assert.equal(templateCode(0, ['--marker', ';;-', Path.join(odd, 'gen.zz')]).out, 'n: [\n`x`\n]\n');
         const bare = templateDir({ 'gen': GEN });
         Assert.equal(templateCode(0, [Path.join(bare, 'gen')]).out, CANON);
         // The dispatch: `aontu template` is the verb.
@@ -2168,22 +2168,22 @@ function fmtFiles(...srcs) {
             '{ marker:"(*-" close:"*)" ext:["ml" "mli"] }\n';
         const dir = templateDir({
             'ocaml.aon': OCAML,
-            'gen.ml': '(*- of: [ *)\nlet a = 1\n(*- ] *)\n',
+            'gen.ml': '(*- n: [ *)\nlet a = 1\n(*- ] *)\n',
             'plain.aon': '@"aontu:render"\n\naontu: render: Lang: lang: "plain"\n',
         });
         const profile = Path.join(dir, 'ocaml.aon');
         const unit = Path.join(dir, 'gen.ml');
         // A CLOSER AFTER A SPACE reaches a block comment the table has
         // never seen, and the round trip holds.
-        Assert.equal(templateCode(0, ['--profile', profile, unit]).out, 'of: [\n`let a = 1`\n]\n');
+        Assert.equal(templateCode(0, ['--profile', profile, unit]).out, 'n: [\n`let a = 1`\n]\n');
         Assert.equal(templateCode(0, ['--check', '--profile', profile, unit]).out, '');
         // --marker still wins, and a profile that claims no extension of
         // this file leaves the table's answer in place.
-        Assert.equal(templateCode(0, ['--marker', '(*- *)', unit]).out, 'of: [\n`let a = 1`\n]\n');
-        Assert.equal(templateCode(0, ['--profile', Path.join(dir, 'plain.aon'), unit]).out, '`(*- of: [ *)`\n`let a = 1`\n`(*- ] *)`\n');
+        Assert.equal(templateCode(0, ['--marker', '(*- *)', unit]).out, 'n: [\n`let a = 1`\n]\n');
+        Assert.equal(templateCode(0, ['--profile', Path.join(dir, 'plain.aon'), unit]).out, '`(*- n: [ *)`\n`let a = 1`\n`(*- ] *)`\n');
         // Markdown needs none of it: the extension names the marker.
-        const md = templateDir({ 'note.md': '<!--- of: [ -->\n# T\n<!--- ] -->\n' });
-        Assert.equal(templateCode(0, [Path.join(md, 'note.md')]).out, 'of: [\n`# T`\n]\n');
+        const md = templateDir({ 'note.md': '<!--- n: [ -->\n# T\n<!--- ] -->\n' });
+        Assert.equal(templateCode(0, [Path.join(md, 'note.md')]).out, 'n: [\n`# T`\n]\n');
         Assert.match(templateCode(2, ['--profile']).err, /--profile needs a file/);
         Assert.match(templateCode(2, ['--profile', Path.join(dir, 'nope.aon'), unit]).err, /cannot read/);
         templateCode(2, ['--trust', 'nonsense', unit]);
@@ -2191,7 +2191,7 @@ function fmtFiles(...srcs) {
     (0, node_test_1.test)('template-check-is-the-round-trip', () => {
         const dir = templateDir({ 'gen.ts': GEN });
         Assert.equal(templateCode(0, ['--check', Path.join(dir, 'gen.ts')]).out, '');
-        const bad = templateDir({ 'gen.ts': '//- of: [\n  //- {\n//- ]\n' });
+        const bad = templateDir({ 'gen.ts': '//- n: [\n  //- {\n//- ]\n' });
         const r = templateCode(1, ['--check', Path.join(bad, 'gen.ts')]);
         Assert.match(r.err, /gen\.ts:2 is not what the round trip answers/);
         Assert.match(r.err, /have: " {2}\/\/- \{"/);
@@ -2213,11 +2213,11 @@ function fmtFiles(...srcs) {
         // own syntax is an entry rather than a preprocessing step.
         const dir = templateDir({
             'gen.ts': '//- aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
-                '//- k: "frag", of: [\n' +
+                '//- k: "frag", n: [\n' +
                 'hello\n' +
                 '//- ]}] }]\n',
             'gen.zz': ';;- aontu: Code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
-                ';;- k: "frag", of: [\n' +
+                ';;- k: "frag", n: [\n' +
                 'hello\n' +
                 ';;- ]}] }]\n',
         });
@@ -2227,9 +2227,9 @@ function fmtFiles(...srcs) {
         Assert.match(vetCapture(() => Assert.equal((0, cli_1.runRender)(['--marker']), 2)).err, /--marker needs a token/);
     });
     (0, node_test_1.test)('fmt-formats-a-generator-through-the-template-surface', () => {
-        const dir = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' });
+        const dir = templateDir({ 'gen.rb': '#- n: [\nputs 1\n#- ]\n' });
         const file = Path.join(dir, 'gen.rb');
-        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)([file]), 0)).out, '#- of: [\nputs 1\n#- ]\n');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)([file]), 0)).out, '#- n: [\nputs 1\n#- ]\n');
         // The aontu is indented AFTER the marker, and -w writes it back.
         const deep = templateDir({ 'g.rb': '#- a: [\n#- { b: [\nx\n#- ] }\n#- ]\n' });
         const dfile = Path.join(deep, 'g.rb');

@@ -71,9 +71,9 @@ edge-plus-list-under-kind	canon	a:list()&(["x"]+each(["y"],_))	{"a":["x","y"]}
 # inside a map as well as in a conjunct: only the op knows to wait,
 # and the kind it meets would refuse it outright. A staged CALL
 # already drove; an op drove only when it held a placeholder.
-edge-plus-op-under-map-template	canon	x:{k:"a",of:[&:string]}\nx:{k:"a",of:["p"]+each(["q"],_)}	{"x":{"k":"a","of":[&:string,"p","q"]}}
-edge-plus-op-under-map-kind	gens	x:{k:"a",of:string}\nx:{k:"a",of:"p"+join(["q"],"")}	{"x":{"k":"a","of":"pq"}}
-edge-plus-op-under-map-value	gens	x:{of:["p","q"]}\nx:{of:["p"]+each(["q"],_)}	{"x":{"of":["p","q"]}}
+edge-plus-op-under-map-template	canon	x:{k:"a",n:[&:string]}\nx:{k:"a",n:["p"]+each(["q"],_)}	{"x":{"k":"a","n":[&:string,"p","q"]}}
+edge-plus-op-under-map-kind	gens	x:{k:"a",n:string}\nx:{k:"a",n:"p"+join(["q"],"")}	{"x":{"k":"a","n":"pq"}}
+edge-plus-op-under-map-value	gens	x:{n:["p","q"]}\nx:{n:["p"]+each(["q"],_)}	{"x":{"n":["p","q"]}}
 edge-neg-string	errc	a:-"s"	negative
 edge-neg-bool	errc	a:-true	negative
 edge-neg-big-vs-int	errc	a:-0d1&0	scalar_kind

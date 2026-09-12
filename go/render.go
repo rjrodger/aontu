@@ -546,9 +546,9 @@ func renderPiece(piece any, profile map[string]any, unit, path string,
 	kind, _ := m["k"].(string)
 	switch kind {
 	case "line":
-		of, _ := m["of"].([]any)
+		chunks, _ := m["n"].([]any)
 		var b strings.Builder
-		for _, p := range of {
+		for _, p := range chunks {
 			b.WriteString(renderInline(p, ctx))
 		}
 		return renderLine(profile, renderInt(m, "at", 0), b.String())
@@ -682,10 +682,10 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 						Reason: "a fragment says nothing about " + lang + " syntax",
 					})
 				}
-				of, _ := decl["of"].([]any)
-				for n, piece := range of {
+				chunks, _ := decl["n"].([]any)
+				for n, piece := range chunks {
 					text.WriteString(renderPiece(piece, profile, path,
-						dpath+".of."+itoa(n), &lossy, ctx))
+						dpath+".n."+itoa(n), &lossy, ctx))
 				}
 			case "text":
 				lowered = false

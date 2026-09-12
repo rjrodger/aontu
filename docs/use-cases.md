@@ -490,7 +490,7 @@ records: [
     {
       k: "line"
       at: 1
-      of: [
+      n: [
         .go + " " + match(.t, "string", "string", "integer", "int64")
         + ` \`json:"` + .n + `"\``
       ]
@@ -508,7 +508,7 @@ aontu: Code: units: [
     path: "types.go"
     lang: "go"
     profile: indent: { unit:"\t" width:1 }
-    decls: [{ k:"frag" of:emit($.records, %record) }]
+    decls: [{ k:"frag" n:emit($.records, %record) }]
   }
 ]
 ```

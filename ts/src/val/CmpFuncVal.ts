@@ -25,7 +25,7 @@ type CmpDef = {
   children: string[]
   text?: string
   // Whether that prop is required. `project`'s folder is the one that
-  // is not: jostraca defaults it to `.`, and the data path must not be
+  // is not: Jostraca defaults it to `.`, and the data path must not be
   // stricter than the component it drives.
   req: boolean
   // A prop that must be present and must be a list.
@@ -34,7 +34,7 @@ type CmpDef = {
 
 const CMP_DEF: Record<string, CmpDef> = {
   // The output root. Its `folder` is refused an absolute path or a
-  // `..` segment on the jostraca side, where the tree is data.
+  // `..` segment on the Jostraca side, where the tree is data.
   project: {
     cmp: 'Project', text: 'folder', req: false,
     children: ['project', 'folder', 'file', 'copyfiles'],
@@ -110,7 +110,7 @@ class CmpFuncVal extends FuncBaseVal {
   isCmpFunc = true
 
   // The component this call builds: the function's own name, which is
-  // also the `cmp` key of the node and the jostraca component the
+  // also the `cmp` key of the node and the Jostraca component the
   // bridge looks up.
   cmp: string
 
@@ -131,12 +131,8 @@ class CmpFuncVal extends FuncBaseVal {
 
   resolve(ctx: AontuContext, args: Val[]): Val {
     const def: CmpDef = CMP_DEF[this.cmp]
-    const leaf = 0 === def.children.length
 
-    if (args.length < (def.req ? 1 : 0) || args.length > (leaf ? 1 : 2)) {
-      return makeNilErr(ctx, 'invalid-arg', this, undefined, 'arity')
-    }
-
+    // Arity is checked at parse (funcArity); args[0] can be undefined.
     const spec: any = args[0]
     let props: Val
     if (undefined === spec) {

@@ -132,10 +132,7 @@ class NomFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]): Val {
-    if (args.length < 1 || 3 < args.length) {
-      return makeNilErr(ctx, 'invalid-arg', this, undefined, 'arity')
-    }
-
+    // Arity is checked at parse (funcArity); see the translate twin.
     const name = textOf(args[0])
     if (undefined === name || '' === name) {
       return makeNilErr(ctx, 'invalid-arg', this, args[0], 'name')

@@ -56,7 +56,7 @@ describe('lower', () => {
 
   test('a-literal-set-in-go-takes-the-shared-primitive', () => {
     const go = ctx('go', {})
-    const prim = (of: any[]) => typeExpr({ k: 'lit', of }, go, '$').text
+    const prim = (n: any[]) => typeExpr({ k: 'lit', n }, go, '$').text
     Assert.strictEqual(prim([1.5, 2]), 'float')
     Assert.strictEqual(prim([1, 2]), 'int')
     Assert.strictEqual(prim([true]), 'bool')
@@ -71,12 +71,12 @@ describe('lower', () => {
     const ts = ctx('typescript', {})
     Assert.strictEqual(typeExpr({ k: 'prim', prim: 'int' }, ts, '$').text, 'int')
     Assert.strictEqual(typeExpr(
-      { k: 'list', of: { k: 'prim', prim: 'int' } }, ts, '$').text, 'int')
+      { k: 'list', n: { k: 'prim', prim: 'int' } }, ts, '$').text, 'int')
     Assert.strictEqual(typeExpr(
-      { k: 'map', key: { k: 'prim', prim: 'string' }, of: { k: 'prim', prim: 'int' } },
+      { k: 'map', key: { k: 'prim', prim: 'string' }, n: { k: 'prim', prim: 'int' } },
       ts, '$').text, 'string, int')
     Assert.strictEqual(typeExpr(
-      { k: 'union', of: [{ k: 'prim', prim: 'a' }, { k: 'prim', prim: 'b' }] },
+      { k: 'union', n: [{ k: 'prim', prim: 'a' }, { k: 'prim', prim: 'b' }] },
       ts, '$').text, 'a | b')
   })
 
@@ -92,7 +92,7 @@ describe('lower', () => {
           decls: [{
             k: 'record', name: 'T', open: false, check: [], fields: [{
               name: 'a', optional: false,
-              type: { k: 'list', of: { k: 'opt', of: { k: 'prim', prim: 'string' } } },
+              type: { k: 'list', n: { k: 'opt', n: { k: 'prim', prim: 'string' } } },
             }],
           }],
         }],
@@ -111,13 +111,13 @@ describe('lower', () => {
           path: 'a.ts', lang: 'typescript',
           decls: [{
             k: 'func', name: 'f', params: [],
-            body: { k: 'frag', of: [piece, { k: 'blank' }, 'done()'] },
+            body: { k: 'frag', n: [piece, { k: 'blank' }, 'done()'] },
           }],
         }],
       } },
     })
-    const bare = renderValue(unit({ k: 'line', of: ['go()'] }), { profiles: [profile] })
-    const at0 = renderValue(unit({ k: 'line', at: 0, of: ['go()'] }), { profiles: [profile] })
+    const bare = renderValue(unit({ k: 'line', n: ['go()'] }), { profiles: [profile] })
+    const at0 = renderValue(unit({ k: 'line', at: 0, n: ['go()'] }), { profiles: [profile] })
     Assert.strictEqual(bare.verdict, at0.verdict)
     Assert.strictEqual(bare.units.length, 1)
     Assert.strictEqual(bare.units[0].text, at0.units[0].text)

@@ -35,6 +35,8 @@ var funcSet = map[string]bool{
 	"usc":       true,
 	"rep":       true,
 	"split":     true,
+	"nom":       true,
+	"translate": true,
 	"add": true,
 	"sub": true,
 	"mul": true,
@@ -543,6 +545,13 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 			return makeNilErr(ctx, "invalid-arg", f, nil)
 		}
 		return order(ctx, f, base, args[0], argAt(args, 1), argAt(args, 2))
+	case "nom":
+		return nomFunc(ctx, f, args)
+	case "translate":
+		return translateFunc(ctx, f, args)
+	case "project", "folder", "file", "content", "line", "fragment",
+		"slot", "inject", "copyfiles", "listitems":
+		return cmpFunc(ctx, f, args)
 	case "abnf":
 		if len(args) < 1 { //coverage:ignore arity is refused at parse
 			return makeNilErr(ctx, "invalid-arg", f, nil)

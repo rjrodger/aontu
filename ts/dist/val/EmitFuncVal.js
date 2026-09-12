@@ -92,12 +92,12 @@ function literalSpots(elems) {
         if (true !== el?.isMap) {
             return;
         }
-        const of = el.peg.of;
-        if (true === of?.isList) {
-            of.peg.forEach((p, j) => {
+        const chunks = el.peg.n;
+        if (true === chunks?.isList) {
+            chunks.peg.forEach((p, j) => {
                 const ps = textOf(p);
                 if (undefined !== ps) {
-                    out.push({ i, of: j, s: ps });
+                    out.push({ i, n: j, s: ps });
                 }
             });
         }
@@ -146,8 +146,8 @@ function substituted(inst, i, lits, pairs, ctx) {
             continue;
         }
         const sv = new StringVal_1.StringVal({ peg: substitute(l.s, pairs) }, ctx);
-        if (undefined !== l.of) {
-            inst.peg.of.peg[l.of] = sv;
+        if (undefined !== l.n) {
+            inst.peg.n.peg[l.n] = sv;
         }
         else if (true === l.text) {
             inst.peg.text = sv;

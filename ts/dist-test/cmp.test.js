@@ -107,7 +107,7 @@ const E = (src) => {
         Assert.equal(E('x: folder("a", [content("c")])'), 'invalid-arg');
         (0, expect_1.expect)(G('x: file("a", [content("c")])').x.children.length).equal(1);
         Assert.equal(E('x: file("a", [file("b")])'), 'invalid-arg');
-        Assert.equal(E('x: content("a", [content("b")])'), 'invalid-arg');
+        Assert.equal(E('x: content("a", [content("b")])'), 'func_arity');
         // A child that is not a node at all.
         Assert.equal(E('x: folder("a", [1])'), 'invalid-arg');
         Assert.equal(E('x: folder("a", [{cmp: "Nope"}])'), 'invalid-arg');
@@ -122,12 +122,12 @@ const E = (src) => {
         Assert.equal(E('x: file({name: ""})'), 'invalid-arg');
         Assert.equal(E('x: file({name: 1})'), 'invalid-arg');
         Assert.equal(E('x: content({name: "a"})'), 'invalid-arg');
-        // Arity. No signature declaration exists for the spike, so the
-        // parse-time table cannot refuse these and the call does.
-        Assert.equal(E('x: content()'), 'invalid-arg');
-        Assert.equal(E('x: folder()'), 'invalid-arg');
-        Assert.equal(E('x: content("a", "b")'), 'invalid-arg');
-        Assert.equal(E('x: file("a", [], 1)'), 'invalid-arg');
+        // Arity is refused at parse from the declared signature, so the
+        // call's own guard never sees these.
+        Assert.equal(E('x: content()'), 'func_arity');
+        Assert.equal(E('x: folder()'), 'func_arity');
+        Assert.equal(E('x: content("a", "b")'), 'func_arity');
+        Assert.equal(E('x: file("a", [], 1)'), 'func_arity');
     });
     (0, node_test_1.test)('nodes-are-recognised-structurally', () => {
         (0, expect_1.expect)(G('x: folder("a", [{cmp: "File", props: {name: "b"}, children: []}])')
@@ -205,8 +205,8 @@ const E = (src) => {
         (0, expect_1.expect)(G('x: project("out")').x.props).equal({ folder: 'out' });
         Assert.equal(E('x: project({folder: 1})'), 'invalid-arg');
         // Every other text prop is required.
-        Assert.equal(E('x: folder()'), 'invalid-arg');
-        Assert.equal(E('x: copyfiles()'), 'invalid-arg');
+        Assert.equal(E('x: folder()'), 'func_arity');
+        Assert.equal(E('x: copyfiles()'), 'func_arity');
     });
     // `listitems` is driven by a LIST, so it has no one-string spelling and
     // its `item` is checked: a listitems with no item renders nothing,
@@ -224,7 +224,7 @@ const E = (src) => {
         Assert.equal(E('x: file("a", [slot("s")])'), 'invalid-arg');
         // A folder does not hold content.
         Assert.equal(E('x: folder("a", [line("x")])'), 'invalid-arg');
-        Assert.equal(E('x: copyfiles("a", [line("x")])'), 'invalid-arg');
+        Assert.equal(E('x: copyfiles("a", [line("x")])'), 'func_arity');
     });
     (0, node_test_1.test)('children-flatten', () => {
         (0, expect_1.expect)(G('x: file("a", [content("1"), [content("2"), content("3")]])')

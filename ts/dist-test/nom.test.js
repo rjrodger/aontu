@@ -116,9 +116,9 @@ const E = (src) => {
     });
     (0, node_test_1.test)('refusals', () => {
         // The name.
-        Assert.equal(E('x: nom(1)'), 'invalid-arg');
+        Assert.equal(E('x: nom(1)'), 'func_arg');
         Assert.equal(E('x: nom("")'), 'invalid-arg');
-        Assert.equal(E('x: nom({a: 1})'), 'invalid-arg');
+        Assert.equal(E('x: nom({a: 1})'), 'func_arg');
         // The style.
         Assert.equal(E('x: nom("a", pascel)'), 'invalid-arg');
         Assert.equal(E('x: nom("a", 1)'), 'invalid-arg');
@@ -126,10 +126,10 @@ const E = (src) => {
         Assert.equal(E('x: nom("a", pascal, [1])'), 'invalid-arg');
         Assert.equal(E('x: nom("a", pascal, [""])'), 'invalid-arg');
         Assert.equal(E('x: nom("a", pascal, "ID")'), 'invalid-arg');
-        // Arity. No signature declaration exists for the spike, so the
-        // parse-time table cannot refuse these and the call does.
-        Assert.equal(E('x: nom()'), 'invalid-arg');
-        Assert.equal(E('x: nom("a", pascal, [ID], 1)'), 'invalid-arg');
+        // Arity is refused at parse from the declared signature, so the
+        // call's own guard never sees these.
+        Assert.equal(E('x: nom()'), 'func_arity');
+        Assert.equal(E('x: nom("a", pascal, [ID], 1)'), 'func_arity');
         // A list second argument is the acronym set, so there is no third
         // slot left to fill.
         Assert.equal(E('x: nom("a", [ID], pascal)'), 'invalid-arg');

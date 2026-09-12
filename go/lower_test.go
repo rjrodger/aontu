@@ -100,7 +100,7 @@ func TestLowerLitPrimInGo(t *testing.T) {
 		{[]any{nil}, "null"},
 		{[]any{"a", int64(1)}, "any"},
 	} {
-		got := lowerTypeExpr(map[string]any{"k": "lit", "of": c.of}, ctx, "$").text
+		got := lowerTypeExpr(map[string]any{"k": "lit", "n": c.of}, ctx, "$").text
 		if got != c.want {
 			t.Fatalf("%v: want %q, got %q", c.of, c.want, got)
 		}
@@ -120,9 +120,9 @@ func TestLowerFallbacksWithoutTypeForms(t *testing.T) {
 		want string
 	}{
 		{prim("int"), "int"},
-		{map[string]any{"k": "list", "of": prim("int")}, "int"},
-		{map[string]any{"k": "map", "key": prim("string"), "of": prim("int")}, "string, int"},
-		{map[string]any{"k": "union", "of": []any{prim("a"), prim("b")}}, "a | b"},
+		{map[string]any{"k": "list", "n": prim("int")}, "int"},
+		{map[string]any{"k": "map", "key": prim("string"), "n": prim("int")}, "string, int"},
+		{map[string]any{"k": "union", "n": []any{prim("a"), prim("b")}}, "a | b"},
 	} {
 		if got := lowerTypeExpr(c.t, ctx, "$").text; got != c.want {
 			t.Fatalf("%v: want %q, got %q", c.t, c.want, got)
@@ -143,8 +143,8 @@ func TestLowerParenRule(t *testing.T) {
 					"k": "record", "name": "T", "open": false, "check": []any{},
 					"fields": []any{map[string]any{
 						"name": "a", "optional": false,
-						"type": map[string]any{"k": "list", "of": map[string]any{
-							"k": "opt", "of": map[string]any{"k": "prim", "prim": "string"},
+						"type": map[string]any{"k": "list", "n": map[string]any{
+							"k": "opt", "n": map[string]any{"k": "prim", "prim": "string"},
 						}},
 					}},
 				}},
@@ -166,15 +166,15 @@ func TestLowerBodyPieceWithoutDepth(t *testing.T) {
 			"path": "a.ts", "lang": "typescript",
 			"decls": []any{map[string]any{
 				"k": "func", "name": "f", "params": []any{},
-				"body": map[string]any{"k": "frag", "of": []any{
+				"body": map[string]any{"k": "frag", "n": []any{
 					piece, map[string]any{"k": "blank"}, "done()",
 				}},
 			}},
 		}}}}}
 	}
 	opts := &RenderOptions{Profiles: []map[string]any{profile}}
-	bare := RenderValue(unit(map[string]any{"k": "line", "of": []any{"go()"}}), opts)
-	at0 := RenderValue(unit(map[string]any{"k": "line", "at": int64(0), "of": []any{"go()"}}), opts)
+	bare := RenderValue(unit(map[string]any{"k": "line", "n": []any{"go()"}}), opts)
+	at0 := RenderValue(unit(map[string]any{"k": "line", "at": int64(0), "n": []any{"go()"}}), opts)
 	if bare.Verdict != at0.Verdict || 1 != len(bare.Units) || 1 != len(at0.Units) {
 		t.Fatalf("bare: %+v\nat0: %+v", bare, at0)
 	}

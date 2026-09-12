@@ -265,7 +265,7 @@ fmt-tree-comment-across-a-gap-stays	fmt	a: {\n  # x\n  b: 1\n}\n# tail\n\n# head
 # carry, in the agreed form, indented AFTER the marker; every line of
 # output held on a line of its own, whatever the packing budget would
 # rather do with three strings in a row.
-fmt-template-indents-the-aontu	fmt-template	#- code: units: [{\n#- path: "x.rb"\n#- decls: [\n#- { k:"frag" of:[\nputs 1\n#- ]}\n#- ]\n#- }]\n	#-	#- code: units: [\n#-   {\n#-     path: "x.rb"\n#-     decls: [\n#-       {\n#-         k: "frag"\n#-         of: [\nputs 1\n#-         ]\n#-       }\n#-     ]\n#-   }\n#- ]\n
+fmt-template-indents-the-aontu	fmt-template	#- code: units: [{\n#- path: "x.rb"\n#- decls: [\n#- { k:"frag" n:[\nputs 1\n#- ]}\n#- ]\n#- }]\n	#-	#- code: units: [\n#-   {\n#-     path: "x.rb"\n#-     decls: [\n#-       {\n#-         k: "frag"\n#-         n: [\nputs 1\n#-         ]\n#-       }\n#-     ]\n#-   }\n#- ]\n
 fmt-template-holds-output-lines	fmt-template	#- a: [\nx\ny\nz\n#- ]\n	#-	#- a: [\nx\ny\nz\n#- ]\n
 fmt-template-marker-to-the-margin	fmt-template	  #- a: [\n  line\n  #- ]\n	#-	#- a: [\n  line\n#- ]\n
 fmt-template-blank-output-line	fmt-template	#- a: [\n\nx\n#- ]\n	#-	#- a: [\n\nx\n#- ]\n

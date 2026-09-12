@@ -1435,9 +1435,9 @@ aontu: Code: units: [
     decls: [
       {
         k: "frag"
-        of: [
+        n: [
           "def hello():"
-          { k:"line" at:1 of: ["print(\"" + $.greeting + "\")"] }
+          { k:"line" at:1 n: ["print(\"" + $.greeting + "\")"] }
         ]
       }
     ]
@@ -2317,7 +2317,7 @@ Write a `greet.ts`:
 //- aontu: Code: units: emit($.svc, {
 //- match: { name: string }
 //- body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
-//- k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
+//- k: "frag", n: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
 export function greet() {
   console.log(`hello, NAME`)
 }
@@ -2345,7 +2345,7 @@ svc: $.who & pack($.who, { name: key() })
 aontu: Code: units: emit($.svc, {
 match: { name: string }
 body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
-k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
+k: "frag", n: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
 `export function greet() {`
 "  console.log(`hello, NAME`)"
 `}`

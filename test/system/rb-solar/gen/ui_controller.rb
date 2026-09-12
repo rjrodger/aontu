@@ -13,7 +13,7 @@
 #-       decls: [
 #-         {
 #-           k: "frag"
-#-           of: emit([_], {
+#-           n: emit([_], {
 #-             match: class: string
 #-             # Only what THIS rule's own lines use: `OWNPARAM` appears in the
 #-             # file, but only in lines the nested rules write, and they carry

@@ -48,9 +48,7 @@ class TranslateFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'translate';
     }
     resolve(ctx, args) {
-        if (args.length < 2 || 3 < args.length) {
-            return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, undefined, 'arity');
-        }
+        // Arity is checked at parse (funcArity), so a body guard is dead.
         const src = textOf(args[0]);
         if (undefined === src) {
             return (0, err_1.makeNilErr)(ctx, 'invalid-arg', this, args[0], 'src');

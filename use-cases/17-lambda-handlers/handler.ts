@@ -74,7 +74,7 @@ exports.handler = async (
 //-           {
 //-             path: "handlers/" + .name + ".ts"
 //-             lang: "typescript"
-//-             decls: [{ k:"frag" of:emit([_], %handler) }]
+//-             decls: [{ k:"frag" n:emit([_], %handler) }]
 //-           }
 //-         ]
 //-       })
@@ -89,7 +89,7 @@ exports.handler = async (
 //-         decls: [
 //-           {
 //-             k: "frag"
-//-             of: each(pick($.svc, name), "export const " + join(each(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
+//-             n: each(pick($.svc, name), "export const " + join(each(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
 //-           }
 //-         ]
 //-       }

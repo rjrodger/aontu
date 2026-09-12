@@ -12,7 +12,7 @@ type Template = {
 };
 type LitSpot = {
     i: number;
-    of?: number;
+    n?: number;
     text?: boolean;
     s: string;
 };

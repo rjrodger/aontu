@@ -3555,7 +3555,7 @@ ADR-001 divergence in the CODE of a refusal both ports agree on.
 ```aon
 @"aontu:code"
 aontu: Code: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T",
-  type: { k: "list", of: { k: "list", of: { k: "prim", prim: "int" } } } }] }]
+  type: { k: "list", n: { k: "list", n: { k: "prim", prim: "int" } } } }] }]
 ```
 
 The vocabulary's container types take leaves only, so the inner
@@ -3935,19 +3935,19 @@ the Go meet stood at `$` and reported findings raised on itself there.
 ### 92. A `+` with a staged operand is refused at a key inside a map [major]
 
 ```
-x: { k: "a", of: [&: string] }
-x: { k: "a", of: ["p"] + each(["q"], _) }
+x: { k: "a", n: [&: string] }
+x: { k: "a", n: ["p"] + each(["q"], _) }
 ```
 
-is `[aontu/list]` at `$.x.of` — "expected a list value" — in both
+is `[aontu/list]` at `$.x.n` — "expected a list value" — in both
 ports. The same sum at the TOP level stands up, and so does one whose
 operands are both literals:
 
 ```
 x: [&: string]                            # {"x":["p","q"]}
 x: ["p"] + each(["q"], _)
-x: { k: "a", of: [&: string] }            # {"x":{"k":"a","of":["p","q"]}}
-x: { k: "a", of: ["p"] + ["q"] }
+x: { k: "a", n: [&: string] }            # {"x":{"k":"a","n":["p","q"]}}
+x: { k: "a", n: ["p"] + ["q"] }
 ```
 
 **Why.** `ListVal.unify` (and `ScalarKindVal.unify`) refuse an op whose
@@ -3959,11 +3959,11 @@ which is what makes the top-level lines hold. A map's per-key meet
 does not go through that order, so it still reaches the kind first.
 
 **Not caused by ADR-037.** The string spelling fails identically —
-`x: {k:"a", of:string}` against `x: {k:"a", of:"p" + join(["q"],"")}`
+`x: {k:"a", n:string}` against `x: {k:"a", n:"p" + join(["q"],"")}`
 is `[aontu/not-scalar-type]` — and predates list concatenation
 entirely. What ADR-037 changed is how visible the shape is: a written
 head concatenated onto a generated tail is now the way to write a
-generated section, and `{k:"frag", of:["head"] + emit(…)}` under
+generated section, and `{k:"frag", n:["head"] + emit(…)}` under
 `aontu:code`'s schema is exactly this refusal. Repro:
 `repros/op-template/staged-op-under-a-key.aon`.
 
@@ -3972,7 +3972,7 @@ has not decided, at a key inside a map as well as in a conjunct, which
 is the rule a staged CALL already had (`unite`'s right-drives list;
 `isDrivingOp` in Go). An op drove only when it held a placeholder.
 Pinned by `edge-plus-op-under-map-template`, `-map-kind` and
-`-map-value`. `{k:"frag", of:["head"] + emit(...)}` under
+`-map-value`. `{k:"frag", n:["head"] + emit(...)}` under
 `aontu:code`'s schema now stands up.
 
 ## includes-root — a root include and the shape of its value

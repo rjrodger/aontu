@@ -95,7 +95,7 @@ describe('cmp', () => {
     expect(G('x: file("a", [content("c")])').x.children.length).equal(1)
     Assert.equal(E('x: file("a", [file("b")])'), 'invalid-arg')
 
-    Assert.equal(E('x: content("a", [content("b")])'), 'invalid-arg')
+    Assert.equal(E('x: content("a", [content("b")])'), 'func_arity')
 
     // A child that is not a node at all.
     Assert.equal(E('x: folder("a", [1])'), 'invalid-arg')
@@ -116,12 +116,12 @@ describe('cmp', () => {
     Assert.equal(E('x: file({name: 1})'), 'invalid-arg')
     Assert.equal(E('x: content({name: "a"})'), 'invalid-arg')
 
-    // Arity. No signature declaration exists for the spike, so the
-    // parse-time table cannot refuse these and the call does.
-    Assert.equal(E('x: content()'), 'invalid-arg')
-    Assert.equal(E('x: folder()'), 'invalid-arg')
-    Assert.equal(E('x: content("a", "b")'), 'invalid-arg')
-    Assert.equal(E('x: file("a", [], 1)'), 'invalid-arg')
+    // Arity is refused at parse from the declared signature, so the
+    // call's own guard never sees these.
+    Assert.equal(E('x: content()'), 'func_arity')
+    Assert.equal(E('x: folder()'), 'func_arity')
+    Assert.equal(E('x: content("a", "b")'), 'func_arity')
+    Assert.equal(E('x: file("a", [], 1)'), 'func_arity')
   })
 
 
@@ -227,8 +227,8 @@ describe('cmp', () => {
     Assert.equal(E('x: project({folder: 1})'), 'invalid-arg')
 
     // Every other text prop is required.
-    Assert.equal(E('x: folder()'), 'invalid-arg')
-    Assert.equal(E('x: copyfiles()'), 'invalid-arg')
+    Assert.equal(E('x: folder()'), 'func_arity')
+    Assert.equal(E('x: copyfiles()'), 'func_arity')
   })
 
 
@@ -251,7 +251,7 @@ describe('cmp', () => {
     Assert.equal(E('x: file("a", [slot("s")])'), 'invalid-arg')
     // A folder does not hold content.
     Assert.equal(E('x: folder("a", [line("x")])'), 'invalid-arg')
-    Assert.equal(E('x: copyfiles("a", [line("x")])'), 'invalid-arg')
+    Assert.equal(E('x: copyfiles("a", [line("x")])'), 'func_arity')
   })
 
 

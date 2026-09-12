@@ -135,7 +135,7 @@ is one unit:
 
 ```aon
 code: { units: [ { path: "out.py", lang: "python",
-                   decls: [ { k: "frag", of: emit($.model, %rules) } ] } ] }
+                   decls: [ { k: "frag", n: emit($.model, %rules) } ] } ] }
 ```
 
 That is one line of scaffolding and it buys a path, a language and a
@@ -149,12 +149,12 @@ G9's second amendment defines the fragment algebra's pieces as records:
 
 ```aon
 %inline = string & re("^[^\n\r]*$") | %ref
-%line =   close({ k: "line",  at: *0 | integer & min(0) & max(64), of: [&: %inline] })
+%line =   close({ k: "line",  at: *0 | integer & min(0) & max(64), n: [&: %inline] })
 %blank =  close({ k: "blank", n: *1 | integer & min(1) & max(16) })
 %raw =    close({ k: "raw",   at: *0 | integer & min(0) & max(64),
                  text: string, reindent: *true | boolean })
 %piece =  %line | %blank | %raw
-%frag =   close({ k: "frag", of: [&: %piece] })
+%frag =   close({ k: "frag", n: [&: %piece] })
 ```
 
 This note adds one alternative to `%piece`:
@@ -163,14 +163,14 @@ This note adds one alternative to `%piece`:
 %piece = %line | %blank | %raw | string & re("^[^\n\r  ]*$")
 ```
 
-**A bare string piece is `{k: "line", at: 0, of: [s]}`**, and the
+**A bare string piece is `{k: "line", at: 0, n: [s]}`**, and the
 terminator rule is enforced on it at the node, as a vet error, before
 any renderer runs. Three reasons, in order of weight:
 
 1. **It is what every `emit` body already produces.** VERIFIED: every
    row in `gen-emit.tsv` and every example in the reference emits
    strings. Without the shorthand, every body line in every generator
-   would be wrapped in `{k: "line", of: [...]}` — ceremony on the hot
+   would be wrapped in `{k: "line", n: [...]}` — ceremony on the hot
    path of the one construct the rule layer exists for.
 2. **It is what the template surface produces.** TEMPLATE.0.md D7's
    generator is body lines that are *verbatim target text*, indented
@@ -180,7 +180,7 @@ any renderer runs. Three reasons, in order of weight:
    the note verified against twelve handlers.
 3. **`at` stays available for the one case that needs it.** D8's
    residual — one table used at two depths — is written as
-   `{k: "line", at: 1, of: [...]}`, and the renderer's prefix is added
+   `{k: "line", at: 1, n: [...]}`, and the renderer's prefix is added
    to whatever the text carries.
 
 A string that holds a line terminator is refused at the node
@@ -879,7 +879,7 @@ touches M0.
 14. **The vet and the meet read the settled value, not the source
     text** (P3). D1 says the verb vets "exactly as `aontu vet code.aon
     result.aon` would", and the first cut did: it handed vet the
-    document's text. A fragment whose lines are computed — `of:
+    document's text. A fragment whose lines are computed — `n:
     emit(...)`, `"select " + join($.cols, ", ")` — then failed the
     vet in Go as `empty`: the vocabulary's alternatives were tried
     against a call still waiting to fire, not against the value it
@@ -976,7 +976,7 @@ touches M0.
 
 27. **`replace` applies at the literal spots the template wrote** (P6):
     a string element of the body, and the strings written directly in
-    a map element's `of` list or `text`. A string an expression
+    a map element's `n` list or `text`. A string an expression
     computes, or a nested dispatch splices in, is not one, so D3's
     second rule (a substituted value is never re-scanned) and third (a
     spliced result is finished) follow from where the substitution
