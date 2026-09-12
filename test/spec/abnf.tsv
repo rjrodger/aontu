@@ -140,6 +140,10 @@ abnf-refuses-a-duplicate-member-name	errc	a: abnf(`\ntop = a b   ; @object value
 # node's `src` is short of it. Mixing the two is supported; just do not
 # read `src` on a node that contains an annotated rule.
 parse-a-value-building-rule-contributes-no-text	gens	G: hide(abnf(`\ndoc = head ":" body\nhead = 1*ALPHA\nbody = d   ; @object d\nd = 1*DIGIT\nALPHA = %x61-7A\nDIGIT = %x30-39\n`))\nt: hide(parse($.G, "ab:7"))\nsrc: $.t.src\ninner: $.t.kids.2	{"inner":{"d":"7"},"src":"ab:"}
-# A NESTED `; @array` is NOT pinned here: the two ports disagree, the
-# fault is upstream in the pinned @tabnas/abnf, and the parity ledger
-# (divergent.tsv) carries the three shapes and tabnas/abnf#63.
+# A NESTED `; @array` -- the three shapes that were out of parity until
+# @tabnas/parser 0.9.7 (tabnas/abnf#63). Go dropped the member, added a
+# spurious leading element, or answered a list where a map was asked
+# for. These rows go red against the older pins.
+parse-array-nests-in-an-object	gens	G: hide(abnf(`\ntop = "@" a b   ; @object a b\na = 1*ALPHA\nb = "[" x *( "," x ) "]"   ; @array\nx = 1*DIGIT\nALPHA = %x61-7A\nDIGIT = %x30-39\n`))\na: parse($.G, "@ab[1,2]")	{"a":{"a":"ab","b":["1","2"]}}
+parse-array-nests-in-an-array	gens	G: hide(abnf(`\ntop = "<" b *( ";" b ) ">"   ; @array\nb = "[" x *( "," x ) "]"   ; @array\nx = 1*DIGIT\nDIGIT = %x30-39\n`))\na: parse($.G, "<[1,2];[3]>")	{"a":[["1","2"],["3"]]}
+parse-array-is-an-objects-only-member	gens	G: hide(abnf(`\ntop = "@" b   ; @object b\nb = "[" x *( "," x ) "]"   ; @array\nx = 1*DIGIT\nDIGIT = %x30-39\n`))\na: parse($.G, "@[1,2]")	{"a":{"b":["1","2"]}}
